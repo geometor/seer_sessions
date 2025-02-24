@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\n1.  **Identify Objects:** The input consists of five distinct black objects of varying rectangular shapes and one yellow object.\n2.  **Combine Black Objects:** The transformation combines vertically-adjacent and horizontally-adjacent black objects into the smallest bounding rectangle.\n3. **Preserve Yellow object:** The yellow object does not combine or change\n4.  **Output:** The output consists of the two combined black rectangles and the original yellow square.\n\"\"\"\n\nimport numpy as np\nfrom skimage.measure import label, regionprops\n\ndef get_objects(grid):\n    \"\"\"Identifies objects and extracts their properties.\"\"\"\n    labeled_grid = label(grid, connectivity=1)  # Use 4-connectivity\n    objects = []\n    for region in regionprops(labeled_grid):\n        # skimage regionprops identifies background, so we ignore that.\n        if region.label == 0: continue # added\n\n        min_row, min_col, max_row, max_col = region.bbox\n        objects.append({\n            \"label\": region.label, # added\n            \"color\": grid[min_row, min_col],  # All pixels in region have same color\n            \"bbox\": (min_row, min_col, max_row, max_col),\n            \"size\": (max_row - min_row, max_col - min_col),\n            \"area\": region.area,\n            \"centroid\": region.centroid,\n            \"is_square\": region.extent == 1\n        })\n    return objects\n\ndef combine_black_objects(objects):\n    \"\"\"Combines adjacent black objects.\"\"\"\n    black_objects = [obj for obj in objects if obj[\"color\"] == 0]\n    other_objects = [obj for obj in objects if obj[\"color\"] != 0]\n    if not black_objects:  # Handle cases with no black objects\n        return other_objects\n    \n    combined_black = []\n    processed = [False] * len(black_objects)\n\n    for i in range(len(black_objects)):\n        if processed[i]:\n            continue\n\n        current_bbox = list(black_objects[i][\"bbox\"])\n        processed[i] = True\n        \n        # Iteratively expand the bounding box\n        expansion_occurred = True\n        while expansion_occurred:\n            expansion_occurred = False\n            for j in range(len(black_objects)):\n                if processed[j]:\n                    continue\n                other_bbox = black_objects[j][\"bbox\"]\n                \n                # Check for adjacency (4-connectivity)\n                adjacent = False\n                # Check vertical adjacency\n                if (current_bbox[1] <= other_bbox[3] and current_bbox[3] >= other_bbox[1] and\n                    (current_bbox[0] == other_bbox[2] or current_bbox[2] == other_bbox[0] )):\n                  adjacent = True\n\n                # Check horizontal adjacency\n                if (current_bbox[0] <= other_bbox[2] and current_bbox[2] >= other_bbox[0] and\n                    (current_bbox[1] == other_bbox[3] or current_bbox[3] == other_bbox[1])):\n                    adjacent = True\n\n                if adjacent:\n                    current_bbox[0] = min(current_bbox[0], other_bbox[0])\n                    current_bbox[1] = min(current_bbox[1], other_bbox[1])\n                    current_bbox[2] = max(current_bbox[2], other_bbox[2])\n                    current_bbox[3] = max(current_bbox[3], other_bbox[3])\n                    processed[j] = True\n                    expansion_occurred = True\n        \n        combined_black.append({\"color\": 0, \"bbox\": tuple(current_bbox)})\n    \n    return combined_black + other_objects\n    \n\ndef transform(input_grid):\n    # initialize output_grid\n    output_grid = np.zeros_like(input_grid)\n\n    # get objects\n    objects = get_objects(input_grid)\n    \n    # combine black objects\n    combined_objects = combine_black_objects(objects)\n    \n    # fill output grid\n    for obj in combined_objects:\n        min_row, min_col, max_row, max_col = obj[\"bbox\"]\n        output_grid[min_row:max_row, min_col:max_col] = obj[\"color\"]\n\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 2784,
+    "candidates_token_count": 1026,
+    "total_token_count": 3810,
+    "cached_content_token_count": 0
+  },
+  "response_time": 10.512243,
+  "response_file": "011-response.json"
+}
