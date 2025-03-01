@@ -72,12 +72,17 @@ def main():
     # Summary Table
     total_unique_tasks = len(results)
     total_tasks_with_matches = sum(1 for _, data in results if data["test_match_count"] > 0)
+    if total_unique_tasks > 0:  # Avoid division by zero
+        percent_solved = (total_tasks_with_matches / total_unique_tasks) * 100
+    else:
+        percent_solved = 0.00  # Or any other suitable default value
 
     summary_table = Table(title="Summary")
     summary_table.add_column("Metric", justify="left", style="cyan")
     summary_table.add_column("Value", justify="right", style="magenta")
     summary_table.add_row("Total Unique Tasks", str(total_unique_tasks))
     summary_table.add_row("Tasks with Test Matches", str(total_tasks_with_matches))
+    summary_table.add_row("Percent Solved", f"{percent_solved:.2f}%") # Formatted output
     console.print(summary_table)
 
 if __name__ == "__main__":
