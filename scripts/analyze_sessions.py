@@ -51,7 +51,7 @@ def analyze_sessions(sessions_root):
     return task_data
 
 def main():
-    sessions_root = "sessions"  # Assuming 'sessions' is in the current directory.
+    sessions_root = "../sessions"  # Assuming 'sessions' is in the current directory.
     results = analyze_sessions(sessions_root)
 
     for task_id, data in results.items():
