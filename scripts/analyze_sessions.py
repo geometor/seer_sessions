@@ -33,8 +33,8 @@ def analyze_sessions(sessions_root):
                 if item.name.endswith("test.json"):
                     try:
                         with open(item, "r") as tf:
-                            test_data = json.load(tf)
-                            for test_row in test_
+                            test_json = json.load(tf)
+                            for test_row in test_json:
                                 if "match" in test_row and test_row.get("match") is True:
                                     task_data[task_id]["test_match_count"] += 1
                                     break  # Only count one match per test file
