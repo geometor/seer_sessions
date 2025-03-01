@@ -1,3 +1,4 @@
+from rich import print
 import json
 from collections import defaultdict
 from pathlib import Path
