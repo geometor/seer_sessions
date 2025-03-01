@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\nThe transformation rule identifies colored regions (objects) in the input grid, extracts them, and arranges them into a single row in the output grid. Objects are defined as regions of non-background pixels and can have any shape (not only rectangles). Objects within another object (holes) should be considered separate objects. The objects are ordered from top-to-bottom and then left-to-right based on the top-left corner of their bounding box in the input grid. Each object is placed in the output grid, maintaining its original shape and color. The objects are separated by a single white (color 0) pixel in the output row. Each object is vertically centered in the output grid. The background color is 0 (white).\n\"\"\"\n\nimport numpy as np\n\ndef find_objects(grid):\n    \"\"\"\n    Identifies distinct objects within the grid. An object is a contiguous region\n    of non-zero pixels, potentially with holes. This function uses a modified\n    flood-fill approach to handle holes.\n    \"\"\"\n    objects = []\n    visited = np.zeros_like(grid, dtype=bool)\n    rows, cols = grid.shape\n\n    def is_valid(r, c):\n        return 0 <= r < rows and 0 <= c < cols\n\n    def flood_fill(r, c, color, object_coords):\n        if not is_valid(r, c) or visited[r, c] or grid[r, c] != color:\n            return\n        visited[r, c] = True\n        object_coords.append((r, c))\n        flood_fill(r + 1, c, color, object_coords)\n        flood_fill(r - 1, c, color, object_coords)\n        flood_fill(r, c + 1, color, object_coords)\n        flood_fill(r, c - 1, color, object_coords)\n\n    for r in range(rows):\n        for c in range(cols):\n            if not visited[r, c] and grid[r, c] != 0:\n                object_coords = []\n                color = grid[r,c]\n                flood_fill(r, c, color, object_coords)\n                objects.append({\n                    'color': color,\n                    'coords': object_coords\n                })\n\n    # check for contained objects (holes)\n    contained_objects = []\n\n    for i, obj1 in enumerate(objects):\n        for j, obj2 in enumerate(objects):\n            if i != j:  # avoid comparing same object\n                # create bounding boxes\n                min_row1, min_col1, max_row1, max_col1 = bounding_box(obj1['coords'])\n                min_row2, min_col2, max_row2, max_col2 = bounding_box(obj2['coords'])\n\n                # check containment (obj2 inside obj1)\n                if min_row1 <= min_row2 and max_row1 >= max_row2 and min_col1 <= min_col2 and max_col1 >= max_col2:\n                    is_contained = True\n                    for r, c in obj2['coords']:\n                        if not (min_row1 <= r <= max_row1 and min_col1 <= c <= max_col1):\n                            is_contained = False\n                            break\n                \n                    if is_contained:\n                        contained_objects.append(obj2)\n\n    # remove contained from main list\n    for obj in contained_objects:\n        if obj in objects:\n            objects.remove(obj)\n    objects.extend(contained_objects) # add them back to be sorted\n    return objects\n\ndef bounding_box(coords):\n    \"\"\"Computes the bounding box of a set of coordinates.\"\"\"\n    min_row = min(r for r, _ in coords)\n    max_row = max(r for r, _ in coords)\n    min_col = min(c for _, c in coords)\n    max_col = max(c for _, c in coords)\n    return min_row, min_col, max_row, max_col\n\ndef get_object_dimensions(object_coords):\n    \"\"\"\n    Calculates the dimensions (width and height) of an object given its coordinates.\n    \"\"\"\n    min_row, min_col, max_row, max_col = bounding_box(object_coords)\n    return (max_row - min_row + 1), (max_col - min_col + 1)\n\ndef transform(input_grid):\n    # initialize output_grid\n    input_grid = np.array(input_grid)  # Convert to NumPy array\n    objects = find_objects(input_grid)\n\n    # determine necessary output grid height, and total width\n    output_height = max(get_object_dimensions(obj['coords'])[0] for obj in objects)\n    output_width = sum(get_object_dimensions(obj['coords'])[1] for obj in objects) + len(objects) -1\n\n    output_grid = np.zeros((output_height, output_width), dtype=int)\n\n    # Reorder objects: top-to-bottom, then left-to-right\n    ordered_objects = sorted(objects, key=lambda obj: (min(r for r, _ in obj['coords']), min(c for _, c in obj['coords'])))\n\n    # Place objects on the output grid\n    current_col = 0\n    for obj in ordered_objects:\n        # find object height, and center in output row\n        obj_height = get_object_dimensions(obj['coords'])[0]\n        row_offset = (output_height - obj_height) // 2\n\n        min_row = min(r for r, _ in obj['coords'])\n        min_col = min(c for _, c in obj['coords'])\n\n        for r, c in obj['coords']:\n             output_grid[row_offset + (r-min_row), current_col + (c - min_col)] = obj['color']\n        current_col += get_object_dimensions(obj['coords'])[1] + 1  # +1 for the space\n\n    return output_grid.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 3185,
+    "candidates_token_count": 1406,
+    "total_token_count": 4591,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.0-pro-exp-02-05",
+  "response_time": 12.321528,
+  "response_file": "006-response.json"
+}

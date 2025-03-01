@@ -1,0 +1,5 @@
+        print(f"  Input grid:\n{np.array(input_grid)}")
+        print(f"  Expected output grid:\n{np.array(expected_output)}")
+        print(f"  Output grid:\n{np.array(output_grid)}")
+        maroon_coords = find_object_by_color(np.array(input_grid), 9)
+        print(f"  Maroon object coordinates: {maroon_coords}")

@@ -1,0 +1,45 @@
+# 99fa7670 • 016 • refine_coder
+
+---
+```python
+"""
+1.  **Identify Seed Pixels:** Locate all non-zero pixels within the input grid. These are the "seed" pixels.
+2.  **Horizontal Expansion (Azure):** For each seed pixel that is azure (value 8), extend it horizontally to fill the entire row it occupies in the output grid.
+3. **Expansion to bottom right (Gray)**: The grey pixel seems to fill the cells down and to its right, *but only if the cell to its left is also extended by the Azure rule*. It appears to be "blocked" if the condition is not met.
+
+"""
+
+import numpy as np
+
+def find_seed_pixels(grid):
+    """Finds the coordinates of non-zero pixels in the grid."""
+    seed_pixels = []
+    for row_index, row in enumerate(grid):
+        for col_index, pixel_value in enumerate(row):
+            if pixel_value != 0:
+                seed_pixels.append((row_index, col_index, pixel_value))
+    return seed_pixels
+
+def transform(input_grid):
+    # initialize output_grid as a copy of the input grid
+    output_grid = np.copy(input_grid)
+    
+    # Find seed pixels and their colors.
+    seed_pixels = find_seed_pixels(input_grid)
+
+    # Iterate through each seed pixel.
+    for row, col, value in seed_pixels:
+        if value == 8:  # Azure pixel
+            # Horizontal expansion
+            output_grid[row, :] = 8
+
+    for row, col, value in seed_pixels:
+        if value == 5: # Gray pixel
+          # expand gray down and right, but only if the pixel to the immediate left is azure (8)
+          for r in range(row, output_grid.shape[0]):
+            for c in range(col, output_grid.shape[1]):
+              if output_grid[r,c-1] == 8:
+                output_grid[r,c] = 5
+        
+    return output_grid
+```

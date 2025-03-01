@@ -1,0 +1,97 @@
+# 007bbfb7 • 020 • example_4 • investigate_coder
+
+---
+
+## train_4
+
+**input:**
+```
+6 6 0
+6 0 0
+0 6 6
+```
+
+<PIL.Image.Image image mode=RGB size=192x192 at 0x7B3DDB2CADD0>
+
+**output:**
+```
+6 6 0 6 6 0 0 0 0
+6 0 0 6 0 0 0 0 0
+0 6 6 0 6 6 0 0 0
+6 6 0 0 0 0 0 0 0
+6 0 0 0 0 0 0 0 0
+0 6 6 0 0 0 0 0 0
+0 0 0 6 6 0 6 6 0
+0 0 0 6 0 0 6 0 0
+0 0 0 0 6 6 0 6 6
+```
+
+<PIL.Image.Image image mode=RGB size=576x576 at 0x7B3DDB2CBDD0>
+Okay, here's my analysis of the provided input-output example:
+
+**Perception of Elements:**
+
+The task involves transforming a smaller grid (3x3) into a larger grid (9x9). The colors involved are magenta (6) and white (0). The input grid seems to be replicated and potentially expanded in some way to form the output grid. There's a clear pattern of repetition.
+
+**YAML Block (Facts):**
+
+
+```yaml
+objects:
+  - type: grid
+    dimensions:
+      input: 3x3
+      output: 9x9
+    elements:
+      - color: magenta (6)
+        positions:
+          input: [[0,0], [0,1], [1,0], [2,1], [2,2]]
+      - color: white (0)
+        positions:
+          input: [[0,2], [1,1], [1,2], [2,0]]
+actions:
+  - type: replication
+    description: The input grid is replicated to form a larger pattern.
+  - type: expansion or tiling, the 3x3 pattern is used as a tile in the 9x9 output
+relationships:
+  - input-to-output: The input grid is the basis for the output grid.
+
+```
+
+
+**Natural Language Program:**
+
+1.  **Replicate:** The input 3x3 grid is replicated in a 3x3 pattern.
+2. **Tile:** Take the 3 x 3 input, and use this as a tile. Tile the 3 x 3 space of the output with the input.
+
+Essentially, the input grid is used as a "stamp" or "tile" that's repeated nine times (3x3) to create the output grid.
+
+**INSTRUCTIONS**
+
+- generate a Python module to represent the natural language program 
+- follow the template below
+- all common math and science libraries are available
+- create docstring only at top - but comment the workflow in the function
+- use helper functions for common operations like finding objects, counting,
+  measuring, moving, etc. 
+
+remember - we are working iteratively - so this code will inform your future
+self as we converge on the solution
+
+*template:*
+
+```python
+"""
+{{ natural language description of the transformation rule }}
+"""
+
+{{ imports }}
+
+def transform(input_grid):
+    # initialize output_grid
+
+    # change output pixels 
+
+    return output_grid
+
+```

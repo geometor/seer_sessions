@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\n1.  **Identify Objects:** Find all contiguous red (2) pixels, forming the \"red shape,\" and all gray (5) pixels, forming the initial \"gray shapes.\"\n\n2.  **Determine Gray Shape Target Area:** Identify the horizontal center of the \"red shape\".\n\n3.  **Reposition and Merge Gray:** Move each disconnected originally gray area.\n    *   Gray pixels stay in original columns.\n    *   Gray pixels move to rows closest to identified horizontal center.\n    *    Merge gray pixels inside the \"red shape\" if some gray pixels are contained.\n    *   Gray pixels move outside and in contact with the red shape if no gray pixels inside red shape.\n\n4.  **Output:** The final grid contains the original red shape and the repositioned, merged gray shape.\n\"\"\"\n\nimport numpy as np\n\ndef find_objects(grid, color):\n    \"\"\"Finds contiguous objects of a given color in the grid.\"\"\"\n    objects = []\n    visited = np.zeros_like(grid, dtype=bool)\n\n    def dfs(row, col, current_object):\n        if (row < 0 or row >= grid.shape[0] or col < 0 or col >= grid.shape[1] or\n                visited[row, col] or grid[row, col] != color):\n            return\n        visited[row, col] = True\n        current_object.append((row, col))\n        dfs(row + 1, col, current_object)\n        dfs(row - 1, col, current_object)\n        dfs(row, col + 1, current_object)\n        dfs(row, col - 1, current_object)\n\n    for row in range(grid.shape[0]):\n        for col in range(grid.shape[1]):\n            if grid[row, col] == color and not visited[row, col]:\n                current_object = []\n                dfs(row, col, current_object)\n                objects.append(current_object)\n    return objects\n\ndef get_bounding_box(obj):\n    \"\"\"\n    returns topleft and bottom right corner coordinates\n    \"\"\"\n    rows = [r for r, _ in obj]\n    cols = [c for _, c in obj]\n    return min(rows), min(cols), max(rows), max(cols)\n\ndef calculate_center(obj):\n    \"\"\"Calculates the geometric center of an object.\"\"\"\n    rows = [r for r, _ in obj]\n    cols = [c for _, c in obj]\n    return (sum(rows) / len(rows), sum(cols) / len(cols))\n\ndef transform(input_grid):\n    \"\"\"Transforms the input grid according to the observed rules.\"\"\"\n    grid = np.array(input_grid)\n    output_grid = np.copy(grid)\n\n    # 1. Identify Objects\n    red_objects = find_objects(grid, 2)\n    gray_objects = find_objects(grid, 5)\n    \n    if not red_objects or not gray_objects:\n        return output_grid.tolist()  # Return original if no red or gray objects\n\n    # Assuming only one red object for now\n    red_object = red_objects[0]\n\n    # 2. Determine Gray Shape Target Area\n    red_center_row, _ = calculate_center(red_object)\n    \n    # Calculate initial gray bounding box to help later\n    gray_pixels = [pixel for obj in gray_objects for pixel in obj]\n    gray_top, gray_left, gray_bottom, gray_right = get_bounding_box(gray_pixels)\n\n    # Clear original gray pixels, keep track of original position\n    gray_positions = []\n    for obj in gray_objects:\n      for r,c in obj:\n        output_grid[r][c] = 0\n        gray_positions.append((r,c))\n    \n    # Sort gray pixels by column for relative repositioning\n    gray_positions.sort(key=lambda x: x[1])\n    \n    gray_rows = [r for r,_ in gray_positions]\n    gray_cols = [c for _,c in gray_positions]\n    \n    # determine how to arrange gray pixels\n    new_gray_rows = []\n    top_target = int(round(red_center_row - (gray_bottom - gray_top) / 2))\n    for i in range(len(gray_cols)):\n        new_gray_rows.append(top_target + (gray_rows[i] - gray_top)) # apply the shift\n    \n    # Reposition gray\n    for i in range(len(gray_cols)):\n      output_grid[new_gray_rows[i], gray_cols[i]] = 5\n    \n    return output_grid.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 6172,
+    "candidates_token_count": 1096,
+    "total_token_count": 7268,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.0-pro-exp-02-05",
+  "response_time": 12.235173,
+  "response_file": "002-response.json"
+}

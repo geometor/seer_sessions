@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\n1.  **Identify:** Locate all azure (8) pixels within the input grid.\n2.  **Extract:** Isolate the azure pixels from the input grid, disregarding their original positions.\n3. **Determine Output size**: The size of the compact shape formed by azure pixels are 3 x 6\n4.  **Construct:** Create a new grid with the output size.\n5.  **Arrange:** Fill the new grid with the extracted azure pixels.\n    - Start with the top row. If there were azure pixels touching the top, copy them to the output in similar locations.\n    - Next consider the pixels in the input grid that are in a row beneath the top row of azure pixels.\n    - Place these pixels in the output grid in a row at the bottom.\n    - If any azure pixels remain, place these in the row between the top and bottom rows that you just created.\n    - If the azure pixels are not contiguous, ensure that adjacency of any groups of azure pixels in the input is preserved in the output.\n6.  The shape of the azure colored pixels is a compact rectangle.\n\"\"\"\n\nimport numpy as np\n\ndef find_pixels(grid, color):\n    # Find coordinates of pixels with the specified color.\n    return np.array(np.where(grid == color)).T\n\ndef get_contiguous_blocks(pixels):\n    # group pixels into contiguous sets, horizontally or vertically\n    \n    if len(pixels) == 0:\n      return []\n\n    blocks = []\n    current_block = [pixels[0]]\n\n    for i in range(1, len(pixels)):\n        is_contiguous = False\n        for prev_pixel in current_block:\n            if (abs(pixels[i][0] - prev_pixel[0]) == 1 and pixels[i][1] == prev_pixel[1]) or \\\n               (abs(pixels[i][1] - prev_pixel[1]) == 1 and pixels[i][0] == prev_pixel[0]):\n               is_contiguous = True\n               break\n\n        if is_contiguous:\n          current_block.append(pixels[i])\n        else:\n            blocks.append(np.array(current_block))\n            current_block = [pixels[i]]\n\n    blocks.append(np.array(current_block))\n    return blocks\n\ndef transform(input_grid):\n    input_grid = np.array(input_grid)\n    azure_pixels = find_pixels(input_grid, 8)\n\n    # Determine output dimensions and create an empty output grid.\n    output_height = 3\n    output_width = 6\n    output_grid = np.zeros((output_height, output_width), dtype=int)\n\n    # Group azure pixels into contiguous blocks\n    blocks = get_contiguous_blocks(azure_pixels)\n\n    # Identify rows that contribute\n    row_map = {}\n    for block in blocks:\n        min_row = np.min(block[:, 0])\n        max_row = np.max(block[:,0])\n\n        top_row_pixels = block[block[:,0] == min_row]\n\n        row_below = max_row + 1 if max_row + 1 < input_grid.shape[0] and np.any(input_grid[max_row+1,:]==8)  else None\n\n        if min_row not in row_map:\n          row_map[min_row] = {'output_row':0, 'pixels':top_row_pixels}\n        else:\n          #append the new pixels if rows are the same\n          row_map[min_row]['pixels'] = np.vstack([row_map[min_row]['pixels'], top_row_pixels])\n        \n        if row_below is not None:\n          row_pixels = block[block[:,0] == max_row]\n\n          if row_below not in row_map:\n              row_map[row_below] = {'output_row':2, 'pixels': row_pixels}\n          else:\n              row_map[row_below]['pixels'] = np.vstack([row_map[row_below]['pixels'], row_pixels])\n\n    # Fill the output grid.\n    for input_row, data in row_map.items():\n        output_row = data['output_row']\n        pixels = data['pixels']\n        for pixel in pixels:\n          #if the pixel is on the edge - move it to the end\n          adjusted_col = pixel[1]\n\n          output_grid[output_row, adjusted_col] = 8\n    \n    #Find middle row elements by looking for isolated pixels not in a mapped row\n    middle_row_pixels = []\n    for block in blocks:\n        for pixel in block:\n            if pixel[0] not in row_map:\n                middle_row_pixels.append(pixel)\n    \n    for pixel in middle_row_pixels:\n        output_grid[1, pixel[1]] = 8 #add them\n\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 2293,
+    "candidates_token_count": 1140,
+    "total_token_count": 3433,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.0-pro-exp-02-05",
+  "response_time": 12.123307,
+  "response_file": "002-response.json"
+}

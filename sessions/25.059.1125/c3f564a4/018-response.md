@@ -1,0 +1,39 @@
+# c3f564a4 • 018 • refine_coder
+
+---
+```tool_code
+"""
+The transformation performs a cyclic permutation of the colors of the non-zero pixels in the grid. The positions of the pixels remain the same, but their colors change according to a fixed cycle: 7 -> 2, 2 -> 2, 8 -> 1, 1 -> 1.
+"""
+
+import numpy as np
+
+def transform(input_grid):
+    """
+    Transforms the input grid by cyclically permuting the colors of non-zero pixels.
+    """
+    # Create a copy of the input grid to serve as the output grid.  We modify
+    # the copy, preserving the original
+    output_grid = np.copy(input_grid)
+
+    # Define the color mapping (cyclic permutation).  This is a simplified
+    # representation, and would normally be derived through analysis; here it is
+    # taken directly from the provided examples
+    color_map = {
+        7: 2,
+        8: 1,
+    }
+
+    # Iterate through each cell in the grid
+    rows, cols = input_grid.shape
+    for r in range(rows):
+        for c in range(cols):
+            # Apply the color mapping if the pixel is non-zero
+            input_color = input_grid[r, c]
+            if input_color != 0:
+                if input_color in color_map:
+                  output_grid[r, c] = color_map[input_color]
+                # note: if input_color not in color_map, we do not change the color
+
+    return output_grid
+```

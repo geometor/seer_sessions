@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\n1.  **Identify Regions:** Locate all contiguous regions (blocks) of non-zero colored pixels and single non-zero pixels within the input grid.\n2.  **Crop Background:** Remove all rows and columns along the edges of the grid that contain only background color (0). Continue until a non-zero pixel is encountered on the outer edge.\n3.  **Consolidate colored regions:** Find the regions that have color, 2 (red) and 3 (green) and set the color to the right-most color in the row.\n4.  **Reposition Yellow Pixels:** Find all single pixels of color 4 (yellow). Locate the available corners in the grid, where \"available\" means a location that is currently the background color, 0. Move the pixels to the top-left, top-right, bottom-left, and bottom-right corners, in any order.\n5. **Consolidate and Fill:** Take the 1, 2 and 3 colored regions and consolidate to the color that is at the right-most edge of each row.\n\"\"\"\n\nimport numpy as np\n\ndef find_regions(grid):\n    \"\"\"Finds contiguous regions of non-zero colors and single non-zero pixels.\"\"\"\n    regions = []\n    visited = set()\n    rows, cols = grid.shape\n\n    def is_valid(r, c):\n        return 0 <= r < rows and 0 <= c < cols\n\n    def dfs(r, c, color, region_type):\n        if (r, c) in visited or not is_valid(r, c) or grid[r, c] != color:\n            return []\n\n        visited.add((r, c))\n        region = [(r, c)]\n\n        neighbors = [(r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)]\n        for nr, nc in neighbors:\n            region.extend(dfs(nr, nc, color, region_type))\n        return region\n\n    for r in range(rows):\n        for c in range(cols):\n            if grid[r, c] != 0 and (r, c) not in visited:\n                color = grid[r, c]\n                region = dfs(r, c, color, 'block' if any(grid[nr, nc] == color for nr, nc in [(r+1, c), (r-1, c), (r, c+1), (r, c-1)] if is_valid(nr,nc)) else 'single')\n                if(region):\n                    regions.append({'color': color, 'pixels': region, 'type': 'block' if len(region) > 1 else 'single'})\n    return regions\n\ndef crop_background(grid):\n    \"\"\"Removes rows and columns of background color (0) from edges.\"\"\"\n    rows, cols = grid.shape\n    top, bottom, left, right = 0, rows - 1, 0, cols - 1\n\n    while top <= bottom and np.all(grid[top, :] == 0):\n        top += 1\n    while bottom >= top and np.all(grid[bottom, :] == 0):\n        bottom -= 1\n    while left <= right and np.all(grid[:, left] == 0):\n        left += 1\n    while right >= left and np.all(grid[:, right] == 0):\n        right -= 1\n\n    return grid[top:bottom + 1, left:right + 1]\n\ndef consolidate_regions(grid, regions):\n    \"\"\"Consolidates regions of colors 2 and 3 to color 1.\"\"\"\n    output_grid = np.copy(grid)\n    for region in regions:\n        if region['color'] in [2, 3]:\n          for r,c in region['pixels']:\n              output_grid[r,c] = 1\n\n\n    return output_grid\n  \ndef fill_consolidated_region(grid):\n    output = np.copy(grid)\n    rows, cols = output.shape\n    for r in range(rows):\n      right_most_color = 0\n      for c in range(cols -1, -1, -1):\n        if(output[r,c] != 0):\n          right_most_color = output[r,c]\n        elif(right_most_color != 0):\n          output[r,c] = right_most_color\n    return output\n\ndef reposition_yellow_pixels(grid, regions):\n    \"\"\"Moves yellow (4) pixels to the corners of the grid.\"\"\"\n    output_grid = np.copy(grid)\n    yellow_pixels = [region['pixels'][0] for region in regions if region['color'] == 4 and region['type'] == 'single']\n    rows, cols = output_grid.shape\n    corners = [(0, 0), (0, cols - 1), (rows - 1, 0), (rows - 1, cols - 1)]\n    \n    yellow_idx = 0\n    for cr, cc in corners:\n        if yellow_idx < len(yellow_pixels):\n            #remove yellow pixel from current position\n            output_grid[yellow_pixels[yellow_idx][0], yellow_pixels[yellow_idx][1]] = 0\n            #place in new corner\n            output_grid[cr, cc] = 4\n            yellow_idx += 1\n\n    return output_grid\n\n\ndef transform(input_grid):\n    # Initialize output_grid\n    output_grid = np.copy(input_grid)\n\n    # 1. Find Regions\n    regions = find_regions(output_grid)\n\n    # 2. Crop Background\n    output_grid = crop_background(output_grid)\n    \n    cropped_regions = find_regions(output_grid)\n\n    # 3. Consolidate colored regions (2 and 3 become 1)\n    \n    output_grid = consolidate_regions(output_grid, cropped_regions)\n\n    # 4. Reposition Yellow Pixels\n    \n    output_grid = reposition_yellow_pixels(output_grid, cropped_regions)\n\n     # 5. Consolidate to the right most color\n    output_grid = fill_consolidated_region(output_grid)\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 3009,
+    "candidates_token_count": 1439,
+    "total_token_count": 4448,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.0-pro-exp-02-05",
+  "response_time": 14.371375,
+  "response_file": "020-response.json"
+}

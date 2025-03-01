@@ -1,0 +1,31 @@
+import numpy as np
+
+input_grid = np.array([
+    [0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 5, 5, 5, 5, 5, 5, 5, 0],
+    [0, 5, 5, 5, 1, 5, 5, 5, 0],
+    [0, 5, 5, 5, 5, 5, 5, 5, 0],
+    [0, 5, 5, 5, 5, 5, 5, 5, 0],
+    [0, 5, 5, 5, 5, 5, 5, 5, 0],
+    [0, 5, 5, 5, 2, 5, 5, 5, 0],
+    [0, 5, 5, 5, 5, 5, 5, 5, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0]
+])
+
+expected_output = np.array([
+    [0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 5, 5, 5, 5, 5, 5, 5, 0],
+    [0, 5, 5, 5, 7, 7, 7, 5, 0],
+    [0, 5, 5, 5, 7, 7, 7, 5, 0],
+    [0, 5, 5, 5, 7, 7, 7, 5, 0],
+    [0, 5, 5, 5, 5, 5, 5, 5, 0],
+    [0, 5, 5, 5, 8, 8, 8, 5, 0],
+    [0, 5, 5, 5, 8, 8, 8, 5, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0]
+])
+output_grid = transform(input_grid)
+
+print("Unique colors in input:", np.unique(input_grid))
+print("Unique colors in output:", np.unique(expected_output))
+print("transform result equals expected", np.array_equal(expected_output, output_grid))
+

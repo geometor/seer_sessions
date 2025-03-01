@@ -1,0 +1,24 @@
+def analyze_example(input_grid, output_grid):
+    """Analyzes a single input/output pair for gray/green transformations."""
+    input_gray_pixels = []
+    output_green_pixels = []
+
+    rows, cols = input_grid.shape
+    for r in range(rows):
+        for c in range(cols):
+            if input_grid[r, c] == 5:
+                input_gray_pixels.append((r, c))
+            if output_grid[r, c] == 3:
+                output_green_pixels.append((r, c))
+
+    return {
+        "input_gray": input_gray_pixels,
+        "output_green": output_green_pixels,
+    }
+
+def analyze_task(task):
+    """Analyzes all examples in a task."""
+    analysis = {}
+    for i, example in enumerate(task['train']):
+      analysis[f'example_{i}'] = analyze_example(np.array(example['input']), np.array(example['output']))
+    return analysis

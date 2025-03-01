@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\nIdentify connected components of the same color (excluding black/background). Within each component, detect \"H\" shapes (two roughly vertical parts connected by a horizontal part, or inferred \"H\" from diagonal lines). Recolor the 2x2 center of each \"H\" red. If no \"H\" is found, check for diagonal lines and convert them into 2x2 red squares.\n\"\"\"\n\nimport numpy as np\nfrom scipy.ndimage import label\n\ndef find_center(coords):\n    \"\"\"Finds the approximate center of a set of coordinates.\"\"\"\n    return (int(np.mean(coords[:, 0])), int(np.mean(coords[:, 1])))\n\ndef is_h_shape(coords, grid_shape):\n    \"\"\"Checks if a set of coordinates roughly forms an \"H\" shape.\"\"\"\n    if len(coords) < 3:\n        return False, None\n\n    min_row, max_row = np.min(coords[:, 0]), np.max(coords[:, 0])\n    min_col, max_col = np.min(coords[:, 1]), np.max(coords[:, 1])\n    height = max_row - min_row + 1\n    width = max_col - min_col + 1\n    \n    # Check if the object is wider than it should be (to eliminate straight lines)\n    if width > 1.5 * height or height > 1.5 * width:\n        if is_diagonal(coords):\n            return False, \"diagonal\" #flag\n        else: return False, None\n\n    # Divide the region into potential left, right, and center parts\n    center_row = (min_row + max_row) // 2\n    center_col = (min_col + max_col) // 2\n\n\n    left_coords = coords[(coords[:, 1] <= center_col) & (coords[:,0] != center_row)]\n    right_coords = coords[(coords[:, 1] >= center_col) & (coords[:,0] != center_row)]\n    center_coords = coords[(coords[:, 0] == center_row)]\n\n    # Basic checks for connectivity (more robust checks could be added)\n    if len(left_coords) > 0 and len(right_coords) > 0 and len(center_coords) > 0:\n        return True, (center_row, center_col)\n    elif len(left_coords) > 0 and len(right_coords) >0:\n        #infer\n        return True, (center_row, center_col)\n    else:\n        return False, None\n\n\ndef is_diagonal(coords):\n    \"\"\"Checks for a diagonal line with tolerance.\"\"\"\n    if len(coords) < 2:\n        return False\n\n    rows, cols = coords[:, 0], coords[:, 1]\n    \n    # Calculate slope between consecutive points and check if it's consistent\n    slopes = np.diff(rows) / (np.diff(cols) + 1e-5) #add small increment\n\n    # Check if slopes are roughly the same, return if diff within tolerance \n    if np.all(np.abs(np.diff(slopes)) < 0.5) :  # Tolerance\n        return True\n    else:\n        return False\n    \n\ndef transform(input_grid):\n    \"\"\"Transforms the input grid according to the described rules.\"\"\"\n\n    output_grid = np.copy(input_grid)\n    labeled_grid, num_features = label(input_grid > 0)  # Label connected components, excluding 0\n\n    for i in range(1, num_features + 1):  # Iterate through each labeled object\n        coords = np.argwhere(labeled_grid == i)\n        is_h, center = is_h_shape(coords, input_grid.shape)\n        \n        if is_h:\n            if center is not None:\n                center_row, center_col = center\n                 # Recolor 2x2 area, handling boundaries\n                row_start = max(0, center_row - 1)\n                row_end = min(output_grid.shape[0], center_row + 1)\n                col_start = max(0, center_col - 1)\n                if output_grid.shape[1] - center_col >= 1:\n                  col_end = min(output_grid.shape[1], center_col + 2) #extend if exists\n                else:\n                    col_end = min(output_grid.shape[1], center_col + 1) #keep if already at max\n\n                output_grid[row_start:row_end, col_start:col_end] = 2\n        elif center == \"diagonal\": #check if flag returned\n            center_row, center_col = find_center(coords) #find center for 2x2\n            # Recolor 2x2 area, handling boundaries\n            row_start = max(0, center_row - 1)\n            row_end = min(output_grid.shape[0], center_row + 1)\n            col_start = max(0, center_col - 1)\n            col_end = min(output_grid.shape[1], center_col + 1)\n\n            output_grid[row_start:row_end, col_start:col_end] = 2\n            \n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 7108,
+    "candidates_token_count": 1234,
+    "total_token_count": 8342,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.0-pro-exp-02-05",
+  "response_time": 12.236052,
+  "response_file": "020-response.json"
+}

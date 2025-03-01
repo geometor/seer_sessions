@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\n1.  **Identify Objects:** Locate all contiguous regions (objects) within the input grid that are not gray (color value 5). Each object is defined by its constituent pixels having the same color.\n2.  **Extract Object Data:** For each identified object, determine its bounding box (minimum and maximum row and column), width, height, the color of the pixels, and original position of the object in the input image.\n3. **Order Objects**: Sort the objects based on the following criteria, in descending order of precedence:\n    -   Height (largest to smallest)\n    -   Width (smallest to largest)\n    - For objects with identical height and width: by the original position (smallest to largest, first row and then col)\n4.  **Create Output Grid:** Construct a new grid with a gray background (all pixels set to 5). The dimensions of this grid are determined by the objects:\n    *   Width: The sum of the widths of all objects.\n    *   Height: The maximum height of all objects.\n5.  **Place Objects:** Iterate through the sorted list of objects. Place each object onto the output grid from left to right. The objects should maintain their shape by copying the pixels. The x-coordinate of the next object begins immediately after the previous object.\n\"\"\"\n\nimport numpy as np\n\ndef find_objects(grid):\n    \"\"\"Finds contiguous non-gray (non-5) regions in the grid, preserving original position.\"\"\"\n    visited = np.zeros_like(grid, dtype=bool)\n    objects = []\n\n    def dfs(row, col, current_object, color):\n        if (row < 0 or row >= grid.shape[0] or col < 0 or col >= grid.shape[1] or\n                visited[row, col] or grid[row, col] != color):\n            return\n        visited[row, col] = True\n        current_object.append((row, col))\n        dfs(row + 1, col, current_object, color)\n        dfs(row - 1, col, current_object, color)\n        dfs(row, col + 1, current_object, color)\n        dfs(row, col - 1, current_object, color)\n\n    for row in range(grid.shape[0]):\n        for col in range(grid.shape[1]):\n            if not visited[row, col] and grid[row, col] != 5:\n                current_object = []\n                dfs(row, col, current_object, grid[row, col])\n                # Store color, object pixels, and original position for tie-breaking\n                objects.append((grid[row,col], current_object, row, col))\n    return objects\n\ndef get_object_bounds(obj_pixels):\n    \"\"\"Compute bounding box of an object\"\"\"\n    min_row = min(p[0] for p in obj_pixels)\n    max_row = max(p[0] for p in obj_pixels)\n    min_col = min(p[1] for p in obj_pixels)\n    max_col = max(p[1] for p in obj_pixels)\n    return min_row, max_row, min_col, max_col\n\ndef transform(input_grid):\n    \"\"\"Transforms the input grid according to the described rules.\"\"\"\n    input_grid = np.array(input_grid)\n\n    # 1. Identify Objects, preserving original position\n    objects = find_objects(input_grid)\n\n    # 2. Extract Object Data and Sort\n    object_data = []\n    for color, obj_pixels, orig_row, orig_col in objects:\n        min_row, max_row, min_col, max_col = get_object_bounds(obj_pixels)\n        width = max_col - min_col + 1\n        height = max_row - min_row + 1\n        object_data.append((color, obj_pixels, width, height, orig_row, orig_col))\n\n    # Sort objects by height (descending), width (ascending), then original position\n    object_data.sort(key=lambda x: (-x[3], x[2], x[4], x[5]))\n\n    # 3. Determine Output Grid Size\n    total_width = sum(width for _, _, width, _, _, _ in object_data)\n    max_height = max(height for _, _, _, height, _, _ in object_data)\n\n    # 4. Create Output Grid and Fill Background\n    output_grid = np.full((max_height, total_width), 5, dtype=int)\n\n    # 5. Place Objects\n    current_x = 0\n    for color, obj_pixels, width, _, _, _ in object_data:\n        for r, c in obj_pixels:\n            # Compute relative position within the object\n            min_row, _, min_col, _ = get_object_bounds(obj_pixels)\n            rel_r = r - min_row\n            rel_c = c - min_col\n            output_grid[rel_r, current_x + rel_c] = color\n        current_x += width\n\n    return output_grid.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 3806,
+    "candidates_token_count": 1179,
+    "total_token_count": 4985,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.0-pro-exp-02-05",
+  "response_time": 9.615122,
+  "response_file": "014-response.json"
+}

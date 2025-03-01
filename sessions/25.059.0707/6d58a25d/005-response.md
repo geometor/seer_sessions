@@ -1,0 +1,181 @@
+# 6d58a25d • 005 • refine_dreamer
+
+---
+Okay, let's analyze the results of the previous code execution and refine the natural language program.
+
+**General Assessment:**
+
+The initial code and natural language program were on the right track, identifying the maroon shape and attempting to fill and extend azure. However, the provided examples reveal a crucial flaw: the code did not accurately account for the size and the shape. It added to many vertical pixels and incorrectly assumed the size of the original shape.
+
+**Strategy for Resolving Errors:**
+
+1.  **Refine Shape Identification:** The size and shape are important considerations - we must determine its true size in both rows and columns.
+
+2.  **Correct Vertical Extension:** Instead of extending from the minimal bounding box, use the shape to extend downwards.
+
+**Example Analysis and Metrics:**
+
+To accurately assess the errors and refine the program, I need to analyze each input/output pair, the code's output, and highlight the discrepancies. I'll use a structured approach to record observations.
+
+Here's a breakdown of each example, focusing on relevant properties and actions:
+```tool_code
+import numpy as np
+
+def find_bounding_box(grid, color):
+    coords = np.argwhere(grid == color)
+    if coords.size == 0:
+        return None
+    min_row, min_col = coords.min(axis=0)
+    max_row, max_col = coords.max(axis=0)
+    return (min_row, min_col), (max_row, max_col)
+
+def calculate_metrics(input_grid, output_grid, predicted_output):
+    """Calculates and prints metrics about the transformation."""
+
+    # Find maroon shape bounding box in the input.
+    maroon_bbox = find_bounding_box(input_grid, 9)
+    if maroon_bbox is None:
+        maroon_shape = "None"
+        maroon_height = 0
+        maroon_width = 0
+    else:
+       (min_row, min_col), (max_row, max_col) = maroon_bbox
+       maroon_height = max_row - min_row + 1
+       maroon_width = max_col - min_col + 1
+       maroon_shape = f"Rectangle({maroon_height}x{maroon_width})"
+
+    print(f"  Maroon Shape: {maroon_shape}")
+    print(f"  Maroon Height: {maroon_height}, Width: {maroon_width}")
+
+
+    # Check if azure pixels are added correctly.
+    correct_azure_pixels = np.all(predicted_output[output_grid == 8] == 8)
+
+    print(f"  Azure Pixels Correctly Added: {correct_azure_pixels}")
+    
+    discrepancy_count = np.sum(output_grid != predicted_output)
+    total_pixels = output_grid.size
+    accuracy = (total_pixels - discrepancy_count) / total_pixels if total_pixels > 0 else 0.0
+    print(f"{accuracy=}")
+
+def transform(input_grid):
+    # Initialize output_grid as a copy of the input_grid.
+    output_grid = np.copy(input_grid)
+    
+    #find existing azure pixels
+    azure_pixels = np.argwhere(input_grid == 8)
+
+    # Find the bounding box of the maroon shape.
+    maroon_bbox = find_bounding_box(input_grid, 9)
+
+    if maroon_bbox:  # Check if a maroon shape was actually found
+        (min_row, min_col), (max_row, max_col) = maroon_bbox
+
+        # Fill azure within the bounding box.
+        output_grid[min_row:max_row+1, min_col:max_col+1] = np.where(output_grid[min_row:max_row+1, min_col:max_col+1] == 0, 8, output_grid[min_row:max_row+1, min_col:max_col+1])
+        
+
+        # Extend a vertical line of azure downwards.
+        output_grid[max_row + 1:, min_col:max_col+1] = np.where(output_grid[max_row + 1:, min_col:max_col+1] == 0, 8,  output_grid[max_row + 1:, min_col:max_col+1])
+
+    #make sure azure pixels in original grid are preserved
+    for row, col in azure_pixels:
+      output_grid[row,col] = 8
+    return output_grid
+    
+
+# Provided examples
+train_input_0 = np.array([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 9, 9, 0, 0, 0, 0],
+ [0, 0, 0, 0, 9, 9, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]])
+train_output_0 = np.array([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 8, 8, 0, 0, 0, 0],
+ [0, 0, 0, 0, 8, 8, 0, 0, 0, 0],
+ [0, 0, 0, 0, 8, 8, 0, 0, 0, 0],
+ [0, 0, 0, 0, 8, 8, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]])
+train_input_1 = np.array([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 9, 9, 9, 9, 0, 0, 0, 0],
+ [0, 0, 9, 9, 9, 9, 0, 0, 0, 0],
+ [0, 0, 9, 9, 9, 9, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]])
+train_output_1 = np.array([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 8, 8, 8, 8, 0, 0, 0, 0],
+ [0, 0, 8, 8, 8, 8, 0, 0, 0, 0],
+ [0, 0, 8, 8, 8, 8, 0, 0, 0, 0],
+ [0, 0, 8, 8, 8, 8, 0, 0, 0, 0],
+ [0, 0, 8, 8, 8, 8, 0, 0, 0, 0],
+ [0, 0, 8, 8, 8, 8, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]])
+train_input_2 = np.array([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 9, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]])
+train_output_2 = np.array([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 8, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 8, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]])
+train_input_3 = np.array([[9, 9, 0, 0, 0, 0, 0, 0, 0, 0],
+ [9, 9, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]])
+train_output_3 = np.array([[8, 8, 0, 0, 0, 0, 0, 0, 0, 0],
+ [8, 8, 0, 0, 0, 0, 0, 0, 0, 0],
+ [8, 8, 0, 0, 0, 0, 0, 0, 0, 0],
+ [8, 8, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]])
+
+examples = [
+    (train_input_0, train_output_0),
+    (train_input_1, train_output_1),
+    (train_input_2, train_output_2),
+    (train_input_3, train_output_3),
+]
+
+for i, (input_grid, output_grid) in enumerate(examples):
+    predicted_output = transform(input_grid)
+    print(f"Example {i}:")
+    calculate_metrics(input_grid, output_grid, predicted_output)
+    print("-" * 20)
+```

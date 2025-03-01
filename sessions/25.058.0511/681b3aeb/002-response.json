@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\n1.  **Identify Colored Regions:** Scan the input grid and identify contiguous regions of non-white (non-zero) pixels.  Consider each such region as a separate object.\n2.  **Discard Background:** Ignore the white (0) pixels, treating them as background.\n3.  **Extract Colors:** For each identified colored region, record its color value.\n4. **Determine layout**: Record the top, left, bottom, and right most position of each non-zero color.\n5.  **Construct Output:** Create a 3x3 output grid. Place the identified colors into the output grid, maintaining their relative positioning from the compressed bounding box formed in step 4. If multiple colors occupy the same relative space, arrange them as they are arranged in the input.\n\"\"\"\n\nimport numpy as np\n\ndef find_objects(grid):\n    \"\"\"Finds contiguous regions of non-zero pixels.\"\"\"\n    objects = []\n    visited = np.zeros_like(grid, dtype=bool)\n\n    def dfs(row, col, color, obj_coords):\n        \"\"\"Depth-first search to find connected components.\"\"\"\n        if (row < 0 or row >= grid.shape[0] or col < 0 or col >= grid.shape[1]\n                or visited[row, col] or grid[row, col] != color):\n            return\n        visited[row, col] = True\n        obj_coords.append((row, col))\n        dfs(row + 1, col, color, obj_coords)\n        dfs(row - 1, col, color, obj_coords)\n        dfs(row, col + 1, color, obj_coords)\n        dfs(row, col - 1, color, obj_coords)\n\n    for row in range(grid.shape[0]):\n        for col in range(grid.shape[1]):\n            if not visited[row, col] and grid[row, col] != 0:\n                obj_coords = []\n                dfs(row, col, grid[row, col], obj_coords)\n                objects.append({\n                    'color': grid[row, col],\n                    'coords': obj_coords\n                })\n    return objects\n\ndef get_bounding_box(objects):\n    \"\"\"Calculates the bounding box encompassing all objects.\"\"\"\n    if not objects:\n        return (0,0,0,0)\n\n    min_row = min(min(coord[0] for coord in obj['coords']) for obj in objects)\n    max_row = max(max(coord[0] for coord in obj['coords']) for obj in objects)\n    min_col = min(min(coord[1] for coord in obj['coords']) for obj in objects)\n    max_col = max(max(coord[1] for coord in obj['coords']) for obj in objects)\n\n    return min_row, min_col, max_row, max_col\n\n\ndef transform(input_grid):\n    \"\"\"Transforms the input grid according to the described rule.\"\"\"\n\n    # Find objects (contiguous non-zero regions)\n    objects = find_objects(input_grid)\n\n    # compute the bounding box\n    min_row, min_col, max_row, max_col = get_bounding_box(objects)\n    bounding_box_height = max_row - min_row + 1\n    bounding_box_width = max_col - min_col + 1\n\n    # Initialize output grid (3x3)\n    output_grid = np.zeros((3, 3), dtype=int)\n\n    # Place objects into output grid based on relative position\n    for obj in objects:\n      first = True\n      for row, col in obj['coords']:\n        # scale to the bounding box size, then quantize to 3x3\n        rel_row = row - min_row\n        rel_col = col - min_col\n\n        y = int(rel_row * 3 / bounding_box_height)\n        x = int(rel_col * 3 / bounding_box_width)\n\n        if first:\n            output_grid[y,x] = obj['color']\n            prev_y, prev_x = y, x\n            first = False\n        # handle overlaps by preserving input grid layout.\n        else:\n            output_grid[y, x] = obj['color']\n            dy, dx = y - prev_y, x-prev_x\n            if dy != 0 and dx != 0 and output_grid[prev_y+dy, prev_x] == 0:\n                output_grid[prev_y+dy, prev_x] = obj['color']\n            elif dy != 0 and dx != 0 and output_grid[prev_y, prev_x+dx] == 0:\n                output_grid[prev_y, prev_x + dx] = obj['color']\n\n\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 2321,
+    "candidates_token_count": 1107,
+    "total_token_count": 3428,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.0-pro-exp-02-05",
+  "response_time": 11.596414,
+  "response_file": "002-response.json"
+}

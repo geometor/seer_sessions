@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\n1.  **Identify the Blue Anchor:** Find the blue (color 1) object. This is considered the \"anchor\".\n2. **Identify all other objects:** Find all contiguous blocks of pixels of the same color (other than color 0 - background), and record their positions *relative* to the blue anchor (above or below).\n3. **Determine movement of blue:** determine if the blue object has shifted vertically\n4. **Stack other objects:**\n    * Objects should maintain their relative vertical order with respect to each other.\n    * Objects that were initially *below* the blue anchor should be stacked *directly* below the blue anchor, with the closest object adjacent to the anchor.\n    * If the blue object has moved up: Objects that were initially *above* the blue anchor are moved down to fill the space *directly* above it, maintaining their relative order and adjacency to blue.\n5.  **Background:** The background (color 0) remains unchanged.\n\"\"\"\n\nimport numpy as np\nfrom scipy.ndimage import measurements\n\ndef find_objects(grid):\n    # use scipy.ndimage.measurements.label to find contiguous regions\n    labeled_grid, num_objects = measurements.label(grid)\n    objects = []\n    for i in range(1, num_objects + 1):  # Iterate through labeled objects (excluding background)\n        coords = np.argwhere(labeled_grid == i)\n        if coords.size == 0: #handle edge case\n            continue\n        color = grid[coords[0][0], coords[0][1]] #color of object\n        min_row, min_col = np.min(coords, axis=0)\n        max_row, max_col = np.max(coords, axis=0)\n        width = max_col - min_col + 1\n        height = max_row - min_row + 1\n        objects.append({\n            'color': color,\n            'coords': coords,\n            'top_row': min_row,\n            'bottom_row': max_row,\n            'left_col': min_col,\n            'right_col': max_col,\n            'width': width,\n            'height': height\n        })\n    return objects\n\ndef find_blue_anchor(objects):\n    # find blue anchor within list of objects\n    for obj in objects:\n        if obj['color'] == 1:\n            return obj\n    return None\n\ndef get_relative_position(obj, blue_anchor):\n    # determine position of an object relative to the blue anchor\n    if blue_anchor is None: #handle edge case\n      return \"no_blue\" #no anchor\n    if obj['bottom_row'] < blue_anchor['top_row']:\n        return 'above'\n    elif obj['top_row'] > blue_anchor['bottom_row']:\n        return 'below'\n    else:\n        return 'overlap' #shouldn't happen in this task\n\ndef move_object(grid, coords, delta_row, delta_col):\n    #generic move\n    new_coords = coords + np.array([delta_row, delta_col])\n    color = grid[coords[0][0], coords[0][1]]\n\n    # erase from old\n    for r, c in coords:\n        grid[r, c] = 0\n\n    # place in new \n    for r, c in new_coords:\n        grid[r, c] = color\n    return grid\n\ndef transform(input_grid):\n    # initialize output_grid\n    output_grid = np.copy(input_grid)\n\n    # find all objects\n    objects = find_objects(input_grid)\n\n    # Find the blue anchor object.\n    blue_anchor = find_blue_anchor(objects)\n    if blue_anchor is None: #return input if no blue\n        return output_grid\n\n    # Separate objects based on their relative position to the blue anchor.\n    above_objects = []\n    below_objects = []\n    for obj in objects:\n        if obj['color'] != 1:  # Exclude the blue anchor itself\n            relative_pos = get_relative_position(obj, blue_anchor)\n            if relative_pos == 'above':\n                above_objects.append(obj)\n            elif relative_pos == 'below':\n                below_objects.append(obj)\n\n    # Sort objects by their top row to maintain relative order.\n    above_objects = sorted(above_objects, key=lambda x: x['top_row'], reverse=True)\n    below_objects = sorted(below_objects, key=lambda x: x['top_row'])\n\n\n    # determine blue anchor movement\n    output_blue_anchor = find_blue_anchor(find_objects(output_grid)) #find blue anchor position in the output\n    blue_delta_row = output_blue_anchor['top_row'] - blue_anchor['top_row']\n\n\n    # move blue anchor\n    if blue_delta_row !=0:\n        output_grid = move_object(output_grid, blue_anchor['coords'], blue_delta_row,0)\n        blue_anchor = find_blue_anchor(find_objects(output_grid)) #update after move\n\n\n    # stack below objects below the blue anchor\n    current_row = blue_anchor['bottom_row'] + 1\n    for obj in below_objects:\n        delta_row = current_row - obj['top_row']\n        output_grid = move_object(output_grid, obj['coords'], delta_row, 0)\n        current_row += obj['height']  # Increment current_row by object height\n\n    # stack above objects, if blue has moved up\n    if blue_delta_row > 0:\n      current_row = blue_anchor['top_row'] -1\n      for obj in above_objects:\n        delta_row = current_row - obj['bottom_row']\n        output_grid = move_object(output_grid, obj['coords'], delta_row,0)\n        current_row -= obj['height']\n\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 9394,
+    "candidates_token_count": 1389,
+    "total_token_count": 10783,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.0-pro-exp-02-05",
+  "response_time": 13.877929,
+  "response_file": "008-response.json"
+}

@@ -1,0 +1,48 @@
+# 48d8fb45 • 007 • example_2 • investigate_dreamer
+
+---
+Okay, here's my analysis of the provided input-output example, formatted as a report:
+
+**Perception of Elements:**
+
+The task involves a transformation of a 2D grid of colored pixels (represented by numbers) into a smaller 2D grid. The primary colors involved seem to be white (0), yellow (4), and grey (5). The output grid appears to be a condensed version of the input grid, focusing on the yellow pixels and their relative positions. The grey pixel seems to disappear during processing and has no direct impact on the output.
+
+**YAML Fact Block:**
+
+
+
+```yaml
+facts:
+  - object: grid
+    properties:
+      - type: 2D array
+      - values: integers (0-9 representing colors)
+    observations:
+      - input_shape: 10x10
+      - output_shape: 3x3
+  - object: pixel
+    properties:
+      - color:
+        - white: 0
+        - yellow: 4
+        - grey: 5
+    observations:
+      - grey_pixel_disappears: true
+  - action: transformation
+    description: Condenses the input grid into a smaller output grid.
+    details:
+      - Focuses on yellow pixels.
+      - Preserves relative positions of yellow pixels.
+      - output grid shows only part of original, cropped around yellow pixels
+```
+
+
+
+**Natural Language Program:**
+
+1.  **Identify Target Pixels:** Locate all yellow (4) pixels within the input grid.
+2.  **Determine Bounding Box:** find the minimum bounding rectangle, this means finding the top-most, left-most, bottom-most and right most yellow pixels.
+3.  **Extract Sub-grid:** Extract the region defined by top-most, left-most, bottom-most and right-most rows and columns.
+4. return the cropped grid
+
+

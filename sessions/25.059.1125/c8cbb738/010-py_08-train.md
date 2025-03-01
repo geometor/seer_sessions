@@ -1,0 +1,98 @@
+
+## example 1
+*input:*
+```
+3 3 3 3 3 3 3 4 3 4 3
+3 3 3 3 3 3 3 3 3 3 3
+3 3 3 3 1 3 3 3 3 3 3
+3 3 3 3 3 3 3 3 3 3 3
+3 3 1 3 3 3 1 4 3 4 3
+3 3 3 3 3 3 3 3 3 3 3
+3 3 3 3 1 3 2 3 3 3 2
+3 3 3 3 3 3 3 3 3 3 3
+8 3 3 3 8 3 3 3 3 3 3
+3 3 3 3 3 3 3 3 3 3 3
+8 3 3 3 8 3 2 3 3 3 2
+3 3 3 3 3 3 3 3 3 3 3
+```
+*expected output:*
+```
+2 4 1 4 2
+8 3 3 3 8
+1 3 3 3 1
+8 3 3 3 8
+2 4 1 4 2
+```
+*transformed output:*
+```
+3
+```
+size: False
+palette: True
+color count: False
+pixels off: None
+**FAILED!**
+
+## example 2
+*input:*
+```
+1 1 1 1 1 1 1 1
+1 8 1 8 1 1 1 1
+1 1 1 1 1 1 1 1
+1 8 1 8 1 1 1 1
+1 1 1 1 1 1 1 1
+1 1 1 1 3 1 1 1
+1 1 1 3 1 3 1 1
+1 1 1 1 3 1 1 1
+1 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1
+```
+*expected output:*
+```
+8 3 8
+3 1 3
+8 3 8
+```
+*transformed output:*
+```
+3
+```
+size: False
+palette: True
+color count: False
+pixels off: None
+**FAILED!**
+
+## example 3
+*input:*
+```
+4 4 4 4 4 4 4 4 4 4 4 4 4 4
+4 4 1 4 4 4 1 4 4 4 4 4 4 4
+4 4 4 4 4 4 4 4 4 4 4 4 4 4
+4 4 4 4 4 4 4 4 4 4 4 4 4 4
+4 4 4 4 4 4 4 4 4 4 4 4 4 4
+4 4 1 4 4 4 1 4 4 7 4 4 4 4
+4 4 4 4 4 4 4 4 4 4 4 4 4 4
+4 4 4 4 4 4 4 7 4 4 4 7 4 4
+4 4 4 4 4 4 4 4 4 4 4 4 4 4
+4 4 4 4 4 4 4 4 4 7 4 4 4 4
+4 4 4 4 4 4 4 4 4 4 4 4 4 4
+4 4 4 4 4 4 4 4 4 4 4 4 4 4
+```
+*expected output:*
+```
+1 4 7 4 1
+4 4 4 4 4
+7 4 4 4 7
+4 4 4 4 4
+1 4 7 4 1
+```
+*transformed output:*
+```
+3
+```
+size: False
+palette: False
+color count: False
+pixels off: None
+**FAILED!**

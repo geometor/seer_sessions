@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\n1.  **Identify Azure Objects:** Locate all distinct azure (color 8) objects in the input grid. A distinct object is a set of contiguous azure pixels.\n2.  **Process Each Azure Object:** For each azure object, consider its bounding box (the smallest rectangle that fully contains it).\n3.  **Removal Rule**:\n    *   If the azure object is a single pixel, remove it if and only if it is the top-left most single-pixel azure object.\n    *   If there is only a single azure object that is greater than 1 pixel, then remove pixels to the left of the y-max, effectively keeping only the right-most part of the image.\n    *   If there are multiple azure objects, remove any that are not the right-most objects.\n4.  **Yellow Objects Unchanged:** Yellow (color 4) objects are not modified. Their positions and shapes remain the same in the output grid.\n\"\"\"\n\nimport numpy as np\n\ndef find_objects(grid, color):\n    coords = np.argwhere(grid == color)\n    if len(coords) == 0:\n        return []  # Return empty list if no objects of specified color\n    # Group contiguous pixels into objects\n    objects = []\n    visited = set()\n    for x, y in coords:\n        if (x, y) not in visited:\n            object_coords = []\n            stack = [(x, y)]\n            while stack:\n                curr_x, curr_y = stack.pop()\n                if (curr_x, curr_y) in visited:\n                    continue\n                visited.add((curr_x, curr_y))\n                object_coords.append((curr_x, curr_y))\n                # Check adjacent pixels (up, down, left, right)\n                for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n                    new_x, new_y = curr_x + dx, curr_y + dy\n                    if (0 <= new_x < grid.shape[0] and 0 <= new_y < grid.shape[1] and\n                            grid[new_x, new_y] == color and (new_x, new_y) not in visited):\n                        stack.append((new_x, new_y))\n            objects.append(object_coords)\n    return objects\n\ndef get_object_extents(obj):\n    \"\"\"returns xmin, xmax, ymin, ymax\"\"\"\n    xmin = min(x for x, y in obj)\n    xmax = max(x for x, y in obj)\n    ymin = min(y for x, y in obj)\n    ymax = max(y for x, y in obj)\n    return xmin, xmax, ymin, ymax\n\ndef transform(input_grid):\n    # initialize output_grid\n    output_grid = np.copy(input_grid)\n\n    # Find objects of color 8 (azure) and 4 (yellow)\n    azure_objects = find_objects(input_grid, 8)\n    yellow_objects = find_objects(input_grid, 4)\n\n    # Handle yellow objects (they remain unchanged)\n    #   - already done by initializing with a copy of the input\n\n    # Handle azure objects\n    if len(azure_objects) > 0:\n        if len(azure_objects) == 1 and len(azure_objects[0]) > 1: # One large azure object\n            xmin, xmax, ymin, ymax = get_object_extents(azure_objects[0])\n            for x, y in azure_objects[0]:\n                if y < ymax:\n                  output_grid[x,y] = 0\n        elif len(azure_objects) > 1: # Multiple azure object\n            #find rightmost object\n            rightmost_ymax = -1\n            for obj in azure_objects:\n                _, _, _, ymax = get_object_extents(obj)\n                rightmost_ymax = max(rightmost_ymax, ymax)\n\n            for obj in azure_objects:\n                xmin, xmax, ymin, ymax = get_object_extents(obj)\n                if len(obj) == 1 and xmin == 0 and ymin == 0:  #top-left most object\n                  output_grid[obj[0][0],obj[0][1]] = 0\n                elif ymax < rightmost_ymax:\n                  # remove all pixels\n                  for x,y in obj:\n                    output_grid[x,y] = 0\n\n        elif len(azure_objects) == 1 and len(azure_objects[0]) == 1:  # single pixel object\n          output_grid[azure_objects[0][0][0], azure_objects[0][0][1]] = 0\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 6339,
+    "candidates_token_count": 1116,
+    "total_token_count": 7455,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.0-pro-exp-02-05",
+  "response_time": 11.448135,
+  "response_file": "018-response.json"
+}

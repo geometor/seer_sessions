@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\nTransforms the input grid into the output grid based on object identification, color swapping, and object translation.\n\n1.  **Identify Objects:** Group contiguous pixels of the same color into objects.\n2.  **Color Swap:**\n    *   If an object has color 2(red), change its color to 4(yellow).\n    *   If an object has color 5(gray), change its color to 3(green)\n    *   If an object has color 6(magenta), change its color to 2(red).\n3.  **Move Azure Object:** Find the largest object of color 8 (azure). Translate this object diagonally down and to the right. The exact translation vector might depend on the grid size or other factors (to be determined). Place this object so that it's as close to the bottom-right corner as possible without going out of bounds.\n4. **Move other colored object:** Find the largest object of color 1(blue) or 4(yellow). Translate these objects diagonally down and to the right.\n5. **Preserve other pixels:** All other pixels maintain their color and their position relative to other pixels of the same color.\n\"\"\"\n\nimport numpy as np\nfrom scipy.ndimage import measurements\n\ndef find_objects(grid):\n    \"\"\"\n    Finds contiguous objects of the same color in a grid.\n    Returns a list of objects, where each object is a list of (row, col) coordinates.\n    \"\"\"\n    labeled_array, num_features = measurements.label(grid)\n    objects = []\n    for i in range(1, num_features + 1):\n        coords = np.argwhere(labeled_array == i)\n        objects.append(coords.tolist())\n    return objects\n\ndef change_color(grid, old_color, new_color):\n    \"\"\"Changes all pixels of old_color to new_color.\"\"\"\n    grid[grid == old_color] = new_color\n\ndef translate_object(grid, object_coords, translation_vector):\n    \"\"\"\n    Translates an object within the grid.\n    \"\"\"\n    new_coords = []\n    rows, cols = grid.shape\n    for r, c in object_coords:\n        new_r = min(max(0, r + translation_vector[0]), rows-1)  # keep within bounds\n        new_c = min(max(0, c + translation_vector[1]), cols-1)\n        new_coords.append((new_r, new_c))\n    return new_coords\n\ndef transform(input_grid):\n    # initialize output_grid\n    output_grid = np.array(input_grid).copy()\n    rows, cols = output_grid.shape\n    \n    # Identify Objects\n    objects = find_objects(output_grid)\n\n    # Color Swap\n    change_color(output_grid, 2, 4)  # Red to yellow\n    change_color(output_grid, 5, 3)  # Gray to green\n    change_color(output_grid, 6, 2)  # Magenta to red\n\n    # Move Azure Object\n    azure_objects = [obj for obj in objects if output_grid[obj[0][0], obj[0][1]] == 8]\n    if azure_objects:\n        largest_azure = max(azure_objects, key=len)\n        # Calculate a translation vector.  For now, a simple diagonal shift.\n        #  This needs refinement based on further analysis.\n        translation_vector = [rows - 1 - largest_azure[0][0], cols - 1- largest_azure[0][1]]\n        \n        #clear the original position of azure\n        for r, c in largest_azure:\n          output_grid[r,c] = 0\n\n        new_azure_coords = translate_object(output_grid, largest_azure, translation_vector)\n\n        #place the azure to the new position\n        for r, c in new_azure_coords:\n          output_grid[r,c] = 8\n\n    # Move other colored object (Blue or Yellow)\n    #   This logic also needs refinement.\n    for move_color in [1,4]:\n        color_objects = [obj for obj in objects if input_grid[obj[0][0], obj[0][1]] == move_color] #use the original color before swap\n        if color_objects:\n          largest_color_obj = max(color_objects, key=len)\n\n          #Calculate a diagonal shift, the parameter need refinement based on analysis.\n          translation_vector = [5,5]\n\n          new_color_coords = translate_object(output_grid, largest_color_obj, translation_vector)\n          #clear the original position\n          for r, c in largest_color_obj:\n            output_grid[r,c] = 0\n          \n          #get color from input grid (before color change)\n          old_color = input_grid[largest_color_obj[0][0], largest_color_obj[0][1]]\n\n          #put the objects to new positions\n          for r,c in new_color_coords:\n            output_grid[r,c] = old_color\n          #correct color if needed after the move\n          if old_color == 2:\n            for r,c in new_color_coords:\n              output_grid[r,c] = 4\n    \n\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 4750,
+    "candidates_token_count": 1236,
+    "total_token_count": 5986,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.0-pro-exp-02-05",
+  "response_time": 12.669573,
+  "response_file": "010-response.json"
+}

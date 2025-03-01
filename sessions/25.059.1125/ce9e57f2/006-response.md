@@ -1,0 +1,47 @@
+# ce9e57f2 • 006 • refine_coder
+
+---
+```tool_code
+"""
+1.  **Identify:** Find all vertical lines composed of red (value 2) pixels. A vertical line is defined as a sequence of contiguous red pixels in the same column.
+2.  **Conditional Change**:  For each identified vertical red line, change all of its pixels to azure (value 8).
+3.  **Transform:** The output grid is identical to the input grid, except for the identified red lines, which are now azure.
+"""
+
+import numpy as np
+
+def find_vertical_lines(grid, color):
+    """
+    Finds vertical lines of a specific color in a grid.
+    Returns a list of sets, where each set contains the (row, col) coordinates of a vertical line.
+    """
+    rows, cols = grid.shape
+    lines = []
+    for c in range(cols):
+        current_line = set()
+        for r in range(rows):
+            if grid[r, c] == color:
+                current_line.add((r, c))
+            elif current_line:  # End of a line
+                if len(current_line) > 0:
+                    lines.append(current_line)
+                current_line = set()
+        if current_line: #check for line at the end of the column
+            lines.append(current_line)
+    return lines
+
+def transform(input_grid):
+    # initialize output_grid
+    output_grid = np.copy(input_grid)
+    rows = output_grid.shape[0]
+
+    # Find vertical red lines
+    red_lines = find_vertical_lines(input_grid, 2)
+    
+    # change output pixels 
+    for line in red_lines:
+        for r, c in line:
+            output_grid[r, c] = 8
+
+    return output_grid
+```

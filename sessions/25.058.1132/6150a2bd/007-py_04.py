@@ -1,0 +1,68 @@
+import numpy as np
+
+# Provided code
+def transform(input_grid):
+    """
+    Rotates the input grid 90 degrees counter-clockwise.
+    """
+    # Convert the input grid to a NumPy array for easier manipulation.
+    input_array = np.array(input_grid)
+
+    # Rotate the array 90 degrees counter-clockwise.
+    output_array = np.rot90(input_array)
+
+    # Convert the rotated array back to a list.
+    output_grid = output_array.tolist()
+
+    return output_grid
+
+# Mock task data (replace with actual task data when available)
+task = {
+    "train": [
+        {
+            "input": [[0, 1, 2], [3, 4, 5]],
+            "output": [[2, 5], [1, 4], [0, 3]]
+        },
+         {
+            "input": [[0, 1, 2, 5], [3, 4, 5, 6]],
+            "output": [[5,6], [2,5], [1,4], [0,3]]
+        },
+         {
+            "input": [[1, 1, 1], [1, 1, 1], [1, 1,1]],
+            "output": [[1,1,1], [1,1,1], [1,1,1]]
+        },
+    ],
+    "test": [
+        {
+            "input": [[7, 8, 9], [0, 1, 2]],
+            "output": [[9,2], [8,1], [7,0]]  # Expected output (placeholder - can be incorrect)
+        }
+    ]
+}
+
+# Metrics gathering
+results = []
+for i, example in enumerate(task["train"]):
+    input_grid = example["input"]
+    expected_output_grid = example["output"]
+    actual_output_grid = transform(input_grid)
+
+    input_dims = (len(input_grid), len(input_grid[0]) if input_grid else 0)
+    expected_output_dims = (len(expected_output_grid), len(expected_output_grid[0]) if expected_output_grid else 0)
+    actual_output_dims = (len(actual_output_grid), len(actual_output_grid[0]) if actual_output_grid else 0)
+
+    correct = actual_output_grid == expected_output_grid
+
+    result = {
+        "Example ID": f"Train Example {i+1}",
+        "Input Dimensions": input_dims,
+        "Expected Output Dimensions": expected_output_dims,
+        "Actual Output Dimensions": actual_output_dims,
+        "Transformation Correct": correct,
+    }
+    if not correct:
+        result['Output Grid'] = actual_output_grid
+    results.append(result)
+
+for result in results:
+    print(result)

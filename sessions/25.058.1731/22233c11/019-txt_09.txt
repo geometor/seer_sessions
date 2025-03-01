@@ -1,0 +1,140 @@
+import numpy as np
+
+# Assuming transform, get_objects, and is_edge_pixel are defined as in the provided code
+# Also assuming the existence of train_input_grids, train_output_grids from the task context
+
+def calculate_metrics(input_grid, output_grid, predicted_grid):
+    metrics = {
+        "input_shape": input_grid.shape,
+        "output_shape": output_grid.shape,
+        "num_green_objects": len(get_objects(input_grid, 3)),
+        "green_pixels_correct": np.sum((input_grid == 3) & (predicted_grid == 3) & (output_grid == 3)),
+        "azure_pixels_correct": np.sum((output_grid == 8) & (predicted_grid == 8)),
+        "azure_pixels_incorrect": np.sum((output_grid != 8) & (predicted_grid == 8)) + np.sum((output_grid == 8) & (predicted_grid != 8)),
+        "other_errors": np.sum((output_grid != predicted_grid) & (output_grid != 8) & (output_grid !=3) & (predicted_grid != 8) & (predicted_grid != 3))
+    }
+    return metrics
+
+def is_edge_pixel(grid, row, col, object_pixels):
+    """
+    Checks if a pixel is an edge pixel of its object and, if it is, also determines
+    if the edge touches a grid boundary and what kind of boundary.
+    Returns (is_edge, edge_type) where:
+        is_edge is True if the pixel is an edge pixel, False otherwise.
+        edge_type is one of: 'top', 'bottom', 'left', 'right', None
+    """
+    rows, cols = grid.shape
+    
+    # Check if the pixel is part of the specified object
+    if (row, col) not in object_pixels:
+        return False, None
+
+    # Check for adjacent pixels of a different color or grid boundary
+    neighbors = [
+        (row - 1, col),  # Up
+        (row + 1, col),  # Down
+        (row, col - 1),  # Left
+        (row, col + 1),  # Right
+    ]
+
+    for r, c in neighbors:
+        if not (0 <= r < rows and 0 <= c < cols) or (r,c) not in object_pixels:
+           # we have found an edge
+            if r < 0:
+              return True, 'top'
+            elif r >= rows:
+              return True, 'bottom'
+            elif c < 0:
+              return True, 'left'
+            elif c >= cols:
+              return True, 'right'
+            else:
+              return True, None
+
+    return False, None
+
+def get_objects(grid, color):
+    """
+    Identifies contiguous objects of a specified color in the grid.
+    Returns a list of sets, where each set contains the coordinates of an object's pixels.
+    """
+    rows, cols = grid.shape
+    visited = np.zeros((rows, cols), dtype=bool)
+    objects = []
+
+    def is_valid(row, col, color):
+        return 0 <= row < rows and 0 <= col < cols and grid[row, col] == color
+
+    def dfs(row, col, current_object):
+        if not is_valid(row, col, color) or visited[row, col]:
+            return
+        visited[row, col] = True
+        current_object.add((row, col))
+
+        # Explore adjacent cells (up, down, left, right)
+        dfs(row + 1, col, current_object)
+        dfs(row - 1, col, current_object)
+        dfs(row, col + 1, current_object)
+        dfs(row, col - 1, current_object)
+
+    for i in range(rows):
+        for j in range(cols):
+            if grid[i, j] == color and not visited[i, j]:
+                current_object = set()
+                dfs(i, j, current_object)
+                objects.append(current_object)
+    return objects
+def transform(input_grid):
+    # Initialize output_grid with zeros
+    output_grid = np.zeros_like(input_grid)
+    rows, cols = input_grid.shape
+
+    # Identify green objects
+    green_objects = get_objects(input_grid, 3)
+
+    # Copy green objects to output_grid
+    for obj in green_objects:
+        for row, col in obj:
+            output_grid[row, col] = 3
+
+    # Place azure pixels conditionally
+    for obj in green_objects:
+        for row, col in obj:
+            is_edge, edge_type = is_edge_pixel(input_grid, row, col, obj)
+            if is_edge:
+                if edge_type == 'top':
+                    output_grid[row - 1, col] = 8
+                elif edge_type == 'bottom':
+                    output_grid[row + 1, col] = 8
+                elif edge_type == 'left':
+                    output_grid[row, col - 1] = 8
+                elif edge_type == 'right':
+                    output_grid[row, col + 1] = 8
+
+    return output_grid
+
+train_input_grids = [
+    np.array([[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 3, 0], [0, 0, 0, 0, 3, 0], [0, 0, 0, 0, 3, 0], [0, 0, 0, 0, 0, 0]]),
+    np.array([[0, 0, 0, 0, 0, 0, 0, 0], [0, 3, 3, 3, 0, 0, 0, 0], [0, 3, 0, 3, 0, 0, 0, 0], [0, 3, 3, 3, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0]]),
+    np.array([[0, 0, 0, 0, 0, 0], [0, 3, 3, 3, 3, 0], [0, 0, 0, 0, 0, 0]])
+]
+
+train_output_grids = [
+    np.array([[0, 0, 0, 0, 8, 0], [0, 0, 0, 0, 3, 0], [0, 0, 0, 0, 3, 0], [0, 0, 0, 0, 3, 0], [0, 0, 0, 0, 8, 0]]),
+    np.array([[0, 8, 8, 8, 0, 0, 0, 0], [0, 3, 3, 3, 0, 0, 0, 0], [0, 3, 0, 3, 0, 0, 0, 0], [0, 3, 3, 3, 0, 0, 0, 0], [0, 8, 8, 8, 0, 0, 0, 0]]),
+    np.array([[0, 8, 8, 8, 8, 0], [0, 3, 3, 3, 3, 0], [0, 8, 8, 8, 8, 0]])
+]
+
+
+all_metrics = []
+for i in range(len(train_input_grids)):
+    input_grid = train_input_grids[i]
+    output_grid = train_output_grids[i]
+    predicted_grid = transform(input_grid)
+    metrics = calculate_metrics(input_grid, output_grid, predicted_grid)
+    all_metrics.append(metrics)
+    print(f"Metrics for Example {i+1}:")
+    print(metrics)
+    print("-" * 20)
+
+print("All Metrics:", all_metrics)

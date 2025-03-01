@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\n1.  **Identify the Azure Shape:** Locate the connected shape(s) formed by azure (8) pixels. These shapes are composed of diagonal lines. There can be one or multiple of them.\n\n2.  **Analyze White Pixel Adjacency:** Examine the white (0) pixels that are adjacent to the azure shape(s).\n\n3.  **Conditional Color Change:**\n    *   If a white pixel is directly above or below an azure pixel *within the connected azure shape*, change its color to green (3).\n    *   If a white pixel is directly to the left or right of an azure pixel *within the connected azure shape*, change its color to yellow (4).\n    *   If a white pixel is *only* diagonally adjacent to the azure shape (and not orthogonally adjacent to any part of it), its color remains unchanged (white/0).\n    *   Pixels part of the connected azure shape do not change.\n\"\"\"\n\nimport numpy as np\n\ndef get_neighbors(grid, row, col, include_diagonal=True):\n    \"\"\"Gets the neighbors of a cell, optionally including diagonals.\"\"\"\n    rows, cols = grid.shape\n    neighbors = []\n    for i in range(-1, 2):\n        for j in range(-1, 2):\n            if i == 0 and j == 0:\n                continue\n            if not include_diagonal and (abs(i) + abs(j) != 1):\n                continue\n            neighbor_row, neighbor_col = row + i, col + j\n            if 0 <= neighbor_row < rows and 0 <= neighbor_col < cols:\n                neighbors.append((neighbor_row, neighbor_col))\n    return neighbors\n\ndef get_connected_components(grid, color):\n    \"\"\"\n    Finds connected components of a specific color in the grid.  Uses a\n    flood-fill algorithm. Does not consider diagonally adjacent pixels to be\n    connected.\n    \"\"\"\n    rows, cols = grid.shape\n    visited = np.zeros((rows, cols), dtype=bool)\n    components = []\n\n    def flood_fill(row, col, current_component):\n        if (\n            row < 0\n            or row >= rows\n            or col < 0\n            or col >= cols\n            or visited[row, col]\n            or grid[row, col] != color\n        ):\n            return\n        visited[row, col] = True\n        current_component.append((row, col))\n        # Only check orthogonal neighbors\n        for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n            flood_fill(row + dr, col + dc, current_component)\n\n    for row in range(rows):\n        for col in range(cols):\n            if grid[row, col] == color and not visited[row, col]:\n                current_component = []\n                flood_fill(row, col, current_component)\n                components.append(current_component)\n    return components\n\ndef transform(input_grid):\n    # initialize output_grid\n    output_grid = np.copy(input_grid)\n    rows, cols = input_grid.shape\n\n    # Identify Azure shapes\n    azure_shapes = get_connected_components(input_grid, 8)\n\n    # Iterate through each cell\n    for row in range(rows):\n        for col in range(cols):\n            # Process only white pixels\n            if input_grid[row, col] == 0:\n                # Get orthogonal and diagonal neighbors\n                orthogonal_neighbors = get_neighbors(input_grid, row, col, include_diagonal=False)\n                diagonal_neighbors = get_neighbors(input_grid, row, col, include_diagonal=True)\n\n                is_adjacent_to_azure = False\n\n                # check for orthogonal neighbors\n                for n_row, n_col in orthogonal_neighbors:\n                    if input_grid[n_row, n_col] == 8:\n                        is_adjacent_to_azure = True\n                        if n_row == row:  # Left or right\n                            output_grid[row, col] = 4  # Yellow\n                        elif n_col == col: # Above or below\n                            output_grid[row, col] = 3  # Green\n                        break # only one transformation\n\n                # if no orthogonal, check all diagonal neighbors, and that the\n                # neighbor is part of a shape in azure_shapes\n                if not is_adjacent_to_azure:\n                    for n_row, n_col in diagonal_neighbors:\n                        for shape in azure_shapes:\n                            if (n_row, n_col) in shape and input_grid[n_row, n_col] == 8:\n                                # only change if no orthogonal neighbor\n                                orthogonal_to_shape = False\n                                for shape_row, shape_col in shape:\n                                    shape_ortho_neighbors = get_neighbors(input_grid, shape_row, shape_col, include_diagonal = False )\n                                    if (row, col) in shape_ortho_neighbors:\n                                        orthogonal_to_shape = True\n                                        break\n                                if not orthogonal_to_shape:\n                                   continue # don't color this one\n\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 4004,
+    "candidates_token_count": 1196,
+    "total_token_count": 5200,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.0-pro-exp-02-05",
+  "response_time": 12.241621,
+  "response_file": "008-response.json"
+}

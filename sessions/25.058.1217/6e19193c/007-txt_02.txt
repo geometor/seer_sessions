@@ -1,0 +1,59 @@
+import numpy as np
+
+def analyze_grid_pair(input_grid, output_grid, predicted_grid):
+    """Analyzes an input-output grid pair and returns a descriptive string."""
+
+    def grid_info(grid):
+        grid = np.array(grid)
+        unique, counts = np.unique(grid, return_counts=True)
+        color_counts = dict(zip(unique, counts))
+        shapes = {}  # Basic shape detection (could be expanded)
+        for color in unique:
+            coords = np.argwhere(grid == color)
+            if len(coords) > 0:
+                min_row, min_col = np.min(coords, axis=0)
+                max_row, max_col = np.max(coords, axis=0)
+                width = max_col - min_col + 1
+                height = max_row - min_row + 1
+                if width == height:
+                    shapes[color] = "square" if width > 1 else "single"
+                elif width > height:
+                    shapes[color] = "horizontal rectangle"
+                else:
+                    shapes[color] = "vertical rectangle"
+
+        return {
+            "color_counts": color_counts,
+            "shapes": shapes,
+        }
+
+    input_info = grid_info(input_grid)
+    output_info = grid_info(output_grid)
+    predicted_info = grid_info(predicted_grid)
+    
+    diff_with_output = np.array(predicted_grid) != np.array(output_grid)
+    diff_locations = np.argwhere(diff_with_output)
+    
+    result = {
+        "input": input_info,
+        "output": output_info,
+        "predicted": predicted_info,
+        "diff_locations": diff_locations.tolist()  # List of [row, col]
+    }
+
+    return result
+
+def analyze_task(task):
+    analysis_results = []
+    for example in task['train']:
+        predicted = transform(example['input'])
+        analysis = analyze_grid_pair(example['input'], example['output'], predicted)
+        analysis_results.append(analysis)
+    return analysis_results
+
+from pathlib import Path
+import json
+task_file = Path("868de0fa.json")
+task = json.loads(task_file.read_text())
+results = analyze_task(task)
+print(results)

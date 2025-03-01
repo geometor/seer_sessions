@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\n1.  **Identify Objects:**\n    *   Find the blue rectangle at the top of the grid. This rectangle contains a single yellow pixel. This is the \"top anchor\".\n    *   Identify all disconnected azure and yellow shapes.\n\n2.  **Preserve Top Anchor:** The blue rectangle (top anchor) and its inner yellow pixel remain unchanged in the output.\n\n3.  **Combine and Expand within Columns:**\n    *   Determine \"columns\" based on the horizontal extent of the top anchor.\n    *   For each azure and yellow shape pair, check for horizontal overlap with each top_anchor column:\n        *   If an azure and yellow shape have any horizontal overlap, they are considered to be in the same column.\n        * If they are within the same column:\n            a.  Combine their bounding boxes into a single bounding box.\n            b.  Expand this combined bounding box by one pixel in all directions (up, down, left, right).\n            c.  Fill the expanded bounding box with azure.\n            d. Restore the original yellow pixels\n            e.  Fill the area above the expanded shape with azure, up to the top of the grid, but only within the horizontal bounds of the expanded shape.\n\n4.  **Output:** The final output grid consists of the unchanged top anchor and the newly combined and expanded shapes within their respective columns.\n\"\"\"\n\nimport numpy as np\n\ndef find_objects(grid, color):\n    \"\"\"Finds all disconnected objects of a specified color.\"\"\"\n    rows, cols = grid.shape\n    visited = np.zeros((rows, cols), dtype=bool)\n    objects = []\n\n    def dfs(row, col, current_object):\n        if (row < 0 or row >= rows or col < 0 or col >= cols or\n                visited[row, col] or grid[row, col] != color):\n            return\n        visited[row, col] = True\n        current_object.append((row, col))\n        dfs(row + 1, col, current_object)\n        dfs(row - 1, col, current_object)\n        dfs(row, col + 1, current_object)\n        dfs(row, col - 1, current_object)\n\n    for r in range(rows):\n        for c in range(cols):\n            if grid[r, c] == color and not visited[r, c]:\n                current_object = []\n                dfs(r, c, current_object)\n                if current_object:\n                    # Calculate bounding box\n                    min_row = min(current_object, key=lambda p: p[0])[0]\n                    max_row = max(current_object, key=lambda p: p[0])[0]\n                    min_col = min(current_object, key=lambda p: p[1])[1]\n                    max_col = max(current_object, key=lambda p: p[1])[1]\n                    objects.append(((min_row, min_col), (max_row, max_col)))\n    return objects\n\ndef check_horizontal_overlap(box1, box2):\n    \"\"\"Checks if two bounding boxes have horizontal overlap.\"\"\"\n    return not (box1[1][1] < box2[0][1] or box2[1][1] < box1[0][1])\n\n\ndef transform(input_grid):\n    # Initialize output grid as a copy of the input grid\n    output_grid = np.copy(input_grid)\n\n    # Find the blue rectangle (top anchor)\n    blue_objects = find_objects(input_grid, 1)\n    if not blue_objects:\n        return output_grid  # Return original if no blue object (shouldn't happen in these tasks)\n    top_anchor = blue_objects[0]  # Expect only one\n\n    # Find all azure and yellow shapes\n    azure_objects = find_objects(input_grid, 8)\n    yellow_objects = find_objects(input_grid, 4)\n\n    # Combine and expand within columns\n    for azure_box in azure_objects:\n        for yellow_box in yellow_objects:\n            # Check for horizontal overlap with the top anchor\n            if check_horizontal_overlap(top_anchor, azure_box) and check_horizontal_overlap(top_anchor, yellow_box) and check_horizontal_overlap(azure_box, yellow_box):\n                # Combine bounding boxes\n                combined_top = (min(azure_box[0][0], yellow_box[0][0]), min(azure_box[0][1], yellow_box[0][1]))\n                combined_bottom = (max(azure_box[1][0], yellow_box[1][0]), max(azure_box[1][1], yellow_box[1][1]))\n\n                # Expand\n                expanded_top = (max(0, combined_top[0] - 1), max(0, combined_top[1] - 1))\n                expanded_bottom = (min(output_grid.shape[0] - 1, combined_bottom[0] + 1),\n                                  min(output_grid.shape[1] - 1, combined_bottom[1] + 1))\n\n                # Fill expanded area with azure\n                for r in range(expanded_top[0], expanded_bottom[0] + 1):\n                    for c in range(expanded_top[1], expanded_bottom[1] + 1):\n                        output_grid[r, c] = 8\n\n                #  restore original yellow pixels\n                for r in range(yellow_box[0][0], yellow_box[1][0] + 1):\n                    for c in range(yellow_box[0][1], yellow_box[1][1] + 1):\n                        if input_grid[r,c] == 4:\n                            output_grid[r, c] = 4\n\n                # Fill above with azure, within bounds\n                for r in range(0, expanded_top[0]):\n                    for c in range(expanded_top[1], expanded_bottom[1] + 1):\n                        output_grid[r, c] = 8\n\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 7320,
+    "candidates_token_count": 1401,
+    "total_token_count": 8721,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.0-pro-exp-02-05",
+  "response_time": 10.660605,
+  "response_file": "020-response.json"
+}

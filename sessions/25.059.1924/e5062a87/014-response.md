@@ -1,0 +1,59 @@
+# e5062a87 • 014 • refine_coder
+
+---
+```tool_code
+import numpy as np
+
+def get_background_color(grid):
+    """Returns the background color (assumed to be 0 for white)."""
+    return 0
+
+def find_all_non_background_pixels(grid):
+    """Finds the coordinates of all non-background pixels."""
+    background_color = get_background_color(grid)
+    pixels = []
+    for r_idx, row in enumerate(grid):
+        for c_idx, pixel in enumerate(row):
+            if pixel != background_color:
+                pixels.append((r_idx, c_idx))
+    return pixels
+
+def extend_pixel_horizontally(grid, pixel_coord):
+    """Extends a single pixel horizontally to the grid boundaries or until a different color is encountered."""
+    output_grid = np.copy(grid)
+    row_index, col_index = pixel_coord
+    pixel_color = grid[row_index, col_index]
+    background_color = get_background_color(grid)
+
+    # Extend to the left
+    c_left = col_index
+    while c_left >= 0 and (output_grid[row_index, c_left] == background_color or output_grid[row_index, c_left] == pixel_color):
+        output_grid[row_index, c_left] = pixel_color
+        c_left -= 1
+
+    # Extend to the right
+    c_right = col_index
+    while c_right < output_grid.shape[1] and (output_grid[row_index, c_right] == background_color or output_grid[row_index, c_right] == pixel_color):
+        output_grid[row_index, c_right] = pixel_color
+        c_right += 1
+    
+    return output_grid
+    
+
+def transform(input_grid):
+    """
+    Extends each non-background color pixel horizontally to the edges of the grid or until a different color is hit.
+    """
+    # Convert input to numpy array
+    grid = np.array(input_grid)
+
+    # Find all non-background pixels
+    non_background_pixels = find_all_non_background_pixels(grid)
+
+    # Extend each pixel horizontally
+    output_grid = np.copy(grid)
+    for pixel_coord in non_background_pixels:
+        output_grid = extend_pixel_horizontally(output_grid, pixel_coord)
+
+    return output_grid.tolist()
+```

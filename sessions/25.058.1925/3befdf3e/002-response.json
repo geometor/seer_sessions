@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\nThe transformation rule is as follows:\n1. Identify the Inner Shape: Locate the contiguous block of pixels at the center of the grid that has a different color than its immediate surrounding pixels (the outer shape).\n2. Identify the Outer Shape: Identify the contiguous block of pixels that directly surrounds and is adjacent to the inner shape.\n3. Expand the Inner Shape: Replace the pixels of the outer shape, which is directly adjacent to original inner shape, with the original color of the inner shape.\n4. Shift the Outer Shape: Create a new outer border by replacing background colored (0) which is direct adjacent to the new inner shape. The new border is same color as the original outer shape.\n5. Background Remains: All other pixels, which represent the background (value 0), remain unchanged.\n\"\"\"\n\nimport numpy as np\nfrom collections import deque\n\ndef find_object(grid, start_row, start_col):\n    \"\"\"\n    Finds a contiguous object in the grid starting from a given cell,\n    using Breadth-First Search (BFS).\n    \"\"\"\n    rows, cols = grid.shape\n    visited = np.zeros((rows, cols), dtype=bool)\n    queue = deque([(start_row, start_col)])\n    visited[start_row, start_col] = True\n    object_pixels = []\n    color = grid[start_row, start_col]\n\n    while queue:\n        r, c = queue.popleft()\n        object_pixels.append((r, c))\n\n        # Check adjacent cells\n        for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n            nr, nc = r + dr, c + dc\n            if 0 <= nr < rows and 0 <= nc < cols and not visited[nr, nc] and grid[nr, nc] == color:\n                visited[nr, nc] = True\n                queue.append((nr, nc))\n\n    return object_pixels, color\n    \ndef get_neighbors(grid, r, c):\n    \"\"\"\n    get all the valid neighbors of a cell, regardless of color\n    \"\"\"\n    rows, cols = grid.shape\n    neighbors = []\n    for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n        nr, nc = r + dr, c + dc\n        if 0 <= nr < rows and 0 <= nc < cols:\n            neighbors.append((nr,nc))\n    return neighbors\n\ndef find_inner_and_outer_objects(grid):\n    \"\"\"\n    Finds the inner and outer objects based on the center and adjacency.\n    Assumes there's an inner and outer shape.\n    \"\"\"\n    rows, cols = grid.shape\n    center_row, center_col = rows // 2, cols // 2\n    \n    # Find what is in the center of grid\n    if grid[center_row,center_col] == 0:\n        return None, None, None, None\n    \n    inner_object, inner_color = find_object(grid, center_row, center_col)\n    \n    # use first neighbor that is not the same color to start to define outer\n    outer_color = None\n    outer_start = None\n    \n    for r,c in inner_object:\n        for nr, nc in get_neighbors(grid, r, c):\n            if grid[nr,nc] != inner_color:\n                outer_start = (nr,nc)\n                outer_color = grid[nr,nc]\n                break # found outer, done searching\n        if outer_start:\n            break\n    \n    if not outer_start: # no outer found, we are done\n        return None, None, None, None\n        \n    outer_object, _ = find_object(grid, outer_start[0], outer_start[1])\n    \n    return inner_object, inner_color, outer_object, outer_color\n\ndef transform(input_grid):\n    \"\"\"\n    Expands the inner shape by one layer, consuming the innermost layer of the\n    outer shape. The outer shape then shifts outwards by one layer,\n    maintaining its original color. The background (0) is preserved except\n    where overwritten by expansion.\n    \"\"\"\n    # initialize output_grid\n    grid = np.array(input_grid)  # Convert to NumPy array for easier manipulation\n    output_grid = np.copy(grid)\n    rows, cols = grid.shape\n\n    # find inner and outer objects\n    inner_object, inner_color, outer_object, outer_color = find_inner_and_outer_objects(grid)\n    if not inner_object: #we didn't find inner and outer, do nothing\n        return output_grid\n    \n    # Expand inner shape by coloring the adjacent outer pixels\n    for r, c in outer_object:\n        output_grid[r, c] = inner_color\n\n    # Find neighbors of expanded inner object, set to original outer color\n    expanded_inner = []\n    for r,c in outer_object:\n        expanded_inner.extend(get_neighbors(grid,r,c))\n    \n    for r,c in expanded_inner:\n        if output_grid[r,c] == 0:\n            output_grid[r,c] = outer_color    \n\n    return output_grid.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 4746,
+    "candidates_token_count": 1232,
+    "total_token_count": 5978,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.0-pro-exp-02-05",
+  "response_time": 16.117127,
+  "response_file": "002-response.json"
+}

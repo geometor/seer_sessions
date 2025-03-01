@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\n1.  **Identify Target Colors:** The output grid retains only the colors yellow (4), maroon (9), blue (1) and white (0).\n2.  **Color Elimination:** Remove all red (2) pixels from the input.\n3. **Spatial Selection**:\n    *   The first column is the top-left yellow, top maroon (if they exists at the first column of the input).\n    *   The second column appears to be the leftmost section of continuous yellow (4) starting from the left.\n    * The third column is composed of 0, 9, 1, 4 from the input where 0 are to the left of 9, 9 are above another 9, and 1 are above another 1, and 4 are under 1.\n    * The forth column seems to take the last column of the largest continuous yellow section (at the forth row).\n\"\"\"\n\nimport numpy as np\n\ndef get_objects(grid, color):\n    # Find all pixels of the specified color\n    pixels = np.argwhere(grid == color)\n    if pixels.size == 0:\n        return []\n    \n    objects = []\n    visited = set()\n\n    def dfs(r, c, current_object):\n        if (r, c) in visited or not (0 <= r < grid.shape[0] and 0 <= c < grid.shape[1]) or grid[r, c] != color:\n            return\n        visited.add((r, c))\n        current_object.append((r,c))\n        dfs(r + 1, c, current_object)\n        dfs(r - 1, c, current_object)\n        dfs(r, c + 1, current_object)\n        dfs(r, c - 1, current_object)\n\n    for r, c in pixels:\n         if (r, c) not in visited:\n            current_object = []\n            dfs(r,c,current_object)\n            objects.append(current_object)\n    return objects\n            \n\ndef transform(input_grid):\n    # Initialize output grid (4x4)\n    output_grid = np.zeros((4, 4), dtype=int)\n\n    # 1. & 2. Filter out red (2) and keep only 0, 1, 4, 9\n    filtered_grid = np.copy(input_grid)\n    filtered_grid[filtered_grid == 2] = 0 # Replace 2 with 0 (white)\n    \n    # 3. Spatial Selection\n\n    # Column 1: Top-left yellow, then top-left maroon if in first column\n    yellow_objects = get_objects(filtered_grid, 4)\n    maroon_objects = get_objects(filtered_grid, 9)\n\n    if yellow_objects:\n        output_grid[0,0] = 4\n    if maroon_objects:\n        first_col_maroons = [obj for obj in maroon_objects if any(pixel[1] == 0 for pixel in obj)]\n        if (first_col_maroons):\n          output_grid[0,0] = 9\n\n    # Column 2: Leftmost continuous yellow section\n    yellow_objects.sort(key=lambda obj: min(pixel[1] for pixel in obj))  # Sort by leftmost x-coordinate\n    if yellow_objects:\n      first_yellow = yellow_objects[0]\n      for r,c in first_yellow:\n          output_grid[r,1] = 4\n\n    # Column 3: Specific 0, 9, 1, 4 pattern\n    for r in range(filtered_grid.shape[0]):\n        for c in range(filtered_grid.shape[1]):\n            if filtered_grid[r, c] == 0:\n                if c+1 < filtered_grid.shape[1] and filtered_grid[r,c+1] == 9:\n                  output_grid[0,2] = 0\n            if filtered_grid[r,c] == 9:\n                if r+1 < filtered_grid.shape[0] and filtered_grid[r+1, c] == 9:\n                    output_grid[1, 2] = 9\n            if filtered_grid[r, c] == 1:\n                if r + 1 < filtered_grid.shape[0] and filtered_grid[r + 1, c] == 1:\n                    output_grid[2, 2] = 1\n            if filtered_grid[r,c] == 4:\n                if r > 0 and filtered_grid[r-1,c] == 1:\n                  output_grid[3,2] = 4\n\n    # Column 4: based on largest continuous yellow section on 4th row\n    yellow_objects = get_objects(filtered_grid, 4)\n    if (yellow_objects):\n      yellow_objects_in_row_4 = [obj for obj in yellow_objects if any(pixel[0] == 3 for pixel in obj)]\n      if len(yellow_objects_in_row_4) > 0:\n        largest_yellow = max(yellow_objects_in_row_4, key=len) #find largest in row 4\n        rightmost_pixel = max(largest_yellow, key=lambda p:p[1]) #find rightmost of largest\n        value = input_grid[rightmost_pixel[0], rightmost_pixel[1]]\n        for r in range(4):\n            output_grid[r,3] = value\n\n\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 2290,
+    "candidates_token_count": 1291,
+    "total_token_count": 3581,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.0-pro-exp-02-05",
+  "response_time": 13.364142,
+  "response_file": "002-response.json"
+}

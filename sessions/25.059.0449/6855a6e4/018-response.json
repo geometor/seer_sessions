@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\nThe transformation identifies red (2) \"C\" shapes, and repositions gray (5) pixels to fill the horizontal openings of these shapes.\n\"\"\"\n\nimport numpy as np\nfrom scipy.ndimage import label\n\ndef find_objects(grid, color):\n    \"\"\"Finds coordinates of all pixels of a specific color.\"\"\"\n    return np.argwhere(grid == color)\n\ndef get_object_bounds(coords):\n    \"\"\"Gets the bounding box (min/max x and y) of a set of coordinates.\"\"\"\n    if len(coords) == 0:\n        return None, None, None, None\n    min_y, min_x = np.min(coords, axis=0)\n    max_y, max_x = np.max(coords, axis=0)\n    return min_x, max_x, min_y, max_y\n\ndef find_contiguous_objects(grid, color):\n    \"\"\"\n    Finds all contiguous objects of a specific color and returns their coordinates.\n    Uses scipy.ndimage.label for connected component labeling.\n    \"\"\"\n    colored_pixels = (grid == color).astype(int)\n    labeled_array, num_features = label(colored_pixels)\n    objects = []\n    for i in range(1, num_features + 1):  # Iterate through each labeled object\n        coords = np.argwhere(labeled_array == i)\n        objects.append(coords)\n    return objects\n\ndef find_c_shape_opening(grid, red_object_coords):\n    \"\"\"\n    Finds the x-coordinate of the opening of a C-shaped red object.\n    \"\"\"\n    min_x, max_x, min_y, max_y = get_object_bounds(red_object_coords)\n    \n    # Check for opening on the left\n    if min_x > 0:\n        left_column = grid[min_y:max_y+1, min_x-1]\n        if not (left_column == 2).any():  # No red pixels in the column to the left\n                return min_x\n\n    # Check for opening on the right\n    if max_x < grid.shape[1] - 1:\n        right_column = grid[min_y:max_y + 1, max_x + 1]\n        if not (right_column==2).any():\n            return max_x\n    return None\n\ndef transform(input_grid):\n    \"\"\"Transforms the input grid according to the described rule.\"\"\"\n    output_grid = np.copy(input_grid)\n    \n    # Find red and gray objects\n    red_coords = find_objects(input_grid, 2)\n    gray_coords = find_objects(input_grid, 5)\n    \n    if len(red_coords) == 0 or len(gray_coords) == 0:\n        return output_grid\n\n    # Find contiguous red objects\n    red_objects = find_contiguous_objects(input_grid, 2)\n\n    # Count openings\n    openings_count = 0\n    openings = []\n    for red_object in red_objects:\n        opening_x = find_c_shape_opening(input_grid, red_object)\n        if opening_x is not None:\n            openings_count += 1\n            openings.append((red_object, opening_x)) #store coordinates and X\n\n    # Check if the number of openings matches the number of gray pixels\n    if openings_count != len(gray_coords):\n        return output_grid\n\n    #clear grey pixels\n    for y,x in gray_coords:\n        output_grid[y,x] = 0\n\n    # Reposition gray pixels into the openings\n    grey_idx = 0\n    for red_object, opening_x in openings:\n\n        min_x, max_x, min_y, max_y = get_object_bounds(red_object)\n        vertical_center = (min_y + max_y) // 2\n\n        #fill the coordinates\n        output_grid[vertical_center, opening_x] = 5\n        grey_idx+=1\n\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 5526,
+    "candidates_token_count": 960,
+    "total_token_count": 6486,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.0-pro-exp-02-05",
+  "response_time": 10.893046,
+  "response_file": "018-response.json"
+}

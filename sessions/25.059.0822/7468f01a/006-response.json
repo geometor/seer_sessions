@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\n1.  **Identify Objects:** Find all contiguous regions of red and azure pixels in the input grid.\n2.  **Bounding Box:** Determine the smallest bounding box that encompasses *all* red and azure pixels.\n3. **Output Dimensions**: The output is a cropped version of the original\n   bounding box. The output dimensions are determined by the extent of the\n   non-background colors.\n4.  **Red Pixel Block:**\n    -   Locate the largest contiguous block of red pixels.\n    -   The placement of this block defines an anchor.\n5.  **Azure Pixel Placement:** Place the azure pixels relative to the red\n    pixel block, maintaining the original relative positions of other non-background colors.\n6. **Output background:** the background color of the output is red.\n\"\"\"\n\nimport numpy as np\nfrom scipy.ndimage import label, find_objects\n\ndef find_contiguous_regions(grid, color):\n    \"\"\"Finds all contiguous regions of a specific color.\"\"\"\n    colored_pixels = (grid == color)\n    labeled_array, num_features = label(colored_pixels)\n    return labeled_array, num_features\n\ndef get_bounding_box(grid):\n    \"\"\"Determine the smallest bounding box encompassing all non-zero pixels.\"\"\"\n    non_zero_pixels = np.argwhere(grid != 0)\n    if non_zero_pixels.size == 0:\n        return None  # Handle empty grids\n    min_row = np.min(non_zero_pixels[:, 0])\n    max_row = np.max(non_zero_pixels[:, 0])\n    min_col = np.min(non_zero_pixels[:, 1])\n    max_col = np.max(non_zero_pixels[:, 1])\n    return (min_row, max_row, min_col, max_col)\n\ndef find_largest_red_block(grid):\n    \"\"\"Finds the largest contiguous block of red pixels and returns its bounding box.\"\"\"\n    red_regions, num_red_regions = find_contiguous_regions(grid, 2)\n    if num_red_regions == 0:\n        return None\n    \n    slices = find_objects(red_regions)\n    largest_region_size = 0\n    largest_region_slice = None\n\n    for s in slices:\n        region_size = (s[0].stop - s[0].start) * (s[1].stop - s[1].start)\n        if region_size > largest_region_size:\n            largest_region_size = region_size\n            largest_region_slice = s\n\n    if largest_region_slice is None:\n      return None\n    return largest_region_slice\n\n\ndef transform(input_grid):\n    # Identify Objects and Bounding Box\n    bbox = get_bounding_box(input_grid)\n    if bbox is None:\n      return np.array([])\n    min_row, max_row, min_col, max_col = bbox\n    cropped_input = input_grid[min_row:max_row+1, min_col:max_col+1]\n\n    # Find largest red block within the cropped region\n    red_block_slice = find_largest_red_block(cropped_input)\n    \n    # Output Dimensions (same as cropped input)\n    output_height = cropped_input.shape[0]\n    output_width = cropped_input.shape[1]   \n\n    # Initialize output grid with red background\n    output_grid = np.full((output_height, output_width), 2, dtype=int)\n    \n    # if there aren't any red pixels, return the background\n    if red_block_slice is None:\n      return output_grid\n\n    # Calculate offset for placing the cropped input into output\n    row_offset = red_block_slice[0].start\n    col_offset = red_block_slice[1].start\n    \n    # place azure pixels\n    for r in range(output_height):\n      for c in range(output_width):\n        if cropped_input[r,c] == 8:\n          output_grid[r,c] = 8\n\n\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 3608,
+    "candidates_token_count": 957,
+    "total_token_count": 4565,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.0-pro-exp-02-05",
+  "response_time": 10.957603,
+  "response_file": "006-response.json"
+}

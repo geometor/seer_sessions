@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\n1. Identify Red Objects: Locate all contiguous regions of red (2) pixels. These form red \"objects.\"\n2. Identify Adjacent Blue Pixels: For each red object, find all blue (1) pixels that are directly adjacent (sharing a side, not just a corner) to any part of the red object.\n3. Enclosed Blue Pixels: From the adjacent blue pixels, there is a subset of blue pixels that form shapes that are fully enclosed by red pixels.\n4. Transform Enclosed Blue Pixels: Only change the *enclosed* adjacent blue pixels to yellow (4). Leave other blue pixels unchanged.\n\"\"\"\n\nimport numpy as np\n\ndef get_neighbors(grid, row, col, include_diagonal=False):\n    \"\"\"\n    Returns a list of neighboring pixel coordinates for a given cell.\n    \"\"\"\n    rows, cols = grid.shape\n    neighbors = []\n    for dr in [-1, 0, 1]:\n        for dc in [-1, 0, 1]:\n            if (dr == 0 and dc == 0) or (include_diagonal is False and (abs(dr) + abs(dc) != 1)):\n                continue\n            nr, nc = row + dr, col + dc\n            if 0 <= nr < rows and 0 <= nc < cols:\n                neighbors.append((nr, nc))\n    return neighbors\n\ndef find_objects(grid, color):\n    \"\"\"\n    Finds contiguous regions (objects) of a specific color in the grid.\n    \"\"\"\n    rows, cols = grid.shape\n    visited = np.zeros((rows, cols), dtype=bool)\n    objects = []\n\n    def dfs(row, col, current_object):\n        if (\n            row < 0\n            or row >= rows\n            or col < 0\n            or col >= cols\n            or visited[row, col]\n            or grid[row, col] != color\n        ):\n            return\n        visited[row, col] = True\n        current_object.append((row, col))\n        for neighbor_row, neighbor_col in get_neighbors(grid, row, col, include_diagonal=True):\n            dfs(neighbor_row, neighbor_col, current_object)\n    for row in range(rows):\n        for col in range(cols):\n            if grid[row, col] == color and not visited[row, col]:\n                current_object = []\n                dfs(row, col, current_object)\n                objects.append(current_object)\n    return objects\n\ndef is_enclosed(grid, blue_pixels, red_pixels_set):\n    \"\"\"\n    Checks if a set of blue pixels is fully enclosed by red pixels.\n    Iterate through each blue pixel and check if it is enclosed\n    \"\"\"\n\n    rows, cols = grid.shape\n\n    # helper to test if there's a path to edge\n    def can_reach_edge(start_row, start_col, visited):\n        #run a DFS from start, see if any path hits edge, while not going\n        # through red pixel.\n        if (start_row == 0 or start_row == rows -1 or start_col == 0 or start_col == cols -1):\n            return True; # found a path\n        \n        visited.add((start_row, start_col))\n\n        for nr, nc in get_neighbors(grid, start_row, start_col):\n            if (nr, nc) not in visited:\n                if (nr, nc) not in red_pixels_set:\n                    if (grid[nr,nc] != 2):\n                        if can_reach_edge(nr, nc, visited):\n                            return True\n\n        return False\n\n\n    # iterate, if all points are not enclosed, not fully enclosed\n    for row, col in blue_pixels:\n      visited = set()\n      if can_reach_edge(row, col, visited):\n          # one of the blue pixel can reach edge without passing through\n          # red, so shape is not enclosed\n          return False\n\n    # all points must be enclosed\n    return True\n\ndef transform(input_grid):\n    \"\"\"\n    Transforms the input grid according to the enclosure rule.\n    \"\"\"\n    output_grid = np.copy(input_grid)\n    red_objects = find_objects(input_grid, 2)\n    red_pixels_set = set()\n    for obj in red_objects:\n        red_pixels_set.update(obj)\n\n    for red_object in red_objects:\n        adjacent_blue_pixels = set()\n        for red_row, red_col in red_object:\n            for neighbor_row, neighbor_col in get_neighbors(input_grid, red_row, red_col):\n                if input_grid[neighbor_row, neighbor_col] == 1:\n                    adjacent_blue_pixels.add((neighbor_row, neighbor_col))\n        \n        # find objects that are blue and adjacent\n        blue_objects = find_objects(input_grid, 1)\n        \n        # test the set of blue pixels\n        for blue_object in blue_objects:\n            blue_set = set(blue_object)\n\n            # test if the blue object intersects adjacent\n            if len(blue_set.intersection(adjacent_blue_pixels)) > 0:\n\n                # test for enclosure\n                if is_enclosed(input_grid, list(blue_set), red_pixels_set):\n\n                    # if enclosed, change to yellow\n                    for blue_row, blue_col in blue_set:\n                         output_grid[blue_row, blue_col] = 4\n\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 2589,
+    "candidates_token_count": 1287,
+    "total_token_count": 3876,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.0-pro-exp-02-05",
+  "response_time": 13.659671,
+  "response_file": "006-response.json"
+}

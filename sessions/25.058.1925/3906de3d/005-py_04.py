@@ -1,0 +1,7 @@
+input_grid = np.array([[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 1, 1, 1, 0, 0], [0, 1, 1, 1, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 2, 0], [0, 0, 0, 0, 2, 0]])
+output_grid = np.array([[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 1, 1, 1, 0, 0], [0, 1, 1, 1, 0, 0], [0, 0, 0, 0, 2, 0], [0, 0, 0, 0, 2, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]])
+transform_grid = transform(input_grid)
+print(f"Input Grid Description:\n{describe_grid(input_grid)}")
+print(f"Output Grid Description:\n{describe_grid(output_grid)}")
+print(f"Transformed Grid Description:\n{describe_grid(transform_grid)}")
+print(f"Matches expected: {np.array_equal(output_grid,transform_grid)}")

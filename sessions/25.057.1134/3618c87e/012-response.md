@@ -1,0 +1,30 @@
+# 3618c87e • 012 • refine_coder
+
+---
+```tool_code
+import numpy as np
+
+def transform(input_grid):
+    """
+    The transformation rule swaps the positions of the single, isolated blue (1) and gray (5) pixels in the input grid.
+    It only applies if there is exactly one blue pixel and exactly one gray pixel in the input grid.
+    If these conditions are not met, the output grid is identical to the input grid.
+    """
+    # Initialize the output grid as a copy of the input grid.
+    output_grid = np.copy(input_grid)
+
+    # Find the coordinates of all blue (1) pixels.
+    blue_coords = np.argwhere(input_grid == 1)
+
+    # Find the coordinates of all gray (5) pixels.
+    gray_coords = np.argwhere(input_grid == 5)
+
+    # Swap colors only if there's exactly one blue and one gray pixel
+    if len(blue_coords) == 1 and len(gray_coords) == 1:
+        blue_coord = blue_coords[0]
+        gray_coord = gray_coords[0]
+        output_grid[blue_coord[0], blue_coord[1]] = 5
+        output_grid[gray_coord[0], gray_coord[1]] = 1
+
+    return output_grid
+```

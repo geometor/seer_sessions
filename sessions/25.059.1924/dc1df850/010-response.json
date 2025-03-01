@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\nThe transformation rule identifies non-white pixels in the input grid, \ncreates a bounding box around a cluster of those pixels, \nand then creates a filled blue shape in the output grid based on\nthe bounding box. Other non-white pixels are retained at original position.\n\"\"\"\n\nimport numpy as np\n\ndef get_non_white_pixels(grid):\n    \"\"\"Finds the coordinates of non-white pixels.\"\"\"\n    rows, cols = np.where(grid != 0)\n    return list(zip(rows, cols))\n\ndef create_bounding_box(coords):\n    \"\"\"Creates a bounding box around the given coordinates.\"\"\"\n    if not coords:\n        return None\n    min_row = min(r for r, _ in coords)\n    max_row = max(r for r, _ in coords)\n    min_col = min(c for _, c in coords)\n    max_col = max(c for _, c in coords)\n    return (min_row, min_col), (max_row, max_col)\n\ndef get_cluster(input_grid, non_white_pixels):\n    \"\"\"\n    separate non-white pixels into clusters based on adjacency.\n    return largest cluster\n    \"\"\"\n    # initialize clusters\n    clusters = []\n\n    # create adjacency matrix, where 1 is adjacent and 0 is not\n    adj_matrix = np.zeros((len(non_white_pixels), len(non_white_pixels)), dtype=int)\n    for i in range(len(non_white_pixels)):\n        for j in range(i + 1, len(non_white_pixels)):\n            row_i, col_i = non_white_pixels[i]\n            row_j, col_j = non_white_pixels[j]\n            # two pixels are defined as adjacent if they are touching directly or diagonally\n            if abs(row_i - row_j) <= 1 and abs(col_i - col_j) <= 1:\n                adj_matrix[i, j] = adj_matrix[j, i] = 1\n    \n    # perform depth first search to find largest cluster of 1's\n    visited = [False] * len(non_white_pixels)\n    def depth_first_search(index, cluster):\n        visited[index] = True\n        cluster.append(non_white_pixels[index])\n        for i in range(len(non_white_pixels)):\n            if adj_matrix[index, i] == 1 and not visited[i]:\n                depth_first_search(i, cluster)\n        \n    # find clusters\n    for i in range(len(non_white_pixels)):\n        if not visited[i]:\n            current_cluster = []\n            depth_first_search(i, current_cluster)\n            clusters.append(current_cluster)\n            \n    # sort and return largest cluster of coordinates\n    if len(clusters) > 0:\n      clusters.sort(key=len, reverse=True)\n      return clusters[0]\n    else:\n      return []\n    \ndef translate_cluster(input_grid, cluster):\n    \"\"\"\n    get translation vector from the identified cluster.\n    translation will apply to the red cluster shape in identified\n    bounding box.\n    \"\"\"\n    \n    cluster_colors = [input_grid[r][c] for r, c in cluster]\n\n    red_indices = [i for i, color in enumerate(cluster_colors) if color == 2]\n    red_coords = [cluster[i] for i in red_indices]\n    if len(red_coords) > 0 :\n        # use first red in cluster for translation\n        red_row, red_col = red_coords[0]\n        \n        # translate red one down and one left\n        t_row = red_row + 1\n        t_col = red_col - 1\n        \n        return (t_row, t_col)\n    else:\n        return (0,0)\n\ndef transform(input_grid):\n    \"\"\"Transforms the input grid according to the described rule.\"\"\"\n    output_grid = np.zeros_like(input_grid)\n    non_white_pixels = get_non_white_pixels(input_grid)\n    \n    # get largest cluster\n    cluster = get_cluster(input_grid, non_white_pixels)\n    \n    # get translation of red shape\n    t_row, t_col = translate_cluster(input_grid, cluster)\n    \n    # calculate box\n    if len(cluster) > 0:\n      box_start, box_end = create_bounding_box(cluster)\n      \n      # fill blue translated box, by iterating through input cluster\n      for r, c in cluster:\n        if input_grid[r][c] == 2: # only fill if it's part of original red\n          output_grid[r+1][c-1] = 1\n\n      output_grid[t_row][t_col] = 2 # set first red in shape\n    \n    # keep non-white pixels from original\n    for r, c in non_white_pixels:\n        if input_grid[r][c] != 2: # except the original red\n          output_grid[r][c] = input_grid[r][c]\n    \n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 2297,
+    "candidates_token_count": 1229,
+    "total_token_count": 3526,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.0-pro-exp-02-05",
+  "response_time": 12.743714,
+  "response_file": "010-response.json"
+}

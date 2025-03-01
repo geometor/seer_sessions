@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\n1.  **Identify Objects:** Locate all distinct, contiguous colored regions (objects) within the input grid, excluding the green background.\n2.  **Frame:** Create an output frame of yellow (4) one pixel wide.\n3.  **Bounding Box:** For each non-background object in the input:\n    *   Consider the object and any immediately adjacent pixels (including diagonals) of any different color.\n    *   Find the minimum and maximum row and column indices encompassing the object and its neighbors.\n    *   This defines the \"bounding box\" of the object.\n4.  **Reduce and translate:**\n    *   In the output grid, fill the bounding box area with the color from the central point of the box (the original object), ignoring the actual shapes or colors of the original object.\n    * if two shapes overlap, take the color of the right-most and lowest shape\n5. **Fill**: Fill the area inside the frame with green (3).\n\"\"\"\n\nimport numpy as np\n\ndef find_objects(grid, background_color=3):\n    \"\"\"Finds contiguous objects of the same color, excluding the background.\"\"\"\n    visited = np.zeros_like(grid, dtype=bool)\n    objects = []\n\n    def dfs(row, col, color, obj_pixels):\n        if (row < 0 or row >= grid.shape[0] or col < 0 or col >= grid.shape[1] or\n                visited[row, col] or grid[row, col] != color):\n            return\n        visited[row, col] = True\n        obj_pixels.append((row, col))\n        for dr in [-1, 0, 1]:\n            for dc in [-1, 0, 1]:\n                if dr == 0 and dc == 0:\n                    continue\n                dfs(row + dr, col + dc, color, obj_pixels)\n\n    for row in range(grid.shape[0]):\n        for col in range(grid.shape[1]):\n            if not visited[row, col] and grid[row, col] != background_color:\n                object_pixels = []\n                dfs(row, col, grid[row, col], object_pixels)\n                objects.append(object_pixels)\n    return objects\n\ndef get_neighbors(grid, object_pixels):\n    \"\"\"Finds all neighbors of an object including diagonal pixels\"\"\"\n    neighbors = set()\n    for r,c in object_pixels:\n      for dr in [-1, 0, 1]:\n        for dc in [-1, 0, 1]:\n          if dr == 0 and dc == 0:\n            continue\n          nr, nc = r + dr, c + dc\n          if 0 <= nr < grid.shape[0] and 0 <= nc < grid.shape[1]:\n            neighbors.add( (nr,nc) )\n    return list(neighbors)\n\ndef bounding_box(pixels):\n    \"\"\"Calculates the bounding box of a set of pixels.\"\"\"\n    rows, cols = zip(*pixels)\n    return min(rows), max(rows), min(cols), max(cols)\n\ndef get_object_center(object_pixels):\n    \"\"\" approximate center of the shape \"\"\"\n    rows, cols = zip(*object_pixels)\n    center_row = int(np.mean(rows) )\n    center_col = int(np.mean(cols))\n    return (center_row, center_col)\n\ndef transform(input_grid):\n    # initialize output_grid\n    input_grid = np.array(input_grid)\n    output_grid = np.full((11, 11), 3)  # Initialize with green background\n\n    # Frame with Yellow\n    output_grid[0, :] = 4\n    output_grid[-1, :] = 4\n    output_grid[:, 0] = 4\n    output_grid[:, -1] = 4\n\n    # Find objects\n    objects = find_objects(input_grid)\n\n    # create boxes\n    boxes = []\n    for obj in objects:\n      neighbors = get_neighbors(input_grid, obj)\n      all_points = obj + neighbors\n      min_row, max_row, min_col, max_col = bounding_box(all_points)\n      center_row, center_col = get_object_center(obj)\n      color = input_grid[center_row,center_col]\n      boxes.append( (min_row, max_row, min_col, max_col, color))\n\n    # sort to ensure overlapping boxes are handled correctly\n    boxes.sort(key=lambda x: (x[1], x[3])) # sort by max_row, max_col\n\n    # Reduce and translate\n    for min_row, max_row, min_col, max_col, color in boxes:\n\n        # translate to the output grid\n        o_min_row = min_row - (input_grid.shape[0] - 11 ) // 2\n        o_max_row = max_row - (input_grid.shape[0] - 11 ) // 2\n        o_min_col = min_col - (input_grid.shape[1] - 11 ) // 2\n        o_max_col = max_col - (input_grid.shape[1] - 11 ) // 2\n\n        # adjust for frame, and make sure the bounding box is fully\n        # inside the frame\n        o_min_row = max(1, o_min_row)\n        o_max_row = min(9, o_max_row)\n        o_min_col = max(1, o_min_col)\n        o_max_col = min(9, o_max_col)\n        output_grid[o_min_row:o_max_row+1, o_min_col:o_max_col+1] = color\n\n\n    return output_grid.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 3278,
+    "candidates_token_count": 1363,
+    "total_token_count": 4641,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.0-pro-exp-02-05",
+  "response_time": 14.56843,
+  "response_file": "016-response.json"
+}
