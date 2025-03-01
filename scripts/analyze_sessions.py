@@ -21,30 +21,26 @@ def analyze_sessions(sessions_root):
         if not session_date_path.is_dir():
             continue
 
-        for session_path in session_date_path.iterdir():
-            if not session_path.is_dir():
+        for task_path in session_date_path.iterdir():
+            if not task_path.is_dir():
                 continue
 
-            task_json_path = session_path / "task.json"
-            if task_json_path.exists():
-                try:
-                    with open(task_json_path, 'r') as f:
-                        task_json = json.load(f)
-                        task_id = task_json.get("task_id")
+            # The task folder name IS the task ID.  Much simpler!
+            task_id = task_path.name
 
-                    if task_id:
-                        task_data[task_id]["run_count"] += 1
+            task_data[task_id]["run_count"] += 1 #increment for each folder
 
-                        # Check for test files
-                        for item in session_path.iterdir():
-                            if item.name.endswith("-test.json"):
-                                with open(item, "r") as tf:
-                                    test_data = json.load(tf)
-                                    if test_data.get("match") is True:  # More explicit check
-                                        task_data[task_id]["test_match_count"] += 1
-                except (json.JSONDecodeError, OSError) as e:
-                    print(f"Error processing {task_json_path}: {e}")
-                    continue  # Keep going
+            # Check for test files *within* the task folder
+            for item in task_path.iterdir():
+                if item.name.endswith("-test.json"):
+                    try:
+                        with open(item, "r") as tf:
+                            test_data = json.load(tf)
+                            if test_data.get("match") is True:
+                                task_data[task_id]["test_match_count"] += 1
+                    except (json.JSONDecodeError, OSError) as e:
+                        print(f"Error processing {item}: {e}")
+                        # Don't 'continue' here, check all test files.
 
     return task_data
 
