@@ -54,8 +54,9 @@ def main():
     results = analyze_sessions(sessions_root)
 
     console = Console()
-    table = Table(title="Session Analysis Results")
 
+    # Main Results Table
+    table = Table(title="Session Analysis Results")
     table.add_column("Task ID", justify="left", style="cyan")
     table.add_column("Run Count", justify="right", style="magenta")
     table.add_column("Test Match Count", justify="right", style="green")
@@ -66,9 +67,18 @@ def main():
             str(data["run_count"]),
             str(data["test_match_count"]),
         )
-
     console.print(table)
+
+    # Summary Table
+    total_unique_tasks = len(results)
+    total_tasks_with_matches = sum(1 for _, data in results if data["test_match_count"] > 0)
+
+    summary_table = Table(title="Summary")
+    summary_table.add_column("Metric", justify="left", style="cyan")
+    summary_table.add_column("Value", justify="right", style="magenta")
+    summary_table.add_row("Total Unique Tasks", str(total_unique_tasks))
+    summary_table.add_row("Tasks with Test Matches", str(total_tasks_with_matches))
+    console.print(summary_table)
 
 if __name__ == "__main__":
     main()
-
