@@ -32,12 +32,14 @@ def analyze_sessions(sessions_root):
 
             # Check for test files *within* the task folder
             for item in task_path.iterdir():
-                if item.name.endswith("-test.json"):
+                if item.name.endswith("test.json"):
                     try:
                         with open(item, "r") as tf:
                             test_data = json.load(tf)
-                            if test_data.get("match") is True:
-                                task_data[task_id]["test_match_count"] += 1
+                            for test_row in test_data:
+                                if "match" in test_row and test_row.get("match") is True:
+                                    task_data[task_id]["test_match_count"] += 1
+                                    break
                     except (json.JSONDecodeError, OSError) as e:
                         print(f"Error processing {item}: {e}")
                         # Don't 'continue' here, check all test files.
