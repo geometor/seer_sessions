@@ -24,7 +24,7 @@ def run():
         config,
     )
 
-    seer.run(tasks[320:350]) 
+    seer.run(tasks[350:375]) 
 
 
 if __name__ == "__main__":
