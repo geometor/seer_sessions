@@ -1,7 +1,8 @@
-from rich import print
 import json
 from collections import defaultdict
 from pathlib import Path
+from rich.console import Console
+from rich.table import Table
 
 def analyze_sessions(sessions_root):
     """
@@ -11,8 +12,8 @@ def analyze_sessions(sessions_root):
         sessions_root: The root directory of the sessions (Path object).
 
     Returns:
-        A dictionary where keys are task IDs and values are dictionaries
-        containing 'run_count' and 'test_match_count'.
+        A list of tuples, sorted by test_match_count, where each tuple contains
+        (task_id, run_count, test_match_count).
     """
 
     task_data = defaultdict(lambda: {"run_count": 0, "test_match_count": 0})
@@ -25,39 +26,49 @@ def analyze_sessions(sessions_root):
             if not task_path.is_dir():
                 continue
 
-            # The task folder name IS the task ID.  Much simpler!
             task_id = task_path.name
+            task_data[task_id]["run_count"] += 1
 
-            task_data[task_id]["run_count"] += 1 #increment for each folder
-
-            # Check for test files *within* the task folder
             for item in task_path.iterdir():
                 if item.name.endswith("test.json"):
                     try:
                         with open(item, "r") as tf:
                             test_data = json.load(tf)
-                            for test_row in test_data:
+                            for test_row in test_
                                 if "match" in test_row and test_row.get("match") is True:
                                     task_data[task_id]["test_match_count"] += 1
-                                    break
+                                    break  # Only count one match per test file
                     except (json.JSONDecodeError, OSError) as e:
                         print(f"Error processing {item}: {e}")
-                        # Don't 'continue' here, check all test files.
 
-    return task_data
+    # Sort by test_match_count (descending) and then by task_id (ascending)
+    sorted_data = sorted(
+        task_data.items(),
+        key=lambda item: (-item[1]["test_match_count"], item[0])
+    )
+    return sorted_data
 
 def main():
-    # Construct the path to the sessions directory (sibling of scripts)
-    scripts_dir = Path(__file__).parent  # Path to the 'scripts' directory
+    scripts_dir = Path(__file__).parent
     sessions_root = scripts_dir.parent / "sessions"
-
     results = analyze_sessions(sessions_root)
 
-    for task_id, data in results.items():
-        print(f"Task ID: {task_id}")
-        print(f"  Run Count: {data['run_count']}")
-        print(f"  Test Match Count: {data['test_match_count']}")
-        print("-" * 20)
+    console = Console()
+    table = Table(title="Session Analysis Results")
+
+    table.add_column("Task ID", justify="left", style="cyan")
+    table.add_column("Run Count", justify="right", style="magenta")
+    table.add_column("Test Match Count", justify="right", style="green")
+
+    for task_id, data in results:
+        table.add_row(
+            str(task_id),
+            str(data["run_count"]),
+            str(data["test_match_count"]),
+        )
+
+    console.print(table)
 
 if __name__ == "__main__":
     main()
+
