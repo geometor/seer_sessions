@@ -3,12 +3,13 @@ from collections import defaultdict
 from pathlib import Path
 from rich.console import Console
 from rich.table import Table
-import shutil  # Import shutil for file copying
+import os  # Import the os module
+
 
 def analyze_sessions(sessions_root):
     """
     Analyzes the sessions data, counts task runs, checks for test matches,
-    and generates reports.
+    and generates reports using symbolic links.
 
     Args:
         sessions_root: The root directory of the sessions (Path object).
@@ -19,7 +20,7 @@ def analyze_sessions(sessions_root):
     """
 
     task_data = defaultdict(lambda: {"run_count": 0, "test_match_count": 0})
-    reports_root = Path("../reports") #added for use later
+    reports_root = Path("../reports")  # added for use later
 
     for session_date_path in sessions_root.iterdir():
         if not session_date_path.is_dir():
@@ -47,20 +48,34 @@ def analyze_sessions(sessions_root):
 
                                     # Find prefix:  "008-py_06-test.json" -> "008-"
                                     prefix = item.name.split("-")[0] + "-"
-                                    # Copy matching files
+                                    # Create symlinks for matching files
                                     for file_to_copy in task_path.glob(f"{prefix}*"):
-                                        shutil.copy(file_to_copy, report_dir / file_to_copy.name)
+                                        dest_path = report_dir / file_to_copy.name
+                                        # Handle existing symlink
+                                        if dest_path.exists() and dest_path.is_symlink():
+                                            os.remove(dest_path)
+                                        try:
+                                            os.symlink(file_to_copy.resolve(), dest_path)
+                                        except OSError as e:
+                                            print(f"Error creating symlink for {file_to_copy}: {e}")
 
                                     break  # Only count/copy one match per test file
                                 elif "match" in test_row and test_row.get("match") is False:
-                                     # --- Report Generation (Failed) ---
+                                    # --- Report Generation (Failed) ---
                                     report_dir = reports_root / "test_failed" / task_id / session_date_path.name
                                     report_dir.mkdir(parents=True, exist_ok=True)
                                     prefix = item.name.split("-")[0] + "-"
-                                    # Copy matching files
+                                    # Create symlinks for matching files
                                     for file_to_copy in task_path.glob(f"{prefix}*"):
-                                        shutil.copy(file_to_copy, report_dir / file_to_copy.name)
+                                        dest_path = report_dir / file_to_copy.name
 
+                                        # Handle existing symlink
+                                        if dest_path.exists() and dest_path.is_symlink():
+                                            os.remove(dest_path)
+                                        try:
+                                            os.symlink(file_to_copy.resolve(), dest_path)
+                                        except OSError as e:
+                                            print(f"Error creating symlink for {file_to_copy}: {e}")
 
                     except (json.JSONDecodeError, OSError) as e:
                         print(f"Error processing {item}: {e}")
@@ -71,6 +86,7 @@ def analyze_sessions(sessions_root):
         key=lambda item: (-item[1]["test_match_count"], item[0])
     )
     return sorted_data
+
 
 def main():
     scripts_dir = Path(__file__).parent
@@ -108,6 +124,7 @@ def main():
     summary_table.add_row("Tasks with Test Matches", str(total_tasks_with_matches))
     summary_table.add_row("Percent Solved", f"{percent_solved:.2f}%")
     console.print(summary_table)
+
 
 if __name__ == "__main__":
     main()
