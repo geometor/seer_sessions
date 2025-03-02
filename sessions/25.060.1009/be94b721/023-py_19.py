@@ -1,0 +1,1 @@
+report(task.train[1].input.grid, "input grid dimensions, list of unique colors, and counts of each color")

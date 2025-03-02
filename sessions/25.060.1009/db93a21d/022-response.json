@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\n1.  **Identify Maroon Regions:** Locate all contiguous regions of maroon (9) pixels.\n2.  **Green Fill (Top Region and surround):** Find the top-most maroon region.\n    *   Replace all maroon pixels of that region by green pixels.\n    *   Find connected white region to the identified maroon region, that also touch the top edge of the grid\n    *   Replace pixels in that white region with green.\n3.  **Blue Outline (Middle Region):** find the leftmost maroon object.\n    * If it is located directly under an object that was colored green, replace that region's white bounding box with blue color.\n4.  **Bottom-Right Region**: Keep the bottom-right maroon region unchanged.\n\"\"\"\n\nimport numpy as np\n\ndef find_objects(grid, color):\n    \"\"\"Find contiguous regions of the specified color.\"\"\"\n    visited = np.zeros_like(grid, dtype=bool)\n    objects = []\n\n    def dfs(row, col):\n        \"\"\"Depth-first search to find contiguous pixels.\"\"\"\n        if (row < 0 or row >= grid.shape[0] or col < 0 or col >= grid.shape[1] or\n                visited[row, col] or grid[row, col] != color):\n            return []\n\n        visited[row, col] = True\n        object_pixels = [(row, col)]\n\n        object_pixels.extend(dfs(row + 1, col))\n        object_pixels.extend(dfs(row - 1, col))\n        object_pixels.extend(dfs(row, col + 1))\n        object_pixels.extend(dfs(row, col - 1))\n        return object_pixels\n\n    for row in range(grid.shape[0]):\n        for col in range(grid.shape[1]):\n            if not visited[row, col] and grid[row, col] == color:\n                objects.append(dfs(row, col))\n    return objects\n\ndef get_topmost_object(objects):\n    \"\"\"Returns the object with the smallest row index (top-most).\"\"\"\n    if not objects:\n        return None\n    return min(objects, key=lambda obj: min(pixel[0] for pixel in obj))\n\ndef get_leftmost_object(objects):\n   \n    if not objects:\n        return None\n    \n    return min(objects, key=lambda obj: min(pixel[1] for pixel in obj))\n\ndef flood_fill(grid, start_row, start_col, new_color):\n    \"\"\"Fills a connected region with the new color.\"\"\"\n    rows, cols = grid.shape\n    old_color = grid[start_row, start_col]\n    if old_color == new_color:\n        return\n\n    def dfs(row, col):\n        if 0 <= row < rows and 0 <= col < cols and grid[row, col] == old_color:\n            grid[row, col] = new_color\n            dfs(row + 1, col)\n            dfs(row - 1, col)\n            dfs(row, col + 1)\n            dfs(row, col - 1)\n\n    dfs(start_row, start_col)\n    return grid\n\ndef get_bounding_box(grid, object_pixels):\n    \"\"\"Get the bounding box coordinates for an object.\"\"\"\n    min_row = min(pixel[0] for pixel in object_pixels)\n    max_row = max(pixel[0] for pixel in object_pixels)\n    min_col = min(pixel[1] for pixel in object_pixels)\n    max_col = max(pixel[1] for pixel in object_pixels)\n    return min_row, max_row, min_col, max_col\n\ndef get_outline(grid, object_pixels, old_color, new_color):\n   \n    rows, cols = grid.shape\n\n    for r, c in object_pixels:\n\n        neighbors = [(r-1,c),(r+1,c),(r,c-1),(r,c+1)]\n\n        for nr, nc in neighbors:\n             if 0 <= nr < rows and 0 <= nc < cols and grid[nr,nc] == old_color:\n                 grid[nr,nc] = new_color\n                 \n    return grid\n\ndef is_below_green(grid, maroon_object):\n   \n    #check of any pixel in the object is under green\n\n    green_found = False\n\n    for r, c in maroon_object:\n        if r > 0:\n          if grid[r-1,c] == 3:\n            green_found = True\n            break #exit as soon as found\n\n    return green_found\n\ndef transform(input_grid):\n    # initialize output_grid\n    output_grid = np.copy(input_grid)\n\n    # Find all maroon objects.\n    maroon_objects = find_objects(output_grid, 9)\n\n    # Green Fill (Top Region)\n    topmost_maroon_object = get_topmost_object(maroon_objects)\n    if topmost_maroon_object:\n       \n        #get corner coordinate of the identified top object, to use\n        #later for connecting the top edge of the grid\n\n        min_row = min(pixel[0] for pixel in topmost_maroon_object)\n        \n        #replace maroon by green\n        for row, col in topmost_maroon_object:\n            output_grid[row, col] = 3  # Green\n\n        #fill connected white, that touch top edge\n        for c in range(output_grid.shape[1]):\n           flood_fill(output_grid,0,c,3)\n\n\n    # Blue outline\n\n    #remove topmost object to find leftmost on next step\n    maroon_objects.remove(topmost_maroon_object)\n\n    #find leftmost, if more than one\n    if len(maroon_objects) > 0:\n      leftmost_maroon = get_leftmost_object(maroon_objects)\n      if is_below_green(output_grid, leftmost_maroon):\n            output_grid = get_outline(output_grid,leftmost_maroon,0,1)\n\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 3940,
+    "candidates_token_count": 1426,
+    "total_token_count": 5366,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.0-pro-exp-02-05",
+  "response_time": 14.472227,
+  "response_file": "022-response.json"
+}

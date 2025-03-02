@@ -1,0 +1,29 @@
+"""
+Transforms a grid by replacing non-white pixels with magenta, keeping white pixels unchanged, and compressing the columns by half.
+The transformation operates row-wise: if an entire row in the input is white, the corresponding row in the output is also white.
+Otherwise, non-white pixels are replaced by magenta, and the columns are compressed.
+"""
+
+import numpy as np
+
+def transform(input_grid):
+    # Initialize output grid with dimensions half the width of the input
+    input_rows, input_cols = input_grid.shape
+    output_grid = np.zeros((input_rows, input_cols // 2), dtype=int)
+
+    # Iterate through the input grid row by row
+    for i in range(input_rows):
+        # Check if the entire row is white
+        if np.all(input_grid[i] == 0):
+            # If the entire row is white, keep it white in output
+            output_grid[i, :] = 0
+        else:
+            # compress the grid by two columns at a time
+            for j in range(input_cols // 2):
+                if input_grid[i, 2*j] != 0 or input_grid[i, 2*j + 1] != 0:
+                    output_grid[i,j] = 6 # set to magenta
+                # this else is not needed due to initialization
+                #else:
+                #    output_grid[i,j] = 0
+
+    return output_grid

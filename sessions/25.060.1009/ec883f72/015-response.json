@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\n1. **Identify the \"azure shape\"**: This is a contiguous block of azure (8) pixels.\n2. **Translate the azure shape**: Move the entire azure shape down by one row.\n3. **Identify \"magenta columns\"**: These are vertical lines of magenta (6) pixels, potentially starting from a single magenta pixel.\n4. **Handle each existing \"magenta column\" :**\n    -  if there are any non-white pixels below, \"push\" the entire magenta column down by shifting its contents down one row at a time until the bottom-most magenta pixel is one above the highest non-white pixel in that column.\n    - otherwise, extend the magenta column down to the bottom-most row if no other non-white pixels exist.\n\n5. **Identify Columns in the original azure shape:**\n   - Extend these columns down with magenta (6) until reaching one row above the lowest non-white pixel in the input grid, *unless* a non-white pixel is encountered earlier.\n\"\"\"\n\nimport numpy as np\n\ndef find_azure_shape(grid):\n    \"\"\"Finds the coordinates of all azure (8) pixels.\"\"\"\n    return np.argwhere(grid == 8)\n\ndef translate_shape(coords, rows_to_move, grid_shape):\n    \"\"\"Translates a set of coordinates down by a specified number of rows.\"\"\"\n    translated_coords = []\n    for r, c in coords:\n        new_r = r + rows_to_move\n        if 0 <= new_r < grid_shape[0]:  # Check bounds\n            translated_coords.append((new_r, c))\n    return np.array(translated_coords)\n\ndef find_magenta_columns(grid):\n    \"\"\"Identifies magenta columns and their start/end rows.\"\"\"\n    magenta_coords = np.argwhere(grid == 6)\n    columns = {}\n    for r, c in magenta_coords:\n        if c not in columns:\n            columns[c] = [r, r]  # [min_row, max_row]\n        else:\n            columns[c][0] = min(columns[c][0], r)\n            columns[c][1] = max(columns[c][1], r)\n    return columns\n\ndef find_lowest_non_white_row_in_column(grid, col, start_row):\n    \"\"\"Finds the lowest row index that contains a non-white pixel in a column, starting from a given row.\"\"\"\n    rows = grid.shape[0]\n    for r in range(start_row, rows):\n        if grid[r, col] != 0:\n            return r\n    return rows # if none found, return the last row + 1\n\ndef transform(input_grid):\n    # initialize output_grid\n    output_grid = np.copy(input_grid)\n    rows, cols = input_grid.shape\n\n    # 1. & 2. Translate Azure Shape\n    azure_coords = find_azure_shape(input_grid)\n    translated_azure_coords = translate_shape(azure_coords, 1, input_grid.shape)\n    \n    for r, c in azure_coords:\n        output_grid[r,c] = 0 # clear the original\n\n    for r, c in translated_azure_coords:\n        output_grid[r, c] = 8\n\n    # 3. Identify Magenta Columns\n    magenta_columns = find_magenta_columns(input_grid)\n\n    # 4. Handle Existing Magenta Columns (Push Down)\n    for col, (start_row, end_row) in magenta_columns.items():\n        lowest_non_white = find_lowest_non_white_row_in_column(input_grid, col, end_row + 1)\n        \n        if lowest_non_white < rows:\n           # push\n           push_distance = (lowest_non_white -1) - end_row\n           if push_distance > 0:\n              for r in range(end_row, start_row -1, -1):\n                 output_grid[r + push_distance, col] = output_grid[r,col]\n                 output_grid[r,col] = 0\n        else:\n           # extend - no other non-white pixels\n           for r in range(end_row + 1, rows):\n              output_grid[r,col] = 6 \n\n    # 5. Extend Columns from Original Azure Shape\n    azure_cols = np.unique(azure_coords[:, 1])\n    for col in azure_cols:\n        lowest_non_white = find_lowest_non_white_row_in_column(input_grid, col, 0)\n\n        start_row_fill = 0\n        if len(translated_azure_coords) > 0: # find any in this col\n           azure_in_col = [ (r,c) for (r,c) in translated_azure_coords if c == col ]\n           if len(azure_in_col) > 0:\n              start_row_fill = max([r for (r,c) in azure_in_col]) + 1\n        \n        for row_index in range(start_row_fill, lowest_non_white):            \n              output_grid[row_index, col] = 6\n\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 5505,
+    "candidates_token_count": 1222,
+    "total_token_count": 6727,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.0-pro-exp-02-05",
+  "response_time": 11.062918,
+  "response_file": "015-response.json"
+}

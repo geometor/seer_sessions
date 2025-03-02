@@ -1,0 +1,42 @@
+# dc433765 • 030 • refine_coder
+
+---
+```python
+"""
+1.  **Find the Green Pixel:** Locate the green pixel (color value 3) within the input grid.
+2.  **Check Boundary:** If the green pixel is *not* in the top row (row index > 0), proceed to the next steps. If on top row, the green pixel does not move.
+3.  **Move Up:** Move the green pixel up by one row.
+4. **Transfer Color:** Set the color of the green pixel's *old* location to the color of the pixel that was directly above the green pixel's old location.
+5.  **Other Pixels:** All other pixels in the grid remain unchanged.
+"""
+
+import numpy as np
+
+def find_pixel_by_color(grid, color):
+    # Find the coordinates of a pixel of the specified color.
+    coords = np.argwhere(grid == color)
+    if coords.size > 0:
+        return coords[0]  # Return the first occurrence
+    return None
+
+def transform(input_grid):
+    # Initialize output_grid as a copy of the input_grid
+    output_grid = np.copy(input_grid)
+
+    # Find the green (3) pixel
+    green_pixel_coords = find_pixel_by_color(input_grid, 3)
+
+    # Move the green pixel up by one row if it exists and is not on the top row
+    if green_pixel_coords is not None and green_pixel_coords[0] > 0:
+        new_row = green_pixel_coords[0] - 1
+        old_row = green_pixel_coords[0]
+        col = green_pixel_coords[1]
+        
+        #get color above
+        color_above = input_grid[old_row - 1, col]
+
+        output_grid[new_row, col] = 3    # Set the new position to green (3)
+        output_grid[old_row, col] = color_above  # Set the old position to color above
+
+    return output_grid
+```

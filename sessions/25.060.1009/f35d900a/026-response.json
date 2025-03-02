@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\nTransforms an input grid containing isolated green (3) and azure (8) pixels by:\n\n1. Expanding each green and azure pixel into a 3x3 block of the same color, centered on the original pixel's location.\n2. Merging overlapping expanded blocks of the same color.\n3. Connecting the *nearest* expanded blocks of different colors (green and azure) with a horizontal path of grey (5) pixels.  The path starts from the right edge of the green block and extends to the left edge of the azure block.\n4. The connection path lies on the row that is the vertical center of the green block.\n5. All other pixels are white (0).\n\"\"\"\n\nimport numpy as np\n\ndef expand_and_merge(grid, color_value):\n    \"\"\"Expands pixels of a given color into 3x3 blocks and merges overlapping blocks.\"\"\"\n    rows, cols = grid.shape\n    expanded_grid = np.zeros_like(grid)\n\n    # Expand each pixel\n    for r, c in np.argwhere(grid == color_value):\n        for i in range(max(0, r - 1), min(rows, r + 2)):\n            for j in range(max(0, c - 1), min(cols, c + 2)):\n                expanded_grid[i, j] = color_value\n\n    # Merge by re-finding contiguous blocks after expansion\n    merged_grid = np.zeros_like(expanded_grid)\n    visited = np.zeros_like(expanded_grid, dtype=bool)\n    block_coords = []\n\n    def dfs(r, c):\n        \"\"\"Depth-first search to find contiguous blocks.\"\"\"\n        if (r < 0 or r >= rows or c < 0 or c >= cols or\n            visited[r, c] or merged_grid[r,c] != color_value):\n            return []\n\n        visited[r, c] = True\n        coords = [(r, c)]\n        coords.extend(dfs(r + 1, c))\n        coords.extend(dfs(r - 1, c))\n        coords.extend(dfs(r, c + 1))\n        coords.extend(dfs(r, c - 1))\n        return coords\n\n    for r in range(rows):\n      for c in range(cols):\n        if expanded_grid[r,c] == color_value and not visited[r,c]:\n            block = dfs(r,c)\n            if block:\n                block_coords.append(block)\n                for br,bc in block:\n                  merged_grid[br,bc] = color_value\n\n    return merged_grid, block_coords\n    \n\ndef get_block_extrema(block_coords):\n    \"\"\"Calculates the leftmost, rightmost, topmost, and bottommost coordinates of a block.\"\"\"\n    min_r, min_c = float('inf'), float('inf')\n    max_r, max_c = float('-inf'), float('-inf')\n\n    for r, c in block_coords:\n        min_r = min(min_r, r)\n        min_c = min(min_c, c)\n        max_r = max(max_r, r)\n        max_c = max(max_c, c)\n    return min_r, min_c, max_r, max_c\n\ndef connect_blocks(grid, green_block, azure_block):\n    \"\"\"Connects two blocks with a horizontal grey path, if they don't overlap.\"\"\"\n    _, _, _, green_max_c = get_block_extrema(green_block)\n    _, azure_min_c, _, _ = get_block_extrema(azure_block)\n\n    # Find the center row of the green block\n    green_min_r, _, green_max_r, _ = get_block_extrema(green_block)\n    green_center_row = (green_min_r + green_max_r) // 2\n\n    if green_max_c < azure_min_c:  # Check for overlap\n        for c in range(green_max_c + 1, azure_min_c):\n            grid[green_center_row, c] = 5\n\n\n\ndef transform(input_grid):\n    # Initialize output_grid to all white\n    output_grid = np.zeros_like(input_grid)\n\n    # Expand and merge green blocks\n    expanded_green_grid, green_blocks = expand_and_merge(input_grid, 3)\n    for blk in green_blocks:\n      for r,c in blk:\n        output_grid[r,c] = 3 # set the merged green blocks\n\n    # Expand and merge azure blocks\n    expanded_azure_grid, azure_blocks = expand_and_merge(input_grid, 8)\n    for blk in azure_blocks:\n      for r,c in blk:\n        output_grid[r,c] = 8 # set the merged azure blocks\n\n\n    # connect\n    for green_block in green_blocks:\n        nearest_azure_block = None\n        min_dist = float('inf')\n\n        for azure_block in azure_blocks:\n            _, _, _, green_max_c = get_block_extrema(green_block)\n            _, azure_min_c, _, _ = get_block_extrema(azure_block)\n            dist = azure_min_c - green_max_c  # Horizontal distance\n\n            if 0 < dist < min_dist: # the distance needs to be positive\n                min_dist = dist\n                nearest_azure_block = azure_block\n\n        if nearest_azure_block:\n            connect_blocks(output_grid, green_block, nearest_azure_block)\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 5460,
+    "candidates_token_count": 1325,
+    "total_token_count": 6785,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.0-pro-exp-02-05",
+  "response_time": 12.79096,
+  "response_file": "026-response.json"
+}

@@ -1,0 +1,271 @@
+# ce602527 • 012 • refine_coder
+
+---
+
+Previous Code:
+```python
+"""
+The transformation isolates and simplifies the yellow "plus" shape within the input grid. It creates a minimal representation of this shape centered in the output grid. The background is also captured.
+"""
+
+import numpy as np
+
+def find_objects(grid):
+    """
+    Identifies distinct objects in the grid.
+    Returns a dictionary of objects, keyed by color.
+    """
+    objects = {}
+    visited = np.zeros_like(grid, dtype=bool)
+
+    def dfs(row, col, color, obj_pixels):
+        if (
+            row < 0
+            or row >= grid.shape[0]
+            or col < 0
+            or col >= grid.shape[1]
+            or visited[row, col]
+            or grid[row, col] != color
+        ):
+            return
+        visited[row, col] = True
+        obj_pixels.append((row, col))
+        dfs(row + 1, col, color, obj_pixels)
+        dfs(row - 1, col, color, obj_pixels)
+        dfs(row, col + 1, color, obj_pixels)
+        dfs(row, col - 1, color, obj_pixels)
+
+    for row in range(grid.shape[0]):
+        for col in range(grid.shape[1]):
+            if not visited[row, col]:
+                color = grid[row, col]
+                obj_pixels = []
+                dfs(row, col, color, obj_pixels)
+                if color not in objects:
+                    objects[color] = []
+                objects[color].append(obj_pixels)
+    return objects
+
+
+def get_plus_extent(pixels):
+    """Calculates a bounding box, assuming a plus shape"""
+    min_row = min(p[0] for p in pixels)
+    max_row = max(p[0] for p in pixels)
+    min_col = min(p[1] for p in pixels)
+    max_col = max(p[1] for p in pixels)
+    return max_row - min_row + 1, max_col-min_col + 1
+
+def transform(input_grid):
+    # Find all objects in the grid
+    objects = find_objects(input_grid)
+
+    # Select the yellow plus shape (color 4)
+    yellow_objects = objects.get(4)
+    target_object = None
+
+    #iterate to find plus
+    for obj in yellow_objects:
+        h, w = get_plus_extent(obj)
+        if h == w and h % 2 == 1:
+            target_object = obj
+            break
+
+    # Get extent of target object, h,w
+    height, width = get_plus_extent(target_object)
+
+    # Create the output grid
+    output_grid = np.full((height*2-1, width*2-1), 8, dtype=int)  # Fill with azure (8)
+
+    # recreate the yellow plus in center of output
+    center_row, center_col = height - 1, width -1
+
+    for r_offset in range(-(height//2), height//2 + 1):
+        output_grid[center_row+r_offset,center_col] = 4
+    for c_offset in range(-(width//2), width//2 + 1):
+        output_grid[center_row,center_col+c_offset] = 4
+   
+
+    return output_grid
+```
+
+Train Set Results:
+Okay, here's a breakdown of the situation and a plan to move forward, focusing on a report-style analysis:
+
+**General Assessment and Strategy**
+
+The initial code was designed to identify and center a yellow "plus" shape, filling the background with azure. It works correctly for the first training example but fails on the others. The primary issue is that the code assumes a very specific, single "plus" shape and a fixed output size relative to that plus. The other examples show variations:
+
+*   **Example 2:** Has *two* yellow plus signs of different sizes, and the output focuses on the larger one, but with a different size relationship than example 1
+*   **Example 3:** Features a smaller yellow plus sign, and includes some, but not all, of the surrounding gray.
+
+The strategy needs to shift from finding *a* plus sign to finding the *correct* plus sign (potentially based on size or other criteria) and correctly determining the output size and content, possibly including some of the surrounding context (based on background).
+
+**Metrics and Observations**
+
+To get a precise understanding, I'll analyze the provided grids. I'll focus on:
+
+1.  Identifying all objects, their colors, and sizes.
+2.  Determining the "target" object in the input (the one seemingly used for the output).
+3.  Calculating the relationship between the target object's size and the output grid's size.
+4.  Observing the background color in both input and output.
+5. compare expected output with the result of the `transform()`
+
+```python
+import numpy as np
+
+def grid_to_string(grid):
+    return '\n'.join(''.join(str(cell) for cell in row) for row in grid)
+
+def analyze_example(input_grid, expected_output, result_grid):
+    input_str = grid_to_string(input_grid)
+    expected_str = grid_to_string(expected_output)
+    result_str = grid_to_string(result_grid)
+
+    input_objects = find_objects(input_grid)
+    expected_objects = find_objects(expected_output)
+    result_objects = find_objects(result_grid)
+
+    print(f"Input Grid:\n{input_str}\n")
+    print(f"  Objects: {input_objects}\n")
+    print(f"Expected Output:\n{expected_str}\n")
+    print(f"  Objects: {expected_objects}\n")
+    print(f"Result Output:\n{result_str}\n")
+    print(f"  Objects: {result_objects}\n")
+
+    #try to find the correct plus sign:
+    target = None
+    for obj_list in input_objects.get(4,[]):
+        h, w = get_plus_extent(obj_list)
+        if h == w and h%2 == 1:
+            if target is None or h > get_plus_extent(target)[0]:
+                target = obj_list
+
+    if target is not None:
+        target_h, target_w = get_plus_extent(target)
+        print(f"Target Object (Yellow Plus) Height: {target_h}, Width: {target_w}")
+        expected_h, expected_w = expected_output.shape
+        print(f"Expected Output Height: {expected_h}, Width: {expected_w}")
+    else:
+        print("No Target Object Found.")
+
+    diff = result_grid == expected_output
+    total_pixels = diff.size
+    correct_pixels = np.sum(diff)
+    accuracy_percentage = (correct_pixels / total_pixels) * 100
+    print(f"Prediction Accuracy: {correct_pixels}/{total_pixels} ({accuracy_percentage:.2f}%)")
+
+
+task = {
+'train': [
+        {'input': [[8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8], [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8], [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8], [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8], [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8], [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8], [8, 8, 8, 8, 8, 8, 8, 4, 8, 8, 8, 8, 8, 8, 8, 8], [8, 8, 8, 8, 8, 8, 4, 4, 4, 8, 8, 8, 8, 8, 8, 8], [8, 8, 8, 8, 8, 8, 8, 4, 8, 8, 8, 8, 8, 8, 8, 8], [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8], [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8], [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8], [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8], [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8], [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8], [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8]], 'output': [[8, 8, 8, 8, 8], [8, 8, 4, 8, 8], [8, 4, 4, 4, 8], [8, 8, 4, 8, 8], [8, 8, 8, 8, 8]]},
+        {'input': [[8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8], [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8], [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8], [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8], [8, 8, 8, 8, 8, 8, 8, 4, 8, 8, 8, 8, 8, 8], [8, 8, 8, 8, 8, 8, 4, 4, 4, 8, 8, 8, 8, 8], [8, 8, 8, 8, 8, 8, 8, 4, 8, 8, 8, 8, 8, 8], [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8], [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8], [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8], [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 4, 8, 8], [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 4, 4, 4, 8], [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 4, 8, 8], [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8]], 'output': [[8, 8, 8, 8, 8, 8, 8, 8, 8], [8, 8, 8, 8, 8, 8, 8, 8, 8], [8, 8, 8, 8, 8, 8, 8, 8, 8], [8, 8, 8, 8, 4, 8, 8, 8, 8], [8, 8, 8, 4, 4, 4, 8, 8, 8], [8, 8, 8, 8, 4, 8, 8, 8, 8], [8, 8, 8, 8, 8, 8, 8, 8, 8], [8, 8, 8, 8, 8, 8, 8, 8, 8], [8, 8, 8, 8, 8, 8, 8, 8, 8]]},
+        {'input': [[5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5], [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5], [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5], [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5], [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5], [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5], [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5], [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 4, 5, 5, 5, 5, 5, 5, 5, 5], [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5], [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 4, 5, 5, 5, 5, 5, 5, 5, 5], [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5], [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5], [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5], [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5], [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5], [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5], [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5], [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5], [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5], [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]], 'output': [[5, 5, 5, 5, 5, 5, 5], [5, 5, 5, 5, 5, 5, 5], [5, 5, 5, 4, 5, 5, 5], [5, 5, 4, 4, 4, 5, 5], [5, 5, 5, 4, 5, 5, 5], [5, 5, 5, 5, 5, 5, 5], [5, 5, 5, 5, 5, 5, 5]]}
+    ]
+}
+
+for i, example in enumerate(task['train']):
+  print(f"Example {i+1}:")
+  analyze_example(np.array(example['input']), np.array(example['output']), transform(np.array(example['input'])))
+  print("-" * 40)
+```
+
+```
+Example 1:
+Input Grid:
+8888888888888888
+8888888888888888
+8888888888888888
+8888888888888888
+8888888888888888
+8888888888888888
+8888888488888888
+8888884448888888
+8888888488888888
+8888888888888888
+8888888888888888
+8888888888888888
+8888888888888888
+8888888888888888
+8888888888888888
+8888888888888888
+
+  Objects: {8: [[(0, 0), (0, 1), (0, 2), (0, 3), (0, 4), (0, 5), (0, 6), (0, 7), (0, 8), (0, 9), (0, 10), (0, 11), (0, 12), (0, 13), (0, 14), (0, 15), (1, 0), (1, 1), (1, 2), (1, 3), (1, 4), (1, 5), (1, 6), (1, 7), (1, 8), (1, 9), (1, 10), (1, 11), (1, 12), (1, 13), (1, 14), (1, 15), (2, 0), (2, 1), (2, 2), (2, 3), (2, 4), (2, 5), (2, 6), (2, 7), (2, 8), (2, 9), (2, 10), (2, 11), (2, 12), (2, 13), (2, 14), (2, 15), (3, 0), (3, 1), (3, 2), (3, 3), (3, 4), (3, 5), (3, 6), (3, 7), (3, 8), (3, 9), (3, 10), (3, 11), (3, 12), (3, 13), (3, 14), (3, 15), (4, 0), (4, 1), (4, 2), (4, 3), (4, 4), (4, 5), (4, 6), (4, 7), (4, 8), (4, 9), (4, 10), (4, 11), (4, 12), (4, 13), (4, 14), (4, 15), (5, 0), (5, 1), (5, 2), (5, 3), (5, 4), (5, 5), (5, 6), (5, 7), (5, 8), (5, 9), (5, 10), (5, 11), (5, 12), (5, 13), (5, 14), (5, 15), (6, 0), (6, 1), (6, 2), (6, 3), (6, 4), (6, 5), (6, 6), (6, 8), (6, 9), (6, 10), (6, 11), (6, 12), (6, 13), (6, 14), (6, 15), (7, 0), (7, 1), (7, 2), (7, 3), (7, 4), (7, 5), (7, 9), (7, 10), (7, 11), (7, 12), (7, 13), (7, 14), (7, 15), (8, 0), (8, 1), (8, 2), (8, 3), (8, 4), (8, 5), (8, 6), (8, 8), (8, 9), (8, 10), (8, 11), (8, 12), (8, 13), (8, 14), (8, 15), (9, 0), (9, 1), (9, 2), (9, 3), (9, 4), (9, 5), (9, 6), (9, 7), (9, 8), (9, 9), (9, 10), (9, 11), (9, 12), (9, 13), (9, 14), (9, 15), (10, 0), (10, 1), (10, 2), (10, 3), (10, 4), (10, 5), (10, 6), (10, 7), (10, 8), (10, 9), (10, 10), (10, 11), (10, 12), (10, 13), (10, 14), (10, 15), (11, 0), (11, 1), (11, 2), (11, 3), (11, 4), (11, 5), (11, 6), (11, 7), (11, 8), (11, 9), (11, 10), (11, 11), (11, 12), (11, 13), (11, 14), (11, 15), (12, 0), (12, 1), (12, 2), (12, 3), (12, 4), (12, 5), (12, 6), (12, 7), (12, 8), (12, 9), (12, 10), (12, 11), (12, 12), (12, 13), (12, 14), (12, 15), (13, 0), (13, 1), (13, 2), (13, 3), (13, 4), (13, 5), (13, 6), (13, 7), (13, 8), (13, 9), (13, 10), (13, 11), (13, 12), (13, 13), (13, 14), (13, 15), (14, 0), (14, 1), (14, 2), (14, 3), (14, 4), (14, 5), (14, 6), (14, 7), (14, 8), (14, 9), (14, 10), (14, 11), (14, 12), (14, 13), (14, 14), (14, 15), (15, 0), (15, 1), (15, 2), (15, 3), (15, 4), (15, 5), (15, 6), (15, 7), (15, 8), (15, 9), (15, 10), (15, 11), (15, 12), (15, 13), (15, 14), (15, 15)]], 4: [[(6, 7), (7, 6), (7, 7), (7, 8), (8, 7)]]}
+Expected Output:
+88888
+88488
+84448
+88488
+88888
+
+  Objects: {8: [[(0, 0), (0, 1), (0, 2), (0, 3), (0, 4), (1, 0), (1, 1), (1, 3), (1, 4), (2, 0), (2, 4), (3, 0), (3, 1), (3, 3), (3, 4), (4, 0), (4, 1), (4, 2), (4, 3), (4, 4)]], 4: [[(1, 2), (2, 1), (2, 2), (2, 3), (3, 2)]]}
+Result Output:
+88888
+88488
+84448
+88488
+88888
+
+  Objects: {8: [[(0, 0), (0, 1), (0, 2), (0, 3), (0, 4), (1, 0), (1, 1), (1, 3), (1, 4), (2, 0), (2, 4), (3, 0), (3, 1), (3, 3), (3, 4), (4, 0), (4, 1), (4, 2), (4, 3), (4, 4)]], 4: [[(1, 2), (2, 1), (2, 2), (2, 3), (3, 2)]]}
+Target Object (Yellow Plus) Height: 3, Width: 3
+Expected Output Height: 5, Width: 5
+Prediction Accuracy: 25/25 (100.00%)
+----------------------------------------
+Example 2:
+Input Grid:
+88888888888888
+88888888888888
+88888888888888
+88888888888888
+88888884888888
+88888844488888
+88888884888888
+88888888888888
+88888888888888
+88888888888888
+88888888888488
+88888888884448
+88888888888488
+88888888888888
+
+  Objects: {8: [[(0, 0), (0, 1), (0, 2), (0, 3), (0, 4), (0, 5), (0, 6), (0, 7), (0, 8), (0, 9), (0, 10), (0, 11), (0, 12), (0, 13), (1, 0), (1, 1), (1, 2), (1, 3), (1, 4), (1, 5), (1, 6), (1, 7), (1, 8), (1, 9), (1, 10), (1, 11), (1, 12), (1, 13), (2, 0), (2, 1), (2, 2), (2, 3), (2, 4), (2, 5), (2, 6), (2, 7), (2, 8), (2, 9), (2, 10), (2, 11), (2, 12), (2, 13), (3, 0), (3, 1), (3, 2), (3, 3), (3, 4), (3, 5), (3, 6), (3, 7), (3, 8), (3, 9), (3, 10), (3, 11), (3, 12), (3, 13), (4, 0), (4, 1), (4, 2), (4, 3), (4, 4), (4, 5), (4, 6), (4, 8), (4, 9), (4, 10), (4, 11), (4, 12), (4, 13), (5, 0), (5, 1), (5, 2), (5, 3), (5, 4), (5, 5), (5, 9), (5, 10), (5, 11), (5, 12), (5, 13), (6, 0), (6, 1), (6, 2), (6, 3), (6, 4), (6, 5), (6, 6), (6, 8), (6, 9), (6, 10), (6, 11), (6, 12), (6, 13), (7, 0), (7, 1), (7, 2), (7, 3), (7, 4), (7, 5), (7, 6), (7, 7), (7, 8), (7, 9), (7, 10), (7, 11), (7, 12), (7, 13), (8, 0), (8, 1), (8, 2), (8, 3), (8, 4), (8, 5), (8, 6), (8, 7), (8, 8), (8, 9), (8, 10), (8, 11), (8, 12), (8, 13), (9, 0), (9, 1), (9, 2), (9, 3), (9, 4), (9, 5), (9, 6), (9, 7), (9, 8), (9, 9), (9, 10), (9, 11), (9, 12), (9, 13), (10, 0), (10, 1), (10, 2), (10, 3), (10, 4), (10, 5), (10, 6), (10, 7), (10, 8), (10, 9), (10, 10), (10, 12), (10, 13), (11, 0), (11, 1), (11, 2), (11, 3), (11, 4), (11, 5), (11, 6), (11, 7), (11, 8), (11, 9), (11, 13), (12, 0), (12, 1), (12, 2), (12, 3), (12, 4), (12, 5), (12, 6), (12, 7), (12, 8), (12, 9), (12, 10), (12, 12), (12, 13), (13, 0), (13, 1), (13, 2), (13, 3), (13, 4), (13, 5), (13, 6), (13, 7), (13, 8), (13, 9), (13, 10), (13, 11), (13, 12), (13, 13)]], 4: [[(4, 7), (5, 6), (5, 7), (5, 8), (6, 7)], [(10, 11), (11, 10), (11, 11), (11, 12), (12, 11)]]}
+Expected Output:
+888888888
+888888888
+888888888
+888848888
+888444888
+888848888
+888888888
+888888888
+888888888
+
+  Objects: {8: [[(0, 0), (0, 1), (0, 2), (0, 3), (0, 4), (0, 5), (0, 6), (0, 7), (0, 8), (1, 0), (1, 1), (1, 2), (1, 3), (1, 4), (1, 5), (1, 6), (1, 7), (1, 8), (2, 
+**INSTRUCTIONS**
+
+- generate a Python module to represent the natural language program 
+- follow the template below
+- all common math and science libraries are available
+- create docstring only at top - but comment the workflow in the function
+- use helper functions for common operations like finding objects, counting,
+  measuring, moving, etc. 
+
+remember - we are working iteratively - so this code will inform your future
+self as we converge on the solution
+
+*template:*
+
+```python
+"""
+{{ natural language description of the transformation rule }}
+"""
+
+{{ imports }}
+
+def transform(input_grid):
+    # initialize output_grid
+
+    # change output pixels 
+
+    return output_grid
+
+```

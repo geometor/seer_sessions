@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\nThe transformation identifies objects of a specific color and combines or extracts them based on their spatial relationship.\n\n1.  **Identify Objects:** Find all contiguous regions (objects) of the same color, excluding color 0 (background).\n\n2.  **Color-Specific Rules:**\n    *   **If color 4 (yellow) is the only color present:** Reduce the height of the grid by 1, keeping the width the same. Fill the output grid with color 4.\n    *   **If color 1 (blue) is present and there are two 2x2 blue objects:** Output a single 2x2 grid filled with blue at position (0,0).\n    *   **If there are two blue 2x2 objects:** Create two 2x2 blue objects, and position with offset (0,0) and (0,3).\n    *   **If color 2 (red) is present:**\n        *   Combine any red objects that share the same top row or are adjacent into a single rectangular object.\n\n3.  **Default:** If no rules apply, no change (or return empty grid).\n\"\"\"\n\nimport numpy as np\n\ndef find_objects(grid):\n    \"\"\"\n    Identifies distinct objects in the grid.  An object is a group of\n    contiguous pixels of the same color.\n    Returns a list of objects, where each object is a dictionary\n    containing: color, and pixel coordinates.\n    \"\"\"\n    objects = []\n    visited = set()\n    rows, cols = len(grid), len(grid[0])\n\n    def is_valid(r, c):\n        return 0 <= r < rows and 0 <= c < cols\n\n    def dfs(r, c, color, obj_pixels):\n        if (r, c) in visited or not is_valid(r, c) or grid[r][c] != color:\n            return\n        visited.add((r, c))\n        obj_pixels.append((r, c))\n        for dr, dc in [(0, 1), (1, 0), (0, -1), (-1, 0)]:\n            dfs(r + dr, c + dc, color, obj_pixels)\n\n    for r in range(rows):\n        for c in range(cols):\n            color = grid[r][c]\n            if color != 0 and (r, c) not in visited:\n                obj_pixels = []\n                dfs(r, c, color, obj_pixels)\n                if obj_pixels:\n                    objects.append({\"color\": color, \"pixels\": obj_pixels})\n    return objects\n\ndef bounding_box(pixels):\n    \"\"\"\n    Calculates the smallest bounding box around a set of pixels.\n    \"\"\"\n    if not pixels:\n        return None\n    rows, cols = zip(*pixels)\n    min_row, max_row = min(rows), max(rows)\n    min_col, max_col = min(cols), max(cols)\n    return (min_row, min_col), (max_row, max_col)\n\ndef is_2x2_rectangle(obj):\n    \"\"\"Checks if an object is a 2x2 rectangle.\"\"\"\n    top_left, bottom_right = bounding_box(obj['pixels'])\n    if top_left is None or bottom_right is None:\n        return False\n    return (bottom_right[0] - top_left[0] == 1) and (bottom_right[1] - top_left[1] == 1)\n\ndef combine_objects(objects):\n    \"\"\"Combines list of objects of same color into one object.\"\"\"\n    if not objects:\n      return None\n\n    pixels = []\n    for obj in objects:\n      pixels.extend(obj['pixels'])\n    \n    color = objects[0]['color']\n\n    return {'color': color, 'pixels': pixels}\n\ndef transform(input_grid):\n    \"\"\"Transforms the input grid according to the rules described above.\"\"\"\n    input_grid = np.array(input_grid)\n    objects = find_objects(input_grid)\n    \n    # Color 4 (yellow) rule:\n    if len(objects) == 1 and objects[0]['color'] == 4:\n        height, width = input_grid.shape\n        output_grid = np.full((height - 1, width), 4, dtype=int)\n        return output_grid.tolist()\n\n    # Color 1 (blue) rules:\n    blue_objects = [obj for obj in objects if obj['color'] == 1]\n    if len(blue_objects) == 2:\n        all_2x2 = all(is_2x2_rectangle(obj) for obj in blue_objects)\n        if all_2x2:\n          # get top left coords\n          coords = []\n          for obj in blue_objects:\n              top_left, _ = bounding_box(obj['pixels'])\n              coords.append(top_left)\n          coords.sort()\n\n          output_grid = np.zeros((4,6), dtype=int)\n        \n          # recreate each object with offset\n          for i, (r,c) in enumerate(coords):\n              # top left at (0,0) and (0,3)\n              out_r = 0\n              out_c = i * 3\n              for dr in range(2):\n                  for dc in range(2):\n                    output_grid[out_r + dr, out_c + dc] = 1\n          return output_grid.tolist()\n            \n    # Color 2 (red) rule:\n    red_objects = [obj for obj in objects if obj['color'] == 2]\n    if red_objects:\n        combined_object = combine_objects(red_objects)\n        top_left, bottom_right = bounding_box(combined_object['pixels'])\n        min_row, min_col = top_left\n        max_row, max_col = bottom_right\n\n        # create output grid\n        width = max_col - min_col + 1\n        height = max_row - min_row + 1\n        output_grid = np.zeros((height, width), dtype=int)\n\n        # fill in pixels inside the bounding box,\n        for r, c in combined_object['pixels']:\n            output_grid[r-min_row, c-min_col] = 2\n        return output_grid.tolist()\n\n    # Default:\n    return input_grid.tolist()  # No change\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 6156,
+    "candidates_token_count": 1485,
+    "total_token_count": 7641,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.0-pro-exp-02-05",
+  "response_time": 11.465367,
+  "response_file": "026-response.json"
+}
