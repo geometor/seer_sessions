@@ -19,7 +19,7 @@ def analyze_sessions(sessions_root):
     """
 
     task_data = defaultdict(lambda: {"run_count": 0, "test_match_count": 0})
-    reports_root = Path("reports") #added for use later
+    reports_root = Path("../reports") #added for use later
 
     for session_date_path in sessions_root.iterdir():
         if not session_date_path.is_dir():
