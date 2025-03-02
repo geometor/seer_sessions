@@ -172,7 +172,7 @@ def analyze_sessions(sessions_root):
                                 average_percent_correct = (
                                     total_percent_correct / num_entries
                                 )
-                                if average_percent_correct > 95:
+                                if average_percent_correct > 95 and average_percent_correct < 100: # Modified condition
                                     # --- Report Generation (Close) ---
                                     report_dir = (
                                         reports_root
