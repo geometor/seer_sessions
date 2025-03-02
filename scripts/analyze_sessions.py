@@ -45,14 +45,14 @@ def analyze_sessions(sessions_root):
                                     # --- Report Generation (Solved) ---
                                     report_dir = reports_root / "solved" / task_id
                                     report_dir.mkdir(parents=True, exist_ok=True)
-                                    session_report_dir = report_dir / session_date_path.name  # Corrected: Separate session dir
+                                    session_report_dir = report_dir / session_date_path.name
                                     session_report_dir.mkdir(parents=True, exist_ok=True)
 
                                     # Find prefix:  "008-py_06-test.json" -> "008-"
                                     prefix = item.name.split("-")[0] + "-"
                                     # Create symlinks for matching files
                                     for file_to_copy in task_path.glob(f"{prefix}*"):
-                                        dest_path = session_report_dir / file_to_copy.name # Corrected: Use session dir
+                                        dest_path = session_report_dir / file_to_copy.name
                                         # Handle existing symlink
                                         if dest_path.exists() and dest_path.is_symlink():
                                             os.remove(dest_path)
@@ -65,7 +65,7 @@ def analyze_sessions(sessions_root):
                                     for task_file in ["task.png", "task.json"]:
                                         task_file_path = task_path / task_file
                                         if task_file_path.exists():
-                                            dest_path = report_dir / task_file  # Corrected: Link to task dir
+                                            dest_path = report_dir / task_file
                                             if dest_path.exists() and dest_path.is_symlink():
                                                 os.remove(dest_path)
                                             try:
@@ -79,13 +79,13 @@ def analyze_sessions(sessions_root):
                                     # --- Report Generation (Failed) ---
                                     report_dir = reports_root / "test_failed" / task_id
                                     report_dir.mkdir(parents=True, exist_ok=True)
-                                    session_report_dir = report_dir / session_date_path.name  # Corrected: Separate session dir
+                                    session_report_dir = report_dir / session_date_path.name
                                     session_report_dir.mkdir(parents=True, exist_ok=True)
 
                                     prefix = item.name.split("-")[0] + "-"
                                     # Create symlinks for matching files
                                     for file_to_copy in task_path.glob(f"{prefix}*"):
-                                        dest_path = session_report_dir / file_to_copy.name  # Corrected: Use session dir
+                                        dest_path = session_report_dir / file_to_copy.name
 
                                         # Handle existing symlink
                                         if dest_path.exists() and dest_path.is_symlink():
@@ -99,13 +99,46 @@ def analyze_sessions(sessions_root):
                                     for task_file in ["task.png", "task.json"]:
                                         task_file_path = task_path / task_file
                                         if task_file_path.exists():
-                                            dest_path = report_dir / task_file  # Corrected: Link to task dir
+                                            dest_path = report_dir / task_file
                                             if dest_path.exists() and dest_path.is_symlink():
                                                 os.remove(dest_path)
                                             try:
                                                 os.symlink(task_file_path.resolve(), dest_path)
                                             except OSError as e:
                                                 print(f"Error creating symlink for {task_file_path}: {e}")
+
+                    except (json.JSONDecodeError, OSError) as e:
+                        print(f"Error processing {item}: {e}")
+
+                elif item.name.endswith("train.json"):
+                    try:
+                        with open(item, "r") as tf:
+                            train_json = json.load(tf)
+                            total_percent_correct = 0
+                            num_entries = 0
+                            for train_row in train_json:
+                                if "percent_correct" in train_row:
+                                    total_percent_correct += train_row["percent_correct"]
+                                    num_entries += 1
+
+                            if num_entries > 0:
+                                average_percent_correct = total_percent_correct / num_entries
+                                if average_percent_correct > 90:
+                                    # --- Report Generation (Close) ---
+                                    report_dir = reports_root / "close" / task_id / session_date_path.name
+                                    report_dir.mkdir(parents=True, exist_ok=True)
+
+                                    # Find prefix: "008-py_06-train.json" -> "008-"
+                                    prefix = item.name.split("-")[0] + "-"
+                                    # Create symlinks for *train.json files and corresponding .py files
+                                    for file_to_copy in task_path.glob(f"{prefix}*"):
+                                      dest_path = report_dir / file_to_copy.name
+                                      if dest_path.exists() and dest_path.is_symlink():
+                                          os.remove(dest_path)
+                                      try:
+                                          os.symlink(file_to_copy.resolve(), dest_path)
+                                      except OSError as e:
+                                          print(f"Error creating symlink for {file_to_copy}: {e}")
 
                     except (json.JSONDecodeError, OSError) as e:
                         print(f"Error processing {item}: {e}")
