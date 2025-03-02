@@ -43,14 +43,16 @@ def analyze_sessions(sessions_root):
                                     task_info[task_id]["test_match_count"] += 1
 
                                     # --- Report Generation (Solved) ---
-                                    report_dir = reports_root / "solved" / task_id / session_date_path.name
+                                    report_dir = reports_root / "solved" / task_id
                                     report_dir.mkdir(parents=True, exist_ok=True)
+                                    session_report_dir = report_dir / session_date_path.name  # Corrected: Separate session dir
+                                    session_report_dir.mkdir(parents=True, exist_ok=True)
 
                                     # Find prefix:  "008-py_06-test.json" -> "008-"
                                     prefix = item.name.split("-")[0] + "-"
                                     # Create symlinks for matching files
                                     for file_to_copy in task_path.glob(f"{prefix}*"):
-                                        dest_path = report_dir / file_to_copy.name
+                                        dest_path = session_report_dir / file_to_copy.name # Corrected: Use session dir
                                         # Handle existing symlink
                                         if dest_path.exists() and dest_path.is_symlink():
                                             os.remove(dest_path)
@@ -63,7 +65,7 @@ def analyze_sessions(sessions_root):
                                     for task_file in ["task.png", "task.json"]:
                                         task_file_path = task_path / task_file
                                         if task_file_path.exists():
-                                            dest_path = report_dir / task_file
+                                            dest_path = report_dir / task_file  # Corrected: Link to task dir
                                             if dest_path.exists() and dest_path.is_symlink():
                                                 os.remove(dest_path)
                                             try:
@@ -75,12 +77,15 @@ def analyze_sessions(sessions_root):
                                     break  # Only count/copy one match per test file
                                 elif "match" in test_row and test_row.get("match") is False:
                                     # --- Report Generation (Failed) ---
-                                    report_dir = reports_root / "test_failed" / task_id / session_date_path.name
+                                    report_dir = reports_root / "test_failed" / task_id
                                     report_dir.mkdir(parents=True, exist_ok=True)
+                                    session_report_dir = report_dir / session_date_path.name  # Corrected: Separate session dir
+                                    session_report_dir.mkdir(parents=True, exist_ok=True)
+
                                     prefix = item.name.split("-")[0] + "-"
                                     # Create symlinks for matching files
                                     for file_to_copy in task_path.glob(f"{prefix}*"):
-                                        dest_path = report_dir / file_to_copy.name
+                                        dest_path = session_report_dir / file_to_copy.name  # Corrected: Use session dir
 
                                         # Handle existing symlink
                                         if dest_path.exists() and dest_path.is_symlink():
@@ -94,7 +99,7 @@ def analyze_sessions(sessions_root):
                                     for task_file in ["task.png", "task.json"]:
                                         task_file_path = task_path / task_file
                                         if task_file_path.exists():
-                                            dest_path = report_dir / task_file
+                                            dest_path = report_dir / task_file  # Corrected: Link to task dir
                                             if dest_path.exists() and dest_path.is_symlink():
                                                 os.remove(dest_path)
                                             try:
