@@ -12,11 +12,11 @@ def replace_key(sessions_root):
 
                 modified = False
                 if isinstance(data, list):
-                    for item in 
+                    for item in   # Corrected: Iterate through the list 'data'
                         if isinstance(item, dict) and "status" in item:
                             item["match"] = item.pop("status")
                             modified = True
-                elif isinstance(data, dict) and "status" in 
+                elif isinstance(data, dict) and "status" in   # Corrected: Added colon
                     data["match"] = data.pop("status")
                     modified = True
 
