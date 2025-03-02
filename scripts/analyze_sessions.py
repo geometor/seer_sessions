@@ -3,10 +3,12 @@ from collections import defaultdict
 from pathlib import Path
 from rich.console import Console
 from rich.table import Table
+import shutil  # Import shutil for file copying
 
 def analyze_sessions(sessions_root):
     """
-    Analyzes the sessions data to count task runs and check for test matches.
+    Analyzes the sessions data, counts task runs, checks for test matches,
+    and generates reports.
 
     Args:
         sessions_root: The root directory of the sessions (Path object).
@@ -17,6 +19,7 @@ def analyze_sessions(sessions_root):
     """
 
     task_data = defaultdict(lambda: {"run_count": 0, "test_match_count": 0})
+    reports_root = Path("reports") #added for use later
 
     for session_date_path in sessions_root.iterdir():
         if not session_date_path.is_dir():
@@ -37,7 +40,28 @@ def analyze_sessions(sessions_root):
                             for test_row in test_json:
                                 if "match" in test_row and test_row.get("match") is True:
                                     task_data[task_id]["test_match_count"] += 1
-                                    break  # Only count one match per test file
+
+                                    # --- Report Generation (Solved) ---
+                                    report_dir = reports_root / "solved" / task_id / session_date_path.name
+                                    report_dir.mkdir(parents=True, exist_ok=True)
+
+                                    # Find prefix:  "008-py_06-test.json" -> "008-"
+                                    prefix = item.name.split("-")[0] + "-"
+                                    # Copy matching files
+                                    for file_to_copy in task_path.glob(f"{prefix}*"):
+                                        shutil.copy(file_to_copy, report_dir / file_to_copy.name)
+
+                                    break  # Only count/copy one match per test file
+                                elif "match" in test_row and test_row.get("match") is False:
+                                     # --- Report Generation (Failed) ---
+                                    report_dir = reports_root / "test_failed" / task_id / session_date_path.name
+                                    report_dir.mkdir(parents=True, exist_ok=True)
+                                    prefix = item.name.split("-")[0] + "-"
+                                    # Copy matching files
+                                    for file_to_copy in task_path.glob(f"{prefix}*"):
+                                        shutil.copy(file_to_copy, report_dir / file_to_copy.name)
+
+
                     except (json.JSONDecodeError, OSError) as e:
                         print(f"Error processing {item}: {e}")
 
@@ -72,17 +96,17 @@ def main():
     # Summary Table
     total_unique_tasks = len(results)
     total_tasks_with_matches = sum(1 for _, data in results if data["test_match_count"] > 0)
-    if total_unique_tasks > 0:  # Avoid division by zero
+    if total_unique_tasks > 0:
         percent_solved = (total_tasks_with_matches / total_unique_tasks) * 100
     else:
-        percent_solved = 0.00  # Or any other suitable default value
+        percent_solved = 0.00
 
     summary_table = Table(title="Summary")
     summary_table.add_column("Metric", justify="left", style="cyan")
     summary_table.add_column("Value", justify="right", style="magenta")
     summary_table.add_row("Total Unique Tasks", str(total_unique_tasks))
     summary_table.add_row("Tasks with Test Matches", str(total_tasks_with_matches))
-    summary_table.add_row("Percent Solved", f"{percent_solved:.2f}%") # Formatted output
+    summary_table.add_row("Percent Solved", f"{percent_solved:.2f}%")
     console.print(summary_table)
 
 if __name__ == "__main__":
