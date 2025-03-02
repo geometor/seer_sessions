@@ -8,22 +8,22 @@ def replace_key(sessions_root):
     for json_file in sessions_root.glob("**/*.json"):
         try:
             with open(json_file, 'r+') as f:  # Open in read-write mode
-                data = json.load(f)
+                json_content = json.load(f)
 
                 modified = False
-                if isinstance(data, list):
-                    for item in   # Corrected: Iterate through the list 'data'
+                if isinstance(json_content, list):
+                    for item in json_content:  # Iterate through the list
                         if isinstance(item, dict) and "status" in item:
                             item["match"] = item.pop("status")
                             modified = True
-                elif isinstance(data, dict) and "status" in   # Corrected: Added colon
-                    data["match"] = data.pop("status")
+                elif isinstance(json_content, dict) and "status" in json_content:  # Added colon
+                    json_content["match"] = json_content.pop("status")
                     modified = True
 
                 if modified:
                     f.seek(0)  # Rewind to the beginning of the file
-                    json.dump(data, f, indent=4)  # Write the updated data
-                    f.truncate() #remove remaining part of old data
+                    json.dump(json_content, f, indent=4)  # Write the updated content
+                    f.truncate() #remove remaining part of old content
                     print(f"Updated: {json_file}")
 
         except (json.JSONDecodeError, OSError) as e:

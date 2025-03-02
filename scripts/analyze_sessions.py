@@ -8,7 +8,7 @@ import os  # Import the os module
 
 def analyze_sessions(sessions_root):
     """
-    Analyzes the sessions data, counts task runs, checks for test matches,
+    Analyzes the sessions, counts task runs, checks for test matches,
     and generates reports using symbolic links.
 
     Args:
@@ -19,7 +19,7 @@ def analyze_sessions(sessions_root):
         (task_id, run_count, test_match_count).
     """
 
-    task_data = defaultdict(lambda: {"run_count": 0, "test_match_count": 0})
+    task_info = defaultdict(lambda: {"run_count": 0, "test_match_count": 0})
     reports_root = Path("../reports")  # added for use later
 
     for session_date_path in sessions_root.iterdir():
@@ -31,7 +31,7 @@ def analyze_sessions(sessions_root):
                 continue
 
             task_id = task_path.name
-            task_data[task_id]["run_count"] += 1
+            task_info[task_id]["run_count"] += 1
 
             for item in task_path.iterdir():
                 if item.name.endswith("test.json"):
@@ -40,7 +40,7 @@ def analyze_sessions(sessions_root):
                             test_json = json.load(tf)
                             for test_row in test_json:
                                 if "match" in test_row and test_row.get("match") is True:
-                                    task_data[task_id]["test_match_count"] += 1
+                                    task_info[task_id]["test_match_count"] += 1
 
                                     # --- Report Generation (Solved) ---
                                     report_dir = reports_root / "solved" / task_id / session_date_path.name
@@ -81,11 +81,11 @@ def analyze_sessions(sessions_root):
                         print(f"Error processing {item}: {e}")
 
     # Sort by test_match_count (descending) and then by task_id (ascending)
-    sorted_data = sorted(
-        task_data.items(),
+    sorted_results = sorted(
+        task_info.items(),
         key=lambda item: (-item[1]["test_match_count"], item[0])
     )
-    return sorted_data
+    return sorted_results
 
 
 def main():
@@ -101,17 +101,17 @@ def main():
     table.add_column("Run Count", justify="right", style="magenta")
     table.add_column("Test Match Count", justify="right", style="green")
 
-    for task_id, data in results:
+    for task_id, info in results:
         table.add_row(
             str(task_id),
-            str(data["run_count"]),
-            str(data["test_match_count"]),
+            str(info["run_count"]),
+            str(info["test_match_count"]),
         )
     console.print(table)
 
     # Summary Table
     total_unique_tasks = len(results)
-    total_tasks_with_matches = sum(1 for _, data in results if data["test_match_count"] > 0)
+    total_tasks_with_matches = sum(1 for _, info in results if info["test_match_count"] > 0)
     if total_unique_tasks > 0:
         percent_solved = (total_tasks_with_matches / total_unique_tasks) * 100
     else:
