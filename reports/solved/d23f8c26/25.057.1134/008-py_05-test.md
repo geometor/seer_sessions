@@ -1,0 +1,1 @@
+/home/phi/PROJECTS/geometor/seer_sessions/sessions/25.057.1134/d23f8c26/008-py_05-test.md

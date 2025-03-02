@@ -1,0 +1,1 @@
+/home/phi/PROJECTS/geometor/seer_sessions/sessions/25.054.0546/3c9b0459/006-response.md

@@ -1,0 +1,1 @@
+/home/phi/PROJECTS/geometor/seer_sessions/sessions/25.054.0526/d037b0a7/004-py_02-train.md
