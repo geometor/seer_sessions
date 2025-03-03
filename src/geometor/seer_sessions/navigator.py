@@ -3,6 +3,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches  # Import patches
 from textual.app import App, ComposeResult
 from textual.widgets import Button
 from textual.widgets import Footer
@@ -103,16 +104,25 @@ class GridApp(App):
         pattern_func, pattern_name = self.patterns[pattern_key]
         # Generate the pattern data (an NxN RGB grid)
         data = pattern_func()  # call the function to get the pattern array
+        size = data.shape[0]
         # Clear the previous image on the axes
         self.ax.clear()
         # Display the new grid pattern
-        self.ax.imshow(data, interpolation='nearest', extent=[0, data.shape[1], data.shape[0], 0], edgecolor='black')
+        self.ax.imshow(data, interpolation='nearest', extent=[0, size, size, 0])
+
+        # Add black grid lines using Rectangle patches
+        for i in range(size + 1):
+            # Horizontal lines
+            self.ax.add_patch(patches.Rectangle((0, i), size, 0.05, facecolor='black'))
+            # Vertical lines
+            self.ax.add_patch(patches.Rectangle((i, 0), 0.05, size, facecolor='black'))
+
         # Adjust axes for better appearance
         self.ax.set_title(pattern_name, color='white') # Set title color
         self.ax.set_facecolor('black') # Set background to black
         self.ax.axis('off')  # hide the axes ticks/grid for a cleaner look
-        self.ax.set_xlim(0, data.shape[1])
-        self.ax.set_ylim(data.shape[0], 0)
+        self.ax.set_xlim(0, size)
+        self.ax.set_ylim(size, 0)
         # Force a redraw of the figure canvas to show the updated image
         self.fig.canvas.draw_idle()
         plt.pause(0.1)  # Add a short pause to allow Matplotlib to process events
