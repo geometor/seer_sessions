@@ -78,11 +78,12 @@ class GridApp(App):
         """Called when the app is mounted (initialized). Set up Matplotlib figure here."""
         # Initialize Matplotlib in interactive mode so updates don't block the app
         plt.ion()
+        # Configure Matplotlib to not show the toolbar
+        plt.rcParams['toolbar'] = 'None'
         # Create a Matplotlib figure and axes
         self.fig, self.ax = plt.subplots()
         self.fig.canvas.manager.set_window_title("Grid Pattern Viewer")
         self.fig.patch.set_facecolor('black')  # Set background to black
-        self.fig.canvas.manager.toolbar.setVisible(False) # Remove the toolbar
 
         # Optionally, display an initial pattern (e.g., the first pattern in the list)
         first_pattern_key = next(iter(self.patterns))
