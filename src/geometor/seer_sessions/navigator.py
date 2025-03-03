@@ -5,6 +5,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from textual.app import App, ComposeResult
 from textual.widgets import Button
+from textual.widgets import Footer
+from textual.containers import Horizontal
 
 # Define grid pattern generation functions
 def make_checkerboard(size=8):
@@ -25,7 +27,7 @@ def make_gradient(size=8):
     for i in range(size):
         for j in range(size):
             # Color components vary with position:
-            # R increases from left (0) to right (1), 
+            # R increases from left (0) to right (1),
             # G is fixed at 0.5 for a moderate green tint,
             # B increases from top (0) to bottom (1).
             r = j / (size - 1)
@@ -49,6 +51,9 @@ PATTERNS = {
 class GridApp(App):
     """Textual Application that displays buttons to select grid patterns and updates a Matplotlib plot."""
     CSS_PATH = None  # No external CSS, using default styling
+    BINDINGS = [
+        ("q", "quit", "Quit"),
+    ]
 
     def __init__(self, patterns: dict[str, tuple], **kwargs):
         """
@@ -62,10 +67,12 @@ class GridApp(App):
 
     def compose(self) -> ComposeResult:
         """Create the UI layout with one button per grid pattern."""
-        for key, (_, name) in self.patterns.items():
-            # Create a Button for each pattern. 
-            # The button's label is the pattern name, and the id is the pattern key.
-            yield Button(label=name, id=key)
+        with Horizontal():
+            for key, (_, name) in self.patterns.items():
+                # Create a Button for each pattern.
+                # The button's label is the pattern name, and the id is the pattern key.
+                yield Button(label=name, id=key)
+        yield Footer()
 
     def on_mount(self) -> None:
         """Called when the app is mounted (initialized). Set up Matplotlib figure here."""
@@ -74,11 +81,11 @@ class GridApp(App):
         # Create a Matplotlib figure and axes
         self.fig, self.ax = plt.subplots()
         self.fig.canvas.manager.set_window_title("Grid Pattern Viewer")
-        # Show the figure window without blocking the Textual app
-        plt.show(block=False)
+
         # Optionally, display an initial pattern (e.g., the first pattern in the list)
         first_pattern_key = next(iter(self.patterns))
         self.display_pattern(first_pattern_key)
+
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Event handler for button presses. Updates the Matplotlib plot based on which button was clicked."""
@@ -102,11 +109,14 @@ class GridApp(App):
         self.ax.axis('off')  # hide the axes ticks/grid for a cleaner look
         # Force a redraw of the figure canvas to show the updated image
         self.fig.canvas.draw_idle()
-        # (Alternatively, use self.fig.canvas.draw() to update immediately)
-        # Note: Since plt.ion() is enabled, draw_idle will schedule the draw without blocking.
+        plt.pause(0.1)  # Add a short pause to allow Matplotlib to process events
+
+    def on_unmount(self) -> None:
+        """Called when the app is unmounted. Close the Matplotlib plot."""
+        if self.fig:
+            plt.close(self.fig)
 
 if __name__ == "__main__":
     # Run the Textual application
     app = GridApp(PATTERNS)
     app.run()
-
