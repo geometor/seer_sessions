@@ -1,6 +1,3 @@
-# Filename: textual_matplotlib_grid.py
-# Description: A Textual app integrating with Matplotlib to display colored grid patterns on button clicks.
-
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches  # Import patches
