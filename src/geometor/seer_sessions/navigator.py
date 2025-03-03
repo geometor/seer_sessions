@@ -81,6 +81,8 @@ class GridApp(App):
         # Create a Matplotlib figure and axes
         self.fig, self.ax = plt.subplots()
         self.fig.canvas.manager.set_window_title("Grid Pattern Viewer")
+        self.fig.patch.set_facecolor('black')  # Set background to black
+        self.fig.canvas.manager.toolbar.setVisible(False) # Remove the toolbar
 
         # Optionally, display an initial pattern (e.g., the first pattern in the list)
         first_pattern_key = next(iter(self.patterns))
@@ -103,10 +105,13 @@ class GridApp(App):
         # Clear the previous image on the axes
         self.ax.clear()
         # Display the new grid pattern
-        self.ax.imshow(data, interpolation='nearest')
+        self.ax.imshow(data, interpolation='nearest', extent=[0, data.shape[1], data.shape[0], 0], edgecolor='black')
         # Adjust axes for better appearance
-        self.ax.set_title(pattern_name)
+        self.ax.set_title(pattern_name, color='white') # Set title color
+        self.ax.set_facecolor('black') # Set background to black
         self.ax.axis('off')  # hide the axes ticks/grid for a cleaner look
+        self.ax.set_xlim(0, data.shape[1])
+        self.ax.set_ylim(data.shape[0], 0)
         # Force a redraw of the figure canvas to show the updated image
         self.fig.canvas.draw_idle()
         plt.pause(0.1)  # Add a short pause to allow Matplotlib to process events
