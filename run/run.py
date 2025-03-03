@@ -14,8 +14,8 @@ def run():
     #  tasks = Tasks("one")
     #  tasks = Tasks("tasks/first-six")
     #  tasks = Tasks("44").get_ordered_tasks()
-    #  tasks = Tasks("tasks/ARC/training").get_ordered_tasks()
-    tasks = Tasks("tasks/ARC/training").get_ordered_by_train_count()
+    tasks = Tasks("tasks/ARC/training").get_ordered_tasks()
+    #  tasks = Tasks("tasks/ARC/training").get_ordered_by_train_count()
     #  tasks = Tasks("tasks/ARC/training")
     #  tasks = list(reversed(tasks))
     #  tasks = Tasks("other-six")
@@ -24,7 +24,7 @@ def run():
         config,
     )
 
-    seer.run(tasks[375:]) 
+    seer.run(tasks[0:1]) 
 
 
 if __name__ == "__main__":
