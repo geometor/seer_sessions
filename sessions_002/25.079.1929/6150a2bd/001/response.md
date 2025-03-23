@@ -1,0 +1,31 @@
+```python
+"""
+The input grid is rotated 90 degrees counter-clockwise and then flipped vertically. The values (colors) are preserved during the transformation.
+"""
+
+import numpy as np
+
+def transform(input_grid):
+    """
+    Transforms the input grid by rotating it 90 degrees counter-clockwise and then flipping it vertically.
+    
+    Args:
+        input_grid (list of lists): The input grid represented as a 2D list.
+    
+    Returns:
+        list of lists: The transformed grid.
+    """
+    # Convert the input grid to a NumPy array for easier manipulation
+    input_array = np.array(input_grid)
+
+    # Rotate the array 90 degrees counter-clockwise
+    rotated_array = np.rot90(input_array)
+
+    # Flip the array vertically
+    flipped_array = np.flipud(rotated_array)
+
+    # Convert the NumPy array back to a list of lists
+    output_grid = flipped_array.tolist()
+
+    return output_grid
+```
