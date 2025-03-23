@@ -20,7 +20,7 @@ def run():
 
     seer = Seer(config)
 
-    seer.run(tasks[0:5])
+    seer.run(tasks[0:50])
     #  seer.run(tasks)
 
 

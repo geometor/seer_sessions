@@ -14,7 +14,7 @@ def rename_summary_to_index(root_dir: str | Path):
 
     for dirpath, dirnames, filenames in os.walk(root_path):
         for filename in filenames:
-            if filename.endswith(".summary.json"):
+            if filename.endswith("summary.json"):
                 old_path = Path(dirpath) / filename
                 new_path = Path(dirpath) / "index.json"
 
