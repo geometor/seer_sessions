@@ -11,19 +11,18 @@ def run():
     with open(config_file, "r") as f:
         config = yaml.safe_load(f)
 
-    #  tasks = Tasks("one")
-    #  tasks = Tasks("first-six")
-    #  tasks = Tasks("44").get_ordered_tasks()
-    #  tasks = Tasks("other-six")
-    tasks = Tasks("ARC-800-tasks/training").get_ordered_tasks()
-    #  tasks = Tasks("../../_ConceptARC/corpus/AboveBelow")
-    #  tasks = reversed(tasks)
+    tasks = Tasks("../../_ARC-AGI-2/data/training")
+    #  tasks = Tasks("../../_ConceptARC/corpus/Copy")
+    #  tasks = Tasks("tasks/ARC/training").get_ordered_tasks()
+    #  tasks = Tasks("tasks/ARC/training").get_ordered_by_train_count()
+    #  tasks = list(reversed(tasks))
 
-    seer = Seer(
-        config,
-    )
+    tasks = tasks.get_ordered_tasks()
 
-    seer.run(tasks) 
+    seer = Seer(config)
+
+    seer.run(tasks[130:150])
+    #  seer.run(tasks)
 
 
 if __name__ == "__main__":

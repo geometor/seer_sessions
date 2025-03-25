@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\nThe transformation rule involves identifying \"seed\" objects (contiguous blocks of the same non-zero color)\nwithin each row of the input grid.  The transformation then proceeds row by row. If a row contains\nseed objects, it may undergo insertions of single pixels or sequences of pixels, based on the\nproperties of these seed objects (color, position).  If a row does *not* contain a seed object,\nit checks the row two positions above. If that row has a non-zero pixel, a copy of that pixel is\ninserted into the current row.\n\"\"\"\n\nimport numpy as np\n\ndef find_objects(row):\n    \"\"\"Finds contiguous objects (same-color blocks) in a row.\"\"\"\n    objects = []\n    if not row.any():  # All zeros, no objects\n        return objects\n\n    start = -1\n    for i, pixel in enumerate(row):\n        if pixel != 0:\n            if start == -1:\n                start = i\n        elif start != -1:\n            objects.append({\n                \"color\": row[start],\n                \"col_start\": start,\n                \"col_end\": i - 1,\n                \"length\": i - start\n            })\n            start = -1\n    # Handle object at the end of the row\n    if start != -1:\n        objects.append({\n            \"color\": row[start],\n            \"col_start\": start,\n            \"col_end\": len(row) - 1,\n            \"length\": len(row) - start\n        })\n    return objects\n\ndef transform(input_grid):\n    \"\"\"Transforms the input grid according to the identified rule.\"\"\"\n    input_grid = np.array(input_grid)\n    rows, cols = input_grid.shape\n    output_grid = np.copy(input_grid)  # Start with a copy\n\n    for r in range(rows):\n        input_row = input_grid[r]\n        objects = find_objects(input_row)\n        new_row = []\n\n        if objects:  # Row contains seed objects\n            \n            # first pass - find the objects\n            for obj in objects:\n                new_row.extend([obj['color']] * obj['length'])\n                # insert blocks\n                if obj['length'] > 1: # multiple elements\n                    for i in range(obj[\"length\"]):\n                        new_row.extend([obj['color']] * obj['length'])\n\n                # copy whole sequences of same color\n                if obj['color'] == input_row[obj['col_start']]:\n                    # check for sequence insertions\n                    for other_obj in objects:\n                        if other_obj['col_start'] > obj['col_end']: # object starts later in row\n                            # look at position before object\n                            if obj['col_end'] + 1 == other_obj['col_start']:\n                                new_row.extend([other_obj['color']] * other_obj['length'])\n            # second pass - fill in any gaps\n            final_row = []\n            in_idx = 0\n            for i in range(len(new_row)):\n                final_row.append(new_row[i])\n                if i < len(input_row) and in_idx < len(input_row) and new_row[i] == input_row[in_idx]:\n                    in_idx += 1\n                elif i < len(input_row) and in_idx < len(input_row) :\n                    # find any gaps\n                    obj_in_row = False\n                    for o in objects:\n                        if o['col_start'] <= in_idx and o['col_end'] >= in_idx:\n                            obj_in_row = True\n\n                    if not obj_in_row:\n                        #print(\"found gap\", r, in_idx)\n                        # look for objects to insert\n                        for o in objects:\n                            if o['col_end'] < in_idx:\n                                # check for adjacent pixels\n                                #print(\"checking gap\", r, o['col_end'], in_idx, input_row[o['col_end'] + 1])\n                                if o['col_end'] + 1 < len(input_row):\n                                    next_obj = find_objects(input_row[o['col_end'] + 1 :])[0]\n                                    final_row.extend([next_obj['color']] * next_obj['length'])\n\n\n            output_grid[r] = np.array(final_row[:cols])\n\n        else:  # Row does not contain seed objects, check two rows above\n            if r >= 2:\n                row_above = input_grid[r - 2]\n                objects_above = find_objects(row_above)\n                # find objects and insert single unit below\n                for obj in objects_above:\n                    # insert single element below\n                    output_grid[r-1, obj['col_start'] : obj['col_end']+1] = obj['color']\n\n    return output_grid.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 10374,
+    "candidates_token_count": 1150,
+    "total_token_count": 11524,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.0-pro-exp-02-05",
+  "response_time": 24.658648
+}

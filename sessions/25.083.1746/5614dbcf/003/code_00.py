@@ -1,0 +1,20 @@
+"""
+Divide the input grid into non-overlapping 3x3 blocks. For each block, select the color of the center pixel. Construct the output grid, placing each selected center pixel value in the corresponding position.
+"""
+
+import numpy as np
+
+def transform(input_grid):
+    # Initialize output_grid as a 3x3 numpy array, filled with zeros.
+    output_grid = np.zeros((3, 3), dtype=int)
+
+    # Iterate through the input grid in 3x3 blocks.
+    for i in range(0, input_grid.shape[0], 3):
+        for j in range(0, input_grid.shape[1], 3):
+            # Extract the color value of the center pixel (index 1,1 within the 3x3 block).
+            center_pixel_color = input_grid[i + 1, j + 1]
+
+            # Place the center pixel's color into the corresponding position in the output grid.
+            output_grid[i // 3, j // 3] = center_pixel_color
+
+    return output_grid

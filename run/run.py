@@ -11,17 +11,17 @@ def run():
     with open(config_file, "r") as f:
         config = yaml.safe_load(f)
 
-    #  tasks = Tasks("../../_arc-dataset-collection/dataset/Mini-ARC/data")
+    tasks = Tasks("../../_ARC-AGI-2/data/training")
     #  tasks = Tasks("../../_ConceptARC/corpus/Copy")
-    #  tasks = tasks.get_ordered_tasks()
-    tasks = Tasks("tasks/ARC/training").get_ordered_tasks()
+    #  tasks = Tasks("tasks/ARC/training").get_ordered_tasks()
     #  tasks = Tasks("tasks/ARC/training").get_ordered_by_train_count()
     #  tasks = list(reversed(tasks))
 
+    tasks = tasks.get_ordered_tasks()
+
     seer = Seer(config)
 
-    seer.run(tasks[0:50])
-    #  seer.run(tasks)
+    seer.run(tasks[110:130])
 
 
 if __name__ == "__main__":
