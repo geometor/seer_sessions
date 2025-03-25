@@ -1,0 +1,1 @@
+rows, cols = output_grid.shape

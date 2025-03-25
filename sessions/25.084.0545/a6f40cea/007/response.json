@@ -1,0 +1,38 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\nTransforms the input grid by identifying specific objects and representing them in the output grid.\nThe output grid represents a simplified version of selected objects based on height and spatial relationships,\nprimarily focusing on objects with a height of 1 and specific interactions between objects of mixed heights.\n\"\"\"\n\nimport numpy as np\n\ndef find_objects(grid, background_color):\n    \"\"\"\n    Finds contiguous regions of the same color (objects) in the grid.\n    \"\"\"\n    objects = {}\n    visited = set()\n    rows, cols = grid.shape\n\n    def get_neighbors(r, c):\n        neighbors = []\n        for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n            nr, nc = r + dr, c + dc\n            if 0 <= nr < rows and 0 <= nc < cols:\n                neighbors.append((nr, nc))\n        return neighbors\n\n    def dfs(r, c, color, object_coords):\n        if (r, c) in visited or grid[r, c] != color:\n            return\n        visited.add((r, c))\n        object_coords.append((r, c))\n        for nr, nc in get_neighbors(r, c):\n            dfs(nr, nc, color, object_coords)\n\n    for r in range(rows):\n        for c in range(cols):\n            color = grid[r, c]\n            if color != background_color and (r, c) not in visited:\n                object_coords = []\n                dfs(r, c, color, object_coords)\n                if color not in objects:\n                    objects[color] = []\n                objects[color].append(object_coords)\n    return objects\n\ndef get_bounding_box(coords):\n    \"\"\"\n    Returns the bounding box of a set of coordinates.\n    \"\"\"\n    if not coords:\n        return (0, 0), (0, 0)\n    min_r = min(r for r, c in coords)\n    max_r = max(r for r, c in coords)\n    min_c = min(c for r, c in coords)\n    max_c = max(c for r, c in coords)\n    return (min_r, min_c), (max_r, max_c)\n\ndef split_objects_by_intervening(objects, color):\n    \"\"\"\n    Splits objects of a given color into groups based on whether there are intervening objects.\n    \"\"\"\n    groups = []\n    current_group = []\n\n    sorted_objects = sorted(objects[color], key=lambda obj: get_bounding_box(obj)[0][1])  # Sort by min_col\n\n    for i, obj_coords in enumerate(sorted_objects):\n        if not current_group:\n            current_group.append(obj_coords)\n        else:\n            last_obj = current_group[-1]\n            (_, last_max_c) = get_bounding_box(last_obj)\n            (curr_min_r, curr_min_c), _ = get_bounding_box(obj_coords)\n\n            intervening = False\n            for other_color in objects:\n                if other_color != color:\n                    for other_obj in objects[other_color]:\n                        (_, other_min_c), (_, other_max_c) = get_bounding_box(other_obj)\n                        if last_max_c < other_min_c < curr_min_c :\n                            intervening = True\n                            break\n                    if intervening:\n                        break\n            \n            if intervening:\n                groups.append(current_group)\n                current_group = [obj_coords]\n            else:\n                current_group.append(obj_coords)\n    if current_group:\n      groups.append(current_group)\n\n    return groups\n\ndef transform(input_grid):\n    \"\"\"\n    Transforms the input grid based on identified objects and their properties. The output\n    represents selected objects, focusing on height-1 objects and interactions.\n    \"\"\"\n    grid = np.array(input_grid)\n    background_color = grid[0, 0]  # Assume top-left pixel is background\n\n    objects = find_objects(grid, background_color)\n    \n    selected_objects = {}\n\n    # Select height-1 objects, if all objects of that color are height-1\n    for color in list(objects.keys()):\n        all_height_one = True\n        for obj_coords in objects[color]:\n            (min_r, _), (max_r, _) = get_bounding_box(obj_coords)\n            if max_r - min_r != 0:\n                all_height_one = False\n                break\n        if all_height_one:\n          selected_objects[color] = objects.pop(color)\n\n    # Handle mixed height\n    for color in list(objects.keys()):\n          object_groups = split_objects_by_intervening(objects, color)          \n          selected_objects[color] = []\n          for group in object_groups:\n            if group:\n              selected_objects[color].append(group[0]) # top\n            if len(group) > 1:\n              selected_objects[color].append(group[-1]) # bottom\n\n\n    # determine output grid\n    output_width = 0\n    output_height = 0\n\n    for color in selected_objects:\n        for obj_coords in selected_objects[color]:\n           (_,min_c), (_, max_c) = get_bounding_box(obj_coords)\n           width = max_c - min_c + 1\n\n           (min_r, _), (max_r, _) = get_bounding_box(obj_coords)\n           height = max_r - min_r + 1\n\n           if height == 1:\n              output_width += 2  # two spaces per\n              output_height = max(output_height, len(selected_objects[color]) ) # take the biggest\n           else:\n              output_width += width\n              output_height = max(output_height, height)\n    \n    output_grid = np.full((output_height, output_width), background_color, dtype=int)\n   \n    # output objects\n    col_offset = 0\n\n    for color in sorted(selected_objects.keys()):\n      for obj_coords in selected_objects[color]:\n          (min_r, min_c), (max_r, max_c) = get_bounding_box(obj_coords)\n          height = max_r - min_r + 1\n          width = max_c - min_c + 1\n\n          if height == 1:\n            # create 2x1 area, place at row, col offset\n            if 0 < output_grid.shape[0] and col_offset < output_grid.shape[1]:\n              output_grid[0 : min(2, output_grid.shape[0]), col_offset:col_offset+2] = color\n            col_offset += 2\n          else:\n             # output top row\n            for c in range(width):\n              if 0 < output_grid.shape[0] and c + col_offset < output_grid.shape[1]:\n                output_grid[0, c + col_offset] = grid[min_r, min_c + c]\n\n            # output the bottom, conditionally, based on height\n            if height > 1:\n                bottom_row_index = min(height -1, output_grid.shape[0]-1) # ensure within output bounds\n                for c in range(width):                \n                    if bottom_row_index < output_grid.shape[0] and c + col_offset < output_grid.shape[1]:\n                      output_grid[bottom_row_index, c + col_offset] = grid[max_r, min_c + c]\n\n            col_offset += width\n    return output_grid.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "citation_metadata": {
+        "citation_sources": [
+          {
+            "start_index": 1631,
+            "end_index": 1796,
+            "uri": "https://github.com/Rijgersberg/advent-of-code-2020",
+            "license_": ""
+          }
+        ]
+      },
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 21849,
+    "candidates_token_count": 1845,
+    "total_token_count": 23694,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.0-pro-exp-02-05",
+  "response_time": 31.94117
+}

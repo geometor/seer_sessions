@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\nThe transformation identifies key objects within the input grid, extracts them, and represents them in a compressed form in the output grid. The key objects are determined by containment relationships: objects contained within other objects are prioritized. The output grid's size is determined by the bounding box of the extracted objects, and their relative positions within that bounding box are preserved.\n\"\"\"\n\nimport numpy as np\n\ndef find_objects(grid):\n    \"\"\"\n    Finds contiguous regions of the same color in a grid.\n    Returns a list of objects, where each object is a list of (row, col) coordinates.\n    \"\"\"\n    objects = []\n    visited = set()\n    rows, cols = grid.shape\n\n    def dfs(row, col, color, obj):\n        if (row, col) in visited or not (0 <= row < rows and 0 <= col < cols) or grid[row, col] != color:\n            return\n        visited.add((row, col))\n        obj.append((row, col))\n        dfs(row + 1, col, color, obj)\n        dfs(row - 1, col, color, obj)\n        dfs(row, col + 1, color, obj)\n        dfs(row, col - 1, color, obj)\n\n    for row in range(rows):\n        for col in range(cols):\n            if (row, col) not in visited:\n                color = grid[row, col]\n                obj = []\n                dfs(row, col, color, obj)\n                if obj:\n                    objects.append((color, obj))\n    return objects\n\ndef get_bounding_box(obj):\n    \"\"\"\n    Returns the bounding box of an object (list of coordinates).\n    \"\"\"\n    min_row = min(coord[0] for coord in obj)\n    max_row = max(coord[0] for coord in obj)\n    min_col = min(coord[1] for coord in obj)\n    max_col = max(coord[1] for coord in obj)\n    return (min_row, min_col, max_row, max_col)\n\ndef is_contained(inner_obj, outer_obj):\n    \"\"\"\n    Checks if inner_obj is contained within outer_obj.\n    \"\"\"\n    inner_min_row, inner_min_col, inner_max_row, inner_max_col = get_bounding_box(inner_obj)\n    outer_min_row, outer_min_col, outer_max_row, outer_max_col = get_bounding_box(outer_obj)\n\n    return (outer_min_row <= inner_min_row and outer_min_col <= inner_min_col and\n            outer_max_row >= inner_max_row and outer_max_col >= inner_max_col)\n\ndef transform(input_grid):\n    input_grid = np.array(input_grid)\n    objects = find_objects(input_grid)\n\n    target_objects = []\n\n    # Find contained objects\n    for color1, obj1 in objects:\n        for color2, obj2 in objects:\n            if obj1 != obj2 and is_contained(obj1, obj2):\n                target_objects.append((color1,obj1))\n\n    #if no contained objects found, try finding containing objects and using contained objects\n    if not target_objects:\n        for color1, obj1 in objects:\n            contained = False\n            for color2, obj2 in objects:\n                if obj1!=obj2 and is_contained(obj2, obj1):\n                    contained=True\n                    break;\n            if contained:\n                for color2, obj2 in objects:\n                    if obj1!=obj2 and is_contained(obj2, obj1):\n                         target_objects.append((color2,obj2))\n\n\n\n    #if still no target objects, return empty array\n    if not target_objects:\n      return np.array([]).tolist()\n\n    # Combine target object coordinates for bounding box calculation\n    combined_coords = []\n    for _, obj_coords in target_objects:\n        combined_coords.extend(obj_coords)\n\n\n    #find minimum bounding box.\n    min_row, min_col, max_row, max_col = get_bounding_box(combined_coords)\n    output_grid = np.zeros((max_row - min_row + 1, max_col - min_col + 1), dtype=int)\n\n    # Draw target objects onto output grid\n    for color, obj_coords in target_objects:\n      for row, col in obj_coords:\n          output_grid[row - min_row, col - min_col] = color\n\n\n    return output_grid.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 15651,
+    "candidates_token_count": 1077,
+    "total_token_count": 16728,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.0-pro-exp-02-05",
+  "response_time": 12.182094
+}

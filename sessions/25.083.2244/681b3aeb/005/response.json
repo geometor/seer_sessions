@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\n1.  **Identify Objects:** Find all contiguous blocks of non-zero pixels. Each block is an object.\n2.  **Object Properties:** Determine the shape and color of each object.\n3.  **Tiling:** The transformation involves arranging the objects in a tiled manner to create the output grid. Objects are arranged without overlapping, like puzzle pieces. The target grid dimension is 3x3 for all training examples.\n4. Determine the object that goes on the top left: The object with most number of pixels gets placed on the top-left of the grid.\n5. Place remaining objects: For each remaining object, iterate over their pixels, and fill them to the output grid at the corresponding indexes. If the index does not exist, extend the output grid.\n\"\"\"\n\nimport numpy as np\n\ndef find_objects(grid):\n    \"\"\"\n    Identifies contiguous blocks of non-zero pixels as objects.\n    \"\"\"\n    objects = []\n    visited = np.zeros_like(grid, dtype=bool)\n\n    def dfs(row, col, color, obj_pixels):\n        if (row < 0 or row >= grid.shape[0] or col < 0 or col >= grid.shape[1] or\n                visited[row, col] or grid[row, col] != color):\n            return\n        visited[row, col] = True\n        obj_pixels.append((row, col))\n        dfs(row + 1, col, color, obj_pixels)\n        dfs(row - 1, col, color, obj_pixels)\n        dfs(row, col + 1, color, obj_pixels)\n        dfs(row, col - 1, color, obj_pixels)\n\n    for row in range(grid.shape[0]):\n        for col in range(grid.shape[1]):\n            if grid[row, col] != 0 and not visited[row, col]:\n                obj_pixels = []\n                dfs(row, col, grid[row, col], obj_pixels)\n                objects.append(obj_pixels)\n    return objects\n\ndef get_object_shape(grid, obj_pixels):\n    rows, cols = zip(*obj_pixels)\n    min_row, max_row = min(rows), max(rows)\n    min_col, max_col = min(cols), max(cols)\n    shape = []\n    for r in range(min_row, max_row + 1):\n        row_shape = []\n        for c in range(min_col, max_col + 1):\n            if (r, c) in obj_pixels:\n                row_shape.append(grid[r,c])\n            else:\n                row_shape.append(0)\n        shape.append(row_shape)\n\n    return np.array(shape)\n\ndef transform(input_grid):\n    # Find objects\n    objects = find_objects(input_grid)\n\n    # Group objects by shape and color\n    patterns = {}\n    for obj_pixels in objects:\n        shape = get_object_shape(input_grid, obj_pixels).tolist()\n        color = input_grid[obj_pixels[0]]\n        key = (tuple(map(tuple, shape)), color)  # Convert shape to tuple of tuples\n        if key not in patterns:\n            patterns[key] = []\n        patterns[key].append(obj_pixels)\n\n    # Sort the objects, such the largest object comes first\n    sorted_patterns = sorted(patterns.items(), key=lambda item: (len(item[1]), -len(item[0][0])), reverse=True )\n\n    # initialize the output grid with the first pattern\n    (shape, color), _ = sorted_patterns[0]\n    output_grid = np.array(shape)\n\n    # iterate through the rest of the patterns to tile\n    for (shape, color), _ in sorted_patterns[1:]:\n        pattern = np.array(shape)\n        rows, cols = pattern.shape\n\n        # Create a new grid that can accommodate both.\n        new_rows = max(output_grid.shape[0], rows)\n        new_cols = max(output_grid.shape[1], cols)\n        new_grid = np.zeros((new_rows, new_cols), dtype=int)\n\n        # Copy the existing output grid\n        for r in range(output_grid.shape[0]):\n          for c in range(output_grid.shape[1]):\n            new_grid[r,c] = output_grid[r,c]\n\n        # Add new shape\n        for r in range(rows):\n            for c in range(cols):\n                if pattern[r,c] != 0:\n                  new_grid[r,c] = pattern[r,c]\n        output_grid = new_grid\n\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 3963,
+    "candidates_token_count": 1100,
+    "total_token_count": 5063,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.0-pro-exp-02-05",
+  "response_time": 17.835859
+}

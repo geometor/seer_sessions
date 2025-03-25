@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\n1.  **Identify Regions:** Find all contiguous colored regions (non-azure pixels) in the input grid. Each region is defined by the (row, column) coordinates of its pixels and its color.\n\n2.  **Check for Top Empty Rows:** For each region, check if its *topmost* row in the original input grid is composed entirely of azure pixels.\n\n3.  **Stack All Regions:** Stack *all* regions, preserving their shapes. The stacking order is determined by the regions' original vertical positions (topmost regions go first). Regions whose topmost row was empty in the input grid are *not* moved from their original positions.\n    - The stacking occurs from the top of the grid downwards.\n\n4. **Output:** Generate the output grid by keeping the regions at original position (from step 2) and by placing the shifted/combined regions from step 3. The azure background remains unchanged.\n\"\"\"\n\nimport numpy as np\n\ndef get_colored_regions(grid):\n    \"\"\"\n    Identifies and returns a list of colored regions (non-azure pixels).\n    Each region is a list of (row, col) tuples.\n    \"\"\"\n    regions = []\n    visited = set()\n    rows, cols = grid.shape\n\n    def _dfs(row, col, current_region, color):\n        if (row, col) in visited or not (0 <= row < rows and 0 <= col < cols) or grid[row, col] != color:\n            return\n        visited.add((row, col))\n        current_region.append((row, col))\n        for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n            _dfs(row + dr, col + dc, current_region, color)\n\n    for row in range(rows):\n        for col in range(cols):\n            if grid[row, col] != 8 and (row, col) not in visited:\n                current_region = []\n                _dfs(row, col, current_region, grid[row, col])\n                regions.append((current_region, grid[row,col])) # Store color with region\n    return regions\n\ndef is_top_row_empty(grid, region, exclude_color=8):\n    \"\"\"Checks if the topmost row of a region contains only the exclude_color.\"\"\"\n    top_row = min(r for r, _ in region)\n    for c in range(grid.shape[1]):\n      if (top_row, c) in region and grid[top_row,c] != exclude_color:\n          return False\n    return True\n\ndef stack_regions(regions, grid_shape):\n    \"\"\"Stacks regions, preserving shape, based on original vertical order.\"\"\"\n    output_grid = np.full(grid_shape, 8, dtype=int)  # Initialize with azure\n    current_row = 0\n    # sort by the lowest row number (topmost)\n    sorted_regions = sorted(regions, key=lambda x: min(r for r, _ in x[0]))\n\n    for region, color in sorted_regions:\n        region_coords, _ = region\n        top_row = min(r for r,_ in region_coords)\n        region_height = max(r for r, _ in region_coords) - top_row + 1\n\n        if not is_top_row_empty(np.array(grid_shape), region_coords): # use original grid\n\n            # Calculate offset for this region to stack correctly\n            row_offset = current_row - top_row\n\n            for row, col in region_coords:\n                new_row = row + row_offset\n                if new_row < grid_shape[0]: # boundary check\n                    output_grid[new_row, col] = color\n\n            current_row += region_height\n        else: # keep in original place\n           for row, col in region_coords:\n                output_grid[row, col] = color\n\n    return output_grid\n\n\ndef transform(input_grid):\n    \"\"\"\n    Transforms the input grid according to the observed rules.\n    \"\"\"\n    grid = np.array(input_grid)\n    rows, cols = grid.shape\n\n    # 1. Identify colored regions\n    regions = get_colored_regions(grid)\n\n    # 2 & 3. Stack all regions\n    output_grid = stack_regions(regions, grid.shape)\n\n    return output_grid.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 11135,
+    "candidates_token_count": 1011,
+    "total_token_count": 12146,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.0-pro-exp-02-05",
+  "response_time": 16.408637
+}

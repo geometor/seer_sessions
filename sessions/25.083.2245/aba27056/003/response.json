@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\nTransforms an input grid by identifying a contiguous region of non-zero color and creating a yellow (color 4) outline around it. The outline is placed on '0' (white) cells that are directly adjacent to the target region, but *not* enclosed within the target region. Areas of '0' that are completely enclosed by the target region are also filled with yellow (color 4).\n\"\"\"\n\nimport numpy as np\n\ndef find_target_region(grid):\n    \"\"\"\n    Finds the contiguous region of non-zero color in the input grid.\n    Assumes there's only one such region, and returns after finding first.\n    \"\"\"\n    rows, cols = grid.shape\n    target_color = 0\n    for r in range(rows):\n        for c in range(cols):\n            if grid[r, c] != 0:\n                target_color = grid[r, c]\n                break\n        if target_color != 0:\n            break\n\n    if target_color == 0:\n        return [], target_color  # No target region found\n\n    visited = np.zeros_like(grid, dtype=bool)\n    target_region = []\n\n    def dfs(row, col):\n        if (row < 0 or row >= rows or col < 0 or col >= cols or\n                visited[row, col] or grid[row, col] != target_color):\n            return\n        visited[row, col] = True\n        target_region.append((row, col))\n        dfs(row + 1, col)\n        dfs(row - 1, col)\n        dfs(row, col + 1)\n        dfs(row, col - 1)\n\n    for r in range(rows):\n        for c in range(cols):\n            if grid[r,c] == target_color:\n               dfs(r,c)\n               return target_region, target_color # return after finding first region\n\n    return [], target_color\n\ndef is_internal_zero(grid, row, col, target_region):\n    \"\"\"\n    Checks if a '0' cell is an internal zero.\n    \"\"\"\n    rows, cols = grid.shape\n    \n    for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n        nr, nc = row + dr, col + dc\n        if not (0 <= nr < rows and 0 <= nc < cols):\n            continue  # grid boundary is ok\n        if (nr, nc) not in target_region and grid[nr,nc] != 0:\n            return False # if any neighbor is not 0 or part of shape, then not internal\n    return True\n    \n\ndef get_enclosed_zeros(grid, target_region):\n    \"\"\"\n    Finds '0' cells that are completely enclosed by the target region.\n    \"\"\"\n    rows, cols = grid.shape\n    enclosed_zeros = []\n    visited = np.zeros_like(grid, dtype=bool)\n\n    def dfs(row, col):\n        if (row < 0 or row >= rows or col < 0 or col >= cols or\n                visited[row, col] or (row, col) in target_region):\n            return\n\n        if grid[row,col] != 0:\n            return\n\n        visited[row, col] = True\n        enclosed_zeros.append((row,col))\n        \n        dfs(row + 1, col)\n        dfs(row - 1, col)\n        dfs(row, col + 1)\n        dfs(row, col - 1)\n\n    for r in range(rows):\n        for c in range(cols):\n            if grid[r,c] == 0 and not (r,c) in enclosed_zeros:\n                # flood fill to see if it reaches the edge\n                temp_visited = np.zeros_like(grid,dtype=bool)\n                stack = [(r,c)]\n                edge_reached = False\n                \n                while stack:\n                    cr, cc = stack.pop()\n                    if not (0 <= cr < rows and 0 <= cc < cols):\n                        edge_reached = True\n                        break\n                    if temp_visited[cr,cc] or (cr,cc) in target_region or grid[cr,cc] != 0:\n                        continue\n                    \n                    temp_visited[cr,cc] = True\n                    for dr, dc in [(0,1),(0,-1),(1,0),(-1,0)]:\n                        stack.append( (cr+dr, cc+dc) )\n                if not edge_reached: # only enclosed zeros\n                    dfs(r,c)\n\n    return enclosed_zeros\n    \n\ndef transform(input_grid):\n    \"\"\"\n    Transforms the input grid according to the identified rule.\n    \"\"\"\n    grid = np.array(input_grid)  # Convert to NumPy array\n    rows, cols = grid.shape\n    output_grid = grid.copy()\n\n    # 1. Identify Target Region\n    target_region, target_color = find_target_region(grid)\n\n    if not target_region:\n        return output_grid.tolist()  # No target, return original\n\n    # 2. Create Outline\n    for r in range(rows):\n        for c in range(cols):\n            if grid[r, c] == 0:  # Check if it's a white pixel\n                is_adjacent = False\n                for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n                    nr, nc = r + dr, c + dc\n                    if (nr, nc) in target_region:\n                        is_adjacent = True\n                        break\n                if is_adjacent and not is_internal_zero(grid, r, c, target_region):\n                    output_grid[r, c] = 4  # Change to yellow\n\n    # 3. Fill Enclosed Areas\n    enclosed_zeros = get_enclosed_zeros(grid, target_region)  # Use original grid\n    for r, c in enclosed_zeros:\n        output_grid[r, c] = 4  # Change enclosed '0's to yellow\n\n    return output_grid.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 4874,
+    "candidates_token_count": 1438,
+    "total_token_count": 6312,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.0-pro-exp-02-05",
+  "response_time": 18.934594
+}

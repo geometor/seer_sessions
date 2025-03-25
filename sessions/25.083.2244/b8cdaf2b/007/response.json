@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\n1.  **Identify Objects:**\n    *   Object 1: The lowest row of the input grid containing non-zero values.\n    *   Object 2: The contiguous block of pixels *above* Object 1, connected to\n        object 1, that is a different color than any color in object 1.\n\n2.  **Find the edge colors**:\n    * The left-most and right-most colors of object one.\n\n3.  **Propagate Edge Colors:**\n    * For each pixel along the edges of the grid containing the edge colors,\n      propagate this color vertically upwards into Object 2, replacing any\n      connected pixels of the same color *until* a different color or an empty\n      cell is encountered.\n\n4.  **Fill Between Edges**:\n    * Find the Object 2 pixels between the two propagated edge colors. Replace\n      these pixels by alternating the colors present at the border between the\n      bottom-most row of object 2 and object 1. Start with the color from the left.\n\n5.  **Preserve Other Pixels:** All other pixels in the grid retain their original values.\n\n6.  **Output:** Return the modified grid.\n\"\"\"\n\nimport numpy as np\n\ndef find_objects(grid):\n    # Find the lowest row with non-zero values\n    non_zero_rows = np.where(np.any(grid != 0, axis=1))[0]\n    if not non_zero_rows.size:\n        return [], []\n\n    last_row_index = non_zero_rows[-1]\n    last_row = grid[last_row_index]\n    object1_coords = [(last_row_index, c) for c, value in enumerate(last_row) if value != 0]\n    if not object1_coords:\n        return [],[]\n    object1_colors = set([grid[r,c] for r,c in object1_coords])\n\n    object2_coords = []\n    for r in range(last_row_index):\n        for c in range(grid.shape[1]):\n          if grid[r,c] != 0 and grid[r,c] not in object1_colors:\n            object2_coords.append((r,c))\n    \n    #remove object 2 coordinates not connected\n    if len(object2_coords) > 0:\n        connected_object2 = []\n        \n        def is_connected(coord):\n          r,c = coord\n          if (r+1, c) in object1_coords:\n            return True\n          neighbors = [(r-1,c),(r+1,c),(r,c-1),(r,c+1)]\n          for nr, nc in neighbors:\n              if 0 <= nr < grid.shape[0] and 0 <= nc < grid.shape[1]:\n                  if (nr,nc) in object2_coords:\n                    return True\n          return False\n        \n        for r,c in object2_coords:\n            if is_connected((r,c)):\n                connected_object2.append((r,c))\n        object2_coords = connected_object2\n\n    return object1_coords, object2_coords\n\ndef get_edge_colors(grid, object1_coords):\n    if not object1_coords:\n        return None, None\n    \n    # Sort by column index to find leftmost and rightmost\n    sorted_coords = sorted(object1_coords, key=lambda x: x[1])\n    leftmost_color = grid[sorted_coords[0]]\n    rightmost_color = grid[sorted_coords[-1]]\n    return leftmost_color, rightmost_color\n\ndef propagate_edge_colors(grid, object1_coords, object2_coords):\n    \n    leftmost_color, rightmost_color = get_edge_colors(grid, object1_coords)\n    \n    if leftmost_color is not None:\n      #find leftmost edge column:\n      left_col = [c for r,c in object1_coords if grid[r,c] == leftmost_color][0]\n\n      #propagate up\n      for r in range(object1_coords[0][0] -1, -1, -1):\n          if grid[r, left_col] != 0:\n            grid[r, left_col] = leftmost_color\n          else:\n            break\n    \n    if rightmost_color is not None:\n      #find leftmost edge column:\n      right_col = [c for r,c in object1_coords if grid[r,c] == rightmost_color][-1]\n      #propagate up\n      for r in range(object1_coords[0][0] -1, -1, -1):\n        if grid[r, right_col] != 0:\n            grid[r, right_col] = rightmost_color\n        else:\n            break\n      \n    return grid\n\ndef fill_between_edges(grid, object1_coords, object2_coords):\n    if not object1_coords or not object2_coords:\n      return grid\n    \n    leftmost_color, rightmost_color = get_edge_colors(grid, object1_coords)\n    left_col = min(c for r, c in object1_coords)\n    right_col = max(c for r, c in object1_coords)\n\n    object1_row = object1_coords[0][0]\n    \n    \n    for r in range(object1_row - 1, -1, -1):  # Iterate upwards from object1\n      alternate = True\n      for c in range(left_col + 1, right_col):\n          if (r,c) in object2_coords or grid[r,c] != 0:\n              if alternate:\n                  grid[r, c] = leftmost_color\n              else:\n                  grid[r, c] = rightmost_color\n              alternate = not alternate\n\n\n    return grid\n\n\ndef transform(input_grid):\n    # initialize output_grid\n    output_grid = np.copy(input_grid)\n    input_grid_np = np.array(input_grid)\n\n    # Find objects\n    object1_coords, object2_coords = find_objects(input_grid_np)\n\n    #get edge colors\n    output_grid = propagate_edge_colors(output_grid, object1_coords, object2_coords)\n\n    # fill between edges\n    output_grid = fill_between_edges(output_grid, object1_coords, object2_coords)\n\n    return output_grid.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 4037,
+    "candidates_token_count": 1518,
+    "total_token_count": 5555,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.0-pro-exp-02-05",
+  "response_time": 16.67098
+}

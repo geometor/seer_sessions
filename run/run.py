@@ -11,7 +11,8 @@ def run():
     with open(config_file, "r") as f:
         config = yaml.safe_load(f)
 
-    tasks = Tasks("../../_ARC-AGI-2/data/training")
+    #  tasks = Tasks("../../_ARC-AGI-2/data/training")
+    tasks = Tasks("../../_ARC-AGI-2/data/evaluation")
     #  tasks = Tasks("../../_ConceptARC/corpus/Copy")
     #  tasks = Tasks("tasks/ARC/training").get_ordered_tasks()
     #  tasks = Tasks("tasks/ARC/training").get_ordered_by_train_count()
@@ -21,7 +22,7 @@ def run():
 
     seer = Seer(config)
 
-    seer.run(tasks[110:130])
+    seer.run(tasks[60:120])
 
 
 if __name__ == "__main__":

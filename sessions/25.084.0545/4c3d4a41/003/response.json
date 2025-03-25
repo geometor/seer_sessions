@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\n1.  **Identify the Boundary:** Find the top horizontal gray (5) line.  Find the bottom irregular gray (5) shape. Together, these define the operational boundaries for each column.\n2.  **Identify Objects:** Within the boundary, identify all distinct objects. An object is a contiguous group of pixels of the same color (excluding white and gray).\n3.  **Shift Objects Left:** For each identified object:\n    *   Determine the object's row.\n    *   Determine the leftmost available position within that row, bounded by the gray boundary and other non-gray objects and move the object there.\n    * Do not change shape.\n\"\"\"\n\nimport numpy as np\n\ndef find_boundary_rows(grid):\n    # Find the row index of the top horizontal gray line.\n    top_row = -1\n    for i, row in enumerate(grid):\n        if all(pixel == 5 for pixel in row):\n            top_row = i\n            break\n\n    # Find the row indices of the bottom irregular gray shape.\n    bottom_rows = []\n    for i in range(len(grid) -1, top_row, -1):\n        if any(pixel == 5 for pixel in grid[i]):\n            bottom_rows.append(i)\n        else:\n            break;\n\n    return top_row, bottom_rows\n\ndef find_objects(grid, top_row, bottom_rows):\n    objects = []\n    visited = set()\n    rows, cols = grid.shape\n\n    # determine bottom row for a column\n    def get_bottom_row(col, bottom_rows):\n        for r in bottom_rows:\n            if grid[r, col] == 5:\n                return r\n        return rows # default to bottom\n\n    for r in range(rows):\n        for c in range(cols):\n            if (r, c) not in visited and grid[r, c] != 0 and grid[r,c] != 5:\n                # Check if within boundary\n                bottom_row_for_col = get_bottom_row(c, bottom_rows)\n                if r > top_row and r <= bottom_row_for_col:\n                    object_pixels = []\n                    stack = [(r, c)]\n                    color = grid[r, c]\n\n                    while stack:\n                        curr_r, curr_c = stack.pop()\n                        if (curr_r, curr_c) in visited:\n                            continue\n                        visited.add((curr_r, curr_c))\n\n                        bottom_row = get_bottom_row(curr_c, bottom_rows)\n                        if curr_r > top_row and curr_r <= bottom_row and grid[curr_r, curr_c] == color :\n                            object_pixels.append((curr_r, curr_c))\n                            # Add adjacent cells of the same color\n                            for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n                                nr, nc = curr_r + dr, curr_c + dc\n                                if 0 <= nr < rows and 0 <= nc < cols:\n                                    stack.append((nr, nc))\n                    objects.append({'color': color, 'pixels': object_pixels})\n    return objects\n\ndef transform(input_grid):\n    # Initialize output_grid as a copy of input_grid\n    output_grid = np.copy(input_grid)\n    rows, cols = input_grid.shape\n\n    top_boundary, bottom_boundaries = find_boundary_rows(input_grid)\n    objects = find_objects(input_grid, top_boundary, bottom_boundaries)\n    \n    # Clear the original object positions within the boundary\n    for obj in objects:\n        for r, c in obj['pixels']:\n            output_grid[r, c] = 0\n\n    # Shift objects to the left\n    for obj in objects:\n        pixels = obj['pixels']\n        # sort by column, then by row, so that we move left-most pixels first\n        pixels.sort(key=lambda x: (x[1], x[0]))\n        \n        for r, c in pixels:\n            # find the bottom boundary for this column\n            bottom_row_for_col = -1\n            for b_row in bottom_boundaries:\n                if input_grid[b_row, c] == 5:\n                  bottom_row_for_col = b_row\n                  break;\n            if (bottom_row_for_col == -1):\n              bottom_row_for_col = rows-1\n\n            # find left most available\n            target_c = c\n            while target_c > 0:\n                if input_grid[r, target_c - 1] == 5 or (r > top_boundary and r <= bottom_row_for_col and output_grid[r,target_c - 1] == 0):\n                    target_c -= 1\n                else:\n                    break\n\n            output_grid[r, target_c] = obj['color']\n\n    return output_grid\n```\n"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 10922,
+    "candidates_token_count": 1165,
+    "total_token_count": 12087,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.0-pro-exp-02-05",
+  "response_time": 15.716395
+}

@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\n1.  **Object Identification:** Define objects as contiguous blocks of pixels of the same color, forming a closed shape (not a single line, except for single pixels).\n2.  **Border Check:** If an object is completely surrounded by the background color (0), the entire object is preserved without changes.\n3.  **Interior Removal:** If an object is *not* entirely surrounded by 0:\n    *   Identify the \"interior\" pixels of the objects. Interior pixels are defined as pixels that are *not* on the outer edge of an object.\n    *   If the object contains any of the colors 2, 4, 6 inside the object, the entire interior of that object becomes 0.\n    *   If the entire object consists of color 1, 2, or 3, the entire object becomes 0.\n4.  **Special Rule for Color 9:** If a single pixel object of color 9 exists:\n    *   If the color 9 pixel is directly adjacent (horizontally, vertically, *or diagonally*) to a pixel of color 1 *and* to a pixel of color 2, the 9 pixel becomes 3. Otherwise, the 9 pixel remains unchanged.\n\"\"\"\n\nimport numpy as np\n\ndef get_neighbors(grid, i, j, include_self=False):\n    \"\"\"Gets the colors of neighboring pixels (including diagonals).\"\"\"\n    rows, cols = grid.shape\n    neighbors = []\n    for x in range(max(0, i - 1), min(rows, i + 2)):\n        for y in range(max(0, j - 1), min(cols, j + 2)):\n            if include_self or (x, y) != (i, j):\n                neighbors.append(grid[x, y])\n    return neighbors\n\ndef get_object(grid, i, j):\n    \"\"\"Extracts the object containing the given pixel.\"\"\"\n    rows, cols = grid.shape\n    color = grid[i, j]\n    if color == 0:\n        return []\n\n    object_pixels = []\n    visited = set()\n    queue = [(i, j)]\n\n    while queue:\n        x, y = queue.pop(0)\n        if (x, y) in visited:\n            continue\n        visited.add((x, y))\n\n        if 0 <= x < rows and 0 <= y < cols and grid[x, y] == color:\n            object_pixels.append((x, y))\n            for dx in [-1, 0, 1]:\n                for dy in [-1, 0, 1]:\n                    if (dx, dy) != (0, 0):\n                        queue.append((x + dx, y + dy))\n    return object_pixels\n\ndef is_surrounded_by_0(grid, object_pixels):\n    \"\"\"Checks if an object is completely surrounded by color 0.\"\"\"\n    for x, y in object_pixels:\n        neighbors = get_neighbors(grid, x, y)\n        if not all(neighbor == 0 for neighbor in neighbors):\n            return False\n    return True\n\ndef get_interior_pixels(grid, object_pixels):\n    \"\"\"Identifies the interior pixels of an object.\"\"\"\n    interior_pixels = []\n    for x, y in object_pixels:\n        neighbors = get_neighbors(grid, x, y)\n        # Check if all neighbors have same color. Not perfect for complex shape, but work for these examples\n        if all(neighbor == grid[x,y] for neighbor in neighbors):\n            interior_pixels.append((x,y))\n    return interior_pixels\n\n\ndef transform(input_grid):\n    \"\"\"Transforms the input grid according to the specified rule.\"\"\"\n\n    input_grid = np.array(input_grid)\n    output_grid = np.copy(input_grid)\n    rows, cols = input_grid.shape\n\n    processed_pixels = set()\n\n    for i in range(rows):\n        for j in range(cols):\n            if (i, j) not in processed_pixels:\n                object_pixels = get_object(input_grid, i, j)\n                \n                if not object_pixels: #background\n                    continue\n\n                processed_pixels.update(object_pixels)\n                \n                # Border Check\n                if is_surrounded_by_0(input_grid, object_pixels):\n                    continue #Preserve object\n\n                # Interior Removal and complete object removal\n                \n                object_colors = [input_grid[x,y] for x, y in object_pixels]\n                \n                if all(c in [1,2,3] for c in object_colors):\n                    for x,y in object_pixels:\n                        output_grid[x,y] = 0\n                    continue\n\n                interior_pixels = get_interior_pixels(input_grid, object_pixels)\n                \n                \n                if any(input_grid[x, y] in [2, 4, 6] for x, y in interior_pixels):\n                  for x, y in interior_pixels:\n                        output_grid[x, y] = 0\n                \n                if len(object_pixels) == 1: # Rule for 9\n                  x,y = object_pixels[0]\n                  if input_grid[x,y] == 9:\n                    neighbors = get_neighbors(input_grid, x, y)\n                    if 1 in neighbors and 2 in neighbors:\n                        output_grid[x,y] = 3\n\n    return output_grid.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 10756,
+    "candidates_token_count": 1261,
+    "total_token_count": 12017,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.0-pro-exp-02-05",
+  "response_time": 16.470986
+}
