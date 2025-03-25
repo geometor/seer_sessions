@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\nThe transformation identifies all adjacent pairs of identical, non-zero value pixels in the input grid. These pairs are considered to potentially belong to \"L\" shapes. \nThe algorithm selects \"L\" shapes of only *one* color, and arranges them in the output grid, potentially with transformations like rotations and empty space insertion.\n\"\"\"\n\nimport numpy as np\n\ndef find_all_pairs(input_grid):\n    \"\"\"Finds horizontally and vertically adjacent, non-zero, identical-value pixel pairs.\"\"\"\n    pairs = []\n    rows, cols = input_grid.shape\n    for r in range(rows):\n        for c in range(cols):\n            if input_grid[r, c] != 0:\n                # Check horizontal\n                if c + 1 < cols and input_grid[r, c] == input_grid[r, c+1]:\n                    pairs.append(((r, c), (r, c+1)))\n                # Check vertical\n                if r + 1 < rows and input_grid[r, c] == input_grid[r+1, c]:\n                    pairs.append(((r, c), (r+1, c)))\n    return pairs\n\ndef get_connected_component(grid, start_pixel, value):\n    \"\"\"\n    Finds all pixels connected to the start pixel with the specified value using a flood-fill-like approach.\n    This helps identify potential \"L\" shapes and their extent.\n    \"\"\"\n    rows, cols = grid.shape\n    visited = np.zeros_like(grid, dtype=bool)\n    component = []\n    stack = [start_pixel]\n\n    while stack:\n        r, c = stack.pop()\n        if 0 <= r < rows and 0 <= c < cols and grid[r, c] == value and not visited[r, c]:\n            visited[r, c] = True\n            component.append((r, c))\n            stack.extend([(r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)])\n\n    return component\n\ndef extract_l_shapes(input_grid, pairs):\n    \"\"\"\n    Identifies connected components (potential L-shapes) based on the given pairs.\n    It uses the color of each pair and flood-fill to find all connected pixels of that color.\n    \"\"\"\n\n    l_shapes = {} # Dictionary to store L shapes, keyed by color\n    visited_pixels = set()\n\n    for pair in pairs:\n      \n      pixel1_coord = pair[0]\n      pixel2_coord = pair[1]\n\n      pixel_value = input_grid[pixel1_coord]\n\n      if (pixel1_coord not in visited_pixels):\n          l_shape_pixels = get_connected_component(input_grid, pixel1_coord, pixel_value)\n\n          if (pixel_value not in l_shapes):\n            l_shapes[pixel_value] = []\n\n          l_shapes[pixel_value].append(l_shape_pixels)\n          visited_pixels.update(l_shape_pixels)\n    \n    return l_shapes\n\ndef get_bounding_box(pixels):\n    \"\"\"Calculates the bounding box of a set of pixels.\"\"\"\n    min_r = min(p[0] for p in pixels)\n    max_r = max(p[0] for p in pixels)\n    min_c = min(p[1] for p in pixels)\n    max_c = max(p[1] for p in pixels)\n    return (min_r, min_c), (max_r, max_c)\n\ndef translate_shape(shape, offset):\n    \"\"\"Translates a set of pixels by a given offset.\"\"\"\n    return [(r + offset[0], c + offset[1]) for r, c in shape]\n\ndef transform(input_grid):\n    \"\"\"Transforms the input grid into the output grid.\"\"\"\n\n    pairs = find_all_pairs(input_grid)\n    l_shapes_by_color = extract_l_shapes(input_grid, pairs)  # Get L shapes grouped by color\n\n    if not l_shapes_by_color:\n      return np.zeros((1, 1), dtype=int)\n\n    # Select the L-shapes of the first color encountered.  This needs to be improved.\n    selected_color = list(l_shapes_by_color.keys())[0]\n    selected_l_shapes = l_shapes_by_color[selected_color]\n    \n\n    if not selected_l_shapes:\n        return np.zeros((1,1), dtype=int)\n\n    # Determine output grid size based on bounding boxes of selected L-shapes.\n    max_r, max_c = 0, 0\n    for l_shape in selected_l_shapes:\n        (min_r, min_c), (max_r_shape, max_c_shape) = get_bounding_box(l_shape)\n        height = max_r_shape - min_r + 1\n        width = max_c_shape - min_c + 1\n        max_r = max(max_r, height)\n        max_c = max(max_c, width)\n\n    output_grid = np.zeros((max_r * len(selected_l_shapes), max_c), dtype=int) # Initial guess, likely too big\n\n    current_row_offset = 0\n    for l_shape in selected_l_shapes:\n        (min_r, min_c), (max_r_bb, max_c_bb) = get_bounding_box(l_shape)\n\n        # Create a local grid for this L-shape.\n        local_grid_height = max_r_bb - min_r + 1\n        local_grid_width = max_c_bb - min_c + 1\n\n        local_grid = np.zeros((local_grid_height, local_grid_width), dtype=int)\n\n        # Translate shape to origin for local grid.\n        translated_shape = translate_shape(l_shape, (-min_r, -min_c))\n\n        # Fill local grid\n        for r, c in translated_shape:\n          local_grid[r,c] = selected_color\n\n        # Copy local grid to output grid.\n        output_grid[current_row_offset:current_row_offset + local_grid_height, 0:local_grid_width] = local_grid\n\n        current_row_offset += local_grid_height #Simple stacking for now\n\n\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 12957,
+    "candidates_token_count": 1504,
+    "total_token_count": 14461,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.0-pro-exp-02-05",
+  "response_time": 28.149042
+}

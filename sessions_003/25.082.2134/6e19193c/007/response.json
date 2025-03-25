@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\n1.  **Object Identification:** Identify all contiguous blocks of non-zero pixels. Each block is considered an object and is defined by its color and the coordinates of its pixels.\n\n2.  **Center Lines:** Define a vertical and a horizontal center line dividing the grid into four quadrants.\n\n3.  **Left-Side Transformation:**\n    *   Condition: If all pixels of an object are entirely to the left of the vertical center line.\n    *   Action: Move the object to the right such that the leftmost pixel of the object is one position left of the vertical center line. The row coordinates of all pixels within the object remain unchanged.\n\n4.  **Right-Side Transformation:**\n    *   Condition: If all pixels of an object are entirely to the right of the vertical center line.\n    *   Action:\n        1. Determine the top-right pixel (r, c) of the object.\n        2.  Calculate the vertical distance (dv) from the horizontal center: `dv = horizontal_center - 1 - r`\n        3.  Move the entire object down by `dv` rows.\n        4. Calculate distance (original_dist) between the leftmost column of the object and vertical center.\n        5. Move the entire object left such that the rightmost pixel of the transformed object is at `c = vertical_center - 1 - original_dist`.\n\n5. **Horizontal Mirroring:**\n    *    Condition: If an object contains one or more pixels with a row index of either `horizontal_center - 1` or `horizontal_center`.\n    *     Action: For each pixel `(r, c)` in the object, create a new pixel at `(r, cols - 1 - c)` in the output. Note that other transformations are applied *before* the mirroring.\n\n6.  **Output:** Create a new grid filled with zeros (white). Place the transformed objects onto this grid according to the transformations above. If multiple transformations apply, apply them in the order: Left-Side, Right-Side, then Horizontal Mirroring.\n\"\"\"\n\nimport numpy as np\n\ndef find_objects(grid):\n    \"\"\"Finds contiguous objects in a grid.\"\"\"\n    objects = []\n    visited = set()\n    rows, cols = grid.shape\n\n    def is_valid(r, c):\n        return 0 <= r < rows and 0 <= c < cols\n\n    def dfs(r, c, obj_color, current_object):\n        if (r, c) in visited or not is_valid(r, c) or grid[r, c] != obj_color:\n            return\n        visited.add((r, c))\n        current_object.append((r, c))\n        for dr, dc in [(0, 1), (1, 0), (0, -1), (-1, 0)]:\n            dfs(r + dr, c + dc, obj_color, current_object)\n\n    for r in range(rows):\n        for c in range(cols):\n            if grid[r, c] != 0 and (r, c) not in visited:\n                current_object = []\n                dfs(r, c, grid[r, c], current_object)\n                objects.append((grid[r,c], current_object))  # Store color and object\n    return objects\n\ndef transform(input_grid):\n    # initialize output_grid\n    input_grid = np.array(input_grid)\n    output_grid = np.zeros_like(input_grid)\n    rows, cols = input_grid.shape\n    vertical_center = cols // 2\n    horizontal_center = rows // 2\n\n    # Find objects\n    objects = find_objects(input_grid)\n    \n    transformed_objects = []\n\n    # Apply Left and Right transformations\n    for color, obj in objects:\n        # --- Left Side Transformation ---\n        if all(c < vertical_center for _, c in obj):\n            leftmost_col = min(c for _, c in obj)\n            new_obj = []\n            for r, c in obj:\n                new_c = vertical_center - 1 - (leftmost_col - min(c_temp for _, c_temp in obj))\n                new_obj.append((r, new_c))\n            transformed_objects.append((color,new_obj))\n\n        # --- Right Side Transformation ---\n        elif all(c >= vertical_center for _, c in obj):\n            top_right_r, top_right_c = max(obj, key=lambda item: (item[1], -item[0])) #fixed to use max\n            dv = horizontal_center - 1 - top_right_r\n            leftmost_col = min(c for _, c in obj) # find leftmost column\n            original_dist = leftmost_col - vertical_center #find dist to vert center            \n            new_obj = []\n\n            for r, c in obj:\n                new_r = r + dv\n                new_c = vertical_center - 1- original_dist - (top_right_c - c)  # Corrected c calculation\n\n                if 0 <= new_r < rows and 0 <= new_c < cols: # added bounds\n                    new_obj.append((new_r,new_c))\n            transformed_objects.append((color, new_obj))\n        else:\n             transformed_objects.append((color, obj)) #keep to apply horizontal\n\n    # Apply horizontal mirroring and place on output\n    for color, obj in transformed_objects:\n        if any(r == horizontal_center - 1 or r == horizontal_center for r, _ in obj):\n            for r_orig, c_orig in obj:\n                output_grid[r_orig, cols - 1 - c_orig] = color  #horizontal\n        else: #place all other objects\n            for r, c in obj:\n              if 0 <= r < rows and 0 <= c < cols: #added bounds\n                output_grid[r,c] = color\n\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 4983,
+    "candidates_token_count": 1362,
+    "total_token_count": 6345,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.0-pro-exp-02-05",
+  "response_time": 13.111955
+}

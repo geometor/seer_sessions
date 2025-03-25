@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\n1.  **Object Identification:** Identify all red (2) and azure (8) objects within the input grid.\n2.  **Red-Azure Connection:** For each red object, find the nearest azure object. The red object expands towards the azure object, creating a path. The expansion first completes the vertical movement, and *then* completes the horizontal movement towards the target.\n3. **Yellow Intersection:** After the red object has finished expanding, a pixel is changed to yellow (4). This yellow pixel is the pixel in the expanded red object path closest to the *original* position of the azure object.\n4.  **Azure Mirroring:** The azure object expands by mirroring the expansion of the red object. If the red expands two cells down and one to the left, the azure will expand the same. It appears that the *closest* azure expands, in the case that there are multiple.\n\"\"\"\n\nimport numpy as np\n\ndef find_objects(grid, color):\n    \"\"\"Finds the coordinates of all pixels of a given color.\"\"\"\n    objects = []\n    rows, cols = grid.shape\n    for r in range(rows):\n        for c in range(cols):\n            if grid[r, c] == color:\n                objects.append((r, c))\n    return objects\n\ndef closest_object(grid, coord, target_color):\n    \"\"\"Finds the closest object of a given color to a coordinate.\"\"\"\n    target_objects = find_objects(grid, target_color)\n    if not target_objects:\n        return None\n\n    min_dist = float('inf')\n    closest_coord = None\n\n    for target_coord in target_objects:\n        dist = abs(target_coord[0] - coord[0]) + abs(target_coord[1] - coord[1])\n        if dist < min_dist:\n            min_dist = dist\n            closest_coord = target_coord\n    return closest_coord\n\ndef expand_and_connect(grid, start_coord, end_coord):\n    \"\"\"Expands from start_coord towards end_coord, first vertically, then horizontally.\"\"\"\n    output_grid = np.copy(grid)\n    r, c = start_coord\n    tr, tc = end_coord\n    path = []\n\n    # Move vertically\n    if r != tr:\n        step = 1 if tr > r else -1\n        for i in range(r + step, tr + step, step):\n            output_grid[i, c] = output_grid[r,c]  # Use original color\n            path.append((i, c))\n        r = tr\n\n    # Move horizontally\n    if c != tc:\n        step = 1 if tc > c else -1\n        for i in range(c + step, tc + step, step):\n            output_grid[r, i] = output_grid[r,c] #use original color\n            path.append((r, i))\n        c = tc\n\n    return output_grid, path\n\ndef get_nearest_to_original(path, original_target_objects):\n    \"\"\"\n    Of the points in the path, find the one nearest to the *original*\n    target object.\n    \"\"\"\n    if not path:\n      return None\n\n    min_dist = float('inf')\n    nearest_coord = None\n    \n    for path_coord in path:\n        for target_coord in original_target_objects:\n            dist = abs(path_coord[0] - target_coord[0]) + abs(path_coord[1] - target_coord[1])\n            if dist < min_dist:\n                min_dist = dist\n                nearest_coord = path_coord\n    return nearest_coord\n  \ndef calculate_movement(start, end):\n    \"\"\" calculate vertical and horizontal movement vectors\"\"\"\n    vr = end[0] - start[0]\n    vc = end[1] - start[1]\n    return vr, vc\n\ndef transform(input_grid):\n    # initialize output_grid\n    output_grid = np.copy(input_grid)\n\n    # Object Identification\n    red_objects = find_objects(input_grid, 2)\n    azure_objects = find_objects(input_grid, 8)\n    original_azure_objects = azure_objects.copy() #track for yellow placement\n\n    # Red-Azure Connection and Yellow Intersection\n    for red_coord in red_objects:\n        closest_azure_coord = closest_object(input_grid, red_coord, 8)\n        if closest_azure_coord:\n            output_grid, path = expand_and_connect(output_grid, red_coord, closest_azure_coord)\n            nearest_to_original = get_nearest_to_original(path, original_azure_objects)\n            if nearest_to_original:\n                output_grid[nearest_to_original] = 4  # Yellow Intersection\n\n    # Azure Mirroring - *AFTER* red expansion and yellow placement\n    # need to re-find objects since they have moved\n    red_objects = find_objects(output_grid, 2)\n    azure_objects = find_objects(output_grid, 8)\n\n    for red_coord in red_objects:\n      closest_azure = closest_object(output_grid, red_coord, 8)\n      if closest_azure:\n        vr, vc = calculate_movement(red_coord, closest_azure)\n        for az_r, az_c in azure_objects:\n          #check bounds\n          if (az_r + vr) < output_grid.shape[0] and (az_r + vr) >= 0 \\\n            and (az_c+vc) < output_grid.shape[1] and (az_c + vc) >=0:\n              if output_grid[az_r + vr, az_c + vc] != 2: #don't overwrite red\n                output_grid[az_r+vr, az_c+vc] = 8\n              \n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 5071,
+    "candidates_token_count": 1369,
+    "total_token_count": 6440,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.0-pro-exp-02-05",
+  "response_time": 18.324463
+}

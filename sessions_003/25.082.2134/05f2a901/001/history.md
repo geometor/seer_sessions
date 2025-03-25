@@ -1,0 +1,151 @@
+
+## train_1
+
+**input:**
+```
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+0 2 2 2 0 0 0 0 0
+2 2 0 2 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+0 0 0 8 8 0 0 0 0
+0 0 0 8 8 0 0 0 0
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+```
+
+
+**output:**
+```
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+0 2 2 2 0 0 0 0 0
+2 2 0 2 0 0 0 0 0
+0 0 0 8 8 0 0 0 0
+0 0 0 8 8 0 0 0 0
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+```
+
+
+## train_2
+
+**input:**
+```
+0 0 0 0 0 0 0 0 0 0
+0 2 2 0 0 0 0 0 0 0
+0 2 2 0 0 0 0 0 0 0
+2 2 2 0 0 0 0 0 0 0
+0 2 2 0 0 0 8 8 0 0
+0 0 0 0 0 0 8 8 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+```
+
+
+**output:**
+```
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 2 2 0 0 0 0
+0 0 0 0 2 2 0 0 0 0
+0 0 0 2 2 2 0 0 0 0
+0 0 0 0 2 2 8 8 0 0
+0 0 0 0 0 0 8 8 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+```
+
+
+## train_3
+
+**input:**
+```
+0 0 0 0 0 0 0 0 0 0
+0 0 0 8 8 0 0 0 0 0
+0 0 0 8 8 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 2 2 2 0 0 0 0
+0 2 2 2 2 2 0 0 0 0
+0 0 2 2 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+```
+
+
+**output:**
+```
+0 0 0 0 0 0 0 0 0 0
+0 0 0 8 8 0 0 0 0 0
+0 0 0 8 8 0 0 0 0 0
+0 0 0 2 2 2 0 0 0 0
+0 2 2 2 2 2 0 0 0 0
+0 0 2 2 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+```
+
+Okay, here's my analysis of the provided input-output examples, focusing on perception, object identification, and the transformation rule:
+
+**Perception of Elements:**
+
+The task involves 2D grids containing colored pixels. The primary colors involved are white (0), red (2), and azure (8).  The shapes formed by the colored pixels seem to be the key elements. There's a sense of shifting or repositioning of these shapes. The transformation doesn't involve a change of color, and seems to keep the original pixel configurations.
+
+**YAML Block (Facts):**
+
+
+```yaml
+objects:
+  - id: red_shape_1
+    color: red (2)
+    type: irregular shape
+    initial_position: varies
+    properties:
+        - connected: true
+  - id: azure_shape_1
+    color: azure (8)
+    type: rectangle
+    initial_position: varies
+    properties:
+        - connected: true
+
+actions:
+  - name: reposition
+    description: Moves objects vertically or horizontally.
+    parameters:
+       - destination: relative empty grid spaces
+
+relationships:
+  - object1: red_shape_1
+    object2: azure_shape_1
+    relation: independent movement
+    properties:
+      - no_overlap: true
+```
+
+
+**Natural Language Program:**
+
+1.  **Identify Objects:** Locate all distinct, contiguous shapes of red (2) and azure (8) pixels. Consider each of these as a separate object.
+2.  **Preserve Empty Rows Above:** Check the top rows of the input grid. If they consist of white pixels (empty) then they need to persist on the output grid.
+3. **Reposition:** Starting from the top, fill the output with the objects, by maintaining original row order of non-white pixels. If a set of rows in the input grid contain white pixels then do not copy them to the output, except if they are on top of the grid.
+
+In essence, the transformation removes empty (white) rows *between* objects of red and azure pixels, preserving the vertical order of the objects and any empty rows above them.
+
