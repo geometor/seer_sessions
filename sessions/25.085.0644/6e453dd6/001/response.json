@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\nTransforms the input grid based on a vertical gray separator line.\n\n1.  Find the vertical gray (5) separator line's column index.\n2.  For each row:\n    a.  Analyze the section to the left of the gray line in the input:\n        i.  Find the column index of the rightmost white (0) pixel.\n        ii. Check if the sub-patterns [0, 6, 0] (white, magenta, white) or \n            [6, 6, 0] (magenta, magenta, white) exist in this section.\n    b.  Transform the left section for the output:\n        i.  Shift all white (0) pixels horizontally rightwards so that the \n            original rightmost white pixel is now immediately to the left \n            of the gray separator line.\n        ii. Fill any remaining space in the left section (vacated by the \n            shift or originally not white) with magenta (6).\n        iii. If no white pixels existed in the input left section, the output \n             left section is entirely magenta (6).\n    c.  Transform the right section for the output:\n        i.  If either trigger pattern ([0, 6, 0] or [6, 6, 0]) was found in \n            the *input* left section (step 2.a.ii), fill the entire right \n            section (pixels to the right of the gray line) with red (2).\n        ii. Otherwise, fill the right section with magenta (6).\n3.  The gray separator line itself remains unchanged.\n\"\"\"\n\nimport numpy as np\n\ndef find_gray_separator_col(grid):\n    \"\"\"Finds the column index of the vertical gray (5) line.\"\"\"\n    rows, cols = grid.shape\n    for c in range(cols):\n        if np.all(grid[:, c] == 5):\n            return c\n    return -1 # Should not happen based on examples\n\ndef has_trigger_pattern(row_segment):\n    \"\"\"Checks if [0, 6, 0] or [6, 6, 0] exists in the segment.\"\"\"\n    segment_list = row_segment.tolist()\n    for i in range(len(segment_list) - 2):\n        sub_pattern = segment_list[i:i+3]\n        if sub_pattern == [0, 6, 0] or sub_pattern == [6, 6, 0]:\n            return True\n    return False\n\ndef transform(input_grid_list):\n    \"\"\"\n    Applies the transformation rule to the input grid.\n    \"\"\"\n    input_grid = np.array(input_grid_list, dtype=int)\n    rows, cols = input_grid.shape\n    \n    # Initialize output grid - can start with a copy or create new\n    # Using magenta (6) as a background might be simpler\n    output_grid = np.full_like(input_grid, 6) \n\n    # 1. Find the gray separator column\n    gray_col = find_gray_separator_col(input_grid)\n    if gray_col == -1:\n        # Handle error case if necessary, though examples suggest it always exists\n        print(\"Error: Gray separator not found.\")\n        return input_grid_list # Return input as fallback\n\n    # Copy the gray separator line to the output\n    output_grid[:, gray_col] = 5\n\n    # 2. Process each row\n    for r in range(rows):\n        input_row = input_grid[r, :]\n        \n        # Define left and right sections based on gray column\n        input_left_section = input_row[:gray_col]\n        # Right section definition for output filling\n        output_right_start_col = gray_col + 1\n\n        # 2.a Analyze input left section\n        white_indices = np.where(input_left_section == 0)[0]\n        max_white_col_in_left = -1\n        if len(white_indices) > 0:\n            max_white_col_in_left = np.max(white_indices)\n        \n        trigger_found = has_trigger_pattern(input_left_section)\n\n        # 2.b Transform left section\n        output_left_section = output_grid[r, :gray_col] # Get reference to output slice\n        \n        if max_white_col_in_left != -1:\n            # Calculate shift needed\n            shift = (gray_col - 1) - max_white_col_in_left\n            \n            # Apply shift: Iterate through the output left section columns\n            for c_out in range(gray_col):\n                c_in = c_out - shift # Calculate corresponding input column\n                # Check bounds and if the source pixel was white\n                if 0 <= c_in < len(input_left_section) and input_left_section[c_in] == 0:\n                    output_left_section[c_out] = 0\n                else:\n                    # Fill with magenta if not a shifted white pixel\n                    output_left_section[c_out] = 6 \n        else:\n            # If no white pixels in input left, fill output left with magenta\n            output_left_section[:] = 6 \n            \n        # 2.c Transform right section\n        output_right_section = output_grid[r, output_right_start_col:] # Get reference\n        if trigger_found:\n            output_right_section[:] = 2 # Fill with red\n        else:\n            output_right_section[:] = 6 # Fill with magenta (already default, but explicit)\n\n    return output_grid.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 5265,
+    "candidates_token_count": 1308,
+    "total_token_count": 6573,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 14.319605
+}

@@ -1,0 +1,51 @@
+task_description: "Draw blue lines connecting grid edges based on the position of a single unique pixel, with line direction varying based on the pixel's row parity."
+
+elements:
+  - object: grid
+    properties:
+      - height: H (variable)
+      - width: W (variable)
+      - background_color: bg (variable, dominant color in input)
+  - object: unique_pixel
+    properties:
+      - color: px_color (different from bg)
+      - location: (r, c) (single instance in input)
+  - object: blue_lines
+    properties:
+      - color: blue (1)
+      - shape: Composed of one vertical segment and two horizontal segments.
+      - location:
+          - vertical_segment: Column c, extending from row 0 to H-1, excluding row r.
+          - top_horizontal_segment: Row 0. Extends either from column 0 to c OR from column c to W-1.
+          - bottom_horizontal_segment: Row H-1. Extends either from column 0 to c OR from column c to W-1.
+
+relationships:
+  - type: defines
+    source: unique_pixel.location(r, c)
+    target: blue_lines.location
+    details: "The column c defines the vertical line's position. The row r defines the gap in the vertical line."
+  - type: controls
+    source: unique_pixel.location.r (parity)
+    target: blue_lines.location (horizontal segments' direction)
+    details: |
+      If r is odd:
+        - Top line runs from column 0 to c.
+        - Bottom line runs from column c to W-1.
+      If r is even:
+        - Top line runs from column c to W-1.
+        - Bottom line runs from column 0 to c.
+
+actions:
+  - action: identify
+    parameters: [input_grid]
+    output: [background_color, unique_pixel(px_color, r, c), grid_dimensions(H, W)]
+  - action: draw_vertical_line
+    parameters: [output_grid, column(c), height(H), skip_row(r), color(blue)]
+    condition: "Target pixel must have background_color."
+  - action: draw_horizontal_lines
+    parameters: [output_grid, column(c), width(W), height(H), row_parity(r), color(blue)]
+    condition: "Target pixel must have background_color."
+    details: "Draws lines on row 0 and row H-1 based on the parity rule."
+  - action: preserve
+    parameters: [output_grid, unique_pixel(px_color, r, c)]
+    details: "Ensure the pixel at (r, c) retains its original color px_color."

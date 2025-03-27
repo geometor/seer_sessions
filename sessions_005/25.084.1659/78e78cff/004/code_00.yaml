@@ -1,0 +1,54 @@
+task_description: Fill an enclosed area defined by a boundary color, starting from a seed point.
+
+definitions:
+  - &background_color
+    description: The color composing the majority of the grid pixels.
+    identification: Most frequent color in the input grid.
+  - &seed_color
+    description: The color used to fill the enclosed area. Appears as a single pixel in the input.
+    identification: The unique color appearing exactly once in the input grid.
+  - &seed_location
+    description: The starting point for the fill operation.
+    identification: The coordinates of the pixel with the seed_color.
+  - &boundary_color
+    description: The color forming the border/enclosure. These pixels remain unchanged.
+    identification: The third distinct color in the input grid (neither background nor seed).
+  - &enclosed_area
+    description: The region of background_color pixels spatially contained by the boundary_color pixels, which also includes the seed_location.
+    identification: Perform a reachability analysis. Background pixels reachable from the seed_location without crossing a boundary_color pixel, AND which are *not* reachable from the grid borders without crossing a boundary_color pixel.
+  - &outside_area
+    description: The region of background_color pixels not within the enclosed_area. These pixels remain unchanged.
+    identification: Background pixels reachable from the grid borders without crossing a boundary_color pixel.
+
+transformation:
+  - action: identify_colors
+    inputs: input_grid
+    outputs: [background_color, seed_color, seed_location, boundary_color]
+    using: Frequency analysis (most frequent, unique count=1, remaining distinct).
+  - action: identify_enclosed_area
+    inputs: [input_grid, background_color, boundary_color, seed_location]
+    outputs: set_of_enclosed_coordinates
+    description: Determine the coordinates of background_color pixels inside the boundary defined by boundary_color, connected to the seed_location. This involves separating the background into regions based on the boundary and selecting the region containing the seed.
+  - action: fill_area
+    inputs: [input_grid, seed_color, set_of_enclosed_coordinates]
+    outputs: output_grid
+    description: Create a copy of the input_grid. For each coordinate in set_of_enclosed_coordinates, change the pixel color to seed_color in the copied grid. Also change the original seed_location pixel to seed_color.
+
+output_properties:
+  - Retains the dimensions of the input_grid.
+  - Pixels originally having the boundary_color remain unchanged.
+  - Pixels originally having the background_color and located in the outside_area remain unchanged.
+  - Pixels originally having the background_color and located in the enclosed_area are changed to the seed_color.
+  - The pixel at the seed_location is changed to the seed_color (it might already be, but conceptually it's part of the filled area).
+
+examples_verification:
+  - example: 1
+    input_colors: {Green: 110, Blue: 10, Magenta: 1}
+    identified: {background: Green, seed: Magenta, boundary: Blue}
+    enclosed_area_size: 44 background pixels + 1 seed pixel = 45 pixels to be filled Magenta.
+    output_colors: {Green: 66, Magenta: 45, Blue: 10}
+  - example: 2
+    input_colors: {Blue: 123, Red: 8, Green: 1}
+    identified: {background: Blue, seed: Green, boundary: Red}
+    enclosed_area_size: 55 background pixels + 1 seed pixel = 56 pixels to be filled Green.
+    output_colors: {Blue: 68, Green: 56, Red: 8}

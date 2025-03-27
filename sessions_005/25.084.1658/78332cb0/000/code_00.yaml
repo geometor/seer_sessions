@@ -1,0 +1,41 @@
+task_type: grid_manipulation
+components:
+  - role: background
+    color: 7 # orange
+  - role: separator
+    color: 6 # magenta
+    properties:
+      - forms full rows or full columns
+      - partitions the grid into subgrids
+  - role: object_subgrid
+    properties:
+      - rectangular regions defined by separators
+      - contains a single non-background, non-separator shape
+      - contains background color (orange) pixels
+      - constant size (5x5 in examples) in each task instance
+actions:
+  - identify_separators:
+      input: input_grid
+      output: locations of horizontal and vertical magenta lines
+      determines: split_type (horizontal_only, vertical_only, both)
+  - extract_subgrids:
+      input: input_grid, separator_locations
+      output: list of subgrids (ordered top-to-bottom, left-to-right)
+  - determine_output_arrangement:
+      input: split_type
+      output: arrangement_axis (vertical_stacking, horizontal_concatenation), separator_orientation (horizontal_line, vertical_line)
+      logic:
+        - if split_type == both: arrangement=vertical_stacking, separator=horizontal_line
+        - if split_type == horizontal_only: arrangement=horizontal_concatenation, separator=vertical_line
+        - if split_type == vertical_only: arrangement=vertical_stacking, separator=horizontal_line
+  - determine_subgrid_order:
+      input: split_type, initial_subgrid_list
+      output: ordered_subgrid_list
+      logic:
+        - if split_type == both: order = [subgrids[0], subgrids[3], subgrids[1], subgrids[2]] # Assuming 2x2 grid: TL, BR, TR, BL
+        - if split_type == horizontal_only: order = reversed(subgrids) # Reverse vertical
+        - if split_type == vertical_only: order = subgrids # Preserve horizontal
+  - construct_output:
+      input: ordered_subgrid_list, arrangement_axis, separator_orientation, separator_color
+      output: output_grid
+      logic: join subgrids along the specified axis, inserting a line of the separator color between each subgrid.

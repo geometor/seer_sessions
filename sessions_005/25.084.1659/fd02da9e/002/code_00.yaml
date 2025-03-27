@@ -1,0 +1,51 @@
+task_context:
+  grid_properties:
+    size: [8, 8] # height, width
+    background_color: 7 # orange
+  input_features:
+    - object_type: marker_pixel
+      count: 1
+      description: A single pixel with a color different from the background.
+      properties:
+        color: Any color except orange (7).
+        location: Always one of the four corners (0,0), (0,7), (7,0), or (7,7).
+  output_features:
+    - object_type: background
+      properties:
+        color: 7 # orange
+        size: [8, 8]
+    - object_type: output_shape
+      count: 1
+      description: A small shape drawn onto the background.
+      properties:
+        color: Same as the input marker_pixel color.
+        structure: Depends on the marker_pixel location.
+        location: Relative to the marker_pixel location.
+
+actions:
+  - name: identify_marker
+    input: input_grid
+    output: marker_pixel (color, row, col)
+    description: Find the single non-orange pixel and its properties.
+
+  - name: determine_corner_type
+    input: marker_pixel_row
+    output: corner_type ('top' or 'bottom')
+    description: Check if the marker is in row 0 (top) or row 7 (bottom).
+
+  - name: create_base_output
+    output: output_grid
+    description: Create an 8x8 grid filled with orange (7).
+
+  - name: draw_shape
+    input: [output_grid, marker_pixel, corner_type]
+    output: modified_output_grid
+    description: >
+      Draw the appropriate shape onto the output grid using the marker_pixel color
+      at a specific location relative to the marker_pixel position, based on the corner_type.
+      - If corner_type is 'top' (row 0): Draw a 2x2 square.
+        - If marker is at (0,0), square uses relative offsets (+1,+1), (+1,+2), (+2,+1), (+2,+2).
+        - If marker is at (0,7), square uses relative offsets (+1,-2), (+1,-1), (+2,-2), (+2,-1).
+      - If corner_type is 'bottom' (row 7): Draw a 3-pixel shape.
+        - If marker is at (7,0), shape uses relative offsets (-3,+2), (-2,+2), (-1,+3).
+        - If marker is at (7,7), shape uses relative offsets (-3,-2), (-2,-2), (-1,-3).

@@ -1,0 +1,55 @@
+task_context:
+  grid_representation: 2D array of integers (pixels)
+  color_map: {0: white, 2: red} # Other colors potentially possible but not used in examples
+  transformation_type: Conditional horizontal filling
+
+grid_properties:
+  dimensionality: 2
+  content: Primarily white (0) and red (2) pixels
+
+objects:
+  - object: red_pixel
+    definition: A cell with value 2
+  - object: white_pixel
+    definition: A cell with value 0
+  - object: row
+    definition: A horizontal line of pixels in the grid
+  - object: horizontal_segment
+    definition: A sequence of adjacent pixels within a single row
+
+relationships:
+  - type: horizontal_adjacency
+    between: [pixel, pixel]
+    definition: Two pixels are in the same row and adjacent columns.
+  - type: betweenness
+    context: horizontal, within a row
+    definition: A set of pixels located in columns strictly between the columns of two other pixels in the same row.
+  - type: count
+    on: red_pixel
+    scope: row
+    definition: The number of red pixels within a specific row.
+
+conditions_and_actions:
+  - condition: global_inhibitor
+    check: Existence of any horizontally adjacent pair of red_pixels anywhere in the input grid.
+    if_true: Output grid is identical to the input grid.
+    if_false: Proceed to row-level filling.
+  - condition: row_level_fill_trigger
+    scope: each row individually
+    check: |
+      1. The row contains exactly two red_pixels.
+      Let their columns be c1 and c2 (c1 < c2).
+      2. All pixels in the row between column c1+1 and c2-1 (inclusive) are white_pixels.
+    if_true: Perform row_level_fill_action.
+    if_false: The row remains unchanged in the output grid.
+  - action: row_level_fill_action
+    target: The segment of white_pixels identified in the row_level_fill_trigger condition.
+    effect: Change the color of the target pixels to red (2) in the output grid.
+
+workflow:
+  - step: Check for global_inhibitor condition.
+  - step: If inhibitor present, copy input to output and terminate.
+  - step: If inhibitor absent, initialize output as a copy of input.
+  - step: For each row, check row_level_fill_trigger condition.
+  - step: If trigger met, apply row_level_fill_action to the output grid for that row.
+  - step: Return the final output grid.

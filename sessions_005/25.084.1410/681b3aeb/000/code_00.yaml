@@ -1,0 +1,59 @@
+task_description: Combine two distinct colored objects from the input into a 3x3 grid, preserving the relative shape of one object (primary) and filling the rest with the color of the other object (secondary).
+
+input_elements:
+  - element: grid
+    properties:
+      - contains background (white, 0)
+      - contains exactly two objects
+  - element: object
+    properties:
+      - composed of contiguous pixels
+      - single non-white color
+      - spatially distinct from the other object
+      - has a minimal bounding box (position, dimensions)
+      - has a color index
+      - has a set of pixel coordinates
+
+output_elements:
+  - element: grid
+    properties:
+      - size: 3x3
+      - contains only the two non-white colors from the input objects
+
+transformation:
+  - action: identify_objects
+    inputs: [input_grid]
+    outputs: [object_A, object_B]
+    description: Find the two distinct non-white contiguous pixel groups.
+  - action: calculate_bounding_boxes
+    inputs: [object_A, object_B]
+    outputs: [bbox_A, bbox_B]
+    description: Determine the minimum row/column and maximum row/column for each object.
+  - action: calculate_bbox_areas
+    inputs: [bbox_A, bbox_B]
+    outputs: [area_A, area_B]
+    description: Area = height * width of the bounding box.
+  - action: determine_primary_object
+    inputs: [object_A, object_B, area_A, area_B]
+    outputs: [primary_object, secondary_object]
+    logic: |
+      If area_A > area_B, primary is A.
+      If area_B > area_A, primary is B.
+      If area_A == area_B:
+        If color(A) < color(B), primary is A.
+        Else, primary is B.
+  - action: get_relative_coordinates
+    inputs: [primary_object, bbox_primary]
+    outputs: [relative_coords]
+    description: Calculate the coordinates of the primary object's pixels relative to the top-left corner of its bounding box. Example: pixel (r, c) in bbox starting at (r0, c0) has relative coords (r-r0, c-c0).
+  - action: construct_output_grid
+    inputs: [primary_object, secondary_object, relative_coords]
+    outputs: [output_grid]
+    logic: |
+      Initialize a 3x3 grid with the color of the secondary_object.
+      For each (rel_r, rel_c) in relative_coords:
+        Set output_grid[rel_r][rel_c] = color(primary_object).
+
+constraints:
+  - Bounding boxes of primary objects in examples are never larger than 3x3.
+  - Input grid always contains exactly two non-white objects.

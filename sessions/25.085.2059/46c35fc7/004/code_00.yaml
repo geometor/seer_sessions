@@ -1,0 +1,51 @@
+task_description: Transform specific 3x3 subgrids within the input grid based on the pattern of non-orange pixels they contain.
+
+definitions:
+  - name: background_color
+    value: 7 (orange)
+  - name: grid_scan_unit
+    value: 3x3 subgrid
+  - name: target_criterion
+    description: A 3x3 subgrid is a target if the bounding box of the non-background pixels located strictly within that 3x3 subgrid has dimensions 3x3.
+    properties:
+      - requires_non_background_pixels: true
+      - bounding_box_constraint:
+          - height: 3
+          - width: 3
+          - scope: calculated only from non-background pixels within the 3x3 subgrid itself.
+
+actions:
+  - name: apply_permutation_to_target
+    description: Rearrange the pixels within a target 3x3 subgrid according to a fixed pattern.
+    condition: The 3x3 subgrid meets the target_criterion.
+    permutation_map: # (Input Row, Input Col) -> (Output Row, Output Col), relative to top-left of 3x3
+      - [(0,0), (2,0)]
+      - [(0,1), (1,2)]
+      - [(0,2), (0,0)]
+      - [(1,0), (0,1)]
+      - [(1,1), (1,1)] # Center pixel remains in place
+      - [(1,2), (2,1)]
+      - [(2,0), (2,2)]
+      - [(2,1), (1,0)]
+      - [(2,2), (0,2)]
+    effect: Modifies the pixels in the output grid corresponding to the target 3x3 subgrid location.
+
+grid_processing:
+  - step: Initialize the output grid as a copy of the input grid.
+  - step: Iterate through all possible top-left coordinates (r, c) such that a 3x3 subgrid can be extracted starting at (r, c).
+  - step: For each 3x3 subgrid:
+      - Extract the 3x3 subgrid from the input grid.
+      - Identify all non-background (non-orange) pixel coordinates within this 3x3 subgrid.
+      - If non-background pixels exist:
+          - Calculate the min/max row and column indices of these non-background pixels (relative to the 3x3 subgrid's top-left).
+          - Determine the height and width of the bounding box defined by these min/max indices.
+          - Check if the height is 3 and the width is 3 (i.e., meets target_criterion).
+          - If the criterion is met:
+              - Apply the fixed permutation (actions.apply_permutation_to_target.permutation_map) to the extracted 3x3 subgrid.
+              - Update the corresponding 3x3 region in the output grid with the permuted subgrid.
+  - step: Return the final output grid.
+
+notes:
+  - Pixels outside the identified target 3x3 subgrids remain unchanged from the input.
+  - The transformation is applied independently to each qualifying 3x3 subgrid.
+  - The non-orange pixels within a qualifying 3x3 subgrid do not need to form a single connected component within that subgrid, nor do they need to fill the entire subgrid; they only need to span its full 3x3 extent.

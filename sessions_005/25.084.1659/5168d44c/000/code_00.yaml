@@ -1,0 +1,68 @@
+task_context:
+  grid_representation: 2D array of integers (0-9) representing colors.
+  colors_present: [white (0), red (2), green (3)]
+  input_output_relation: Output is a transformation of the input grid. Grid dimensions remain constant.
+
+identified_objects:
+  - object: RedCross
+    description: A 3x3 pattern with red (2) border pixels and a green (3) center pixel.
+    properties:
+      - shape: 3x3 square
+      - composition: 8 red pixels, 1 green pixel
+      - unique: Assumed to be only one such object per grid.
+    state_in_input: Present at a specific location.
+    state_in_output: Present at a potentially different location.
+  - object: GreenDot
+    description: Single green (3) pixels, not part of the RedCross object.
+    properties:
+      - shape: 1x1 pixel
+      - color: green (3)
+      - count: Variable, can be zero or more.
+    state_in_input: Present at specific locations.
+    state_in_output: Remain in the same locations as the input.
+  - object: Background
+    description: White (0) pixels filling the rest of the grid.
+    state_in_input: Fills space not occupied by RedCross or GreenDots.
+    state_in_output: Fills space not occupied by moved RedCross or GreenDots; includes the original location of the RedCross.
+
+actions_relationships:
+  - action: Identify
+    actor: System
+    target: RedCross object, GreenDot objects
+    description: Locate the coordinates of the RedCross object (specifically its center) and all GreenDots in the input grid.
+  - action: CalculateAveragePosition
+    actor: System
+    target: GreenDot objects
+    description: Compute the average row and average column index of all identified GreenDots.
+  - action: DetermineMovement
+    actor: System
+    input: [RedCross center coordinates, GreenDot average coordinates]
+    output: [Direction (Up, Down, Left, Right, None), Distance (0, 1, or 2)]
+    logic:
+      - Calculate row_difference = average_dot_row - cross_center_row
+      - Calculate col_difference = average_dot_col - cross_center_col
+      - If abs(row_difference) > abs(col_difference):
+          - Direction = Down if row_difference > 0 else Up
+          - Distance = 2
+      - Else if abs(col_difference) > abs(row_difference):
+          - Direction = Right if col_difference > 0 else Left
+          - Distance = 1
+      - Else:
+          - Direction = None
+          - Distance = 0
+  - action: MoveObject
+    actor: System
+    target: RedCross object
+    parameters: [Direction, Distance]
+    description: Translate the RedCross object from its input position by the specified distance in the specified direction to determine its output position.
+  - relationship: Stationary
+    object: GreenDot
+    description: GreenDots do not change position between input and output.
+  - relationship: BackgroundFill
+    object: Background
+    description: The original position of the RedCross becomes part of the Background in the output.
+
+final_state_construction:
+  - step: Copy input grid to output grid.
+  - step: Erase the RedCross object from its original position in the output grid (set to white/0).
+  - step: Draw the RedCross object at its new, calculated position in the output grid.

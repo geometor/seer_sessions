@@ -1,0 +1,59 @@
+task_description: Move gray pixels towards the nearest part of a static red object until they become adjacent to it.
+
+elements:
+  - type: grid
+    properties:
+      size: [10, 10] # Variable, but 10x10 in examples
+      background_color: white (0)
+
+  - type: object
+    id: static_object
+    properties:
+      color: red (2)
+      shape: contiguous block (2x2 square in examples)
+      static: true # Does not change position or shape
+
+  - type: object
+    id: moving_objects
+    properties:
+      color: gray (5)
+      shape: single pixel
+      count: variable (4 in train_1, 3 in train_2)
+      static: false # Changes position
+
+relationships:
+  - type: spatial
+    description: Moving objects (gray) are initially scattered relative to the static object (red).
+  - type: distance
+    description: The transformation minimizes the Manhattan distance between each moving object and the static object, subject to a stopping condition.
+
+actions:
+  - action: identify
+    actor: system
+    target: static_object (red)
+    details: Locate all pixels belonging to the red object.
+  - action: identify
+    actor: system
+    target: moving_objects (gray)
+    details: Locate all gray pixels.
+  - action: calculate_path
+    actor: system
+    target: each moving_object
+    details:
+      - Find the nearest pixel(s) on the static_object using Manhattan distance.
+      - Determine the step direction (dx, dy) towards a chosen nearest static_object pixel.
+  - action: move
+    actor: system
+    target: each moving_object
+    details:
+      - Iteratively move the gray pixel one step in the calculated direction.
+      - Stop when the pixel's current position is adjacent (including diagonals) to any pixel of the static_object.
+      - Adjacency means the maximum of the absolute difference in row and column indices is 1.
+  - action: update_grid
+    actor: system
+    target: output_grid
+    details:
+      - Copy the input grid.
+      - Remove the original moving_objects.
+      - Place the moving_objects at their calculated final positions.
+      - Ensure the static_object remains unchanged.

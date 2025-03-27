@@ -1,0 +1,54 @@
+task_context:
+  input_type: 2D grid of integers (colors)
+  output_type: 2D grid of integers (colors)
+  background_color: Typically the most frequent color (observed as white/0 in examples).
+  object_definition: Contiguous areas (including diagonals) of non-background colors.
+
+transformations:
+  - action: identify_objects
+    source: input_grid
+    target: distinct non-background shapes
+    attributes:
+      - connectivity: 8-way (includes diagonals)
+
+  - action: determine_selection_criterion
+    description: Check objects for specific spatial relationships or content. Only one criterion applies per task instance.
+    criteria:
+      - name: maroon_adjacency
+        condition: Any part of the object is adjacent (including diagonally) to a maroon (9) pixel.
+      - name: azure_containment
+        condition: The object contains at least one azure (8) pixel within its boundary.
+
+  - action: select_objects
+    source: identified_objects
+    criterion: result of determine_selection_criterion
+    target: a subset of objects matching the determined criterion
+
+  - action: calculate_bounding_boxes
+    source: selected_objects
+    target: bounding box coordinates (min_row, min_col, max_row, max_col) for each selected object
+    conditional_logic:
+      - if_criterion: maroon_adjacency
+        method: Include object pixels AND all adjacent maroon (9) pixels in the box calculation.
+      - if_criterion: azure_containment
+        method: Include ONLY the object pixels in the box calculation.
+
+  - action: determine_assembly_order
+    source: selected_objects and their bounding boxes
+    target: ordered list of selected objects
+    attribute_for_sorting: minimum column index ('min_col') of the object's original pixels (not necessarily the bbox min_col if maroon was added).
+    conditional_logic:
+      - if_criterion: maroon_adjacency
+        order: Descending ('min_col') - effectively right-to-left.
+      - if_criterion: azure_containment
+        order: Ascending ('min_col') - effectively left-to-right.
+
+  - action: extract_subgrids
+    source: input_grid and calculated_bounding_boxes for ordered selected_objects
+    target: list of 2D grids, each corresponding to the content within a bounding box.
+
+  - action: assemble_output
+    source: ordered list of extracted_subgrids
+    target: final output_grid
+    method: Concatenate subgrids horizontally in the determined order.
+    assumption: All extracted subgrids for a given input have the same height.

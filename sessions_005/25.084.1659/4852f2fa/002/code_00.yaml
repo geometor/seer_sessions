@@ -1,0 +1,61 @@
+task_description: Create an output grid by horizontally tiling a modified pattern derived from the input grid. The modification involves height adjustment, and the number of tiles depends on a pixel count.
+
+input_grid:
+  properties:
+    - contains_pixels: [white, azure, yellow] (potentially others, but only azure and yellow are relevant)
+    - dimensions: variable (e.g., 5x5, 7x7, 8x8)
+  objects:
+    - name: pattern_source
+      type: contiguous_block
+      color: azure (8)
+      properties:
+        - location: variable
+        - shape: variable (L-shape, cross, diagonal, T-shape)
+        - size: variable
+        - uniqueness: assumed to be the single largest or only azure object
+    - name: counter_pixels
+      type: individual_pixels
+      color: yellow (4)
+      properties:
+        - location: scattered
+        - count: variable (N), can be 0 or more
+
+actions:
+  - name: identify_pattern
+    input: input_grid
+    target_object: pattern_source
+    method: find the minimal bounding box containing all azure (8) pixels.
+    output: pattern_subgrid (a 2D array representing the content within the bounding box)
+
+  - name: count_repetitions
+    input: input_grid
+    target_object: counter_pixels
+    method: count all pixels with yellow (4) color.
+    output: repetition_count (N)
+
+  - name: adjust_pattern_height
+    input: pattern_subgrid
+    parameters:
+      target_height: 3
+      fill_color: white (0)
+    method: >
+      If the pattern_subgrid height is less than 3, add rows of white pixels
+      at the top until the height is 3.
+      If the pattern_subgrid height is 3 or more, keep only the top 3 rows.
+    output: adjusted_pattern (a 2D array with height 3 and same width as pattern_subgrid)
+
+  - name: construct_output
+    input: adjusted_pattern
+    parameters:
+      repetition_count: N
+    method: >
+      Create a new grid with height 3 and width equal to adjusted_pattern width * N.
+      Horizontally tile the adjusted_pattern N times to fill the new grid.
+      If N is 0, the output grid has dimensions 3x0.
+    output: output_grid
+
+output_grid:
+  properties:
+    - height: always 3
+    - width: pattern_width * N
+    - content: composed of tiled adjusted_pattern

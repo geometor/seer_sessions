@@ -1,0 +1,63 @@
+task_context:
+  description: "Paint a sequence from the first row onto the grid, centered on a vertical line."
+  grid_size_invariant: true # Input and output grids have the same dimensions.
+
+elements:
+  - element: sequence
+    description: "The pattern of colors found in the first row of the input grid."
+    properties:
+      location: first row (row 0)
+      length: equals grid width
+  - element: background
+    description: "The predominant color in the input grid, excluding the sequence and the vertical line."
+    properties:
+      color: gray (5) in examples
+      role: fills the output grid initially and areas not covered by the painted pattern.
+  - element: vertical_line
+    description: "A single column of contiguous pixels with a distinct color."
+    properties:
+      color: azure (8) in examples
+      orientation: vertical
+      location: defined by a column index (C), start row (R_start), and end row (R_end).
+      role: acts as the center axis for the painted pattern and its color persists in the output.
+  - element: painted_pattern
+    description: "A V-shaped or triangular pattern in the output grid."
+    properties:
+      shape: triangular/V-shape, expanding downwards.
+      color_source: the 'sequence' element.
+      center_column: same as 'vertical_line' column index (C).
+      vertical_extent: starts at R_start + 1, ends determined by sequence length/grid width.
+      color_override: pixels at column C retain the 'vertical_line' color.
+  - element: copied_rows
+    description: "Rows below the main painted pattern in the output."
+    properties:
+      content: identical copies of the last row of the 'painted_pattern'.
+      vertical_extent: from the row below the 'painted_pattern' down to the original 'vertical_line' end row (R_end).
+
+relationships:
+  - relationship: centering
+    description: "The 'painted_pattern' is horizontally centered on the column of the 'vertical_line'."
+  - relationship: source
+    description: "The colors within the 'painted_pattern' are derived from the 'sequence'."
+  - relationship: override
+    description: "The color of the 'vertical_line' overrides the 'sequence' color at the central column within the 'painted_pattern'."
+  - relationship: propagation
+    description: "The bottom-most row pattern of the 'painted_pattern' is propagated downwards to fill the remaining original extent of the 'vertical_line'."
+  - relationship: positioning
+    description: "The top of the 'painted_pattern' starts one row below the top of the 'vertical_line'."
+
+actions:
+  - action: identify_elements
+    description: "Locate the sequence, background color, and vertical line (color, column, start/end rows) in the input."
+  - action: initialize_output
+    description: "Create an output grid of the same size as the input, filled with the background color."
+  - action: paint_pattern
+    description: >
+      Iteratively apply segments of the sequence to the output grid, row by row,
+      starting from row R_start + 1. The segment width increases by 2 each row,
+      centered at column C. The color at column C is forced to the vertical_line color.
+      The painting stops after floor(sequence_length / 2) rows.
+  - action: copy_last_row
+    description: >
+      Copy the content of the last row painted in the previous step to all subsequent rows
+      up to and including the original end row (R_end) of the vertical line.

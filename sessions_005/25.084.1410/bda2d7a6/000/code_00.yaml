@@ -1,0 +1,47 @@
+task_description: Transform grid colors based on nested layer structure.
+grid_properties:
+  - dimensions: Input and output grids have the same height and width.
+  - structure: Grids contain nested, frame-like layers of distinct colors.
+
+objects:
+  - object: Layer1
+    description: The outermost frame or border of the grid.
+    properties:
+      - color: C1 (variable, determined from input)
+  - object: Layer2
+    description: The frame or layer immediately inside Layer1.
+    properties:
+      - color: C2 (variable, determined from input)
+  - object: Layer3
+    description: The frame or main colored object(s) immediately inside Layer2.
+    properties:
+      - color: C3 (variable, determined from input, ignoring inner White(0) background if present)
+  - object: InnerContent
+    description: Pixels located geometrically inside the area defined by Layer3.
+    properties:
+      - color: OriginalColor (variable)
+      - background_color: White(0)
+
+relationships:
+  - type: nesting
+    objects: [Layer1, Layer2, Layer3, InnerContent]
+    description: Layer2 is inside Layer1, Layer3 is inside Layer2, InnerContent is inside Layer3.
+
+actions:
+  - action: identify_layers
+    inputs: [input_grid]
+    outputs: [C1, C2, C3]
+    description: Find the colors of the three outermost nested layers. C1 is the border color. C2 is the color adjacent inwards to C1. C3 is the color adjacent inwards to C2 (representing the third distinct layer/object).
+  - action: swap_colors
+    inputs: [input_grid, C1, C2, C3]
+    outputs: [output_grid]
+    description: |
+      Create an output grid of the same size.
+      Iterate through each pixel (r, c) of the input grid:
+      1. If input[r, c] == C1, set output[r, c] = C3.
+      2. Else if input[r, c] == C2, set output[r, c] = C1.
+      3. Else if input[r, c] == C3, set output[r, c] = C2.
+      4. Else if the pixel (r, c) is located geometrically inside the shape formed by Layer3 pixels:
+         a. If input[r, c] == White(0), set output[r, c] = White(0).
+         b. Else (if input[r,c] is not White(0)), set output[r, c] = C3.
+      5. Else (for pixels not part of Layer1, Layer2, Layer3, or InnerContent - unlikely given examples), copy the input color to the output.

@@ -1,0 +1,53 @@
+task_description: Identify vertical lines of uniform color spanning the grid height, which act as separators. Extract a subgrid based on the separator color and position.
+
+definitions:
+  - object: separator
+    definition: A column in the grid where all pixels have the same color and the column spans the full height of the grid.
+    properties:
+      - color: The uniform color of the pixels in the column.
+      - index: The column index (0-based).
+      - count: There can be one or more separators in a grid. Based on examples, all separators within a single grid share the same color.
+
+actions:
+  - action: find_separators
+    input: input_grid
+    output: list_of_separator_indices, separator_color
+    description: Iterate through columns, check if each column meets the 'separator' definition. Store indices and the common color.
+
+  - action: extract_subgrid
+    input: input_grid, list_of_separator_indices, separator_color
+    output: output_grid
+    logic:
+      - condition: If no separators are found
+        result: Return an empty grid with the same height as the input. (Inferred behavior, not explicitly shown but logical).
+      - condition: If separator_color is red (2)
+        steps:
+          - Find the maximum index in list_of_separator_indices (rightmost separator). Let this be `max_idx`.
+          - Extract the portion of the input_grid to the right of this separator.
+          - The subgrid includes columns from `max_idx + 1` to the end.
+          - If `max_idx` is the last column index, the output is an empty grid (same height).
+        result: The extracted subgrid.
+      - condition: If separator_color is not red (2)
+        steps:
+          - Find the minimum index in list_of_separator_indices (leftmost separator). Let this be `min_idx`.
+          - Extract the portion of the input_grid to the left of this separator.
+          - The subgrid includes columns from 0 to `min_idx - 1`.
+          - If `min_idx` is 0, the output is an empty grid (same height).
+        result: The extracted subgrid.
+
+examples_summary:
+  - example: 1
+    separator_color: green (3)
+    separator_indices: [8, 17]
+    rule_applied: Not red, use leftmost (8). Extract columns 0-7.
+    expected_output_size: (10, 8)
+  - example: 2
+    separator_color: red (2)
+    separator_indices: [6, 13, 20]
+    rule_applied: Red, use rightmost (20). Extract columns 21-26.
+    expected_output_size: (8, 6)
+  - example: 3
+    separator_color: yellow (4)
+    separator_indices: [12]
+    rule_applied: Not red, use leftmost (12). Extract columns 0-11.
+    expected_output_size: (12, 12)

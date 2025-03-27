@@ -1,0 +1,75 @@
+task_description: Identify rows with red pixels and columns with azure pixels in the input grid. Project red horizontally across its row(s) and azure vertically downwards in its column(s) below the original object. Mark intersections of red rows and original azure columns with yellow.
+
+input_elements:
+  - type: background
+    color: white (0)
+  - type: object
+    color: azure (8)
+    shape: Primarily vertical segments in examples.
+    location: Varies across examples.
+  - type: object
+    color: red (2)
+    shape: Primarily horizontal segments in examples.
+    location: Varies across examples.
+
+output_elements:
+  - type: background
+    color: white (0)
+  - type: object
+    color: azure (8)
+    source: Can be original azure pixels or projected azure pixels.
+  - type: object
+    color: red (2)
+    source: Projected red pixels filling entire rows.
+  - type: object
+    color: yellow (4)
+    source: Intersection points.
+
+transformations:
+  - action: identify_rows_with_color
+    color: red (2)
+    target: input_grid
+    result: set_of_red_rows
+  - action: identify_columns_with_color
+    color: azure (8)
+    target: input_grid
+    result: set_of_azure_columns
+  - action: find_lowest_pixel_in_column
+    color: azure (8)
+    target: input_grid
+    input: column_index from set_of_azure_columns
+    result: max_row_index_for_azure_in_column
+  - action: project_color_downwards
+    color: azure (8)
+    target: output_grid (initially copy of input)
+    source_column: column_index from set_of_azure_columns
+    start_row: max_row_index_for_azure_in_column + 1
+    end_row: grid_height - 1
+    condition: Fills cells (r, column_index) for r in range(start_row, end_row + 1).
+  - action: project_color_horizontally
+    color: red (2)
+    target: output_grid
+    source_row: row_index from set_of_red_rows
+    start_col: 0
+    end_col: grid_width - 1
+    condition: Fills cells (row_index, c) for c in range(start_col, end_col + 1).
+  - action: mark_intersection
+    color: yellow (4)
+    target: output_grid
+    condition: Applies to cells (r, c) where r is in set_of_red_rows and c is in set_of_azure_columns.
+    precedence: Overwrites any color placed by projection actions.
+
+relationships:
+  - type: intersection
+    element1_property: row from set_of_red_rows
+    element2_property: column from set_of_azure_columns
+    result: location for yellow (4) pixel.
+  - type: vertical_extension
+    element: azure (8) object
+    direction: downwards
+    start: below the original object
+    boundary: grid bottom edge
+  - type: horizontal_extension
+    element: red (2) object's row
+    direction: horizontally (both left and right)
+    boundary: grid side edges

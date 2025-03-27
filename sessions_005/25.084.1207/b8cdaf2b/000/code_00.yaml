@@ -1,0 +1,61 @@
+task_description: Add new pixels based on properties of a specific horizontal segment ("emitter") found in the input.
+
+element_definitions:
+  - id: grid
+    description: A 2D array of pixels with colors 0-9.
+  - id: background
+    description: Pixels with color 0 (white).
+  - id: structure
+    description: Contiguous block(s) of non-background pixels in the lower part of the grid.
+  - id: emitter_segment
+    description: >
+      A horizontal, contiguous segment of pixels of a single color (C)
+      where each pixel in the segment is located directly above a pixel
+      of a different non-background color.
+    properties:
+      - color (C): The color of the emitter pixels.
+      - position: Coordinates of the pixels forming the segment.
+      - row (y_c): The row index of the segment.
+      - center_col (x_c): The column index of the horizontal center of the segment.
+      - width (W): The number of pixels in the segment.
+  - id: generated_pixels
+    description: >
+      New pixels added to the output grid. Their color matches the emitter_segment color.
+      Their positions are calculated relative to the emitter_segment's center (y_c, x_c).
+    properties:
+      - color: Same as emitter_segment color C.
+      - relative_offsets: A set of (dy, dx) pairs specifying positions relative to (y_c, x_c).
+
+relationships_and_rules:
+  - rule: Find the emitter segment.
+    details: >
+      Scan the grid. Identify a horizontal segment of color C at row y,
+      such that for each pixel (y, x) in the segment, the pixel (y+1, x) exists
+      and has a non-background color different from C.
+      Calculate its properties: color C, center (y_c, x_c), width W.
+      (Assume y_c = y, and x_c is the average column index).
+      Based on examples, there is only one such segment per input.
+  - rule: Determine relative offsets based on emitter properties.
+    details: >
+      The set of relative offsets {(dy, dx)} depends on the emitter's color (C) and width (W).
+      Observed patterns:
+        - If C=1 (blue) and W=3: offsets = {(-2, -2), (-2, +2)}
+        - If C=3 (green) and W=1: offsets = {(-3, -2), (-3, +2), (-2, -1), (-2, +1)}
+        - If C=4 (yellow) and W=3: offsets = {(-3, -3), (-3, +3), (-2, -2), (-2, +2)}
+        - If C=4 (yellow) and W=1: offsets = {(-2, -1), (-2, +1)}
+  - rule: Generate output grid.
+    details: >
+      Start with a copy of the input grid.
+      For each relative offset (dy, dx) determined by the emitter's properties:
+        Calculate target coordinates: (y_target, x_target) = (y_c + dy, x_c + dx).
+        If (y_target, x_target) is within the grid boundaries,
+        set the pixel at (y_target, x_target) to the emitter's color C.
+
+example_trace (train_1):
+  - input_grid: 5x5 grid.
+  - emitter_segment: Found at row 4, columns 1-3. Color=1 (blue). Width=3. Center=(4, 2). Pixels below (row 3) are magenta (6).
+  - offsets_rule: C=1, W=3 => offsets = {(-2, -2), (-2, +2)}.
+  - generated_pixels:
+      - Offset (-2, -2): Target = (4-2, 2-2) = (2, 0). Color = 1 (blue).
+      - Offset (-2, +2): Target = (4-2, 2+2) = (2, 4). Color = 1 (blue).
+  - output_grid: Input grid + blue pixels at (2, 0) and (2, 4). Matches example output.

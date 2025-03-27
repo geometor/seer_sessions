@@ -1,0 +1,49 @@
+task_description: Identify blue shapes that enclose exactly one contiguous white area (hole), then modify both the shape and the hole.
+
+definitions:
+  - object: blue_shape
+    definition: A contiguous block of pixels with color blue (1). Connectivity is 4-directional (up, down, left, right).
+  - object: white_area
+    definition: A contiguous block of pixels with color white (0). Connectivity is 4-directional.
+  - property: hole
+    definition: A white_area that does not touch the grid boundary and whose immediate neighboring pixels (4-directional) are *all* blue (1) and belong to the *same* single blue_shape.
+  - property: target_shape
+    definition: A blue_shape that encloses exactly one hole.
+
+transformation:
+  - action: find_objects
+    parameters:
+      color: blue (1)
+      connectivity: 4
+    output: list_of_blue_shapes
+  - action: find_objects
+    parameters:
+      color: white (0)
+      connectivity: 4
+    output: list_of_white_areas
+  - action: identify_holes
+    input: list_of_white_areas, list_of_blue_shapes, grid_dimensions
+    output: map_blue_shape_to_holes # A mapping where keys are blue_shapes and values are lists of holes they enclose.
+    criteria:
+      - for each white_area:
+        - check: does not touch boundary
+        - check: all neighbors are blue
+        - check: all blue neighbors belong to the same single blue_shape
+  - action: identify_target_shapes
+    input: map_blue_shape_to_holes
+    output: list_of_target_shapes
+    criteria:
+      - for each blue_shape in map:
+        - check: number of associated holes == 1
+  - action: apply_color_change
+    input: list_of_target_shapes, original_grid
+    output: modified_grid
+    steps:
+      - initialize modified_grid as a copy of original_grid
+      - for each target_shape in list_of_target_shapes:
+        - get the coordinates of the blue pixels of the target_shape
+        - get the coordinates of the single hole enclosed by the target_shape
+        - update modified_grid: change color of blue pixels to white (0)
+        - update modified_grid: change color of hole pixels to red (2)
+
+output_grid: The final modified_grid after processing all target_shapes. Other pixels retain their original color from the input grid.

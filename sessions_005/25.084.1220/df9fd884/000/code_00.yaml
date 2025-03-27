@@ -1,0 +1,49 @@
+task_context:
+  - grid_dimensions_preserved: True
+  - background_color: 7 (orange)
+  - number_of_examples: 3
+
+objects:
+  - type: static_anchors
+    color: 4 (yellow)
+    count: 2
+    description: Two distinct yellow shapes, typically located in opposite corner regions. Their position is fixed.
+    role: Determine the movement vector for the moving object based on their relative configuration.
+  - type: moving_object
+    color: variable (1-blue, 2-red, 8-azure, but not 4-yellow or 7-orange)
+    count: 1
+    description: A single object composed of a color other than yellow or orange.
+    role: This object is translated within the grid.
+  - type: background
+    color: 7 (orange)
+    role: Fills the space not occupied by other objects and replaces the original location of the moving object.
+
+relationships_and_actions:
+  - action: identify_objects
+    inputs: input_grid
+    outputs: [static_anchors, moving_object, background_color]
+  - action: determine_anchor_configuration
+    inputs: static_anchors (positions)
+    outputs: configuration_type (e.g., 'top_left_bottom_right', 'top_right_bottom_left')
+    logic: Analyze the relative positions of the centroids or bounding boxes of the two yellow objects.
+  - action: determine_movement_vector
+    inputs: configuration_type
+    outputs: movement_vector (delta_row, delta_col)
+    logic: Map configuration_type to a specific vector.
+      - If 'top_left_bottom_right', vector is (3, -5).
+      - If 'top_right_bottom_left', vector is (4, 5).
+  - action: apply_movement
+    inputs:
+      - input_grid
+      - moving_object (pixels and original color)
+      - movement_vector
+      - background_color
+    outputs: output_grid
+    logic:
+      - Create a copy of the input grid.
+      - Erase the moving object from its original position by setting its pixels to the background color.
+      - Calculate the new position for each pixel of the moving object by adding the movement_vector to its original coordinates.
+      - Draw the moving object (using its original color) at the new calculated positions on the grid copy.
+
+output_grid_generation:
+  - based_on: Applying the determined movement vector to the moving object, updating the grid accordingly.

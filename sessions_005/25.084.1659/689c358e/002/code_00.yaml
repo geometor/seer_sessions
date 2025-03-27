@@ -1,0 +1,72 @@
+task_context:
+  description: Project colors of internal objects onto the border and place white on the opposite border.
+  grid_properties:
+    size: 11x11 (observed in examples)
+    border_color: 6 (magenta)
+    background_color: 7 (orange)
+    target_opposite_color: 0 (white)
+objects:
+  definition: Contiguous areas of color not matching border or background.
+  properties_per_object:
+    - color: The color of the object's pixels.
+    - pixels: List of (row, col) coordinates.
+    - center: Geometric center (average row, average col). Let this be (center_r, center_c).
+    - derived_row: floor(center_r)
+    - derived_col: floor(center_c)
+actions:
+  - action: determine_projection_axis_and_direction
+    inputs:
+      - derived_row
+      - derived_col
+      - grid_rows (R)
+      - grid_cols (C)
+    rule:
+      - If derived_col < derived_row: Project Horizontally.
+          - If derived_col < (C - 1 - derived_col): Target Border is Left.
+          - Else: Target Border is Right.
+      - Else (derived_row <= derived_col): Project Vertically.
+          - If derived_row < (R - 1 - derived_row): Target Border is Top.
+          - Else: Target Border is Bottom.
+      # Note: R-1 and C-1 are max indices. Comparison is distance to min vs max index.
+      # Example: derived_col < (C - 1 - derived_col) means derived_col is closer to 0 than C-1.
+    outputs:
+      - target_border: (Top, Bottom, Left, or Right)
+      - projection_axis: (0 for row coord, 1 for col coord)
+
+  - action: determine_projection_coordinate
+    inputs:
+      - center_r
+      - center_c
+      - target_border
+    rule:
+      - If target_border is Top or Bottom: projection_coordinate = floor(center_c)
+      - If target_border is Left or Right: projection_coordinate = floor(center_r)
+    outputs:
+      - projection_coordinate
+
+  - action: determine_target_and_opposite_cells
+    inputs:
+      - target_border
+      - projection_coordinate
+      - grid_rows (R)
+      - grid_cols (C)
+    rule:
+      - If target_border is Top: target_cell=(0, projection_coordinate), opposite_cell=(R-1, projection_coordinate)
+      - If target_border is Bottom: target_cell=(R-1, projection_coordinate), opposite_cell=(0, projection_coordinate)
+      - If target_border is Left: target_cell=(projection_coordinate, 0), opposite_cell=(projection_coordinate, C-1)
+      - If target_border is Right: target_cell=(projection_coordinate, C-1), opposite_cell=(projection_coordinate, 0)
+    outputs:
+      - target_cell: (row, col)
+      - opposite_cell: (row, col)
+
+  - action: modify_output_grid
+    inputs:
+      - input_grid (copied to output_grid initially)
+      - object_color
+      - target_cell
+      - opposite_cell
+      - target_opposite_color (white)
+    rule:
+      - For each object:
+          - Set output_grid[target_cell] = object_color
+          - Set output_grid[opposite_cell] = target_opposite_color

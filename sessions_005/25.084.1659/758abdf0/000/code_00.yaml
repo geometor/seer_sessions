@@ -1,0 +1,49 @@
+task_type: pattern_detection_and_conditional_modification
+grid_properties:
+  - dynamic_size: True
+  - dominant_colors: [Orange (7), Azure (8), White (0)]
+objects:
+  - name: vertical_azure_pair
+    definition: Two Azure (8) pixels at coordinates (r, c) and (r+1, c).
+    role: primary_trigger
+  - name: marker_pixels
+    definition: Two pixels changing to White (0).
+    role: primary_effect_indicator
+  - name: source_azure_pixels
+    definition: Azure (8) pixels in row 'r' of a trigger pair (only relevant if W > H).
+    role: secondary_trigger_element
+relationships_and_conditions:
+  - relationship: vertical_adjacency
+    between: two Azure (8) pixels
+    result: identification as a 'vertical_azure_pair'
+  - condition: grid_aspect_ratio
+    options:
+      - H >= W (Tall or Square)
+      - W > H (Wide)
+    impacts: location of 'marker_pixels' and activation of 'azure_copying' action
+actions:
+  - name: detect_pairs
+    input: input_grid
+    output: list of coordinates (r, c) for the upper pixel of each 'vertical_azure_pair'
+  - name: process_pairs
+    input: input_grid, list_of_pairs
+    output: modified_grid
+    steps:
+      - initialize output_grid = copy(input_grid)
+      - get grid dimensions H, W
+      - for each pair upper coordinate (r, c) in list_of_pairs:
+          - # Primary effect: Remove pair
+          - set output_grid[r, c] = Orange (7)
+          - set output_grid[r+1, c] = Orange (7)
+          - # Secondary effect: Place white markers based on aspect ratio
+          - if H >= W:
+              - set output_grid[r, W-2] = White (0)
+              - set output_grid[r, W-1] = White (0)
+          - else: # W > H
+              - set output_grid[H-2, c] = White (0)
+              - set output_grid[H-1, c] = White (0)
+              - # Tertiary effect: Copy Azure pixels (only for W > H)
+              - for col_idx from 0 to W-1:
+                  - if input_grid[r, col_idx] == Azure (8) and col_idx != c:
+                      - set output_grid[r+1, col_idx] = Azure (8)
+      - return output_grid

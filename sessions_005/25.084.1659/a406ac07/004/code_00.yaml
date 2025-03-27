@@ -1,0 +1,58 @@
+task_context:
+  description: The task involves drawing colored rectangles onto a background grid based on patterns found in the grid's borders (last row and last column).
+  grid_properties:
+    - size: Variable (e.g., 10x10 in examples)
+    - background_color: 0 (white)
+    - borders: The last row and last column of the input grid define both the transformation rules and are preserved in the output grid.
+
+objects:
+  - type: border_segment
+    location: Last row (excluding last pixel) or last column (excluding last pixel)
+    properties:
+      - color: The non-background color of the segment (1-9).
+      - start_index: The row or column index where the segment begins.
+      - length: The number of contiguous pixels in the segment.
+    identified_in: Input grid
+
+  - type: drawn_rectangle
+    location: Inner area of the grid (excluding last row and column).
+    properties:
+      - color: Determined by matching border_segments.
+      - top_left_corner: (row, column) coordinates. Determined by the start_indices of matching border_segments.
+      - height: Determined by the length of the matching column border_segment.
+      - width: Determined by the length of the matching row border_segment.
+    created_in: Output grid
+
+actions:
+  - name: initialize_output
+    description: Create an output grid of the same dimensions as the input, filled with the background color (0).
+
+  - name: preserve_borders
+    description: Copy the entire last row and entire last column from the input grid to the output grid.
+
+  - name: identify_row_segments
+    input: Last row of the input grid (excluding the last pixel).
+    output: A list of border_segments found in the row, each with color, start_index, and length.
+
+  - name: identify_col_segments
+    input: Last column of the input grid (excluding the last pixel).
+    output: A list of border_segments found in the column, each with color, start_index, and length.
+
+  - name: match_and_draw
+    description: |
+      For each row_segment:
+        Find a col_segment with the same color.
+        If a match is found:
+          Define a drawn_rectangle:
+            - color = matched color
+            - top_left_corner = (col_segment.start_index, row_segment.start_index)
+            - height = col_segment.length
+            - width = row_segment.length
+          Draw this rectangle onto the output grid, potentially overwriting previous content but not the borders.
+
+  - name: finalize_borders
+    description: Re-copy the entire last row and entire last column from the input grid to the output grid to ensure they are not overwritten by the drawing step.
+
+assumptions:
+  - Each non-background color present in the last row's segments (excl. corner) will have exactly one corresponding segment of the same color in the last column's segments (excl. corner).
+  - The drawing area for rectangles is clipped by the grid boundaries (excluding the last row/column borders).

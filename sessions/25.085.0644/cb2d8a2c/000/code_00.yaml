@@ -1,0 +1,59 @@
+task_description: Identify barrier shapes (red/blue), solidify them to red, then flood fill with green from a starting green pixel, bounded by the red barriers and grid edges.
+
+elements:
+  - object: background
+    color_name: azure
+    color_value: 8
+    role: Empty space, fillable area
+  - object: start_marker
+    color_name: green
+    color_value: 3
+    count: 1
+    role: Origin point for the flood fill
+  - object: barrier_segment
+    color_name: red
+    color_value: 2
+    role: Part of a barrier shape, blocks fill
+  - object: barrier_segment
+    color_name: blue
+    color_value: 1
+    role: Part of a barrier shape, initially present, blocks fill after transformation
+  - object: filled_area
+    color_name: green
+    color_value: 3
+    role: Output region resulting from flood fill
+
+transformations:
+  - action: identify_barrier_shapes
+    input_pixels: [1, 2] # blue, red
+    criteria: Contiguous pixels of color 1 or 2
+    output: Sets of coordinates for each barrier shape
+  - action: solidify_barriers
+    input_object: barrier_shapes
+    input_pixels_to_change: 1 # blue
+    output_pixel_color: 2 # red
+    effect: All pixels within identified barrier shapes become red
+  - action: locate_start_marker
+    input_pixel_color: 3 # green
+    output: Coordinates of the single green pixel
+  - action: flood_fill
+    start_point: result of locate_start_marker
+    fill_color: 3 # green
+    target_color: 8 # azure
+    boundary_colors: [2] # red (solidified barriers)
+    connectivity: 4-way (horizontal/vertical)
+    effect: Changes all reachable azure pixels to green, stopping at boundaries and red pixels
+
+relationships:
+  - type: connectivity
+    object1: start_marker
+    object2: background (azure pixels)
+    description: The fill starts at the marker and spreads through connected azure pixels.
+  - type: boundary
+    object1: barrier_shapes (solidified to red)
+    object2: filled_area (green)
+    description: The red shapes act as impenetrable boundaries for the green fill.
+  - type: transformation
+    object_input: barrier_segment (blue)
+    object_output: barrier_segment (red)
+    condition: Belongs to a contiguous barrier shape.

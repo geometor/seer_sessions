@@ -1,0 +1,55 @@
+task_description: Analyze two 3x3 patterns within the input grid to determine the color and shape of a 3x3 output grid.
+
+objects:
+  - name: Left Pattern (LP)
+    location: Fixed subgrid at rows 1-3, columns 1-3 (0-indexed) of the input grid.
+    properties: Contains pixels, primarily interested in gray (5) pixels.
+  - name: Right Pattern (RP)
+    location: Fixed subgrid at rows 1-3, columns 5-7 (0-indexed) of the input grid.
+    properties: Contains pixels, primarily interested in gray (5) pixels. Its gray pixel configuration can form 1 or more connected components (4-connectivity).
+  - name: OR Pattern Shape
+    derivation: Logical OR of the locations of gray pixels in LP and RP.
+    properties: Size (count of gray pixels in the combined shape), denoted as 'or_count'.
+  - name: RP Gray Pixels Shape
+    derivation: Locations of gray pixels within RP.
+    properties: Size (count of gray pixels), denoted as 'right_count'. Number of 4-connected components of gray pixels.
+  - name: Output Grid
+    location: The final 3x3 output.
+    properties: Contains pixels of a single determined color (or white/background 0). Shape (pattern of non-white pixels) depends on the determined color.
+
+actions:
+  - name: Extract Patterns
+    inputs: Input Grid
+    outputs: LP, RP
+  - name: Calculate OR Count
+    inputs: LP, RP
+    outputs: or_count (integer count of gray pixels in LP OR RP)
+  - name: Calculate Right Count
+    inputs: RP
+    outputs: right_count (integer count of gray pixels in RP)
+  - name: Calculate RP Object Count
+    inputs: RP
+    condition: Required only if or_count is 8 and right_count is 6 or 8 (potentially others).
+    outputs: Integer count of 4-connected gray components in RP.
+  - name: Determine Output Color
+    inputs: or_count, right_count, rp_object_count (conditionally)
+    outputs: output_color (integer 1, 2, or 3)
+    logic: |
+      - If or_count is 5 or 7, color is Red (2).
+      - If or_count is 8:
+        - If right_count is 7, color is Blue (1).
+        - If right_count is 8 AND RP has 1 gray object (4-conn), color is Green (3).
+        - If right_count is 6 AND RP has 1 gray object (4-conn), color is Green (3). [Hypothesized based on original code]
+        - If right_count is 6 AND RP has 2 gray objects (4-conn), color is Blue (1). [Hypothesized based on original code]
+      - If or_count is 6 or 9, color is Red (2). [Hypothesized based on original code]
+      - Default color is White (0) if none of the above match.
+  - name: Determine Output Shape
+    inputs: output_color, RP
+    outputs: output_shape (3x3 boolean mask)
+    logic: |
+      - If output_color is Blue (1), shape is fixed: [[False, True, False], [False, True, False], [True, True, True]].
+      - Otherwise (if color is Red(2) or Green(3)), shape matches the gray pixels in RP.
+  - name: Construct Output Grid
+    inputs: output_shape, output_color
+    outputs: 3x3 Output Grid
+    logic: Fill the output grid with output_color where output_shape is True, and White (0) otherwise.

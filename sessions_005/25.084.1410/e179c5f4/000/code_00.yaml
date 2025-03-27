@@ -1,0 +1,65 @@
+task_type: grid_transformation
+input_grid:
+  properties:
+    height: H
+    width: W
+    pixels:
+      - color: white (0) - background
+      - color: blue (1) - single pixel object
+  objects:
+    - id: input_blue_pixel
+      color: blue (1)
+      location: (H-1, 0) # Consistent across examples
+      count: 1
+output_grid:
+  properties:
+    height: H # same as input
+    width: W # same as input
+    pixels:
+      - color: azure (8) - background
+      - color: blue (1) - pattern pixels
+  objects:
+    - id: output_blue_pixels
+      color: blue (1)
+      count: H # one per row
+      pattern: vertical_zigzag
+transformation:
+  - action: define_output_grid
+    height: H
+    width: W
+    initial_color: azure (8)
+  - action: determine_start_column
+    input: width W
+    logic: |
+      if W is even:
+        start_column = W - 1
+      else: # W is odd
+        start_column = W // 2
+    output: start_column
+  - action: generate_zigzag_path
+    start_column: calculated_start_column
+    initial_direction: -1 (left)
+    grid_width: W
+    grid_height: H
+    logic: |
+      Initialize current_column = start_column
+      Initialize direction = -1
+      For each row 'r' from 0 to H-1:
+        Record position (r, current_column) for the blue pixel path.
+        Calculate next_column = current_column + direction.
+        If next_column < 0 or next_column >= W:
+          Reverse direction (direction = -direction).
+          Recalculate next_column = current_column + direction.
+        Update current_column = next_column.
+    output: list_of_blue_pixel_coordinates [(r0, c0), (r1, c1), ..., (rH-1, cH-1)]
+  - action: apply_path_to_grid
+    input_grid: output_grid (filled with azure)
+    coordinates: list_of_blue_pixel_coordinates
+    color: blue (1)
+    logic: |
+      For each coordinate (r, c) in the list:
+        Set output_grid[r, c] = blue (1)
+relationships:
+  - input_output_dimensions: input and output grids have identical height (H) and width (W).
+  - pattern_dependency: The zigzag pattern's starting column depends on the grid width (W) parity (even/odd).
+  - color_mapping: Input white (0) pixels are replaced by either azure (8) or blue (1) based on the zigzag pattern. The input blue (1) pixel's location doesn't directly map to an output pixel's color or position in the pattern calculation.

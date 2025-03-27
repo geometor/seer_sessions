@@ -7,7 +7,7 @@ from geometor.seer import Seer, Tasks
 
 def run():
     #  config_file = "thinker.yaml"
-    config_file = "config.yaml"
+    config_file = "config-25.yaml"
     with open(config_file, "r") as f:
         config = yaml.safe_load(f)
 
@@ -22,8 +22,8 @@ def run():
 
     seer = Seer(config)
 
-    seer.run(tasks[0:60])
-    #  seer.run(tasks)
+    #  seer.run(tasks[0:10])
+    seer.run(tasks)
 
 
 if __name__ == "__main__":

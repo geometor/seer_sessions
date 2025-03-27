@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom scipy.spatial import ConvexHull\nfrom matplotlib.path import Path # Requires matplotlib: pip install matplotlib\n\n\"\"\"\nIdentify non-background pixels (boundary pixels). Compute the convex hull polygon \ndefined by the coordinates of these pixels. Iterate through all pixels in the grid. \nIf a pixel's coordinates fall inside or on the boundary of the convex hull polygon \nAND its original color in the input grid was the background color (Azure 8), \nchange its color in the output grid to Red (2). All original non-background \npixels (the boundary pixels) retain their original color.\n\"\"\"\n\n# Define background and fill colors for clarity and potential modification\nBACKGROUND_COLOR = 8\nFILL_COLOR = 2\n\ndef transform(input_grid: np.ndarray) -> np.ndarray:\n    \"\"\"\n    Fills the interior of the convex hull defined by non-background pixels \n    with a specified fill color (Red 2), while preserving the original \n    non-background pixels.\n\n    Args:\n        input_grid: A 2D numpy array representing the input grid with integer color values.\n\n    Returns:\n        A 2D numpy array representing the transformed grid.\n    \"\"\"\n    # Initialize output_grid as a copy of the input grid\n    output_grid = np.copy(input_grid)\n    rows, cols = input_grid.shape\n\n    # Find the coordinates (row, column) of all pixels that are NOT the background color.\n    # These are considered the 'boundary' pixels defining the shape.\n    # np.argwhere returns an array of [row, col] pairs.\n    boundary_coords_rc = np.argwhere(input_grid != BACKGROUND_COLOR)\n\n    # If there are fewer than 3 boundary points, a 2D convex hull cannot be formed,\n    # and there's no enclosed area to fill according to the visual examples.\n    # In this case, return the original grid unmodified.\n    if boundary_coords_rc.shape[0] < 3:\n        return output_grid\n\n    # For geometric calculations like convex hull and point-in-polygon tests,\n    # it's standard to use (x, y) coordinates. We map grid (row, col) to (x, y)\n    # by treating column index as x and row index as y.\n    # boundary_coords_rc[:, ::-1] reverses the columns for each row, giving [col, row] pairs.\n    boundary_coords_xy = boundary_coords_rc[:, ::-1]\n\n    try:\n        # Compute the convex hull of the boundary points using scipy.spatial.ConvexHull.\n        # This finds the smallest convex polygon enclosing all the boundary points.\n        # It requires points in (x, y) format.\n        hull = ConvexHull(boundary_coords_xy)\n\n        # Get the coordinates of the vertices that form the hull polygon.\n        # hull.vertices contains the indices (relative to boundary_coords_xy) of the points forming the hull.\n        hull_vertices_xy = boundary_coords_xy[hull.vertices]\n\n        # Create a Path object from matplotlib.path using the hull vertices.\n        # This object provides an efficient way to test if points are inside the polygon.\n        hull_path = Path(hull_vertices_xy)\n\n        # Iterate through each pixel location (r, c) in the grid.\n        for r in range(rows):\n            for c in range(cols):\n                # The point to test corresponds to grid cell (r, c).\n                # In (x, y) coordinates for the Path object, this is (c, r).\n                point_xy = (c, r)\n\n                # Check if the point (c, r) lies inside or exactly on the boundary of the hull polygon.\n                # We use a small radius tolerance for contains_point to ensure points exactly on the boundary are included.\n                is_inside_or_on_hull = hull_path.contains_point(point_xy, radius=1e-9)\n\n                # Also check if the pixel at this location in the *original* input grid\n                # was the background color. We only want to fill background pixels.\n                is_background_in_input = (input_grid[r, c] == BACKGROUND_COLOR)\n\n                # If the pixel location is within or on the hull AND it was originally background,\n                # change its color in the output grid to the fill color.\n                if is_inside_or_on_hull and is_background_in_input:\n                    output_grid[r, c] = FILL_COLOR\n\n    except Exception as e:\n        # scipy.spatial.ConvexHull can raise errors, notably QHullError if all points\n        # are collinear (lie on a single line). In such cases, there's no 2D area to fill.\n        # The examples suggest no filling occurs for lines or single points.\n        # By catching the exception and returning the initial output_grid copy,\n        # we effectively handle this case by applying no fill.\n        # Optionally, log the error: print(f\"Convex hull computation failed: {e}. No fill applied.\")\n        return output_grid # Return the unmodified copy if hull computation fails\n\n    # Return the modified output grid\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 4228,
+    "candidates_token_count": 1184,
+    "total_token_count": 5412,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 32.961846
+}

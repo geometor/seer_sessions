@@ -1,0 +1,60 @@
+observations:
+  - object_type: marker
+    color: gray (5)
+    quantity: exactly one per input grid
+    role: reference point for distance calculations
+  - object_type: background
+    color: white (0)
+    role: ignored during pattern color identification and potentially used for padding output
+  - object_type: pattern_element
+    color: variable (most frequent color excluding white and gray)
+    role: forms the components of interest
+  - object_type: pattern_component
+    definition: a contiguous group of pattern_element pixels (8-way adjacency)
+    properties:
+      - position (set of coordinates)
+      - bounding_box (defined by min/max row and column)
+      - min_distance_to_marker (minimum Manhattan distance from any pixel in the component to the marker pixel)
+    role: candidates for selection
+  - object_type: target_component
+    definition: the pattern_component with the smallest min_distance_to_marker
+    tie_breaking: if multiple components share the minimum distance, select the one whose bounding box appears first in top-to-bottom, left-to-right scan order (implicitly handled by component labeling order if done systematically).
+    role: determines the extraction location
+  - object_type: output_grid
+    size: 3x3
+    content: a subgrid extracted from the input grid
+    origin: top-left corner of the target_component's bounding box
+    boundary_handling: if the 3x3 extraction goes beyond input grid boundaries, the out-of-bounds area in the output grid is filled with white (0).
+
+actions:
+  - action: identify_marker
+    inputs: input_grid
+    outputs: marker_coordinates
+  - action: identify_pattern_color
+    inputs: input_grid
+    outputs: pattern_color
+  - action: find_pattern_components
+    inputs: input_grid, pattern_color
+    outputs: list of pattern_components (each with pixel coordinates)
+    details: uses 8-way adjacency, excludes white and gray pixels
+  - action: calculate_component_distances
+    inputs: list of pattern_components, marker_coordinates
+    outputs: list of minimum distances (one per component)
+  - action: select_target_component
+    inputs: list of pattern_components, list of minimum distances
+    outputs: target_component
+    details: selects component corresponding to the minimum distance, applies tie-breaking if needed.
+  - action: determine_extraction_origin
+    inputs: target_component
+    outputs: top_left_coordinate of the target_component's bounding box
+  - action: extract_output_grid
+    inputs: input_grid, extraction_origin
+    outputs: 3x3 output_grid
+    details: copies pixels starting from origin, handles boundaries by padding with white (0).
+
+relationships:
+  - type: proximity
+    object1: pattern_component
+    object2: marker
+    measure: minimum Manhattan distance
+    relevance: used to select the target_component

@@ -1,0 +1,59 @@
+task_description: Assemble a 4x4 grid from patterns found within four L-shaped objects in the input grid, potentially swapping the top-left and top-right patterns based on a crossing condition.
+
+definitions:
+  - object: L-Shape
+    description: A contiguous block of 3 pixels of the same non-background color, forming an 'L' shape within a 2x2 bounding box.
+    properties:
+      - color: The color of the object's pixels.
+      - pixels: A list of (row, col) coordinates.
+      - bbox: A tuple (min_r, min_c, max_r, max_c) defining the 2x2 bounding box.
+      - pattern: A 2x2 numpy array representing the grid content within the bounding box.
+      - bbox_center: A tuple (center_r, center_c) calculated as ((min_r + max_r) / 2.0, (min_c + max_c) / 2.0).
+  - grid_property: object_centers_median
+    description: The median row and median column calculated from the bbox_centers of the four identified L-shape objects.
+      - median_row: The median of the center_r values.
+      - median_col: The median of the center_c values.
+  - object_property: input_quadrant
+    description: The spatial quadrant an L-shape belongs to within the input grid, relative to the other L-shapes.
+    values: [InTL, InTR, InBL, InBR]
+    determination: Based on the object's bbox_center relative to the object_centers_median (median_row, median_col).
+      - InTL: center_r < median_row and center_c < median_col
+      - InTR: center_r < median_row and center_c >= median_col
+      - InBL: center_r >= median_row and center_c < median_col
+      - InBR: center_r >= median_row and center_c >= median_col
+  - grid_property: vertical_midline_indices
+    description: The column indices defining the vertical midline used for the crossing check.
+    values:
+      - index_left: floor((input_width - 1) / 2)
+      - index_right: index_left + 1
+  - condition: swap_top_quadrants
+    description: A boolean condition determining whether the top-left and top-right output patterns should be swapped relative to their input quadrant origins.
+    determination: True if the bbox of the object in input_quadrant InTL OR the bbox of the object in input_quadrant InTR crosses the vertical midline.
+    crossing_definition: An object's bbox (min_r, min_c, max_r, max_c) crosses if min_c <= index_left AND max_c >= index_right.
+
+actions:
+  - identify_objects:
+      action: Find all L-Shape objects in the input grid.
+      expects: Exactly 4 L-Shape objects.
+  - calculate_relative_center:
+      action: Calculate the bbox_center for each L-Shape.
+      action: Calculate the object_centers_median (median_row, median_col) from the four bbox_centers.
+  - assign_quadrants:
+      action: Assign each L-Shape object to an input_quadrant (InTL, InTR, InBL, InBR) based on its bbox_center relative to the object_centers_median.
+  - check_crossing_condition:
+      action: Determine the swap_top_quadrants condition by checking if the InTL or InTR object's bbox crosses the vertical_midline_indices.
+  - construct_output:
+      action: Create a 4x4 output grid.
+      placement:
+        - target: Output Bottom-Left (rows 2-3, cols 0-1)
+          source: pattern from the object assigned to input_quadrant InBL.
+        - target: Output Bottom-Right (rows 2-3, cols 2-3)
+          source: pattern from the object assigned to input_quadrant InBR.
+        - target_TL: Output Top-Left (rows 0-1, cols 0-1)
+        - target_TR: Output Top-Right (rows 0-1, cols 2-3)
+        - if swap_top_quadrants is True:
+            - source for target_TL: pattern from the object assigned to input_quadrant InTR.
+            - source for target_TR: pattern from the object assigned to input_quadrant InTL.
+        - else (swap_top_quadrants is False):
+            - source for target_TL: pattern from the object assigned to input_quadrant InTL.
+            - source for target_TR: pattern from the object assigned to input_quadrant InTR.

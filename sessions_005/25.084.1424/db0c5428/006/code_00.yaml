@@ -1,0 +1,63 @@
+task_description: >
+  Transforms an input grid containing a single central pattern on a uniform background.
+  The transformation involves extracting the pattern, creating four transformed versions
+  (original, rotated 90 degrees clockwise, rotated 90 degrees counter-clockwise, rotated 180 degrees),
+  and placing them onto an output grid of the same size, initially filled with the background color.
+  The placement is determined by aligning the center of each transformed pattern with a corner
+  of the bounding box of the original pattern in the input grid. Overlapping pixels are overwritten,
+  with later placements taking precedence.
+
+input_properties:
+  - grid_dimensionality: 2D
+  - grid_size: Variable (e.g., 18x18, 16x16, 19x19)
+  - pixel_colors: 0-9 integer range
+  - background: Uniform color, determined from the top-left pixel (azure/8 in examples).
+  - objects:
+      - name: background
+        count: 1
+        pixels: Contiguous area covering most of the grid.
+      - name: central_pattern
+        count: 1
+        pixels: Single contiguous block of non-background colors located near the center.
+        shape: Square (9x9 in examples).
+        location: Defined by a bounding box (BBox).
+
+output_properties:
+  - grid_dimensionality: 2D
+  - grid_size: Same as input grid size.
+  - pixel_colors: Same range as input, using colors from the background and the pattern.
+  - background: Initially fills the grid, but may be largely overwritten.
+  - objects:
+      - name: placed_patterns
+        count: 4
+        description: >
+          Four overlapping copies derived from the input central_pattern.
+          The copies correspond to specific geometric transformations applied to the central_pattern.
+        transformations:
+          - Original (identity)
+          - Rotation 90 degrees clockwise (CW)
+          - Rotation 90 degrees counter-clockwise (CCW)
+          - Rotation 180 degrees
+        placement_rule: >
+          Each transformed pattern is placed such that its calculated center pixel aligns
+          with one of the four corner pixels of the *bounding box* of the original central_pattern
+          in the input grid.
+        placement_mapping:
+          - Transformed Pattern: Rotated 90 CW
+            Alignment BBox Corner: Top-Left (min_r, min_c)
+          - Transformed Pattern: Rotated 90 CCW
+            Alignment BBox Corner: Top-Right (min_r, max_c)
+          - Transformed Pattern: Rotated 180
+            Alignment BBox Corner: Bottom-Left (max_r, min_c)
+          - Transformed Pattern: Original
+            Alignment BBox Corner: Bottom-Right (max_r, max_c)
+        overlap_handling: Overwrite. The order of placement might matter if transparency were involved, but here, simple overwrite seems sufficient. A consistent order (e.g., CW, CCW, 180, Original) should be used.
+
+constants:
+  - Rotations: [CW 90 (-1), CCW 90 (1), 180 (2), Original (0)] corresponding to numpy `rot90` k values.
+
+derived_values:
+  - pattern_bbox: Coordinates (min_r, max_r, min_c, max_c) of the central_pattern.
+  - bbox_corners: Four coordinate pairs [(min_r, min_c), (min_r, max_c), (max_r, min_c), (max_r, max_c)].
+  - pattern_center: Relative coordinates ((pH-1)//2, (pW-1)//2) within the extracted pattern P.
+  - placement_origins: Four coordinate pairs calculated as (corner_coord - pattern_center_coord) for each transformed pattern and corresponding BBox corner. These are the top-left coordinates for placing each pattern on the output grid.

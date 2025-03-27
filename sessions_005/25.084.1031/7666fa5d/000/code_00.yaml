@@ -1,0 +1,55 @@
+task_context:
+  grid_size_input: [16, 16]
+  grid_size_output: [16, 16]
+  background_color: 8 # Azure
+  fill_color: 2 # Red
+
+examples:
+  train_1:
+    input_features:
+      - object_type: scattered_pixels
+        color: 4 # Yellow
+        role: boundary_vertices
+    output_features:
+      - object_type: scattered_pixels # Preserved from input
+        color: 4 # Yellow
+        role: boundary_vertices
+      - object_type: filled_region
+        color: 2 # Red
+        role: interior_fill
+    relationship: The Red region fills the convex hull defined by the Yellow pixels, excluding the Yellow pixels themselves.
+  train_2:
+    input_features:
+      - object_type: scattered_pixels
+        color: 3 # Green
+        role: boundary_vertices
+    output_features:
+      - object_type: scattered_pixels # Preserved from input
+        color: 3 # Green
+        role: boundary_vertices
+      - object_type: filled_region
+        color: 2 # Red
+        role: interior_fill
+    relationship: The Red region fills the convex hull defined by the Green pixels, excluding the Green pixels themselves.
+
+general_transformation:
+  - action: identify_pixels
+    condition: color is not the background color (Azure 8)
+    target: boundary_pixels
+  - action: compute_geometry
+    type: convex_hull
+    input: locations of boundary_pixels
+    output: convex_hull_polygon
+  - action: create_output_grid
+    source: copy of input_grid
+  - action: iterate_pixels
+    target: all pixels (r, c) in the grid
+  - action: check_condition
+    condition_1: pixel (r, c) is inside or on the boundary of the convex_hull_polygon
+    condition_2: input_grid[r, c] is the background_color (Azure 8)
+  - action: modify_pixel (if conditions met)
+    target: output_grid[r, c]
+    new_color: fill_color (Red 2)
+  - action: preserve_pixels
+    target: boundary_pixels
+    effect: ensure original non-background pixels remain unchanged in the output grid (handled by condition_2 in modify_pixel step).

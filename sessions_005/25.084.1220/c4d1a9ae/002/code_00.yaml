@@ -1,0 +1,97 @@
+task_description: Transforms pixels based on their color and Manhattan distance to a specific target color (Red if present, else Green). Other colors act as background or obstacles.
+
+grid_properties:
+  height: variable
+  width: variable
+  colors_present: variable subset of 0-9
+
+target_object:
+  - color: Red(2)
+    present_in: example_1
+    role: Defines the reference points for distance calculation. Pixels of this color are invariant.
+  - color: Green(3)
+    present_in: example_2
+    role: Defines the reference points for distance calculation. Pixels of this color are invariant.
+
+transformed_objects:
+  - color: Yellow(4)
+    present_in: example_1, example_2
+    behavior:
+      - when_target_is: Red(2)
+        actions:
+          - condition: distance d=0 (pixel is Red)
+            output_color: Red(2) # Already handled by target invariance
+          - condition: distance d=1
+            - if: column c <= 1
+              output_color: Magenta(6)
+            - else: # column c > 1
+              output_color: Yellow(4) # Correction: Previous code changed this, but errors show it should stay Yellow
+          - condition: distance d=2
+            output_color: Gray(5) # Correction: Previous code yielded 5, expected 4 at (1,2), (3,2), (5,2), (7,2), (9,2) -> Rule seems incorrect
+          - condition: distance d=3
+            output_color: Gray(5)
+          - condition: distance d=4
+            output_color: Yellow(4) # Correction: Previous code yielded 4, expected 5 at (3,4), (5,4) -> Rule seems incorrect
+          - condition: distance d=5
+            output_color: Red(2) # Correction: Previous code yielded 2, expected 4 at (1,5), (3,5), (5,5), (7,5), (9,5) -> Rule seems incorrect
+          - condition: distance d=6
+            output_color: Yellow(4) # Correction: Previous code yielded 4, expected 2 at (1,6), (3,6), (5,6), (7,6), (9,6) -> Rule seems incorrect
+          - condition: distance d > 6
+            output_color: Yellow(4)
+      - when_target_is: Green(3)
+        actions:
+          - output_color: Yellow(4) # Invariant
+
+  - color: White(0)
+    present_in: example_2
+    behavior:
+      - when_target_is: Green(3)
+        actions:
+          - condition: distance d=1
+            - if: column c == 4 # Column of a Green pixel
+              output_color: Maroon(9)
+            - else:
+              output_color: White(0)
+          - condition: distance d=2
+            # Error analysis shows output should be Green(3) or Yellow(4)
+            - if: column c <= 2 # Left side relative to green pixels
+              output_color: Green(3) # E.g., (1,2)->3, (3,1)->3, (5,1)->3, (7,1)->3, (9,1)->3 | Errs: (5,2), (9,2) expected 3
+            - if: column c >= 6 # Right side relative to green pixels
+              output_color: Yellow(4) # E.g., (1,7)->4, (3,7)->4, (5,7)->4, (7,7)->4, (9,7)->4 | Errs: (3,6), (5,6), (9,6) expected 4
+            - else: # Middle columns
+              output_color: White(0) # E.g., (0,3)->0, (0,5)->0, (2,5)->0, (4,5)->0, (6,5)->0, (8,5)->0
+          - condition: distance d=3
+            - if: column c <= 2 or (column c == 3 and row % 2 != 0) # Left side, intricate pattern
+              output_color: Green(3) # E.g., (0,2)->3, (1,1)->3
+            - if: column c >= 6 or (column c == 5 and row % 2 != 0) # Right side, intricate pattern
+              output_color: Yellow(4) # E.g., (0,6)->4, (1,7)->4
+            - else:
+              output_color: White(0) # E.g. (2,3)->0, (4,3)->0
+          - condition: distance d=4
+            - if: column c <= 1 # Far left
+              output_color: Green(3) # E.g., (0,1)->3
+            - if: column c >= 6 # Far right
+              output_color: Yellow(4) # E.g., (1,0)->4? No, (1,0) is input 4. E.g. (2,6)->4, (3,6)->4
+            - else: # Middle?
+               output_color: White(0) # Or maybe Green/Yellow depending on side?
+          - condition: distance d=5
+            output_color: Green(3) # E.g., (0,0)->3
+          - condition: distance d=0 (pixel is Green)
+            output_color: Green(3) # Already handled by target invariance
+          - condition: distance d > 5
+            output_color: White(0)
+
+invariant_colors:
+  - color: Red(2) (when target)
+  - color: Green(3) (when target)
+  - color: Magenta(6) (example 1)
+  - color: Gray(5) (example 1)
+  - color: Maroon(9) (example 2)
+
+derived_rules_summary:
+  - Find target color: Red(2) if present, else Green(3).
+  - If no target color found, return input.
+  - Calculate Manhattan distance 'd' for each pixel to the nearest target pixel.
+  - Apply color transformation based on target color, input color 'I', distance 'd', and sometimes coordinates '(r, c)'.
+  - Example 1 (Red Target) Rules for Yellow(4): Need significant revision. The previous distance-based rules are largely incorrect based on the error analysis. A new pattern must be identified.
+  - Example 2 (Green Target) Rules for White(0): Transformations depend on distance 'd' and seem related to horizontal position (column 'c') relative to the Green pixels. Left side tends towards Green(3), right side tends towards Yellow(4). Rules for d=2, d=3, d=4 need refinement based on error analysis. Yellow(4) remains invariant. Maroon(9) remains invariant.

@@ -1,0 +1,51 @@
+task_type: object_manipulation
+elements:
+  - type: grid
+    properties:
+      - background_color: white (0)
+      - contains: objects
+  - type: object
+    properties:
+      - shape: rectangle
+      - color: non-white (1-9)
+      - contiguous: true
+      - static: true (in input)
+      - consistent_height: all objects within a single example share the same height
+actions:
+  - action: identify_objects
+    inputs: input_grid
+    outputs: list_of_objects (with color, shape, position)
+    criteria: non-white, contiguous pixels
+  - action: sort_objects
+    inputs: list_of_objects
+    outputs: sorted_list_of_objects
+    criteria: minimum_column_index (leftmost position) ascending
+  - action: determine_vertical_placement
+    inputs:
+      - input_grid_height (H_grid)
+      - list_of_objects
+    outputs: output_start_row
+    logic:
+      - Find max_obj_row (maximum row index occupied by any object pixel)
+      - Find obj_h (common height of objects)
+      - Calculate base_start_row = max_obj_row - obj_h + 1
+      - If H_grid <= 5, output_start_row = base_start_row - 1
+      - Else, output_start_row = base_start_row
+  - action: assemble_output
+    inputs:
+      - output_grid_dimensions (same as input)
+      - sorted_list_of_objects
+      - output_start_row
+    outputs: output_grid
+    logic:
+      - Create an empty (white) grid.
+      - Place objects from sorted_list horizontally adjacent, starting at (output_start_row, 0).
+relationships:
+  - type: spatial_input
+    description: Objects are located at various positions in the input grid.
+  - type: spatial_output
+    description: Objects are horizontally adjacent, forming a single row block, starting at column 0.
+  - type: order_mapping
+    description: The horizontal order of objects in the output matches the left-to-right order of objects in the input (based on min column index).
+  - type: vertical_position_dependency
+    description: The vertical placement of the output block depends on the maximum row index of input objects, object height, and potentially grid height.

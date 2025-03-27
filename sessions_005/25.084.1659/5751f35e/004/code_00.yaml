@@ -1,0 +1,58 @@
+task_description: Fill white (0) pixels based on the colors of nearby non-white pixels, potentially preserving a white border.
+
+definitions:
+  - object: grid
+    type: 2D array of integers (0-9)
+    properties:
+      - height
+      - width
+      - pixels: cells with color values
+  - object: pixel
+    properties:
+      - row: integer
+      - column: integer
+      - color: integer (0-9)
+      - type: white (0) or non-white (1-9)
+  - object: border
+    type: set of pixels
+    properties:
+      - location: top/bottom rows, left/right columns
+      - completeness: all pixels in the border locations are white (0)
+      - width: single pixel wide
+
+actions:
+  - name: identify_border
+    input: grid
+    output: boolean (has_complete_white_border)
+  - name: identify_targets
+    input: grid, has_complete_white_border
+    output: list of coordinates of white pixels to be filled
+    logic: If border exists, target internal white pixels. Else, target all white pixels.
+  - name: calculate_fill_color
+    input: target_pixel_coordinate, grid
+    output: color value (1-9)
+    logic:
+      - Find all non-white pixels in the input grid.
+      - Simulate simultaneous propagation outwards from all non-white pixels using Manhattan distance.
+      - A white pixel adopts the color of the first wave(s) to reach it.
+      - If multiple colors reach a white pixel in the same wave (same minimum distance), the pixel adopts the color with the lowest numerical index among them.
+  - name: fill_pixels
+    input: grid, target_coordinates, fill_colors
+    output: modified grid
+    logic: Create a copy of the input grid. Update the color of each target pixel with its calculated fill color.
+
+examples_summary:
+  - example: 1
+    input_has_border: false
+    targets: all white pixels
+    status: Failed - 14 pixels incorrect. Analysis suggests propagation/lowest-index rule works for some mismatches but not all (e.g., (2,0)).
+  - example: 2
+    input_has_border: true
+    targets: internal white pixels only
+    status: Failed - 7 pixels incorrect. Analysis suggests propagation/lowest-index rule works for tested mismatches (e.g., (2,4)).
+  - example: 3 (Assumed based on previous context)
+    status: Passed - The original logic (Green>Freq>Lowest) happened to work for this case.
+
+uncertainties:
+  - The exact tie-breaking rule is uncertain, especially concerning pixel Ex1(2,0). The propagation/lowest-index hypothesis seems most promising but needs verification.
+  - Are there other factors influencing the fill color besides distance and color index? (e.g., neighbor counts, specific color interactions beyond simple index comparison).

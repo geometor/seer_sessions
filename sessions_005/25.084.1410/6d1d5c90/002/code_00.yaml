@@ -1,0 +1,71 @@
+task_context:
+  grid_properties:
+    - input_output_shape_relation: Output grid height is the same as input grid height. Output grid width is one less than input grid width.
+    - colors: Magenta (6) appears in the first column of all inputs. Red (2) appears once in the first column of all inputs. Other colors form the main content.
+
+objects:
+  - object: first_column
+    description: The column at index 0 of the input grid.
+    properties:
+      - contains_non_magenta_pixel: Boolean indicating if any color other than magenta (6) is present.
+      - non_magenta_pixel_index: The row index 'r' of the first non-magenta pixel found (if any). In the examples, this is always red (2).
+
+  - object: main_grid
+    description: The portion of the input grid excluding the first column. (Columns 1 to N-1).
+    properties:
+      - height: H (same as input grid height)
+      - width: W (input grid width - 1)
+
+  - object: top_subgrid
+    description: The upper portion of the main_grid after splitting.
+    properties:
+      - rows: 0 to 's' (inclusive), where 's' is the calculated split index.
+
+  - object: bottom_subgrid
+    description: The lower portion of the main_grid after splitting.
+    properties:
+      - rows: 's'+1 to H-1 (inclusive), where 's' is the calculated split index and H is height.
+
+actions:
+  - action: identify_split_index
+    description: >
+      Find the row index 'r' of the non-magenta pixel in the first_column.
+      Calculate the split row 's' using the formula s = H - 1 - r, where H is the grid height.
+    inputs:
+      - first_column
+      - grid_height (H)
+    outputs:
+      - split_index (s)
+      - non_magenta_index (r)
+
+  - action: extract_main_grid
+    description: Remove the first_column from the input grid.
+    inputs:
+      - input_grid
+    outputs:
+      - main_grid
+
+  - action: split_grid
+    description: Divide the main_grid horizontally into top_subgrid and bottom_subgrid based on the split_index 's'.
+    inputs:
+      - main_grid
+      - split_index (s)
+    outputs:
+      - top_subgrid
+      - bottom_subgrid
+
+  - action: reconstruct_output
+    description: Vertically stack the bottom_subgrid above the top_subgrid.
+    inputs:
+      - top_subgrid
+      - bottom_subgrid
+    outputs:
+      - output_grid
+
+transformation_rule:
+  condition: A non-magenta pixel exists in the first_column.
+  steps:
+    - identify_split_index
+    - extract_main_grid
+    - split_grid (using identified split_index)
+    - reconstruct_output

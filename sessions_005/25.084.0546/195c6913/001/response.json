@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\nTransforms an input grid based on a complex set of rules involving object identification,\ncolor replacement, and potentially mirroring/flipping. The transformation focuses on\nenclosed regions and specific color interactions, particularly within enclosed objects.\n\"\"\"\n\nimport numpy as np\n\ndef find_objects(grid):\n    \"\"\"\n    Identifies distinct objects within the grid.\n\n    Args:\n        grid: A 2D numpy array representing the grid.\n\n    Returns:\n        A list of objects, where each object is a set of (row, col) tuples.\n    \"\"\"\n    objects = []\n    visited = set()\n    rows, cols = grid.shape\n\n    def dfs(row, col, current_object, color):\n        if (row, col) in visited or not (0 <= row < rows and 0 <= col < cols) or grid[row, col] != color:\n            return\n        visited.add((row, col))\n        current_object.add((row, col))\n        for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n            dfs(row + dr, col + dc, current_object, color)\n\n    for row in range(rows):\n        for col in range(cols):\n            if (row, col) not in visited:\n                current_object = set()\n                dfs(row, col, current_object, grid[row, col])\n                objects.append(current_object)\n    return objects\n\ndef is_enclosed(object_coords, grid):\n    \"\"\"\n    Checks if an object is fully enclosed by another single color.\n\n    Returns:\n      The enclosing color if enclosed, otherwise None.\n    \"\"\"\n    rows, cols = grid.shape\n    neighbor_colors = set()\n    \n    for row, col in object_coords:\n        for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n            nr, nc = row + dr, col + dc\n            if not (0 <= nr < rows and 0 <= nc < cols):\n               return None # touching edge\n            if (nr, nc) not in object_coords:\n              neighbor_colors.add(grid[nr,nc])\n\n    if len(neighbor_colors) == 1:\n       return neighbor_colors.pop()\n    else:\n       return None\n\ndef transform(input_grid):\n    \"\"\"\n    Applies the transformation to the input grid.\n    \"\"\"\n    output_grid = input_grid.copy()\n    objects = find_objects(input_grid)\n\n    # Apply contextual color changes based on enclosure\n    for obj in objects:\n        enclosing_color = is_enclosed(obj, input_grid)\n        if enclosing_color is not None:\n            # Example 1: \"Color 2 regions within color 3 regions become color 8 or color 0 based on relative location\"\n            if input_grid[list(obj)[0]] == 2 and enclosing_color == 3:  # Access any element of the set\n                # Simplified rule - no location detection, but we'll switch some to 0 and some to 8\n                coords = sorted(list(obj)) # sort the coordinates\n                for i, (row, col) in enumerate(coords):\n                  if i % 2 == 0: # just alternate for now\n                      output_grid[row,col] = 8\n                  else:\n                      output_grid[row,col] = 0\n\n            # Example 2: \"Color 4 and 1 inside 8 become flipped and sometimes the colors flip, then the 8 turns...\"\n            if enclosing_color == 8 and (input_grid[list(obj)[0]] == 4 or input_grid[list(obj)[0]] == 1) :  # Access any element of the set\n                coords = sorted(list(obj)) # sort the coordinates\n                #Simplified flip\n                n = len(coords)\n                for i in range(n//2):\n                    r1,c1 = coords[i]\n                    r2,c2 = coords[n-1-i]\n\n                    temp = output_grid[r1,c1]\n                    output_grid[r1,c1] = output_grid[r2,c2]\n                    output_grid[r2,c2] = temp\n\n                    #simplified color change.  Just alternate 1 and 4\n                    if output_grid[r1,c1] == 1:\n                       output_grid[r1,c1] = 4\n                    elif output_grid[r1,c1] == 4:\n                       output_grid[r1,c1] = 1\n\n                    if output_grid[r2,c2] == 1:\n                       output_grid[r2,c2] = 4\n                    elif output_grid[r2,c2] == 4:\n                       output_grid[r2,c2] = 1\n\n            # Example 3: Color 4\n            if enclosing_color in [1,2,3] and input_grid[list(obj)[0]] == 4: # 4's surrounded by 1,2,3\n              coords = sorted(list(obj))\n              for i, (row, col) in enumerate(coords):\n                  output_grid[row, col] = 4\n\n            # Apply the \"enclosing color changes\"\n            first_coord = list(obj)[0]\n            if enclosing_color == 8 and (input_grid[first_coord] == 8):  # Object made of 8s, enclosing another 8\n              for row, col in obj: #change 8's based on interior object color\n                  if any(input_grid[orow,ocol] == 1 for oset in objects for orow, ocol in oset if (orow, ocol) != (row, col) ): #object has 1\n                      output_grid[row,col] = 1 # change enclosing object color\n                  if any(input_grid[orow,ocol] == 4 for oset in objects for orow, ocol in oset if (orow, ocol) != (row, col) ): #object has 4\n                      output_grid[row,col] = 4 # change enclosing object color\n\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 8491,
+    "candidates_token_count": 1452,
+    "total_token_count": 9943,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.0-pro-exp-02-05",
+  "response_time": 23.266067
+}

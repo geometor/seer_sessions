@@ -1,0 +1,38 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom collections import Counter\nfrom scipy.ndimage import label, find_objects\nimport math\n\n\"\"\"\n1. Identify the Marker: Scan the input grid to find the unique gray (5) pixel and record its row and column coordinates.\n2. Find Pattern Color: Count the occurrences of all pixel colors in the input grid, excluding white (0) and gray (5). Identify the color that appears most frequently; this is the 'pattern color'.\n3. Find Pattern Components: Identify all connected groups of pixels (using 8-way adjacency) that have the 'pattern color'.\n4. Calculate Distances to Marker: For each identified pattern component, find the pixel within that component which has the smallest Manhattan distance to the gray marker pixel. Record this minimum distance for each component.\n5. Select Closest Component: Choose the pattern component that has the overall smallest minimum distance to the gray marker pixel.\n6. Determine Extraction Origin: Find the bounding box encompassing all pixels of the selected closest component. Record the coordinates (row, column) of the top-left corner of this bounding box.\n7. Extract 3x3 Grid: Extract a 3x3 subgrid from the input grid, starting at the top-left coordinates determined in Step 6.\n\"\"\"\n\ndef _find_pixel(grid, color):\n    \"\"\"Finds the coordinates of the first pixel with the specified color.\"\"\"\n    coords = np.argwhere(grid == color)\n    if len(coords) > 0:\n        return tuple(coords[0])\n    return None\n\ndef _find_pattern_color(grid):\n    \"\"\"Finds the most frequent color excluding white (0) and gray (5).\"\"\"\n    counts = Counter(grid.flatten())\n    counts.pop(0, None)  # Remove white\n    counts.pop(5, None)  # Remove gray\n    if not counts:\n        return None # No pattern color found\n    return counts.most_common(1)[0][0]\n\ndef _manhattan_distance(p1, p2):\n    \"\"\"Calculates the Manhattan distance between two points.\"\"\"\n    return abs(p1[0] - p2[0]) + abs(p1[1] - p2[1])\n\ndef _get_component_pixels(labeled_grid, label_num):\n    \"\"\"Gets the coordinates of all pixels belonging to a specific component label.\"\"\"\n    return np.argwhere(labeled_grid == label_num)\n\ndef _calculate_min_distance_to_marker(component_pixels, marker_coords):\n    \"\"\"Calculates the minimum Manhattan distance from component pixels to the marker.\"\"\"\n    min_dist = float('inf')\n    for pixel_coords in component_pixels:\n        dist = _manhattan_distance(tuple(pixel_coords), marker_coords)\n        if dist < min_dist:\n            min_dist = dist\n    return min_dist\n\ndef transform(input_grid):\n    \"\"\"\n    Transforms the input grid by finding the pattern component closest to a gray marker,\n    determining its top-left bounding box corner, and extracting a 3x3 subgrid starting\n    from that corner.\n    \"\"\"\n    input_np = np.array(input_grid)\n\n    # 1. Identify the Marker\n    marker_coords = _find_pixel(input_np, 5)\n    if marker_coords is None:\n        # Handle case where marker is not found (though expected in task)\n        # Returning an empty or default grid might be an option\n        return np.zeros((3, 3), dtype=int)\n\n    # 2. Find Pattern Color\n    pattern_color = _find_pattern_color(input_np)\n    if pattern_color is None:\n        # Handle case where no pattern color is found\n        return np.zeros((3, 3), dtype=int)\n\n    # 3. Find Pattern Components\n    # Define connectivity: 8-way adjacency (diagonal counts)\n    structure = np.array([[1,1,1], [1,1,1], [1,1,1]])\n    pattern_mask = (input_np == pattern_color)\n    labeled_grid, num_components = label(pattern_mask, structure=structure)\n\n    if num_components == 0:\n        # Handle case where pattern color exists but forms no components (shouldn't happen if color found)\n        return np.zeros((3, 3), dtype=int)\n\n    # 4 & 5. Calculate Distances and Select Closest Component\n    closest_component_label = -1\n    min_overall_distance = float('inf')\n\n    for i in range(1, num_components + 1):\n        component_pixels = _get_component_pixels(labeled_grid, i)\n        if len(component_pixels) == 0: # Should not happen with label output\n            continue\n\n        min_dist_for_component = _calculate_min_distance_to_marker(component_pixels, marker_coords)\n\n        if min_dist_for_component < min_overall_distance:\n            min_overall_distance = min_dist_for_component\n            closest_component_label = i\n        # Basic tie-breaking: if distances are equal, the component with the lower label index is kept (usually corresponds to top-to-bottom, left-to-right scanning)\n\n    if closest_component_label == -1:\n        # Handle case where no valid component was processed\n         return np.zeros((3, 3), dtype=int)\n\n    # 6. Determine Extraction Origin (using find_objects)\n    # find_objects returns slices for the bounding box\n    objects_slices = find_objects(labeled_grid)\n    # Adjust label index to 0-based index for slices\n    target_slice = objects_slices[closest_component_label - 1]\n    # The top-left corner is the start of the row and column slices\n    top_left_row = target_slice[0].start\n    top_left_col = target_slice[1].start\n    extraction_origin = (top_left_row, top_left_col)\n\n    # 7. Extract 3x3 Grid\n    # Ensure extraction doesn't go out of bounds (though examples suggest it won't)\n    rows, cols = input_np.shape\n    output_grid = np.zeros((3, 3), dtype=int) # Default to white if extraction fails partially\n\n    # Calculate the actual region to copy from input\n    src_r_start = extraction_origin[0]\n    src_r_end = min(extraction_origin[0] + 3, rows)\n    src_c_start = extraction_origin[1]\n    src_c_end = min(extraction_origin[1] + 3, cols)\n\n    # Calculate the size of the region copied\n    copy_height = src_r_end - src_r_start\n    copy_width = src_c_end - src_c_start\n\n    # Copy the data into the top-left of the output grid\n    if copy_height > 0 and copy_width > 0:\n        output_grid[0:copy_height, 0:copy_width] = input_np[src_r_start:src_r_end, src_c_start:src_c_end]\n\n    return output_grid.tolist() # Return as list of lists as per ARC standard\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "citation_metadata": {
+        "citation_sources": [
+          {
+            "start_index": 4444,
+            "end_index": 4601,
+            "uri": "https://github.com/NikhilCBhat/snarl",
+            "license_": ""
+          }
+        ]
+      },
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 3138,
+    "candidates_token_count": 1675,
+    "total_token_count": 4813,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 15.159698
+}

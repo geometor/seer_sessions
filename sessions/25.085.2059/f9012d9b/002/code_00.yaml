@@ -1,0 +1,51 @@
+task_description: |
+  Transforms an input grid into an output grid (either 1x1 or 2x2) based on the frequency analysis of pixel colors.
+
+examples:
+  - id: 1
+    input_grid: [[8, 6, 0, 6], [6, 8, 6, 8], [8, 6, 8, 6], [6, 8, 6, 8]]
+    input_counts: {white: 1, 6: 8, 8: 7}
+    non_white_sorted: [[6, 8], [8, 7]] # C1=6, C2=8
+    condition: count1 == count2 + white_count # 8 == 7 + 1 -> True
+    output_grid: [[8]] # [[C2]]
+
+  - id: 2
+    input_grid: [[2, 1, 2, 1, 2], [1, 1, 1, 1, 1], [2, 1, 2, 1, 2], [0, 0, 1, 1, 1], [0, 0, 2, 1, 2]]
+    input_counts: {white: 4, 1: 13, 2: 8}
+    non_white_sorted: [[1, 13], [2, 8]] # C1=1, C2=2
+    condition: count1 > count2 + white_count # 13 > 8 + 4 -> True
+    output_grid: [[1, 1], [2, 1]] # [[C1, C1], [C2, C1]]
+
+  - id: 3
+    input_grid: [[2, 2, 5, 2, 2, 5, 2], [2, 2, 5, 2, 2, 5, 2], [5, 5, 5, 5, 5, 5, 5], [2, 2, 5, 2, 2, 5, 2], [2, 2, 5, 2, 2, 5, 2], [5, 5, 5, 5, 5, 0, 0], [2, 2, 5, 2, 2, 0, 0]]
+    input_counts: {white: 4, 2: 24, 5: 21}
+    non_white_sorted: [[2, 24], [5, 21]] # C1=2, C2=5
+    condition: count1 < count2 + white_count # 24 < 21 + 4 -> True
+    output_grid: [[5, 5], [5, 2]] # [[C2, C2], [C2, C1]]
+
+definitions:
+  - term: white
+    description: Pixel with value 0.
+  - term: non-white
+    description: Pixel with value 1-9.
+  - term: C1
+    description: The non-white color with the highest frequency. Ties are broken by choosing the color with the higher numerical value.
+  - term: C2
+    description: The non-white color with the second highest frequency, after applying the same tie-breaking rule as for C1 if necessary.
+  - term: count(X)
+    description: The number of pixels with color X in the input grid.
+  - term: white_count
+    description: The number of white (0) pixels in the input grid.
+
+transformation_rules:
+  - rule: Count pixels for each color in the input grid.
+  - rule: Identify non-white colors and sort them first by frequency (descending) and then by color value (descending).
+  - rule: Identify C1 (most frequent) and C2 (second most frequent) and their counts (`count1`, `count2`).
+  - rule: Identify the count of white pixels (`white_count`).
+  - rule: Determine output based on comparisons:
+    - If only one non-white color C1 exists, output is `[[C1]]`.
+    - If `count1 == count2`, find all colors tied for the max count and output `[[max(tied_colors)]]`.
+    - If `count1 > count2`:
+      - If `count1 > count2 + white_count`, output is `[[C1, C1], [C2, C1]]`.
+      - If `count1 == count2 + white_count`, output is `[[C2]]`.
+      - If `count1 < count2 + white_count`, output is `[[C2, C2], [C2, C1]]`.

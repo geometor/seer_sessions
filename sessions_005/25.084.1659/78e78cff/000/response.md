@@ -1,0 +1,65 @@
+Okay, let's analyze the provided examples.
+
+**Perception**
+
+In both examples, the input grid contains a predominant background color, several pixels of a "boundary" color forming enclosing shapes or lines, and a single pixel of a "fill" or "seed" color.
+
+The output grid shows that the area enclosed by the boundary pixels (and the grid edges) has been "filled" with the seed color, starting from the initial seed pixel's location. The original background color within this enclosed area is replaced by the fill color. The boundary pixels themselves remain unchanged, as does the original seed pixel (though it's now surrounded by pixels of its own color).
+
+The filling process appears to operate like a flood fill algorithm constrained by the boundary color pixels. The fill spreads cardinally (up, down, left, right) but does not cross or replace the boundary pixels.
+
+*   In `train_1`: The background is green (3), the boundary is blue (1), and the seed/fill color is magenta (6). The magenta color spreads from the initial point (5, 4), replacing green pixels until it hits blue pixels or the grid edges.
+*   In `train_2`: The background is blue (1), the boundary is red (2), and the seed/fill color is green (3). The green color spreads from the initial point (5, 5), replacing blue pixels until it hits red pixels or the grid edges.
+
+**Facts**
+
+
+```yaml
+task_type: flood_fill_bounded
+components:
+  - role: background
+    property: most frequent color in the input grid
+    example_1_color: green (3)
+    example_2_color: blue (1)
+  - role: boundary
+    property: pixels forming enclosing structures, distinct from background and seed
+    example_1_color: blue (1)
+    example_2_color: red (2)
+  - role: seed
+    property: a single pixel distinct from background and boundary, determines fill color and starting point
+    example_1_color: magenta (6)
+    example_1_location: (5, 4) # row, col 0-indexed
+    example_2_color: green (3)
+    example_2_location: (5, 5) # row, col 0-indexed
+  - role: fill_area
+    property: region connected to the seed pixel, containing background pixels, bounded by boundary pixels and grid edges
+action:
+  type: flood_fill
+  start_point: seed pixel location
+  fill_color: seed pixel color
+  target_color: background color
+  stop_condition: encounter boundary pixel color or grid edge
+  connectivity: cardinal (4-way: up, down, left, right)
+relationships:
+  - boundary pixels enclose a region containing the seed pixel.
+  - the fill action replaces background pixels with the fill color only within the fill_area.
+  - boundary pixels and pixels outside the fill_area remain unchanged.
+```
+
+
+**Natural Language Program**
+
+1.  Identify the background color, which is the most frequent color in the input grid.
+2.  Identify the seed pixel: find the pixel whose color appears only once in the input grid. Note its color (fill color) and location (start point).
+3.  Identify the boundary color: find the color of the pixels that are neither the background nor the seed color.
+4.  Create the output grid as a copy of the input grid.
+5.  Perform a flood fill operation on the output grid starting from the seed pixel's location:
+    *   Use a queue or stack, initialized with the seed pixel's coordinates.
+    *   Maintain a set of visited coordinates to avoid redundant processing.
+    *   While the queue/stack is not empty:
+        *   Dequeue/pop the current coordinates (row, col).
+        *   If the coordinates are outside the grid boundaries, or have already been visited, or the pixel at these coordinates in the *input* grid has the boundary color, continue to the next iteration.
+        *   Mark the current coordinates as visited.
+        *   If the pixel at the current coordinates in the *input* grid has the background color, change the pixel at these coordinates in the *output* grid to the fill color.
+        *   Add the coordinates of the four cardinal neighbors (up, down, left, right) to the queue/stack.
+6.  Return the modified output grid.

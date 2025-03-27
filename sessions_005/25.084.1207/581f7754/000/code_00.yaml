@@ -1,0 +1,55 @@
+# Overall Task Structure
+task_type: grid_transformation
+grid_properties:
+  dimensionality: 2D
+  cell_values: integers 0-9 (colors)
+  size_range: 1x1 to 30x30
+
+# Key Elements and Properties
+background:
+  definition: The most frequent pixel color in the input grid.
+  behavior: Remains static in the output grid.
+objects:
+  definition: Contiguous block(s) of non-background pixels.
+  properties:
+    - color: The color(s) making up the object.
+    - shape: The spatial arrangement of the object's pixels.
+    - position: Location within the grid, often represented by a bounding box.
+  behavior:
+    - retain_shape: Yes
+    - retain_color: Yes
+    - movement: Horizontal translation only.
+
+# Transformation Details
+transformation_name: conditional_regional_horizontal_shift
+parameters:
+  shift_amount_S:
+    determination: Based on the presence of specific colors (priority order) in the input grid.
+    rules:
+      - if Green(3) exists: S = 7
+      - else if Yellow(4) exists: S = 4
+      - else if Red(2) exists: S = 2
+  number_of_regions_N:
+    determination: Based on the color that determined S.
+    rules:
+      - if Green(3) determined S: N = 3
+      - else if Yellow(4) determined S: N = 2
+      - else if Red(2) determined S: N = 2
+  grid_width_W: The number of columns in the input grid.
+  regions:
+    definition: Vertical sections of the grid based on N and W. Columns are 0-indexed.
+    calculation:
+      - if N=2: Left=[0, floor(W/2)-1], Right=[floor(W/2), W-1]
+      - if N=3: Left=[0, floor(W/3)-1], Middle=[floor(W/3), floor(2W/3)-1], Right=[floor(2W/3), W-1]
+  shift_direction:
+    determination: Based on object's bounding box horizontal position relative to regions.
+    rules:
+      - if object bounding_box_cols fully within Left region: shift Right (+S)
+      - if N=2 and object bounding_box_cols fully within Right region: shift Left (-S)
+      - if N=3 and object bounding_box_cols fully within Middle region: shift Left (-S)
+      - if N=3 and object bounding_box_cols fully within Right region: shift Left (-S)
+      - if object bounding_box_cols spans across region boundaries: shift Left (-S)
+
+# Boundary and Overlap Handling
+boundary_handling: Pixels shifted outside the grid width are discarded.
+overlap_handling: Assumed that shifted pixels overwrite the destination cells.

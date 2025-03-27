@@ -1,0 +1,36 @@
+task_description: Transforms a grid based on interactions between white and blue pixels.
+
+grid_properties:
+  - The input and output grids have the same dimensions.
+  - The primary colors involved appear to be white (0), blue (1), and red (2).
+
+objects:
+  - name: Interior White Pixels
+    description: White pixels (0) that are not reachable from the border of the grid through a path of contiguous white pixels (using 4 or 8 connectivity - 4 seems safer for flood fill from border). Requires checking neighbors. In example 0, these form a 2x2 square.
+    identified_by: Flood fill from border white pixels; any white pixels not reached are interior.
+  - name: Blue Border Pixels
+    description: Blue pixels (1) that form a boundary around the interior white pixels.
+  - name: Neighboring Blue Pixels
+    description: Blue pixels (1) that are adjacent (8-directionally) to any Interior White Pixel.
+
+actions:
+  - action: Color Change (White to Red)
+    objects: Interior White Pixels
+    condition: Always applied to all identified Interior White Pixels.
+    result: These pixels become red (2) in the output grid.
+  - action: Color Change (Blue to Red)
+    objects: Neighboring Blue Pixels
+    condition: The blue pixel is 4-directionally adjacent (shares an edge) with at least one Interior White Pixel.
+    result: These pixels become red (2) in the output grid.
+  - action: Color Change (Blue to White)
+    objects: Neighboring Blue Pixels
+    condition: The blue pixel is only diagonally adjacent (shares a corner) with Interior White Pixels, AND it is NOT 4-directionally adjacent to ANY Interior White Pixel.
+    result: These pixels become white (0) in the output grid. (This rule needs careful verification across all examples, as it wasn't observed in Example 0's output where *all* surrounding blue pixels turned red).
+
+relationships:
+  - adjacency: 4-directional (up, down, left, right) and diagonal adjacency between Interior White Pixels and Neighboring Blue Pixels determines the transformation outcome for the blue pixels.
+  - enclosure: Interior White Pixels are defined by being enclosed (not connected to the border). The previous code implicitly assumes enclosure by *any* non-white color, while the description refers to blue. Example 0 has blue enclosure. This needs checking in other examples.
+
+uncertainties:
+  - Does the enclosing color *have* to be blue? The `find_interior_white_pixels` logic (using flood fill) doesn't check the enclosing color, only that the white area is enclosed.
+  - The rule for changing diagonal blue neighbors to white needs validation. Example 0 shows *all* blue neighbors (including diagonals) becoming red. Perhaps the rule is simpler: *all* blue neighbors of interior white pixels become red? Or perhaps the diagonal rule applies only under specific circumstances not present in Example 0.

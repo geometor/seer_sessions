@@ -1,0 +1,57 @@
+task_description: "Transform a grid by drawing blue paths originating from a single special pixel against a uniform background."
+
+elements:
+  - object: grid
+    properties:
+      - type: input
+      - type: output
+      - dimensions: height (H), width (W) # Same for input and output
+  - object: background
+    properties:
+      - type: pixel_color
+      - uniformity: covers most of the input grid
+      - persistence: remains largely unchanged in the output grid, except where replaced by blue pixels
+  - object: special_pixel
+    properties:
+      - type: pixel_color (distinct from background)
+      - count: exactly one in the input grid
+      - location: (row r, column c)
+      - persistence: color and location are identical in input and output grids
+  - object: blue_pixels
+    properties:
+      - type: pixel_color (value 1)
+      - presence: only in the output grid
+      - formation: form specific paths related to the special_pixel location
+
+relationships:
+  - type: spatial
+    description: The blue pixels form paths connected to the column of the special_pixel.
+    details:
+      - A vertical path runs in the special_pixel's column (c), from row 0 to H-1, excluding the special_pixel's row (r).
+      - A horizontal path runs along the top edge (row 0), connecting the vertical path's end (0, c) to either the left edge (column 0) or the right edge (column W-1).
+      - A horizontal path runs along the bottom edge (row H-1), connecting the vertical path's end (H-1, c) to either the left edge (column 0) or the right edge (column W-1).
+  - type: conditional
+    description: The direction of the horizontal blue paths depends on the row index (r) of the special_pixel.
+    condition: r % 2 (parity of the special pixel's row index)
+    outcomes:
+      - if r is odd:
+          - top horizontal path goes left (from column c-1 down to 0).
+          - bottom horizontal path goes right (from column c+1 up to W-1).
+      - if r is even:
+          - top horizontal path goes right (from column c+1 up to W-1).
+          - bottom horizontal path goes left (from column c-1 down to 0).
+
+actions:
+  - action: identify
+    target: special_pixel
+    result: location (r, c) and color
+  - action: identify
+    target: background
+    result: color
+  - action: generate
+    target: output_grid
+    steps:
+      - Initialize output grid as a copy of the input grid.
+      - Draw vertical blue path: For i from 0 to H-1, if i is not r, set output_grid[i][c] = 1.
+      - Check parity of r.
+      - Draw horizontal paths based on parity (as described in relationships.conditional).

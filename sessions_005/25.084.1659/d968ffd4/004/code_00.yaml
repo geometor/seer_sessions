@@ -1,0 +1,71 @@
+task_description: "Fill the rectangular region between two aligned objects based on proximity, extending the fill across the full grid dimension orthogonal to the alignment."
+
+input_features:
+  - description: "Input grid containing a background color and exactly two distinct, non-overlapping rectangular objects."
+    grid_properties:
+      - property: "background_color"
+        value: "Most frequent color in the grid."
+      - property: "objects"
+        value: "Exactly two contiguous areas of non-background color."
+        object_properties:
+          - property: "color"
+            value: "Integer 1-9 (excluding background)."
+          - property: "shape"
+            value: "Assumed rectangular based on examples, though finding code handles general shapes."
+          - property: "bounding_box"
+            value: "[min_row, min_col, max_row, max_col]"
+          - property: "alignment"
+            value: "Either horizontally aligned or vertically aligned."
+          - property: "gap"
+            value: "A region of background color separating the bounding boxes either horizontally or vertically."
+
+transformation:
+  - step: 1
+    action: "Identify background color (most frequent)."
+  - step: 2
+    action: "Find all contiguous non-background objects and their bounding boxes."
+  - step: 3
+    condition: "Exactly two objects found."
+    action: "Proceed."
+    otherwise: "Return input grid unchanged."
+  - step: 4
+    action: "Check for horizontal alignment."
+    condition: "Bounding boxes are separated horizontally by at least one column of background color."
+    action: "Identify left object, right object, gap columns (gap_start_col to gap_end_col), and gap width."
+    then: "Proceed to horizontal fill step."
+  - step: 5
+    action: "Check for vertical alignment."
+    condition: "Bounding boxes are separated vertically by at least one row of background color."
+    action: "Identify top object, bottom object, gap rows (gap_start_row to gap_end_row), and gap height."
+    then: "Proceed to vertical fill step."
+  - step: 6
+    condition: "Neither horizontal nor vertical alignment with a gap found."
+    action: "Return input grid unchanged."
+  - step: 7 # Horizontal Fill
+    action: "Define fill area: rows 0 to grid_height-1, columns gap_start_col to gap_end_col."
+    sub_actions:
+      - action: "Calculate split point: `left_count = gap_width // 2`"
+      - action: "Fill left part: `grid[0:height, gap_start_col : gap_start_col + left_count] = left_object_color`"
+      - action: "Fill right part: `grid[0:height, gap_end_col - left_count + 1 : gap_end_col + 1] = right_object_color`"
+      - note: "If gap_width is odd, the middle column remains background."
+    then: "Return modified grid."
+  - step: 8 # Vertical Fill
+    action: "Define fill area: rows gap_start_row to gap_end_row, columns 0 to grid_width-1."
+    sub_actions:
+      - action: "Calculate split point: `top_count = (gap_height + 1) // 2`, `bottom_count = gap_height // 2`"
+      - action: "Fill top part: `grid[gap_start_row : gap_start_row + top_count, 0:width] = top_object_color`"
+      - action: "Fill bottom part: `grid[gap_end_row - bottom_count + 1 : gap_end_row + 1, 0:width] = bottom_object_color`"
+      - note: "If gap_height is odd, the middle row remains background."
+    then: "Return modified grid."
+
+output_features:
+  - description: "Output grid with the gap between the two objects filled according to proximity, extending across the full grid dimension orthogonal to the alignment."
+    grid_properties:
+      - property: "colors"
+        value: "Contains original background and object colors. No new colors introduced."
+      - property: "filled_area"
+        value: "Rectangular region corresponding to the gap between objects, spanning the full grid height (for horizontal alignment) or width (for vertical alignment)."
+      - property: "fill_logic"
+        value: "Pixels in the fill area take the color of the closer object. If the gap dimension is odd, the central row/column remains background."
+      - property: "original_objects"
+        value: "Preserved in their original positions."

@@ -1,0 +1,55 @@
+task_description: Modify a grid based on interactions between gray pixel components and adjacent non-gray, non-orange 'source' pixels.
+
+definitions:
+  - &orange 7
+  - &gray 6
+  - &source_colors [1, 2, 3, 4, 5, 8, 9] # Colors other than orange and gray
+  - &connectivity 8 # Adjacency including diagonals
+
+elements:
+  - object: grid
+    properties:
+      - type: 2D array of integers (pixels)
+      - colors: *orange, *gray, and others defined as *source_colors
+  - object: gray_component
+    properties:
+      - type: Set of connected pixels with color *gray
+      - connectivity: defined by *connectivity
+  - object: source_pixel
+    properties:
+      - type: Single pixel
+      - color: One of *source_colors
+      - location: Coordinates in the grid
+
+relationships:
+  - type: adjacency
+    definition: Two pixels are adjacent if they share an edge or a corner (*connectivity = 8).
+    applies_to:
+      - [gray_component, source_pixel] # A gray component is adjacent to a source pixel if any pixel in the component is adjacent to the source pixel.
+
+actions:
+  - action: find_gray_components
+    input: input_grid
+    output: list of gray_components
+    description: Identify all connected components of *gray pixels using *connectivity.
+  - action: find_source_pixels
+    input: input_grid
+    output: list of source_pixel locations and colors
+    description: Identify all pixels whose color is in *source_colors.
+  - action: determine_adjacent_source_colors
+    input: [gray_component, list_of_source_pixels]
+    output: set of unique colors of adjacent source pixels
+    description: For a given gray_component, find all source_pixels adjacent to it and return the set of their unique colors.
+  - action: update_grid
+    steps:
+      - step: Initialize output_grid as a copy of input_grid.
+      - step: For each gray_component:
+          - determine adjacent unique source colors.
+          - if count of unique source colors is exactly 1:
+              - get the unique_color.
+              - change all pixels in output_grid corresponding to the gray_component to unique_color.
+      - step: For each original source_pixel location:
+          - change the pixel in output_grid at that location to *orange.
+    output: final output_grid
+
+goal: Transform the input grid into the output grid by applying the color propagation rule from single unique adjacent source colors to gray components and then resetting the source pixels.

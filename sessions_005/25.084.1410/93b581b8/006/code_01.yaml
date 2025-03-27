@@ -1,0 +1,50 @@
+task_description: Identify a unique 2x2 block of non-background colors in the input grid and use its pixel colors to paint 2x2 blocks in the corners of an output grid, which is otherwise a copy of the input.
+
+grid_properties:
+  - input_output_shape_match: True # Verified, all examples 6x6
+  - background_color: 0 # White
+
+objects:
+  - name: source_object
+    type: rectangle
+    shape: [2, 2]
+    pixels: non-background (color != 0)
+    quantity: 1 per input grid # Verified
+    location: variable within the input grid # Verified (1,1), (2,2), (2,2)
+    properties:
+      - color_tl: color of top-left pixel
+      - color_tr: color of top-right pixel
+      - color_bl: color of bottom-left pixel
+      - color_br: color of bottom-right pixel
+  - name: corner_squares
+    type: rectangle
+    shape: [2, 2]
+    pixels: solid color
+    quantity: 4 per output grid
+    location: fixed at the four corners of the output grid (TL[0:2,0:2], TR[0:2,W-2:W], BL[H-2:H,0:2], BR[H-2:H,W-2:W])
+    properties:
+      - color determined by source_object pixels according to diagonal mapping
+
+actions:
+  - name: copy_grid
+    input: input_grid
+    output: initial output_grid
+  - name: find_source_object
+    input: input_grid
+    criteria: find the top-left coordinates (r, c) of the unique 2x2 block where all pixels are non-background.
+    output: coordinates (r, c), colors (color_tl, color_tr, color_bl, color_br)
+  - name: paint_corners
+    target: output_grid
+    operations:
+      - draw 2x2 square at output_grid[0:2, 0:2] with color `color_br` from source_object.
+      - draw 2x2 square at output_grid[0:2, W-2:W] with color `color_bl` from source_object. (W=width)
+      - draw 2x2 square at output_grid[H-2:H, 0:2] with color `color_tr` from source_object. (H=height)
+      - draw 2x2 square at output_grid[H-2:H, W-2:W] with color `color_tl` from source_object.
+    effect: Overwrites existing content in the corner 2x2 areas. # Verified
+
+relationship: # Verified by metrics check
+  - The color of each corner square in the output is determined by the diagonally opposite pixel within the source_object found in the input.
+      - Output Top-Left Corner <- Input Source Object Bottom-Right Pixel
+      - Output Top-Right Corner <- Input Source Object Bottom-Left Pixel
+      - Output Bottom-Left Corner <- Input Source Object Top-Right Pixel
+      - Output Bottom-Right Corner <- Input Source Object Top-Left Pixel

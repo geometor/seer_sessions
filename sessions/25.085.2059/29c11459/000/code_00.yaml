@@ -1,0 +1,48 @@
+task_description: "Fill the gap between two boundary pixels in a row, using their respective colors and placing a gray separator in the middle."
+
+grid_properties:
+  - dimensions_preserved: True # Output grid has the same height and width as the input.
+  - background_color: white (0)
+
+objects:
+  - object_type: boundary_pixel
+    count_per_input: 2
+    location: Always in the same row, one at column 0, one at the last column.
+    properties:
+      - color: Any non-white color. Colors can differ between the two boundary pixels.
+  - object_type: fill_segment
+    count_per_output: 2 (left and right)
+    location: In the row defined by boundary pixels, between them, excluding the middle column.
+    properties:
+      - color: Inherited from the nearest boundary pixel (left segment uses left pixel color, right segment uses right pixel color).
+  - object_type: separator_pixel
+    count_per_output: 1
+    location: In the row defined by boundary pixels, at the exact middle column index `(width - 1) // 2`.
+    properties:
+      - color: Always gray (5).
+
+actions:
+  - action: identify_target_row
+    condition: Row contains exactly two non-white pixels, located at the first and last columns.
+    inputs: input_grid
+    outputs: row_index
+  - action: identify_boundary_pixels
+    inputs: input_grid, row_index
+    outputs: left_pixel_color, right_pixel_color, grid_width
+  - action: calculate_middle_column
+    inputs: grid_width
+    outputs: middle_column_index
+  - action: fill_left_segment
+    inputs: output_grid, row_index, left_pixel_color, middle_column_index
+    effect: Changes colors of pixels in the target row from column 1 up to `middle_column_index - 1` to `left_pixel_color`.
+  - action: place_separator
+    inputs: output_grid, row_index, middle_column_index
+    effect: Changes color of the pixel at `(row_index, middle_column_index)` to gray (5).
+  - action: fill_right_segment
+    inputs: output_grid, row_index, right_pixel_color, middle_column_index, grid_width
+    effect: Changes colors of pixels in the target row from `middle_column_index + 1` up to `grid_width - 2` to `right_pixel_color`.
+
+relationships:
+  - The transformation only occurs in the row containing the boundary pixels.
+  - The colors used for filling are determined by the boundary pixels on either side.
+  - The gray separator pixel is positioned exactly halfway between the boundary pixels horizontally.

@@ -1,0 +1,100 @@
+task_description: Creates a layered square grid based on the sizes of non-background objects in the input grid.
+
+examples:
+  - id: train_1
+    input:
+      grid_size: [6, 6]
+      background_color: 7 # Orange
+      objects:
+        - color: 4 # Yellow
+          pixels: [[1, 3], [1, 4], [2, 3], [2, 4]]
+          block_size: 4
+        - color: 6 # Magenta
+          pixels: [[3, 0], [4, 0], [4, 1]]
+          block_size: 3 # Largest contiguous block size
+      distinct_non_background_colors: 2
+    output:
+      grid_size: [3, 3] # (2 * 2 - 1) x (2 * 2 - 1)
+      layers:
+        - layer_index: 0 # Outermost
+          color: 4 # Yellow (largest block)
+        - layer_index: 1 # Center
+          color: 6 # Magenta (smallest block)
+
+  - id: train_2
+    input:
+      grid_size: [9, 9]
+      background_color: 7 # Orange
+      objects:
+        - color: 5 # Gray
+          pixels: [[2, 1], [2, 2], [3, 1], [3, 2]]
+          block_size: 4
+        - color: 8 # Azure
+          pixels: [[0, 6], [1, 6], [2, 5], [2, 6], [2, 7]]
+          block_size: 5
+        - color: 1 # Blue
+          pixels: [[5, 3], [5, 4], [5, 5], [6, 3], [6, 5], [7, 3], [7, 4], [7, 5]]
+          block_size: 8
+      distinct_non_background_colors: 3
+    output:
+      grid_size: [5, 5] # (2 * 3 - 1) x (2 * 3 - 1)
+      layers:
+        - layer_index: 0 # Outermost
+          color: 1 # Blue (largest block)
+        - layer_index: 1 # Middle
+          color: 8 # Azure (middle block size)
+        - layer_index: 2 # Center
+          color: 5 # Gray (smallest block)
+
+  - id: train_3
+    input:
+      grid_size: [7, 7]
+      background_color: 7 # Orange
+      objects:
+        - color: 8 # Azure
+          pixels: [[1, 1], [1, 2], [1, 3], [2, 1], [2, 3], [3, 1], [3, 2], [3, 3]]
+          block_size: 8
+        - color: 3 # Green
+          pixels: [[1, 5], [1, 6]]
+          block_size: 2
+        - color: 9 # Maroon
+          pixels: [[4, 5]]
+          block_size: 1
+        - color: 0 # White
+          pixels: [[5, 0], [5, 1], [6, 0], [6, 1]]
+          block_size: 4
+      distinct_non_background_colors: 4
+    output:
+      grid_size: [7, 7] # (2 * 4 - 1) x (2 * 4 - 1)
+      layers:
+        - layer_index: 0 # Outermost
+          color: 8 # Azure (largest block, size 8)
+        - layer_index: 1
+          color: 0 # White (2nd largest block, size 4)
+        - layer_index: 2
+          color: 3 # Green (3rd largest block, size 2)
+        - layer_index: 3 # Center
+          color: 9 # Maroon (smallest block, size 1)
+
+transformation:
+  - step: 1
+    action: Identify the most frequent color in the input grid.
+    result: This is the background color.
+  - step: 2
+    action: Find all contiguous blocks of pixels that are not the background color.
+    details: Use 4-way adjacency (up, down, left, right).
+  - step: 3
+    action: Determine the set of unique non-background colors present.
+    result: Count the number of unique colors (N).
+  - step: 4
+    action: For each unique non-background color, find the size (pixel count) of its largest contiguous block in the input grid.
+  - step: 5
+    action: Sort the unique non-background colors based on their corresponding largest block sizes, in descending order.
+    result: A sorted list of colors [C1, C2, ..., CN].
+  - step: 6
+    action: Calculate the output grid dimensions as (2N - 1) x (2N - 1).
+  - step: 7
+    action: Create the output grid.
+  - step: 8
+    action: Fill the output grid layer by layer, starting from the outermost layer (layer 0) and moving inwards.
+    details: Layer 'k' (where k=0 is the outermost border, k=1 is the next layer in, etc.) is filled with the color C(k+1) from the sorted list. The innermost layer (k = N-1) corresponds to the center pixel(s) and is filled with color CN.

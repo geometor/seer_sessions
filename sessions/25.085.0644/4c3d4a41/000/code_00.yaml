@@ -1,0 +1,48 @@
+task_context:
+  grid_dimensions:
+    height: 8
+    width: 20
+  vertical_split_column: 9 # Column index separating left and right sections
+
+sections:
+  - name: stencil_area
+    columns: [0, 8]
+    input_description: Contains a stencil object made of gray (5) pixels on a white (0) background.
+    output_description: All pixels are set to white (0).
+  - name: target_area
+    columns: [9, 19]
+    input_description: Contains a static gray (5) frame and variable content pixels (various colors).
+    output_description: Frame remains. Content pixels are modified based on the stencil area.
+
+objects:
+  - name: stencil_shape
+    location: stencil_area (input)
+    pixels: Contiguous gray (5) pixels. Shape varies between examples.
+    role: Determines which pixels in the target_area are modified.
+  - name: frame
+    location: target_area (input and output)
+    pixels: Contiguous gray (5) pixels forming a border and internal structure.
+    role: Static background structure, remains unchanged.
+  - name: content_pixels
+    location: target_area (input and output)
+    pixels: Non-gray pixels within the bounds of the frame.
+    role: Subject to modification based on the stencil_shape.
+
+transformation_rule:
+  - action: copy_input_to_output
+    description: Start with the output grid as a copy of the input grid.
+  - action: clear_stencil_area
+    target: output_grid columns [0, 8]
+    effect: Set all pixels in these columns to white (0).
+  - action: apply_stencil
+    source: input_grid
+    target: output_grid
+    condition: For each pixel at (row, col) where col >= 9
+    logic: If the corresponding stencil pixel input_grid[row, col - 9] is gray (5), set output_grid[row, col] to gray (5). Otherwise, output_grid[row, col] keeps its copied value.
+
+relationships:
+  - type: positional_mapping
+    from: stencil_area pixel at (r, c_stencil)
+    to: target_area pixel at (r, c_target)
+    condition: c_target = c_stencil + 9
+    relevance: Links stencil pixels to the target pixels they potentially modify.

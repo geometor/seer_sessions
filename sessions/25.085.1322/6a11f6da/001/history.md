@@ -1,0 +1,244 @@
+
+## train_1
+
+**input:**
+```
+0 1 1 1 1
+0 1 1 0 0
+0 1 1 1 0
+0 0 1 1 1
+0 1 1 1 0
+0 8 8 0 0
+8 0 0 8 0
+0 8 0 0 8
+0 0 8 0 0
+8 0 8 0 8
+0 6 0 6 6
+0 0 6 6 6
+0 6 0 0 0
+0 6 6 0 6
+0 0 0 0 0
+```
+
+
+**output:**
+```
+0 6 1 6 6
+8 1 6 6 6
+0 6 1 1 8
+0 6 6 1 6
+8 1 1 1 8
+```
+
+
+## train_2
+
+**input:**
+```
+1 0 1 0 1
+0 1 0 0 1
+0 1 0 0 0
+1 0 0 1 1
+1 0 0 1 1
+0 0 0 0 0
+0 8 8 8 0
+0 8 0 0 0
+8 0 0 0 8
+8 0 8 8 0
+0 0 6 0 6
+6 0 6 0 0
+6 0 0 0 6
+6 0 0 0 6
+0 6 6 6 6
+```
+
+
+**output:**
+```
+1 0 6 0 6
+6 1 6 8 1
+6 1 0 0 6
+6 0 0 1 6
+1 6 6 6 6
+```
+
+
+## train_3
+
+**input:**
+```
+0 0 1 1 0
+1 1 1 0 0
+0 1 1 1 0
+0 1 0 0 1
+1 0 0 1 1
+8 0 8 8 0
+8 0 8 8 8
+8 8 8 0 8
+0 8 0 8 8
+8 0 8 8 8
+6 0 6 0 6
+0 0 0 0 6
+6 6 6 6 6
+0 0 6 0 0
+0 6 0 6 0
+```
+
+
+**output:**
+```
+6 0 6 1 6
+1 1 1 8 6
+6 6 6 6 6
+0 1 6 8 1
+1 6 8 6 1
+```
+
+
+## train_4
+
+**input:**
+```
+1 1 1 0 0
+0 0 1 1 0
+1 1 0 0 1
+0 1 1 1 1
+0 0 0 0 1
+0 8 0 0 8
+8 8 8 0 0
+0 0 0 0 0
+0 0 0 8 0
+0 0 8 8 8
+6 6 0 0 0
+0 6 6 6 0
+0 0 6 0 6
+0 0 6 6 6
+6 6 6 6 6
+```
+
+
+**output:**
+```
+6 6 1 0 8
+8 6 6 6 0
+1 1 6 0 6
+0 1 6 6 6
+6 6 6 6 6
+```
+
+
+## train_5
+
+**input:**
+```
+1 0 0 0 0
+1 1 1 1 1
+0 1 0 1 0
+1 1 1 0 1
+0 0 0 1 0
+8 0 8 0 0
+8 0 0 8 0
+8 0 0 0 8
+8 8 0 0 0
+8 8 0 0 0
+0 6 0 0 6
+6 0 0 6 6
+0 6 6 6 0
+6 6 0 6 6
+0 0 6 0 6
+```
+
+
+**output:**
+```
+1 6 8 0 6
+6 1 1 6 6
+8 6 6 6 8
+6 6 1 6 6
+8 8 6 1 6
+```
+
+Okay, let's analyze the task examples.
+
+**Perception of Task Elements**
+
+1.  **Input Structure:** The input grids are consistently 15 rows by 5 columns. Visually, they appear to be composed of three distinct 5x5 sections stacked vertically.
+    *   The top section (rows 0-4) uses colors white (0) and blue (1).
+    *   The middle section (rows 5-9) uses colors white (0) and azure (8).
+    *   The bottom section (rows 10-14) uses colors white (0) and magenta (6).
+2.  **Output Structure:** The output grids are always 5 rows by 5 columns. They contain colors white (0), blue (1), azure (8), and magenta (6).
+3.  **Transformation Pattern:** The output grid seems to be an overlay or combination of the three 5x5 input sections. The dimensions match (5x5). Let's consider the pixel at position `(r, c)` in the output (where `r` is the row index, `c` is the column index, both 0-based). This output pixel seems determined by the input pixels at `(r, c)`, `(r+5, c)`, and `(r+10, c)`.
+4.  **Color Interaction:** By comparing corresponding pixels across the three input sections and the output, a priority emerges:
+    *   If the pixel in the bottom section (magenta layer) is magenta (6), the output pixel is magenta (6).
+    *   Otherwise, if the pixel in the top section (blue layer) is blue (1), the output pixel is blue (1).
+    *   Otherwise, if the pixel in the middle section (azure layer) is azure (8), the output pixel is azure (8).
+    *   Otherwise (if all corresponding input pixels are white (0)), the output pixel is white (0).
+    This suggests a color priority: Magenta (6) > Blue (1) > Azure (8) > White (0).
+
+**YAML Facts**
+
+
+```yaml
+task_description: Combine three vertically stacked 5x5 input layers into a single 5x5 output grid based on color priority.
+
+input_grid:
+  properties:
+    height: 15
+    width: 5
+  structure:
+    type: composite
+    components:
+      - name: layer_1
+        rows: 0-4
+        cols: 0-4
+        colors: [0, 1] # white, blue
+      - name: layer_2
+        rows: 5-9
+        cols: 0-4
+        colors: [0, 8] # white, azure
+      - name: layer_3
+        rows: 10-14
+        cols: 0-4
+        colors: [0, 6] # white, magenta
+
+output_grid:
+  properties:
+    height: 5
+    width: 5
+  colors_present: [0, 1, 6, 8] # white, blue, magenta, azure
+
+transformation:
+  type: overlay
+  pixel_mapping:
+    input_pixels_at: [(r, c), (r+5, c), (r+10, c)] # r from 0-4, c from 0-4
+    output_pixel_at: (r, c)
+  rule:
+    description: Pixel-wise combination based on color priority.
+    priority_order: [6, 1, 8, 0] # magenta > blue > azure > white
+    logic: |
+      For each output cell at (r, c):
+      1. Check input cell at (r+10, c) [layer_3]. If it's magenta (6), output is magenta (6).
+      2. Else, check input cell at (r, c) [layer_1]. If it's blue (1), output is blue (1).
+      3. Else, check input cell at (r+5, c) [layer_2]. If it's azure (8), output is azure (8).
+      4. Else, output is white (0).
+```
+
+
+**Natural Language Program**
+
+1.  Initialize an empty 5x5 output grid.
+2.  Treat the 15x5 input grid as three vertically stacked 5x5 layers:
+    *   Layer 1: Rows 0 to 4.
+    *   Layer 2: Rows 5 to 9.
+    *   Layer 3: Rows 10 to 14.
+3.  Iterate through each cell position `(r, c)` from row `r = 0` to `4` and column `c = 0` to `4`.
+4.  For the current position `(r, c)`, retrieve the colors from the corresponding cells in the three input layers:
+    *   `color1 = input_grid[r][c]`
+    *   `color2 = input_grid[r + 5][c]`
+    *   `color3 = input_grid[r + 10][c]`
+5.  Determine the output color for position `(r, c)` based on the following priority:
+    *   If `color3` is magenta (6), set `output_grid[r][c]` to magenta (6).
+    *   Else if `color1` is blue (1), set `output_grid[r][c]` to blue (1).
+    *   Else if `color2` is azure (8), set `output_grid[r][c]` to azure (8).
+    *   Else (if none of the above conditions are met, meaning all relevant input pixels are white (0)), set `output_grid[r][c]` to white (0).
+6.  Return the completed 5x5 output grid.

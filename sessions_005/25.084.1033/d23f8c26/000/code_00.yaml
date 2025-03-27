@@ -1,0 +1,38 @@
+task_type: grid_transformation
+grid_properties:
+  size_relation: output grid has the same dimensions as the input grid
+  background_color: white (0)
+transformation:
+  type: column_selection_and_filtering
+  steps:
+    - name: analyze_columns
+      description: Process each column of the input grid individually.
+      properties:
+        - property: vertical_components
+          description: Count the number of vertically connected components of non-white pixels within the column. A component is one or more adjacent non-white pixels separated by white pixels (0) or grid boundaries.
+        - property: non_white_count
+          description: Count the total number of non-white pixels within the column.
+    - name: select_column
+      description: Identify the single column to preserve based on hierarchical criteria.
+      criteria:
+        - level: 1
+          metric: vertical_components
+          rule: Find the maximum count across all columns. Select column(s) with this maximum count.
+        - level: 2 (tie-breaker)
+          metric: non_white_count
+          rule: If multiple columns tied at level 1, select the column(s) among them with the maximum non_white_count.
+        - level: 3 (tie-breaker)
+          metric: column_index
+          rule: If multiple columns tied at level 2, select the column among them with the largest index (rightmost).
+    - name: construct_output
+      description: Create the output grid.
+      details:
+        - Initialize an output grid of the same dimensions as the input, filled with the background color (white, 0).
+        - Copy the pixels from the selected input column into the corresponding column of the output grid.
+objects:
+  - type: column
+    attributes: [index, pixel_values, vertical_components_count, non_white_pixel_count]
+  - type: pixel
+    attributes: [color_value, row_index, column_index]
+  - type: vertical_component
+    description: A contiguous vertical block of non-white pixels within a single column.

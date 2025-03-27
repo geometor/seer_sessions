@@ -1,0 +1,55 @@
+task_context:
+  description: Fill specific columns with red based on markers in the last row and gray modifiers anywhere above the last row.
+  grid_properties:
+    - height: variable (10 in examples)
+    - width: variable (10 in examples)
+    - colors: white (0), red (2), gray (5) are relevant.
+
+objects:
+  - name: marker
+    identifier: pixel value 2 in the last row
+    properties:
+      - color: red (2)
+      - location: column index in the last row (row_index = height - 1)
+  - name: modifier
+    identifier: pixel value 5 not in the last row
+    properties:
+      - color: gray (5)
+      - location: row and column index (row_index < height - 1)
+  - name: background
+    identifier: pixel value 0
+    properties:
+      - color: white (0)
+
+actions:
+  - name: identify_markers
+    description: Find the column indices of all red (2) pixels in the last row.
+  - name: identify_modifiers
+    description: Find the column indices of all gray (5) pixels in rows above the last row. Keep track of which columns contain modifiers.
+  - name: determine_target_columns
+    description: Create a set of target column indices based on markers and modifiers.
+    steps:
+      - For each marker column index `M`:
+          - Check if a modifier exists anywhere in column `M` (above the last row).
+          - If yes (modifier in column `M`), add column index `M + 1` to the target set (respecting grid width).
+          - If no (no modifier in column `M`), add column index `M` to the target set.
+      - For each column index `G` that contains a modifier (from identify_modifiers step):
+          - Check if column `G` corresponds to a marker column index `M`.
+          - If column `G` does *not* correspond to a marker column index, add column index `G` to the target set.
+  - name: fill_columns
+    description: Modify a copy of the input grid by filling target columns.
+    steps:
+      - Create a copy of the input grid.
+      - For each column index `C` in the determined target set:
+          - For each row index `R` from 0 to height - 1:
+              - If the pixel at `(R, C)` in the *original* input grid is white (0):
+                  - Change the pixel at `(R, C)` in the *copy* grid to red (2).
+      - Return the modified grid.
+
+relationships:
+  - type: co-location
+    description: A modifier (gray pixel) can be in the same column as a marker (red pixel in last row).
+    effect: Changes the target column from the marker's column `M` to the column to its right `M + 1`.
+  - type: independence
+    description: A modifier (gray pixel) can exist in a column that does not contain a marker in the last row.
+    effect: Causes the modifier's own column `G` to be targeted for filling.

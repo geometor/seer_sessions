@@ -1,0 +1,55 @@
+task_context:
+  description: "Generates vertical color patterns based on interactions between a marker object and single-pixel objects."
+  background_color_source: "Most frequent color in the input grid (assumed Azure, 8)."
+objects:
+  - type: marker
+    description: "The 'marker' is the lowest blue (1) object in the grid. Identified by finding all blue objects and selecting the one whose highest row index is maximal."
+    properties:
+      - color: blue (1)
+      - position: lowest among blue objects
+      - role: defines adjacency boundary and vertical cutoff for color selection
+  - type: signal_pixel
+    description: "Single-pixel objects (objects of size 1) of any color except the background color."
+    properties:
+      - size: 1
+      - color: any non-background color
+      - role: potential triggers for pattern generation
+  - type: active_pixel
+    description: "Signal pixels whose color is not blue (1)."
+    properties:
+      - source: signal_pixel
+      - condition: color != blue (1)
+      - role: primary triggers for pattern generation if adjacent to the marker, and contribute to the pattern's color sequence if below the marker's top edge.
+relationships:
+  - type: adjacency
+    description: "An active_pixel is adjacent to the marker object if it is within the 8 neighboring cells (including diagonals) of any pixel belonging to the marker object."
+    source: active_pixel
+    target: marker
+    role: determines which active_pixels define the pattern columns and the pattern's bottom row.
+  - type: position_relative_to_marker
+    description: "An active_pixel's vertical position relative to the top-most row of the marker object."
+    source: active_pixel
+    target: marker
+    role: determines if an active_pixel's color contributes to the pattern's color sequence (only active_pixels below the marker's top row contribute).
+actions:
+  - name: identify_background
+    description: "Find the most frequent color."
+  - name: find_marker_object
+    description: "Find all blue objects, determine the one extending furthest down (max row index)."
+  - name: find_single_pixel_objects
+    description: "Find all objects of size 1 that are not the background color."
+  - name: identify_active_pixels
+    description: "Filter single-pixel objects to keep only non-blue ones."
+  - name: identify_adjacent_active_pixels
+    description: "Filter active_pixels to keep only those adjacent to the marker object."
+  - name: determine_pattern_columns
+    description: "Collect the unique column indices from the adjacent_active_pixels. Sort ascendingly."
+  - name: determine_pattern_colors
+    description: "Filter active_pixels to keep those below the marker's top row. Sort these filtered pixels first by row descending (bottom-up), then by column ascending (left-right). Collect their colors in order, keeping only the first occurrence of each unique color."
+  - name: determine_pattern_bottom_row
+    description: "Find the minimum row index among the adjacent_active_pixels."
+  - name: draw_pattern
+    description: "In the output grid (initially a copy of input), fill the pattern_columns from row 0 down to the pattern_bottom_row (inclusive) with the pattern_colors sequence, repeating the sequence vertically."
+  - name: cleanup_pixels
+    description: "Set the original locations of *all* active_pixels in the output grid to the background color, *unless* that location falls within the area where the pattern was just drawn."
+output_condition: "If no active_pixels are found, or if no active_pixels are adjacent to the marker, the pattern is not drawn, but the cleanup_pixels action still occurs. If no active_pixels are found at all, the original input grid is returned."

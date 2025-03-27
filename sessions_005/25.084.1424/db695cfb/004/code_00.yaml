@@ -1,0 +1,48 @@
+objects:
+  - object: grid
+    properties:
+      - height: integer (1-30)
+      - width: integer (1-30)
+      - pixels: 2D array of colors (0-9)
+  - object: pixel
+    properties:
+      - position: (row, column) tuple
+      - color: integer (0-9)
+      - type: based on color (source, destination, background, other)
+  - object: path
+    properties:
+      - start_pixel: source pixel position
+      - end_pixel: destination pixel position
+      - color: color of the end_pixel
+      - sequence: ordered list of pixel positions from start towards end
+actions:
+  - action: identify_pixels
+    input: grid
+    output: lists of pixels categorized by type (source=blue(1), potential_destination=magenta(6), background=most_common_excluding_1_and_6)
+  - action: determine_destinations
+    input: list of source pixels, list of potential destination pixels
+    output: list of actual destination pixels (magenta if present, otherwise sources excluding self)
+  - action: calculate_path
+    input: start_pixel, end_pixel, grid_dimensions
+    output: sequence of pixel positions
+    constraints:
+      - path progresses one step at a time to an adjacent (including diagonal) pixel.
+      - each step minimizes Manhattan distance to end_pixel.
+      - tie-breaking for minimum distance: prefer diagonal moves, then smaller row index, then smaller column index.
+      - path stops *before* the end_pixel position.
+      - path stops if no move decreases distance, or if a cycle is detected (revisiting a pixel within the same path sequence).
+  - action: draw_path
+    input: path sequence, path color, background color, output_grid_state
+    output: modified output_grid_state
+    constraints:
+      - iterates through pixels in the path sequence (excluding the start_pixel).
+      - if a pixel in the sequence currently has the background color in the output_grid_state, its color is changed to the path color.
+process:
+  - initialize output_grid as copy of input_grid.
+  - identify_pixels (sources, potential_destinations, background).
+  - determine_destinations.
+  - for each unique pair of (source_pixel, destination_pixel):
+      - if source_pixel == destination_pixel, continue.
+      - calculate_path(source_pixel, destination_pixel, grid_dimensions).
+      - draw_path(path_sequence, destination_pixel.color, background_color, output_grid).
+  - return final output_grid.

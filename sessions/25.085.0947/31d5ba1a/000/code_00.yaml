@@ -1,0 +1,46 @@
+task_description: Generate an output grid based on pixel-wise comparison between the top and bottom halves of the input grid.
+
+definitions:
+  - name: input_grid
+    type: grid
+    properties:
+      height: H (observed as 6, must be even)
+      width: W (observed as 5)
+      pixels:
+        colors: [white(0), maroon(9), yellow(4)]
+        distribution: maroon only in top half (rows 0 to H/2 - 1), yellow only in bottom half (rows H/2 to H - 1)
+  - name: output_grid
+    type: grid
+    properties:
+      height: H_out = H / 2 (observed as 3)
+      width: W_out = W (observed as 5)
+      pixels:
+        colors: [white(0), magenta(6)]
+
+transformations:
+  - action: split_input
+    input: input_grid
+    outputs: [top_half_grid, bottom_half_grid]
+    description: Conceptually divide the input_grid horizontally into two subgrids of equal height (H/2 x W).
+  - action: generate_output
+    input: [top_half_grid, bottom_half_grid]
+    output: output_grid
+    description: Create the output grid pixel by pixel based on corresponding pixels from the input halves.
+    rule:
+      for_each: pixel (r, c) in output_grid (0 <= r < H/2, 0 <= c < W)
+      let:
+        top_pixel = input_grid[r][c]
+        bottom_pixel = input_grid[r + H/2][c]
+      condition:
+        if (top_pixel == maroon(9) AND bottom_pixel == white(0)) OR (top_pixel == white(0) AND bottom_pixel == yellow(4)):
+          set output_grid[r][c] = magenta(6)
+        else:
+          set output_grid[r][c] = white(0)
+
+relationships:
+  - type: positional_correspondence
+    between: [input_grid, output_grid]
+    details: Pixel (r, c) in output_grid corresponds to pixels (r, c) and (r + H/2, c) in input_grid.
+  - type: size_relation
+    between: [input_grid, output_grid]
+    details: output_grid height is half of input_grid height. Widths are equal.

@@ -1,0 +1,64 @@
+task_description: Identify horizontal objects in each row and write a color corresponding to the object's length (and sometimes original color) into a specific column marked by a gray pixel.
+
+elements:
+  - element: grid
+    description: A 2D array of pixels representing colors (0-9).
+  - element: marker
+    type: pixel
+    color: gray (5)
+    location: Always in the top row (row 0), column varies.
+    function: Identifies the target column for modifications.
+  - element: object
+    type: horizontal_segment
+    description: A contiguous sequence of non-white (0) and non-gray (5) pixels within a single row. Assumed unique per relevant row.
+    properties:
+      - color: The color of the pixels forming the object.
+      - length: The number of pixels in the segment (width).
+      - row_index: The row where the object is located.
+  - element: target_cell
+    type: pixel
+    location: Intersection of an object's row_index and the marker's column index.
+    initial_state: Must be white (0) in the input grid.
+    final_state: Color determined by the properties of the object in the same row.
+
+relationships:
+  - type: identifies
+    subject: marker
+    object: target_column
+    details: The column index of the gray (5) pixel in row 0 is the target column.
+  - type: determines
+    subject: object properties (length, sometimes color)
+    object: target_cell final_state (color)
+    details: A mapping exists from object length (and potentially color for length 5) to the output color placed in the target cell.
+      - Length 2 -> Color 1 (blue)
+      - Length 3 -> Color 4 (yellow)
+      - Length 4 -> Color 9 (maroon)
+      - Length 5, Object Color 9 (maroon) -> Color 6 (magenta)
+      - Length 5, Object Color 7 (orange) -> Color 9 (maroon)
+
+actions:
+  - action: find_marker_column
+    actor: system
+    input: input_grid
+    output: column_index
+    description: Locate the column index of the gray (5) pixel in the first row (row 0).
+  - action: scan_rows
+    actor: system
+    input: input_grid
+    output: objects_found
+    description: Iterate through each row (starting from row 1) to find horizontal objects.
+  - action: identify_object
+    actor: system
+    input: row_data
+    output: object_properties (color, length, row_index) or None
+    description: Find the first contiguous horizontal segment of non-white (0) and non-gray (5) pixels in the row. Extract its color and length.
+  - action: apply_mapping
+    actor: system
+    input: object_properties (length, color)
+    output: output_color
+    description: Use the established mapping rules (based on length and sometimes original color) to determine the color for the target cell.
+  - action: update_grid
+    actor: system
+    input: input_grid, row_index, target_column, output_color
+    output: modified_grid
+    description: Create a copy of the input grid. If an object was found in a row and the cell at (row_index, target_column) is white (0), update that cell's color to the output_color.

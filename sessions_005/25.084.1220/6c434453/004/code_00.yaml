@@ -1,0 +1,51 @@
+task_context:
+  grid_representation: 2D array of integers 0-9 (colors).
+  colors: {0: white, 1: blue, 2: red} # Relevant colors
+  connectivity: 4-connectivity (up, down, left, right) assumed for objects.
+
+objects:
+  - type: shape
+    color: blue (1)
+    description: Contiguous areas of blue pixels.
+  - type: area
+    color: white (0)
+    description: Contiguous areas of white pixels. Potential holes.
+
+properties:
+  - object_type: shape (blue)
+    property: encloses_hole
+    value: boolean
+    condition: The shape completely surrounds an area of non-blue pixels without touching the grid boundary.
+  - object_type: area (white)
+    property: is_hole_for_blue_shape
+    value: boolean
+    condition: A white area is completely surrounded only by pixels belonging to a single connected blue shape.
+  - object_type: area (white)
+    property: size
+    value: number of pixels
+  - object_type: area (white - hole)
+    property: location
+    value: coordinates (r, c)
+    condition: Applies when the hole size is 1.
+
+actions:
+  - name: identify_targets
+    input: input grid
+    output: list of (blue_shape_coords, hole_coord)
+    description: Find all connected blue shapes that enclose exactly one single white pixel (a hole of size 1). Record the set of coordinates for the blue shape and the coordinate `(r, c)` of the single white pixel hole.
+  - name: transform_targets
+    input: (blue_shape_coords, hole_coord (r, c)), output grid
+    output: modified output grid
+    description: For each identified target:
+      1. Define the 'plus' coordinates: `P = {(r, c), (r-1, c), (r+1, c), (r, c-1), (r, c+1)}`.
+      2. Iterate through the `coord` in `blue_shape_coords`:
+         - If `coord` is in `P` (and within grid bounds), change `output_grid[coord]` to red (2).
+         - If `coord` is *not* in `P`, change `output_grid[coord]` to white (0).
+      3. Change `output_grid[r, c]` (the original hole) to red (2).
+  - name: copy_unchanged
+    input: input grid, output grid
+    output: modified output grid
+    description: Ensure all pixels not part of a transformation retain their original color. (Usually handled by initializing output as a copy).
+
+final_state:
+  grid: Output grid after applying transformations to all identified targets.

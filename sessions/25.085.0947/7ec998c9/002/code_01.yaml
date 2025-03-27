@@ -1,0 +1,55 @@
+task_description: Draws a blue path connecting the top-left corner, the marker column, and one side of the bottom row, based on a unique marker pixel.
+
+objects:
+  - object: grid
+    description: A 2D array of pixels with varying dimensions and colors. Contains a background and a single marker pixel.
+    properties:
+      height: Integer row count.
+      width: Integer column count.
+      pixels: Each pixel has a color (0-9).
+      background_color: The most frequent color in the grid. Determined by counting pixel occurrences.
+      marker_pixel:
+        description: The single pixel whose color is different from the background color.
+        properties:
+          position: (row, column) coordinates.
+          color: The color value of the marker pixel.
+  - object: path
+    description: A sequence of blue (color 1) pixels drawn onto the grid.
+    properties:
+      color: Always blue (1).
+      segments:
+        - segment: top_horizontal
+          description: Runs along the top row (row 0) from the left edge (column 0) up to and including the marker_pixel's column.
+        - segment: vertical
+          description: Runs along the marker_pixel's column from the top row (row 0) to the bottom row (row height-1). The marker_pixel itself is *not* changed to blue.
+        - segment: bottom_horizontal
+          description: Runs along the bottom row (row height-1). Its direction depends on grid width and marker position.
+          direction_rule:
+            - condition: Grid width is odd AND marker_pixel's column is exactly the center column (width // 2).
+              action: Draw path from the left edge (column 0) up to and including the marker_pixel's column.
+            - condition: Otherwise (grid width is even OR marker_pixel is not in the exact center column of an odd-width grid).
+              action: Draw path from the marker_pixel's column up to and including the right edge (column width-1).
+      overwrite_rule: Only pixels matching the original background_color are changed to blue. The marker_pixel is never changed.
+
+actions:
+  - action: find_background_color
+    input: input_grid
+    output: background_color
+    method: Find the most frequent pixel color value in the grid.
+  - action: find_marker_pixel
+    input: input_grid, background_color
+    output: marker_position (row, col), marker_color
+    method: Iterate through the grid to find the single pixel whose color does not match the background_color.
+  - action: initialize_output
+    input: input_grid
+    output: output_grid
+    method: Create a copy of the input_grid.
+  - action: draw_path
+    input: output_grid, background_color, marker_position, path_color (blue=1)
+    output: Modified output_grid
+    steps:
+      - Draw top_horizontal segment.
+      - Draw vertical segment (skipping marker_position).
+      - Determine bottom_horizontal direction based on width and marker_position column.
+      - Draw bottom_horizontal segment based on determined direction.
+    constraint: Only change pixels if their current color matches background_color.

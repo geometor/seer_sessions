@@ -1,0 +1,37 @@
+task_description: Processes each row of the input grid independently to move green pixels leftwards based on the position of azure pixels, resolving conflicts.
+grid_properties:
+  - height and width can vary.
+  - pixels are integers 0-9 representing colors.
+objects:
+  - type: pixel
+    properties:
+      - color: white(0), blue(1), red(2), green(3), yellow(4), gray(5), magenta(6), orange(7), azure(8), maroon(9)
+      - position: (row, column)
+  - type: primary_actor
+    identified_by: color == green(3)
+    action: attempts to move left within its row.
+  - type: boundary
+    identified_by: color == azure(8)
+    role: determines the target destination for green pixels to its right.
+  - type: background
+    identified_by: color == white(0)
+    role: empty space, source of erased pixels.
+row_processing_logic:
+  - operates independently on each row.
+  - output row starts as a copy of the input row.
+  - green pixels are processed from right-to-left within the row.
+green_pixel_movement:
+  - rule: A green pixel at column 'c' finds its target column 'target_c'.
+  - target_finding: Scan leftwards from 'c-1'. The target column 'target_c' is the column immediately to the right ('az_c + 1') of the first azure(8) pixel encountered at 'az_c'. If no azure pixel is found to the left, 'target_c' is 0.
+  - stationary_condition: If a green pixel's original column 'c' equals its 'target_c', it is considered stationary and does not move.
+  - movement_condition: If 'c' is not equal to 'target_c', the pixel attempts to move.
+conflict_resolution:
+  - priority: Stationary green pixels have priority for their location.
+  - step_1_stationary_check: A moving green pixel checks if its 'target_c' is the location of a stationary green pixel (identified based on original positions and targets). If yes, the moving pixel *does not move* and stays at its original column 'c'.
+  - step_2_dynamic_check: If the 'target_c' is *not* blocked by a stationary green pixel, the moving pixel calculates its destination 'dest_c', starting at 'target_c'.
+  - step_3_collision_push: While 'dest_c' corresponds to a column already filled by *another green pixel that has successfully moved* during the processing of the current row, increment 'dest_c' by 1.
+  - step_4_placement: If a valid 'dest_c' (within grid bounds and not blocked by stationary or previously moved pixels) is found:
+      - The original position 'c' in the output row is set to white(0).
+      - The destination 'dest_c' in the output row is set to green(3).
+      - The column 'dest_c' is marked as occupied by a moved pixel for subsequent checks within the same row.
+  - step_5_failure_to_move: If the initial target was blocked by a stationary pixel (step 1), or if collision pushing (step 3) results in 'dest_c' going out of bounds, the green pixel remains in its original position 'c'.

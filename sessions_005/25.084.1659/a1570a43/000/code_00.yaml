@@ -1,0 +1,62 @@
+task_description: Translate a red object based on the position of the top-left green marker pixel and the parity of the red object's size in specific cases.
+
+elements:
+  - object_type: pixel_color
+    color_name: white
+    color_value: 0
+    role: background
+  - object_type: pixel_color
+    color_name: red
+    color_value: 2
+    role: dynamic_shape
+  - object_type: pixel_color
+    color_name: green
+    color_value: 3
+    role: static_marker
+
+objects:
+  - object_id: red_shape
+    description: A contiguous shape composed of red pixels.
+    properties:
+      - color: red (2)
+      - count: variable (number of pixels)
+      - position: variable
+    actions:
+      - translated
+  - object_id: green_markers
+    description: Exactly four green pixels, forming corners of a rectangle/square.
+    properties:
+      - color: green (3)
+      - count: 4
+      - position: fixed relative to input/output
+      - top_left_marker_coords: The coordinates (r, c) of the green pixel with the minimum row, then minimum column.
+    relationships:
+      - relation_type: defines_translation
+        target: red_shape
+        details: The coordinates of the top-left green marker, and sometimes the parity of the red_shape's pixel count, determine the translation vector (dy, dx).
+
+transformation_rule:
+  - step: 1
+    action: Identify locations of all green (3) pixels.
+  - step: 2
+    action: Identify locations of all red (2) pixels, constituting the red_shape.
+  - step: 3
+    action: Find the coordinates (r1, c1) of the top-leftmost green pixel (minimum row, then minimum column).
+  - step: 4
+    action: Determine the translation vector (dy, dx) based on (r1, c1).
+    conditions:
+      - if: (r1, c1) == (0, 0)
+        result: dy = 1, dx = 1
+      - if: (r1, c1) == (1, 1)
+        sub_steps:
+          - Count the number of red pixels (N_red).
+          - if: N_red is even
+            result: dy = 2, dx = 1
+          - if: N_red is odd
+            result: dy = 1, dx = 2
+  - step: 5
+    action: Create an output grid of the same dimensions as the input, filled with the background color (white, 0).
+  - step: 6
+    action: Copy the green pixels from the input to the output grid at their original locations.
+  - step: 7
+    action: For each red pixel at input coordinates (r, c), place a red pixel at output coordinates (r + dy, c + dx).

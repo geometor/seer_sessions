@@ -1,0 +1,61 @@
+task_elements:
+  - item: grid
+    properties:
+      - height: variable (e.g., 5, 3, 7)
+      - width: variable (e.g., 5, 3, 7)
+      - pixels: values 0-9 representing colors
+
+  - item: gray_line
+    type: object
+    properties:
+      - color: gray (5)
+      - shape: horizontal line
+      - span: full width of the grid
+      - location: variable row index, separates grid into upper and lower regions
+
+  - item: upper_region
+    type: region
+    location: rows above the gray_line
+    content: various colors (non-white, non-gray)
+
+  - item: lower_region
+    type: region
+    location: rows below the gray_line
+    content: initially all white (0) pixels
+
+  - item: target_pixel
+    type: location
+    properties:
+      - row: bottom-most row (index height - 1)
+      - column: middle column (index floor(width / 2))
+
+transformation:
+  - action: identify_gray_line
+    input: grid
+    output: row_index_of_gray_line
+
+  - action: identify_row_above_gray
+    input: grid, row_index_of_gray_line
+    output: specific_row_data (row at index row_index_of_gray_line - 1)
+
+  - action: analyze_row_colors
+    input: specific_row_data
+    process: count frequency of each non-gray color
+    output: color_frequencies, max_frequency
+
+  - action: identify_candidate_colors
+    input: color_frequencies, max_frequency
+    process: find colors with frequency equal to max_frequency
+    output: list_of_candidate_colors
+
+  - action: determine_output_color
+    input: list_of_candidate_colors, grid, row_index_of_gray_line
+    process:
+      - if only one candidate color -> select it
+      - if multiple candidate colors (tie) -> count occurrences of each candidate in the entire upper_region (rows 0 to row_index_of_gray_line - 1) -> select the candidate with the highest count in the upper_region
+    output: final_output_color
+
+  - action: modify_grid
+    input: grid, target_pixel (location), final_output_color
+    process: change the color of the pixel at target_pixel location to final_output_color
+    output: modified_grid (the final output)

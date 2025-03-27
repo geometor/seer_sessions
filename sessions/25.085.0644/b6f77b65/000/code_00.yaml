@@ -1,0 +1,50 @@
+task_description: |
+  Transform the input grid based on the color of the pixel at (0,0).
+  This color determines which object(s) to remove and how many rows to shift the remaining objects downwards.
+
+definitions:
+  - &indicator_pixel
+    name: indicator_pixel
+    location: (0, 0)
+    property: color (C)
+  - &objects
+    name: objects
+    description: Contiguous blocks of non-white pixels in the grid, excluding the indicator_pixel.
+    properties:
+      - colors: The set of colors present within the object.
+      - pixels: The list of coordinates belonging to the object.
+
+rules:
+  - name: Determine Shift Amount (S)
+    based_on: *indicator_pixel
+    logic: |
+      If C is Maroon (9), then S = 0.
+      If C is Magenta (6), then S = 2.
+      Otherwise (e.g., Yellow (4), Orange (7)), S = 3.
+
+  - name: Identify Objects for Removal
+    based_on: [*indicator_pixel, *objects]
+    logic: |
+      An object is marked for removal if its 'colors' property contains the color C of the indicator_pixel.
+
+  - name: Identify Objects for Shifting
+    based_on: [*indicator_pixel, *objects]
+    logic: |
+      An object is marked for shifting if its 'colors' property does NOT contain the color C of the indicator_pixel.
+
+transformation:
+  - name: Apply Transformation
+    condition: S > 0
+    steps:
+      - Create a new empty grid (filled with white (0)) of the same dimensions as the input.
+      - Copy the indicator_pixel from the input to the new grid at (0,0).
+      - For each object marked for shifting:
+        - For each pixel (r, c) with color 'col' in the object:
+          - Calculate the new row: r_new = r + S.
+          - If r_new is within the grid height:
+            - Set the pixel (r_new, c) in the new grid to 'col'.
+      - The new grid is the output.
+  - name: Apply Transformation (No Change)
+    condition: S == 0
+    steps:
+      - The output grid is identical to the input grid.

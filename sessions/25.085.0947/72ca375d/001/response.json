@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom typing import List, Tuple, Dict, Any\n\n\"\"\"\nIdentifies all distinct non-white objects in the input grid.\nCalculates the density (area / bounding_box_area) for each object.\nSelects the object with the highest density.\nIf there's a tie in density, selects the object with the largest area among the tied objects.\nReturns the subgrid corresponding to the bounding box of the selected object.\n\"\"\"\n\ndef get_neighbors(r: int, c: int, height: int, width: int) -> List[Tuple[int, int]]:\n    \"\"\"Gets the valid orthogonal neighbors of a cell.\"\"\"\n    neighbors = []\n    for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]: # 4-connectivity\n        nr, nc = r + dr, c + dc\n        if 0 <= nr < height and 0 <= nc < width:\n            neighbors.append((nr, nc))\n    return neighbors\n\ndef find_objects(grid: np.ndarray) -> List[Dict[str, Any]]:\n    \"\"\"\n    Finds all distinct contiguous objects of non-white color in the grid.\n\n    Args:\n        grid: The input numpy array representing the grid.\n\n    Returns:\n        A list of dictionaries, where each dictionary represents an object\n        and contains 'color', 'pixels' (set of (r, c) tuples), 'area',\n        'bbox' (min_r, max_r, min_c, max_c), 'bbox_area', and 'density'.\n    \"\"\"\n    height, width = grid.shape\n    visited = np.zeros_like(grid, dtype=bool)\n    objects = []\n\n    for r in range(height):\n        for c in range(width):\n            if grid[r, c] != 0 and not visited[r, c]:\n                color = grid[r, c]\n                obj_pixels = set()\n                q = [(r, c)]\n                visited[r, c] = True\n                min_r, max_r = r, r\n                min_c, max_c = c, c\n\n                while q:\n                    curr_r, curr_c = q.pop(0)\n                    obj_pixels.add((curr_r, curr_c))\n                    min_r = min(min_r, curr_r)\n                    max_r = max(max_r, curr_r)\n                    min_c = min(min_c, curr_c)\n                    max_c = max(max_c, curr_c)\n\n                    for nr, nc in get_neighbors(curr_r, curr_c, height, width):\n                        if grid[nr, nc] == color and not visited[nr, nc]:\n                            visited[nr, nc] = True\n                            q.append((nr, nc))\n                \n                # Calculate properties\n                area = len(obj_pixels)\n                bbox = (min_r, max_r, min_c, max_c)\n                bbox_h = max_r - min_r + 1\n                bbox_w = max_c - min_c + 1\n                bbox_area = bbox_h * bbox_w\n                density = area / bbox_area if bbox_area > 0 else 0\n\n                objects.append({\n                    'color': color,\n                    'pixels': obj_pixels,\n                    'area': area,\n                    'bbox': bbox,\n                    'bbox_area': bbox_area,\n                    'density': density\n                })\n\n    return objects\n\ndef transform(input_grid: np.ndarray) -> np.ndarray:\n    \"\"\"\n    Applies the transformation rule to the input grid.\n    \"\"\"\n    # 1. Identify Objects and calculate properties\n    objects = find_objects(input_grid)\n\n    if not objects:\n        # Handle case with no objects (return empty grid or input?)\n        # Based on examples, this shouldn't happen, but good practice.\n        return np.array([[]], dtype=int) \n\n    # 2. Find Maximum Density\n    max_density = -1.0\n    for obj in objects:\n        if obj['density'] > max_density:\n            max_density = obj['density']\n\n    # 3. Filter by Maximum Density\n    candidates = [obj for obj in objects if obj['density'] == max_density]\n\n    # 4. Apply Tie-Breaker (Largest Area)\n    selected_object = None\n    if len(candidates) == 1:\n        selected_object = candidates[0]\n    else:\n        max_area = -1\n        for obj in candidates:\n            if obj['area'] > max_area:\n                max_area = obj['area']\n                selected_object = obj\n        # Note: If there's still a tie in area after density tie,\n        # this selects the last one encountered with max_area. \n        # The problem description doesn't specify further tie-breaking.\n\n    if selected_object is None:\n         # Should not happen if objects list was not empty\n         return np.array([[]], dtype=int) \n\n    # 5. Extract Output Subgrid\n    min_r, max_r, min_c, max_c = selected_object['bbox']\n    output_grid = input_grid[min_r:max_r+1, min_c:max_c+1]\n\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 2687,
+    "candidates_token_count": 1250,
+    "total_token_count": 3937,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 14.67154
+}

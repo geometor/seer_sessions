@@ -1,0 +1,55 @@
+task_description: Replace objects of a specific color (azure) with copies of other existing objects (patterns), preserving the location based on top-left coordinates and cycling through patterns if necessary.
+
+elements:
+  - type: grid
+    properties:
+      - background_color: white (0)
+      - contains_objects: true
+
+  - type: object
+    properties:
+      - composed_of: contiguous pixels of the same or different non-background colors
+      - identified_by: color composition and connectivity
+
+  - type: target_object
+    identified_by:
+      - color: exclusively azure (8)
+    properties:
+      - bounding_box: defines spatial extent
+      - top_left_coordinate: defines position for ordering and replacement anchor
+    actions:
+      - is_identified
+      - is_ordered (based on top-left coordinate: row then column)
+      - is_removed
+      - its_location_determines_placement_of: pattern_object
+
+  - type: pattern_object
+    identified_by:
+      - color: any non-background color except azure (8)
+      - can be monochrome or composite color
+    properties:
+      - shape_and_color_pattern: the specific arrangement of pixels within the object
+      - bounding_box: defines spatial extent
+      - top_left_coordinate: defines position for ordering
+    actions:
+      - is_identified
+      - is_ordered (based on top-left coordinate: row then column)
+      - is_copied
+      - copy_is_placed_at: location determined by a target_object
+      - original_instance_is_removed_or_ignored_in_output (except for its role as a pattern)
+
+relationships:
+  - rule: Ordering
+    applies_to: target_objects, pattern_objects
+    based_on: top-left coordinate (row index first, then column index)
+  - rule: Replacement
+    source: ordered list of pattern_objects
+    destination: ordered list of target_objects
+    mechanism:
+      - map pattern `i % num_patterns` to target `i`
+      - placement_anchor: top-left corner of target's bounding box aligns with top-left corner of pattern object copy
+    effect: target_objects are replaced by copies of pattern_objects in the output grid
+
+output_grid:
+  content: background color + copies of pattern_objects placed at target locations
+  size: same as input grid

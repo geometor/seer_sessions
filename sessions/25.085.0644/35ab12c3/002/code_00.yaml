@@ -1,0 +1,80 @@
+preprocessing:
+  - action: identify_objects
+    params:
+      type: color
+      color: yellow (4)
+  - action: connect_objects
+    params:
+      objects: yellow_pixels
+      condition: 
+        - horizontally_aligned (same row)
+        - path_between_is_exclusively: white (0)
+      effect: change_color
+      color_from: white (0)
+      color_to: yellow (4)
+      fill_path: exclusive_between_endpoints
+      iteration: repeat_until_no_change
+  - action: store_intermediate_grid
+    params:
+      name: grid_with_yellow_connections
+
+transformation:
+  - action: identify_objects
+    params:
+      grid: original_input
+      type: color
+      exclude_colors: [white (0), yellow (4)]
+      name: expansion_sources
+  - action: check_condition
+    params:
+      grid: original_input
+      condition: contains_color
+      color: magenta (6)
+      filter: must_be_expansion_source # Check if any source identified above is magenta
+      name: has_magenta_source
+  - action: check_condition
+    params:
+      grid: original_input
+      condition: contains_color
+      color: orange (7)
+      filter: any_pixel # Check if any pixel in the grid is orange
+      name: has_orange_anywhere
+  - action: define_mapping
+    params:
+      name: color_expansion_map
+      rules:
+        - input_color: azure (8)
+          output_color: blue (1)
+          condition: has_magenta_source == true
+        - input_color: magenta (6)
+          output_color: orange (7)
+          condition: has_orange_anywhere == true
+        - input_color: any_other_source_color
+          output_color: same_as_input_color
+  - action: expand_sources
+    params:
+      sources: expansion_sources
+      target_grid: grid_with_yellow_connections
+      expansion_space: cells_that_were_white_in_original_input
+      obstacles:
+        - grid_boundaries
+        - non_white_pixels_in_original_input
+        - yellow_pixels_in_grid_with_yellow_connections
+      mechanics:
+        type: simultaneous_bfs (breadth-first_search)
+        distance: manhattan
+        step_by_step: true
+      conflict_resolution:
+        condition: multiple_different_sources_reach_same_target_cell_in_same_step
+        effect: 
+          - target_cell_state: remains_white (0)
+          - target_cell_becomes_obstacle: true # for subsequent steps
+      coloring:
+        use_map: color_expansion_map
+        based_on: original_source_color
+
+output:
+  - action: generate_final_grid
+    params:
+      base: grid_with_yellow_connections
+      overlay: results_of_expansion_sources

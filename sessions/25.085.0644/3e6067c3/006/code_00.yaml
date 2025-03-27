@@ -1,0 +1,57 @@
+task_description: Fill azure gaps between adjacent blue-bordered boxes based on a color priority legend.
+
+definitions:
+  - object: grid
+    type: 2D array of integers (pixels) representing colors.
+  - object: legend_row
+    description: A specific row in the grid defining color priority.
+    properties:
+      - location: Typically near the bottom, identified by scanning upwards.
+      - pattern: Starts with azure (8), alternates with non-azure colors (C1, C2,...), e.g., `8, C1, 8, C2, 8, ...`. Trailing azure pixels allowed.
+      - priority: Defined by the order of non-azure colors (C1 > C2 > ...). Lower index means higher priority.
+  - object: box
+    description: A rectangular structure in the grid.
+    properties:
+      - border: Continuous, single-pixel thick, composed of blue (1) pixels.
+      - interior: Contiguous area inside the border.
+      - interior_color: Single, solid color filling the interior. Must not be blue (1) or azure (8).
+      - bounds: Min/max row/column coordinates defining the extent of the blue border.
+  - object: gap
+    description: A region separating adjacent boxes.
+    properties:
+      - location: Between two boxes, either horizontally or vertically.
+      - composition: Consists entirely of azure (8) pixels.
+      - thickness: Exactly one pixel wide (either one column or one row).
+      - extent: Spans the overlapping dimension of the adjacent boxes' borders.
+  - object: fill_color
+    description: The color used to replace azure pixels in a gap.
+    properties:
+      - source: Determined by comparing the interior colors of the two boxes adjacent to the gap.
+      - rule: The color with higher priority according to the legend_row is chosen.
+      - tie_breaker: If priorities are equal or undefined (colors not in legend), the color of the box encountered first in the comparison logic (implementation-dependent, currently Box A) is chosen.
+
+actions:
+  - action: find_legend
+    description: Scan the grid from bottom-to-top to locate the first row matching the legend_row pattern. Create a priority map from the non-azure colors found. Assign lowest priority to colors not in the legend.
+    inputs: input_grid
+    outputs: priority_map (color -> priority_number)
+  - action: find_boxes
+    description: Locate all rectangular objects in the grid that match the 'box' definition.
+    inputs: input_grid
+    outputs: list_of_boxes (each with interior_color, bounds)
+  - action: identify_gaps_and_determine_fill
+    description: For every pair of identified boxes, check for horizontal or vertical adjacency separated by a one-pixel azure gap. If a gap is found, determine the fill_color based on the priority_map and the boxes' interior colors.
+    inputs: list_of_boxes, priority_map, input_grid
+    outputs: list_of_gap_fills (each with gap_coordinates, fill_color)
+  - action: fill_gaps
+    description: Modify a copy of the input grid by changing the color of azure pixels at the gap_coordinates to the corresponding fill_color.
+    inputs: input_grid_copy, list_of_gap_fills
+    outputs: output_grid
+
+flow:
+  - Initialize output_grid from input_grid.
+  - Execute find_legend to get priority_map.
+  - Execute find_boxes to get list_of_boxes.
+  - Execute identify_gaps_and_determine_fill using boxes, priority_map, and input_grid to get list_of_gap_fills.
+  - Execute fill_gaps using output_grid and list_of_gap_fills.
+  - Return output_grid.

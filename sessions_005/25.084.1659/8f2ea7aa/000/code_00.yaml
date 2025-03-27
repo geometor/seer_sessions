@@ -1,0 +1,53 @@
+task_context:
+  grid_dimensions: [9, 9]
+  conceptual_subdivision:
+    type: Grid of blocks
+    grid_layout: [3, 3] # 3 rows, 3 columns of blocks
+    block_dimensions: [3, 3]
+  background_color: 0 # white
+
+input_properties:
+  - name: object
+    description: A single contiguous group of non-white pixels.
+    attributes:
+      - color: The single color of the object (varies per example: 7, 8, 6).
+      - shape: The specific arrangement of pixels forming the object.
+      - location: Fits entirely within one 3x3 block of the conceptual subdivision.
+      - block_coordinates: The (row, column) index [0-2, 0-2] of the block containing the object.
+
+output_properties:
+  - name: object_copies
+    description: Multiple instances of the input object placed on the output grid.
+    attributes:
+      - count: Varies depending on the input object's block location (3 or 4 copies in examples).
+      - color: Identical to the input object's color.
+      - shape: Identical to the input object's shape.
+      - placement: Each copy is placed within a specific 3x3 block. The set of blocks used for placement is determined by the input object's block coordinates.
+
+relationships_and_actions:
+  - action: Identify_Input_Object
+    actor: System
+    input: Input grid
+    output: Object color, shape (relative pixel coordinates within its block), and block coordinates (br_in, bc_in).
+  - action: Determine_Target_Blocks
+    actor: System
+    input: Input object's block coordinates (br_in, bc_in).
+    output: A set of target block coordinates {(br_out, bc_out), ...} for placing copies.
+    rule: Based on observed examples:
+      '(0, 0)' -> {'(0, 0)', '(0, 1)', '(1, 2)', '(2, 0)'}
+      '(0, 1)' -> {'(0, 1)', '(2, 0)', '(2, 1)', '(2, 2)'}
+      '(1, 1)' -> {'(1, 1)', '(0, 2)', '(2, 0)'}
+      # Other mappings are undefined by examples but assumed to exist.
+  - action: Generate_Output_Grid
+    actor: System
+    input: Input object's relative shape/color, Set of target block coordinates.
+    output: Output grid.
+    process: Initialize a 9x9 white grid. For each target block (br_out, bc_out), place a copy of the object's shape/color, positioning it relative to the top-left corner of that block (absolute coordinates: row = br_out*3 + relative_row, col = bc_out*3 + relative_col).
+
+constants:
+  - grid_width: 9
+  - grid_height: 9
+  - block_width: 3
+  - block_height: 3
+  - block_grid_rows: 3
+  - block_grid_cols: 3

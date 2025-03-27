@@ -1,0 +1,57 @@
+task_description: "Move green object(s) towards a stationary red barrier until adjacent, then place an azure marker line/column adjacent to the moved green object(s) on the side opposite the barrier."
+
+elements:
+  - object: background
+    color_code: 0
+    color_name: white
+    properties: [stationary, occupies_empty_space]
+  - object: movable_unit
+    color_code: 3
+    color_name: green
+    properties: [moves_towards_barrier, can_be_multiple_disconnected_parts, treated_as_single_unit_for_movement]
+  - object: barrier
+    color_code: 2
+    color_name: red
+    properties: [stationary, stops_movable_unit, typically_a_line]
+  - object: marker
+    color_code: 8
+    color_name: azure
+    properties: [created_in_output, always_a_line_or_column, adjacent_to_moved_unit, position_relative_to_movement_direction, spans_full_grid_dimension]
+
+relationships_and_actions:
+  - action: identify_objects
+    actor: system
+    inputs: [input_grid]
+    outputs: [movable_unit_pixels, barrier_pixels]
+  - action: determine_movement_direction
+    actor: system
+    inputs: [movable_unit_pixels, barrier_pixels]
+    outputs: [direction]
+    logic: "Determine if the movable unit is primarily above, below, left, or right of the barrier based on bounding boxes."
+  - action: calculate_translation
+    actor: system
+    inputs: [movable_unit_pixels, barrier_pixels, direction]
+    outputs: [translation_vector]
+    logic: "Calculate distance needed to move the movable unit until it is exactly one pixel away from the barrier in the specified direction."
+  - action: apply_translation
+    actor: system
+    inputs: [movable_unit_pixels, translation_vector]
+    outputs: [moved_unit_pixels]
+  - action: determine_marker_position_and_orientation
+    actor: system
+    inputs: [moved_unit_pixels, direction, grid_dimensions]
+    outputs: [marker_pixels]
+    logic: |
+      - If moved DOWN, marker is a horizontal line one row ABOVE the min_row of moved_unit_pixels, spanning grid width.
+      - If moved UP, marker is a horizontal line one row BELOW the max_row of moved_unit_pixels, spanning grid width.
+      - If moved RIGHT, marker is a vertical column one column LEFT of the min_col of moved_unit_pixels, spanning grid height.
+      - If moved LEFT, marker is a vertical column one column RIGHT of the max_col of moved_unit_pixels, spanning grid height.
+  - action: construct_output_grid
+    actor: system
+    inputs: [grid_dimensions, background_pixel, barrier_pixels, moved_unit_pixels, marker_pixels]
+    outputs: [output_grid]
+    logic: "Initialize grid with background, place barrier pixels (original position), place moved unit pixels, place marker pixels."
+
+grid_properties:
+  - background_color: 0 (white)
+  - dynamic_dimensions: true

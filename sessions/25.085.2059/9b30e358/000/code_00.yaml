@@ -1,0 +1,42 @@
+task_type: pattern_tiling
+
+components:
+  - input_grid:
+      type: grid
+      properties:
+        - height: H_in
+        - width: W_in
+        - background_color: most frequent color
+        - pattern_block:
+            type: subgrid (contiguous rows)
+            location: exists as a single block, typically preceded by background-only rows
+            properties:
+              - contains_non_background_pixels: true
+              - start_row: index of the first row with non-background pixels
+              - end_row: index of the last row with non-background pixels
+              - height: H_pattern = end_row - start_row + 1
+              - rows: list of rows constituting the pattern
+  - output_grid:
+      type: grid
+      properties:
+        - height: H_out = H_in
+        - width: W_out = W_in
+        - content: derived exclusively from the input pattern_block rows
+
+transformation:
+  - name: identify_background_and_pattern
+    description: Find the most frequent color as background. Identify the contiguous block of rows containing non-background colors (pattern_block). Determine its height (H_pattern).
+  - name: determine_tiling_unit
+    description: Check the parity of H_pattern.
+    conditions:
+      - if H_pattern is odd:
+          action: The tiling_unit is the pattern_block itself.
+      - if H_pattern is even:
+          action: Calculate mid = H_pattern / 2. Split pattern_block into top_half (first mid rows) and bottom_half (last mid rows). The tiling_unit is the vertical concatenation of bottom_half followed by top_half.
+  - name: construct_output
+    description: Create an output grid of the same dimensions as the input. Fill the output grid rows by vertically tiling the tiling_unit. For output row index `i`, the content is taken from row `i % H_pattern` of the tiling_unit.
+
+relationships:
+  - The output grid dimensions match the input grid dimensions.
+  - The content of the output grid is solely determined by the rows within the identified pattern_block of the input grid.
+  - The method of constructing the tiling unit depends on the height (specifically, the parity) of the pattern_block.

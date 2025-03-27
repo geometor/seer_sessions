@@ -1,0 +1,67 @@
+task_description: Reflect an azure object horizontally adjacent to itself, preserving all original pixels. The reflection axis (left or right edge of the object's bounding box) depends on pixel distribution at the object's horizontal extremities.
+objects:
+  - id: azure_object
+    color: 8 (azure)
+    description: A contiguous shape made of azure pixels. Its form varies between examples.
+  - id: yellow_object
+    color: 4 (yellow)
+    description: A contiguous shape made of yellow pixels. Appears static across examples.
+properties:
+  - object_id: azure_object
+    property: bounding_box
+    description: The smallest rectangle enclosing all azure pixels.
+    attributes: [min_row, max_row, min_col, max_col]
+  - object_id: azure_object
+    property: edge_pixel_counts
+    description: Count of azure pixels on the leftmost (min_col) and rightmost (max_col) columns of the bounding box.
+    attributes: [count_left, count_right]
+relationships:
+  - type: spatial
+    object1_id: azure_object
+    object2_id: yellow_object
+    description: In the examples, the yellow object is located below the azure object. This relationship does not seem directly involved in the transformation logic itself, only the azure object matters for reflection.
+transformation:
+  - name: ReflectAzureObject
+    input: input_grid
+    output: output_grid
+    steps:
+      - step: 1
+        action: find_object
+        color: 8 (azure)
+        result: azure_pixels (list of coordinates)
+      - step: 2
+        action: calculate_bounding_box
+        input: azure_pixels
+        result: bbox (min_row, max_row, min_col, max_col)
+      - step: 3
+        action: count_pixels_in_column
+        input: azure_pixels, bbox.min_col
+        result: count_left
+      - step: 4
+        action: count_pixels_in_column
+        input: azure_pixels, bbox.max_col
+        result: count_right
+      - step: 5
+        action: determine_reflection_axis
+        inputs: [count_left, count_right, bbox]
+        condition: if count_left == count_right
+        result: reflection_axis = 'right' (x = bbox.max_col + 0.5)
+        condition: if count_left != count_right
+        result: reflection_axis = 'left' (x = bbox.min_col - 0.5)
+      - step: 6
+        action: copy_grid
+        source: input_grid
+        target: output_grid
+      - step: 7
+        action: apply_reflection
+        input: azure_pixels
+        parameters: [reflection_axis, bbox]
+        target: output_grid
+        description: |
+          For each azure pixel (r, c) in azure_pixels:
+          If reflection_axis is 'right':
+            Calculate reflected column c' = 2 * bbox.max_col + 1 - c
+          If reflection_axis is 'left':
+            Calculate reflected column c' = 2 * bbox.min_col - 1 - c
+          If the reflected coordinate (r, c') is within grid bounds:
+            Set output_grid[r][c'] = 8 (azure)

@@ -1,0 +1,45 @@
+task_description: Stamp a pattern derived from source objects onto locations marked by azure objects.
+
+definitions:
+  - background_color: 0 (white)
+  - marker_color: 8 (azure)
+  - source_colors: Any color except 0 (white) and 8 (azure).
+  - marker_object: A connected component of pixels with marker_color (8).
+  - source_object: A connected component of pixels with any single source_color.
+  - source_pattern: A collection of one or more source_objects treated as a unit for determining the template.
+  - template: The specific rectangular pattern (subgrid) to be stamped.
+  - anchor_point: The top-left pixel (minimum row, then minimum column) of a marker_object's bounding box.
+
+observations:
+  - The output grid has the same dimensions as the input grid and is initially white (0).
+  - Azure (8) pixels in the input identify target locations but do not appear in the output.
+  - All non-white(0), non-azure(8) pixels/objects in the input contribute to defining the template pattern.
+
+template_derivation_rules:
+  - rule: If NO source objects exist, the output grid remains empty (white).
+  - rule: If ONE source object exists (can be multi-colored if considered as a single pattern initially, or composed of multiple single-colored connected components grouped together), the template is the minimal bounding box around that single source pattern, preserving relative pixel positions and colors.
+  - rule: If MULTIPLE source objects exist:
+    - sub_rule: Check if all source objects, when considered individually (based on connected components of the same color), have identical shapes and colors relative to their own top-left bounding box corners.
+      - condition: If YES (all identical):
+          - action: Select the source object whose top-left corner is highest (minimum row), breaking ties by choosing the leftmost (minimum column).
+          - result: The template is the pattern (relative shape/color) of this selected object within its bounding box.
+      - condition: If NO (not all identical):
+          - action: Determine the minimal bounding box that encloses ALL pixels of ALL source objects combined.
+          - result: The template is the rectangular subgrid extracted from the *input grid* corresponding to this combined bounding box (including any background pixels within it).
+
+transformation_steps:
+  - step: Identify all marker_objects (connected components of color 8).
+  - step: Identify all source_objects (connected components of colors != 0 and != 8).
+  - step: Group source_objects to form source_patterns (this step might need refinement - are multi-color source patterns treated as one unit from the start, or combined later?). Based on the previous code's logic, it seems individual connected components are found first, then rules applied.
+  - step: Apply template_derivation_rules based on the identified source_objects/patterns to determine the template.
+  - step: For each marker_object found:
+    - action: Determine its anchor_point (top-left pixel).
+    - action: Stamp (copy) the template onto the output grid, aligning the template's top-left corner with the marker's anchor_point.
+    - detail: Pixel values from the template overwrite corresponding pixels in the output grid.
+    - detail: If the template extends beyond the output grid boundaries, only the overlapping part is stamped (clipping).
+  - step: Return the final output grid.
+
+uncertainties:
+  - Exact definition of a "source pattern" when multiple objects of different colors are present but not identical - is it always the combined bounding box, or are there other grouping heuristics? The "combined bounding box" rule seems most consistent with the likely examples.
+  - Behavior if no markers are present (current assumption: empty grid).
+  - Confirmation of input/output grid size relationship (assuming same size based on previous code).

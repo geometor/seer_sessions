@@ -1,0 +1,43 @@
+task_description: Extract a subgrid from the input grid. The size of the subgrid is determined by the dimensions of the single contiguous block of white pixels. The location from which to extract the subgrid depends on the presence and relative horizontal position of red pixels within the same rows as the white block.
+
+objects:
+  - type: grid
+    properties:
+      colors: [white, red, blue, green, yellow, gray, magenta, orange, azure, maroon]
+      size: variable (up to 30x30)
+  - type: white_block
+    description: A single contiguous block of white (0) pixels.
+    properties:
+      location: (top_row `wr`, left_col `wc`)
+      size: (height `wh`, width `ww`)
+      cardinality: always 1 (based on examples)
+  - type: red_pixel
+    description: Pixels with the color red (2).
+    properties:
+      location: (row `r`, col `c`)
+  - type: relevant_red_pixel
+    description: Red pixels located within the same row range as the white block (rows `wr` to `wr + wh - 1`).
+    properties:
+      location: (row `rr`, col `rc`)
+      relative_position_to_white_block: Characterized by the minimum column index `min_rc` compared to the white block's column `wc`.
+
+actions:
+  - action: find_white_block
+    input: input_grid
+    output: white_block location `(wr, wc)` and size `(wh, ww)`
+  - action: find_relevant_red_pixels
+    input: input_grid, white_block row range `[wr, wr + wh - 1]`
+    output: set of relevant_red_pixel coordinates `R`
+  - action: determine_extraction_offset
+    input: white_block location `(wr, wc)`, set of relevant_red_pixels `R`
+    output: top_left corner `(otr, otc)` for the subgrid extraction
+    logic:
+      - if R is empty: `otr = wr + 2`, `otc = wc`
+      - if R is not empty:
+          - `otr = wr`
+          - `min_rc = min(c for r, c in R)`
+          - if `min_rc < wc`: `otc = wc - 1`
+          - if `min_rc >= wc`: `otc = wc + 2`
+  - action: extract_subgrid
+    input: input_grid, extraction top_left `(otr, otc)`, white_block size `(wh, ww)`
+    output: output_grid (subgrid of size `wh x ww` starting at `(otr, otc)`)

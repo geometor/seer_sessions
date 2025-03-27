@@ -1,0 +1,47 @@
+task_description: Replace gray pixels in specific columns based on a ranking derived from gray pixel counts.
+
+grid_properties:
+  - size: Variable height and width (observed 9x9 in examples).
+  - colors: White (0), Blue (1), Red (2), Green (3), Yellow (4), Gray (5). Other colors may exist but are not relevant to the core transformation.
+
+objects:
+  - object: column
+    definition: A vertical slice of the grid.
+  - object: gray_pixel_column
+    definition: A column containing at least one gray (5) pixel.
+    properties:
+      - index: The 0-based column index.
+      - gray_count: The number of gray (5) pixels within the column.
+      - rank: An integer from 1 to N (where N is the number of gray_pixel_columns, observed N=4) determined by sorting.
+      - replacement_color: The color (Yellow(4), Green(3), Red(2), or Blue(1)) assigned based on the rank.
+
+actions:
+  - action: identify_gray_columns
+    description: Find all columns in the input grid that contain one or more gray (5) pixels and count the number of gray pixels in each.
+    inputs: input_grid
+    outputs: list_of_gray_columns (each with index and gray_count)
+  - action: rank_gray_columns
+    description: >
+      Sort the identified gray_pixel_columns to determine their rank.
+      The primary sorting key is `gray_count` in ascending order.
+      The secondary sorting key (for tie-breaking) is `index` in ascending order.
+      Assign ranks 1, 2, 3, 4 based on the sorted order.
+    inputs: list_of_gray_columns
+    outputs: ranked_list_of_gray_columns
+  - action: assign_colors
+    description: >
+      Determine the replacement color for each ranked column based on its rank:
+      Rank 1 -> Yellow (4)
+      Rank 2 -> Green (3)
+      Rank 3 -> Red (2)
+      Rank 4 -> Blue (1)
+    inputs: ranked_list_of_gray_columns
+    outputs: ranked_list_of_gray_columns_with_colors
+  - action: replace_pixels
+    description: >
+      Create a copy of the input grid. For each ranked gray_pixel_column,
+      iterate through its pixels. If a pixel in the original input grid at that
+      column's index was gray (5), change its color in the copied grid to the
+      `replacement_color` assigned to that column's rank. Leave all other pixels unchanged.
+    inputs: input_grid, ranked_list_of_gray_columns_with_colors
+    outputs: output_grid

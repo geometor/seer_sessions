@@ -1,0 +1,48 @@
+task_description: Reflects an azure object horizontally, adding the reflection while keeping the original object. The reflection axis depends on the parity of pixel counts at the object's horizontal extremities.
+grid_properties:
+  - Input and output grids have the same dimensions.
+  - Grids contain background pixels (white, 0), azure pixels (8), and sometimes yellow pixels (4).
+objects:
+  - name: azure_object
+    description: A contiguous or non-contiguous group of azure (8) pixels. Assumed to be a single logical object for the reflection operation, even if disconnected.
+    properties:
+      - color: 8 (azure)
+      - bounding_box: Defined by the minimum and maximum row and column containing azure pixels.
+      - count_left_edge: The number of azure pixels located in the minimum column of the bounding box.
+      - count_right_edge: The number of azure pixels located in the maximum column of the bounding box.
+  - name: yellow_object
+    description: A group of yellow (4) pixels, typically forming a '+' shape. Appears unaffected by the transformation.
+    properties:
+      - color: 4 (yellow)
+      - invariant: Its position and shape remain unchanged between input and output.
+actions:
+  - name: identify_azure_object
+    input: input_grid
+    output: coordinates of all azure pixels
+  - name: calculate_bounding_box
+    input: azure pixel coordinates
+    output: min_row, max_row, min_col, max_col
+  - name: count_edge_pixels
+    input: azure pixel coordinates, min_col, max_col
+    output: count_left_edge, count_right_edge
+  - name: determine_reflection_axis
+    input: count_left_edge, count_right_edge, min_col, max_col
+    output: reflection_axis (either 'left' corresponding to axis x=min_col-0.5 or 'right' corresponding to axis x=max_col+0.5)
+    logic: |
+      IF (count_left_edge is ODD) AND (count_right_edge is EVEN) THEN
+        axis is 'right' (x = max_col + 0.5)
+      ELSE
+        axis is 'left' (x = min_col - 0.5)
+      ENDIF
+  - name: reflect_object
+    input: input_grid, azure pixel coordinates, reflection_axis
+    output: output_grid
+    logic: |
+      1. Create a copy of the input grid.
+      2. For each azure pixel (r, c):
+         a. Calculate the reflected column coordinate (reflected_c) based on the reflection_axis.
+            - If axis is 'left': reflected_c = 2 * min_col - 1 - c
+            - If axis is 'right': reflected_c = 2 * max_col + 1 - c
+         b. If the reflected coordinate (r, reflected_c) is within the grid bounds:
+            Set the pixel at (r, reflected_c) in the copied grid to azure (8).
+      3. Return the modified grid.

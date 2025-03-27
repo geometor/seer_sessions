@@ -1,0 +1,63 @@
+task_description: Replace Azure pixels within a framed inner pattern with corresponding input corner colors based on quadrant location.
+
+elements:
+  - element: input_grid
+    properties:
+      - type: 2D array of integers (colors)
+      - contains: frame, corners, inner_pattern
+  - element: output_grid
+    properties:
+      - type: 2D array of integers (colors)
+      - dimensions: match the dimensions of the inner_pattern from the input_grid
+      - derived_from: inner_pattern and corners of input_grid
+
+objects:
+  - object: frame
+    definition: A rectangle of Blue (1) pixels, one pixel thick, within the input grid.
+    properties:
+      - color: Blue (1)
+      - thickness: 1 pixel
+    relationships:
+      - surrounds: inner_pattern
+      - separates: corners from inner_pattern
+  - object: corners
+    definition: The four pixels at the absolute corners of the input_grid.
+    properties:
+      - count: 4
+      - location: (0,0), (0, W-1), (H-1, 0), (H-1, W-1) where H, W are input dimensions
+      - colors: Variable, denote as TL_color, TR_color, BL_color, BR_color
+    relationships:
+      - located: outside the frame
+      - provide: replacement colors for Azure pixels in the output
+  - object: inner_pattern
+    definition: The rectangular subgrid enclosed by the frame.
+    properties:
+      - location: Immediately inside the frame
+      - content: Consists only of Azure (8) and White (0) pixels
+      - dimensions: Determine the output_grid dimensions
+    relationships:
+      - determines: output_grid structure
+      - provides: locations for color replacement
+
+actions:
+  - action: identify_frame
+    inputs: input_grid
+    outputs: frame location (top, bottom, left, right boundaries)
+  - action: extract_inner_pattern
+    inputs: input_grid, frame location
+    outputs: inner_pattern_grid (subgrid)
+  - action: identify_corners
+    inputs: input_grid
+    outputs: TL_color, TR_color, BL_color, BR_color
+  - action: generate_output
+    inputs: inner_pattern_grid, TL_color, TR_color, BL_color, BR_color
+    process: |
+      Iterate through each pixel (r, c) of the inner_pattern_grid (dimensions H_inner x W_inner).
+      Calculate quadrant boundaries: mid_row = H_inner // 2, mid_col = W_inner // 2.
+      If inner_pattern_grid[r, c] is White (0), output_grid[r, c] = White (0).
+      If inner_pattern_grid[r, c] is Azure (8):
+        If r < mid_row and c < mid_col: output_grid[r, c] = TL_color (Top-Left quadrant)
+        If r < mid_row and c >= mid_col: output_grid[r, c] = TR_color (Top-Right quadrant)
+        If r >= mid_row and c < mid_col: output_grid[r, c] = BL_color (Bottom-Left quadrant)
+        If r >= mid_row and c >= mid_col: output_grid[r, c] = BR_color (Bottom-Right quadrant)
+    outputs: output_grid

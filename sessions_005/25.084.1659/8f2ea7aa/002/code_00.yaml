@@ -1,0 +1,38 @@
+grid_properties:
+  size: 9x9
+  divided_into: 3x3 blocks of size 3x3 each
+  block_coordinates: [(0,0), (0,1), (0,2), (1,0), (1,1), (1,2), (2,0), (2,1), (2,2)]
+
+input_features:
+  - object:
+      description: A single contiguous shape of non-white pixels.
+      properties:
+        color: Any color except white (0).
+        location: Fully contained within one 3x3 block.
+        shape: Defined by the relative coordinates of its pixels within its 3x3 block.
+  - background:
+      color: white (0)
+
+transformation:
+  actions:
+    - identify: Find the non-white object in the input grid.
+    - determine_properties:
+        - object_color
+        - object_relative_shape: List of (row, col) offsets relative to the top-left corner of the object's containing 3x3 block.
+        - input_block_coordinates: The (row, col) coordinates of the 3x3 block containing the object.
+    - map_location: Use the input_block_coordinates to determine a specific set of target_block_coordinates based on a fixed rule:
+        rule:
+          (0, 0): [(0, 0), (0, 1), (1, 2), (2, 0)]
+          (0, 1): [(0, 1), (1, 0), (1, 2), (2, 0), (2, 1)]
+          (1, 1): [(0, 2), (1, 1), (1, 2), (2, 0)]
+          # Other input block coordinates not seen in examples, assume rule might extend.
+    - construct_output: Create a new 9x9 grid initialized to white (0).
+    - replicate_object: For each coordinate pair in target_block_coordinates:
+        - Calculate the top-left absolute coordinate of the target block.
+        - Place a copy of the object into the target block by adding the object's relative shape coordinates to the block's top-left coordinate and coloring those pixels with the object_color.
+
+output_features:
+  - grid:
+      size: 9x9
+      content: Contains multiple copies of the input object placed in specific 3x3 blocks.
+      background: white (0)

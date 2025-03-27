@@ -1,0 +1,64 @@
+task_description: Transforms a pattern found inside a blue rectangular frame, using colors from the input grid's corners as replacement colors based on quadrants.
+
+definitions:
+  - object: input_grid
+    description: A 2D grid of pixels with colors 0-9. Contains corner pixels, a central pattern, and a surrounding frame.
+    properties:
+      - dimensions: H x W (height x width)
+      - corner_pixels: Pixels at (0,0), (0,W-1), (H-1,0), (H-1,W-1). Their colors are used for mapping.
+        - name: TL_color, TR_color, BL_color, BR_color
+
+  - object: frame
+    description: A rectangular structure of Blue (1) pixels immediately surrounding the central pattern. It defines the boundary for the transformation area.
+    properties:
+      - color: Blue (1)
+      - shape: Rectangle (potentially incomplete or thick, but defines inner/outer bounds)
+      - location: Encloses the central_pattern. Does not include Blue pixels that might be part of the absolute grid border if corners are non-Blue.
+    determination:
+      1. Identify the bounding box of the central_pattern (pixels that are not the frame color, typically Azure(8) and White(0)).
+      2. The frame consists of the Blue(1) pixels directly adjacent (including diagonals) to this bounding box from the outside.
+      3. Determine the minimum and maximum rows (frame_min_r, frame_max_r) and columns (frame_min_c, frame_max_c) of these frame pixels.
+
+  - object: central_pattern
+    description: The region enclosed strictly within the 'frame'. This is the area subject to transformation.
+    properties:
+      - location: Pixels (r, c) where frame_min_r < r < frame_max_r and frame_min_c < c < frame_max_c.
+      - dimensions: H_inner x W_inner
+      - content: Primarily contains Azure (8) and White (0) pixels. Other colors might exist but seem irrelevant to the output.
+
+  - object: output_grid
+    description: The result of the transformation.
+    properties:
+      - dimensions: H_inner x W_inner (same as central_pattern)
+      - content: Derived from central_pattern based on quadrant mapping.
+
+actions:
+  - action: identify_corners
+    actor: system
+    input: input_grid
+    output: TL_color, TR_color, BL_color, BR_color
+
+  - action: identify_frame_and_pattern
+    actor: system
+    input: input_grid
+    output: frame boundaries (min_r, max_r, min_c, max_c), central_pattern grid
+
+  - action: create_output_grid
+    actor: system
+    input: central_pattern dimensions
+    output: An empty grid (initialized with White(0)) of size H_inner x W_inner.
+
+  - action: map_pixels
+    actor: system
+    input: central_pattern, output_grid, corner colors (TL, TR, BL, BR)
+    output: populated output_grid
+    logic:
+      - Iterate through each pixel (r, c) in the central_pattern.
+      - If central_pattern[r, c] is White (0), output_grid[r, c] remains White (0).
+      - If central_pattern[r, c] is Azure (8):
+        - Determine the quadrant of (r, c) within the central_pattern (relative to its center: H_inner//2, W_inner//2).
+        - If Top-Left quadrant: output_grid[r, c] = TL_color
+        - If Top-Right quadrant: output_grid[r, c] = TR_color
+        - If Bottom-Left quadrant: output_grid[r, c] = BL_color
+        - If Bottom-Right quadrant: output_grid[r, c] = BR_color
+      - Other colors in central_pattern map to White (0) in the output.

@@ -1,0 +1,37 @@
+elements:
+  - role: background
+    color: 7 (orange)
+    description: The default color of the grid, typically representing empty space.
+  - role: object
+    description: Contiguous block(s) of non-background pixels.
+    properties:
+      - color: Any color except 7 (orange).
+      - shape: Can be horizontal segments, vertical segments, or single pixels.
+      - orientation: Determined by dimensions and position relative to rows/columns.
+
+definitions:
+  - term: horizontal_segment
+    description: A contiguous sequence of one or more pixels of the same non-orange color, located entirely within a single row.
+    example: `[7, 5, 5, 7]` in a row contains a horizontal segment of color 5. `[7, 9, 7, 9]` does not (not contiguous). `[7, 4, 4, 4]` does.
+  - term: vertical_object_pixel
+    description: A pixel belonging to a contiguous vertical sequence (within a single column) of two or more pixels of the same non-orange color in the input grid.
+    example: In a column `[7, 9, 9, 7]`, the pixels at index 1 and 2 are vertical_object_pixels of color 9.
+
+transformations:
+  - type: row_fill
+    trigger: Presence of one or more horizontal_segments in an input row `r`.
+    action: Fill the entire corresponding output row `r` with the color of the horizontal_segment(s).
+    precedence: High (overrides other rules for the affected row).
+    assumption: If multiple horizontal segments of different colors exist in a row, the behavior is undefined by examples (assume only one color per row matters or this case doesn't occur). Based on examples, only one color triggers the fill per row.
+  - type: conditional_copy_and_propagate
+    trigger: Input row `r` does *not* contain any horizontal_segments.
+    action: For each cell `(r, c)` in the output row:
+      - If input cell `(r, c)` is non-orange, copy its color to output `(r, c)`.
+      - If input cell `(r, c)` is orange (7):
+        - Check if column `c` contains any vertical_object_pixels in the *input* grid.
+        - If yes, set output `(r, c)` to the color of the vertical_object_pixel(s) in that column. (Assumption: only one such color per column if multiple vertical objects exist).
+        - If no, set output `(r, c)` to orange (7).
+    precedence: Low (only applies to rows not affected by row_fill).
+
+grid_properties:
+  - size: Input and output grids have the same dimensions.

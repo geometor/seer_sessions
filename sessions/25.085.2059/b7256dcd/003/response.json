@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\n\n\"\"\"\nTransforms the input grid based on the following rules:\n1. Identify all 'source' pixels (colors other than gray(6) and orange(7)).\n2. Find all connected components of gray(6) pixels using 8-connectivity (including diagonals).\n3. For each gray component, find all orthogonally adjacent (4-connectivity, sharing an edge) source pixels and their unique colors.\n4. Create the output grid, initially as a copy of the input grid.\n5. If a gray component is orthogonally adjacent to exactly one unique source color, change all pixels in that component to that unique source color in the output grid. Otherwise, the gray component's pixels remain gray.\n6. Change all original source pixels to orange(7) in the output grid.\n\"\"\"\n\ndef transform(input_grid):\n    \"\"\"\n    Applies the transformation rules to the input grid.\n    \"\"\"\n\n    # Convert input to numpy array for easier handling\n    grid = np.array(input_grid, dtype=int)\n    output_grid = np.copy(grid)\n    rows, cols = grid.shape\n\n    ORANGE = 7\n    GRAY = 6\n    # Define source colors explicitly excluding gray(6) and orange(7)\n    SOURCE_COLORS = {1, 2, 3, 4, 5, 8, 9} \n\n    # --- Helper Function: Get Neighbors ---\n    def get_neighbors(r, c, max_r, max_c, connectivity=8):\n        \"\"\"Gets neighbors within grid bounds based on connectivity (4 or 8).\"\"\"\n        neighbors = []\n        for dr in [-1, 0, 1]:\n            for dc in [-1, 0, 1]:\n                # Skip self\n                if dr == 0 and dc == 0:\n                    continue\n                # Skip diagonals for 4-connectivity\n                if connectivity == 4 and abs(dr) + abs(dc) > 1:\n                    continue\n                    \n                nr, nc = r + dr, c + dc\n                if 0 <= nr < max_r and 0 <= nc < max_c:\n                    neighbors.append((nr, nc))\n        return neighbors\n\n    # --- Step 1: Identify source pixels ---\n    source_pixels = {} # Store { (r, c): color }\n    for r in range(rows):\n        for c in range(cols):\n            if grid[r, c] in SOURCE_COLORS:\n                source_pixels[(r, c)] = grid[r, c]\n\n    # --- Step 2 & 3: Find gray components (8-conn) and adjacent orthogonal source colors (4-conn) ---\n    visited_gray = np.zeros_like(grid, dtype=bool)\n    gray_components_info = [] # List of tuples: (component_coords, adjacent_orthogonal_source_colors_set)\n\n    for r in range(rows):\n        for c in range(cols):\n            # Start BFS if we find an unvisited gray pixel\n            if grid[r, c] == GRAY and not visited_gray[r, c]:\n                component_coords = []\n                adjacent_orthogonal_source_colors = set()\n                q = [(r, c)]\n                visited_gray[r, c] = True\n\n                component_q_idx = 0 # Use index instead of list pop(0) for efficiency\n                while component_q_idx < len(q):\n                    curr_r, curr_c = q[component_q_idx]\n                    component_q_idx += 1\n                    \n                    component_coords.append((curr_r, curr_c))\n\n                    # Check 8-connectivity neighbors for more gray pixels to expand component\n                    for nr, nc in get_neighbors(curr_r, curr_c, rows, cols, connectivity=8):\n                        if grid[nr, nc] == GRAY and not visited_gray[nr, nc]:\n                            visited_gray[nr, nc] = True\n                            q.append((nr, nc))\n                            \n                    # Check 4-connectivity neighbors for adjacent source pixels\n                    for nr, nc in get_neighbors(curr_r, curr_c, rows, cols, connectivity=4):\n                         if (nr, nc) in source_pixels:\n                             adjacent_orthogonal_source_colors.add(source_pixels[(nr, nc)])\n\n                # Store the found component and its adjacent source colors\n                gray_components_info.append((component_coords, adjacent_orthogonal_source_colors))\n\n\n    # --- Step 4 & 5: Update gray components in the output grid ---\n    # Output grid is already initialized as a copy\n    for component_coords, adjacent_colors in gray_components_info:\n        # Check if exactly one unique orthogonal source color is adjacent\n        if len(adjacent_colors) == 1:\n            unique_color = list(adjacent_colors)[0]\n            # Change all pixels in the component to the unique color in the output grid\n            for comp_r, comp_c in component_coords:\n                output_grid[comp_r, comp_c] = unique_color\n        # Else: component remains gray (already set in the initial copy)\n\n    # --- Step 6: Change original source pixels to orange in the output grid ---\n    for r, c in source_pixels:\n        output_grid[r, c] = ORANGE\n\n    # Return the modified grid\n    return output_grid.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 4356,
+    "candidates_token_count": 1233,
+    "total_token_count": 5589,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 14.61646,
+  "retries": null
+}

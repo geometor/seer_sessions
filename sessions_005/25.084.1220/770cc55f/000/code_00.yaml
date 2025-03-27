@@ -1,0 +1,79 @@
+elements:
+  - object: grid
+    type: 2D array of integers (0-9)
+  - object: red_line
+    attributes:
+      - color: 2 (red)
+      - shape: horizontal line (1 pixel high)
+      - location: spans the width of the grid at a specific row index
+  - object: top_shape
+    attributes:
+      - color: variable (blue=1, magenta=6, or green=3)
+      - shape: contiguous block
+      - location: strictly above the red_line
+  - object: bottom_shape
+    attributes:
+      - color: same as top_shape
+      - shape: contiguous block
+      - location: strictly below the red_line
+  - object: background
+    attributes:
+      - color: 0 (white)
+      - location: all cells not part of red_line, top_shape, or bottom_shape in the input
+
+actions:
+  - name: find_objects
+    inputs: [grid]
+    outputs: [red_line, top_shape, bottom_shape]
+  - name: get_properties
+    inputs: [red_line, top_shape, bottom_shape]
+    outputs:
+      - red_line_row: row index of red_line
+      - top_shape_max_row: maximum row index of top_shape
+      - bottom_shape_min_row: minimum row index of bottom_shape
+      - top_shape_cols: set of column indices covered by top_shape
+      - bottom_shape_cols: set of column indices covered by bottom_shape
+  - name: calculate_intersection
+    inputs: [top_shape_cols, bottom_shape_cols]
+    outputs: [intersection_cols]
+  - name: determine_fill_region
+    inputs: [intersection_cols, top_shape_cols, bottom_shape_cols]
+    outputs: [fill_above_red | fill_below_red]
+    logic: |
+      if intersection_cols == bottom_shape_cols:
+        return fill_above_red
+      elif intersection_cols == top_shape_cols:
+        return fill_below_red
+      else: # Assumes intersection is proper subset of both
+        return fill_above_red
+  - name: create_yellow_rectangle
+    inputs: [grid_dimensions, fill_region_decision, red_line_row, top_shape_max_row, bottom_shape_min_row, intersection_cols]
+    outputs: [yellow_pixels_coordinates]
+    logic: |
+      columns = intersection_cols
+      if fill_region_decision == fill_above_red:
+        rows = range(top_shape_max_row + 1, red_line_row)
+      else: # fill_below_red
+        rows = range(red_line_row + 1, bottom_shape_min_row)
+      coordinates = set()
+      for r in rows:
+        for c in columns:
+          coordinates.add((r, c))
+      return coordinates
+  - name: draw_output
+    inputs: [input_grid, yellow_pixels_coordinates]
+    outputs: [output_grid]
+    logic: |
+      Copy input_grid to output_grid.
+      For each coordinate in yellow_pixels_coordinates:
+        set output_grid[row][col] = 4 (yellow)
+
+relationships:
+  - type: spatial
+    between: [top_shape, red_line, bottom_shape]
+    description: top_shape is above red_line, bottom_shape is below red_line.
+  - type: color
+    between: [top_shape, bottom_shape]
+    description: They always have the same color in the input.
+  - type: dependency
+    description: The location (columns and rows) of the new yellow rectangle depends on the locations (columns and rows) of the top_shape, bottom_shape, and red_line, and specifically on the relationship between their column sets.

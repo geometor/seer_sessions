@@ -1,0 +1,56 @@
+task_description: "Identify a specific horizontal segment ('emitter') based on vertical color adjacency and add new pixels above it based on the emitter's color and width."
+
+definitions:
+  - name: trigger_point
+    description: "A location (r, c) where a non-background pixel C1 at (r, c) is directly above a different non-background pixel C2 at (r+1, c)."
+  - name: emitter_segment
+    description: "The maximal horizontal contiguous segment of color C2 that includes the pixel at (r+1, c) identified by a trigger_point."
+    properties:
+      - color: The color C2 of the segment.
+      - width: The number of pixels in the segment.
+      - location:
+          - row: The row index (r+1) of the segment.
+          - col_min: The starting column index.
+          - col_max: The ending column index.
+          - center_col: The central column index, calculated as (col_min + col_max) // 2.
+  - name: emitted_pixels
+    description: "New pixels added to the output grid."
+    properties:
+      - color: Same as the emitter_segment color.
+      - locations: A set of coordinates determined by applying specific offsets relative to the emitter_segment's center coordinates (center_row, center_col).
+
+transformation:
+  - action: find_trigger_and_emitter
+    description: "Scan the grid row by row, column by column, checking for the trigger_point condition. If found, identify the corresponding emitter_segment below it."
+    assumptions: "There is likely only one unique emitter_segment per grid, even if multiple trigger_points identify the same segment."
+  - action: determine_offset_pattern
+    description: "Select a predefined set of relative (dy, dx) offsets based on the emitter_segment's color and width."
+    patterns:
+      - condition: color=1 (blue), width=3
+        offsets: [(-2, -2), (-2, +2)]
+      - condition: color=3 (green), width=1
+        offsets: [(-3, -2), (-3, +2), (-2, -1), (-2, +1)]
+      - condition: color=4 (yellow), width=3
+        offsets: [(-3, -3), (-3, +3), (-2, -2), (-2, +2)]
+      - condition: color=4 (yellow), width=1
+        offsets: [(-2, -1), (-2, +1)]
+  - action: generate_output
+    description: "Create the output grid by copying the input grid. For each offset (dy, dx) in the selected pattern, calculate the target coordinate (emitter_row + dy, emitter_center_col + dx). If the target coordinate is within the grid boundaries, set the pixel at that coordinate to the emitter_segment's color."
+
+example_specific_details:
+  - example: 1
+    trigger_location_example: (3, 1) [Color 6 above Color 1]
+    emitter_segment: color=1, width=3, center=(4, 2)
+    pattern_used: color=1, width=3
+  - example: 2
+    trigger_location_example: (3, 2) [Color 8 above Color 3]
+    emitter_segment: color=3, width=1, center=(4, 2)
+    pattern_used: color=3, width=1
+  - example: 3
+    trigger_location_example: (5, 2) [Color 2 above Color 4]
+    emitter_segment: color=4, width=3, center=(6, 3)
+    pattern_used: color=4, width=3
+  - example: 4
+    trigger_location_example: (1, 1) [Color 2 above Color 4]
+    emitter_segment: color=4, width=1, center=(2, 1)
+    pattern_used: color=4, width=1

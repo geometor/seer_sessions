@@ -1,0 +1,54 @@
+objects:
+  - type: grid
+    properties:
+      height: integer (1-30)
+      width: integer (1-30)
+      pixels: array of integers (0-9)
+  - type: enclosure
+    properties:
+      pixels: contiguous group of blue (1) pixels forming a closed loop
+      location: set of coordinates {(r, c), ...}
+      bounding_box: { min_row: int, min_col: int, max_row: int, max_col: int }
+  - type: seed_pixel
+    properties:
+      color: integer (2-9) # non-white, non-blue
+      location: { row: int, col: int }
+      association: located within the bounding box of a specific enclosure
+  - type: fill_area
+    properties:
+      shape: rectangle
+      location: defined relative to an enclosure's bounding_box and its associated seed_pixel's row
+      color: determined by the associated seed_pixel's color
+      target_pixels: only white (0) pixels within the fill_area location in the input grid
+
+actions:
+  - action: initialize_output
+    actor: system
+    input: input_grid
+    output: output_grid (copy of input_grid)
+  - action: find_enclosures
+    actor: system
+    input: input_grid
+    output: list of enclosure objects (with pixels, location, bounding_box)
+  - action: find_seed_pixels
+    actor: system
+    input: input_grid, list of enclosures
+    output: list of seed_pixel objects (with color, location, association)
+    description: For each enclosure, find the unique non-white, non-blue pixel within its bounding_box.
+  - action: determine_fill_parameters
+    actor: system
+    input: enclosure, associated seed_pixel
+    output: fill_area parameters { row_start, row_end, col_start, col_end, fill_color }
+    description: |
+      fill_color = seed_pixel.color
+      row_start = max(0, enclosure.bounding_box.min_row - 1)
+      row_end = min(grid_height - 1, seed_pixel.location.row + 1)
+      col_start = max(0, enclosure.bounding_box.min_col)
+      col_end = min(grid_width - 1, enclosure.bounding_box.max_col)
+  - action: apply_fill
+    actor: system
+    input: output_grid, input_grid, fill_area parameters
+    output: modified output_grid
+    description: |
+      Iterate through coordinates (r, c) from row_start to row_end and col_start to col_end.
+      If input_grid[r, c] is white (0), set output_grid[r, c] = fill_color.

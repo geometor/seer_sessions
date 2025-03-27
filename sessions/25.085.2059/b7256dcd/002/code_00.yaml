@@ -1,0 +1,47 @@
+task_description: |
+  The task involves transforming a grid by recoloring connected regions of gray pixels based on the color of nearby "source" pixels, and then changing the original source pixels to orange.
+
+definitions:
+  - name: background_color
+    value: orange (7)
+  - name: target_color
+    value: gray (6)
+  - name: source_colors
+    description: All colors except gray(6) and orange(7).
+    values: [blue(1), red(2), green(3), yellow(4), gray(5), magenta(6), azure(8), maroon(9)] # Note: magenta(6) is gray, corrected list: [1, 2, 3, 4, 5, 8, 9]
+  - name: gray_component
+    description: A connected region of gray(6) pixels. Connectivity includes diagonals (8-way).
+  - name: orthogonally_adjacent_source
+    description: A source pixel that shares an edge (not just a corner) with any pixel belonging to a specific gray_component.
+
+transformation_steps:
+  - step: 1
+    action: identify_objects
+    object_type: pixel
+    properties: [color]
+    details: Classify pixels into source_colors, target_color(gray), and background_color(orange).
+  - step: 2
+    action: group_objects
+    object_type: pixel
+    input_property: color == gray(6)
+    output: gray_components
+    details: Find all connected components of gray pixels using 8-way connectivity.
+  - step: 3
+    action: relate_objects
+    input_objects: [gray_components, source_pixels]
+    output: mapping from each gray_component to a set of unique colors of orthogonally_adjacent_source pixels.
+    details: For each gray_component, find all source pixels sharing an edge with any pixel in the component. Collect the unique colors of these source pixels.
+  - step: 4
+    action: modify_properties
+    object_type: gray_component
+    condition: The set of unique orthogonally adjacent source colors for the component has exactly one element.
+    modification: Change the color of all pixels within the gray_component to the single unique source color found in step 3.
+    details: Gray components with zero or more than one unique orthogonally adjacent source color remain unchanged.
+  - step: 5
+    action: modify_properties
+    object_type: pixel
+    condition: The pixel had an original color belonging to source_colors.
+    modification: Change the color of the pixel to orange(7).
+
+output_grid:
+  description: The final grid after applying all modifications. Contains original background pixels, potentially recolored gray components, unchanged gray components, and orange pixels where source pixels used to be.

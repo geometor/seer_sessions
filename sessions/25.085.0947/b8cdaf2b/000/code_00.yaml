@@ -1,0 +1,61 @@
+task_description: Add pixels above a specific horizontal pattern based on distances within the pattern.
+
+element_definitions:
+  - name: source_pattern_row
+    description: The lowest row in the input grid containing a horizontal sequence like F...F C...C F...F, where F and C are distinct non-background colors.
+    properties:
+      - row_index (R_source)
+      - central_color (C_central)
+      - framing_color (F_frame)
+      - central_segment_coords: List of (R_source, column) for pixels of C_central.
+      - framing_pixel_coords: List of (R_source, column) for pixels of F_frame.
+
+  - name: framing_pixel
+    description: An individual pixel of framing_color F_frame within the source_pattern_row.
+    properties:
+      - coordinate: (R_source, c_frame)
+      - color: F_frame
+
+  - name: central_pixel
+    description: An individual pixel of central_color C_central within the source_pattern_row.
+    properties:
+      - coordinate: (R_source, c_central)
+      - color: C_central
+
+  - name: added_pixel
+    description: A new pixel added to the output grid.
+    properties:
+      - coordinate: (R_output, c_frame)
+      - color: C_central
+
+transformations:
+  - action: identify_source_row
+    description: Find the lowest row R_source containing the F...F C...C F...F pattern. Determine C_central, F_frame, central_segment_coords, and framing_pixel_coords.
+    inputs:
+      - input_grid
+    outputs:
+      - source_pattern_row_details (R_source, C_central, F_frame, central_segment_coords, framing_pixel_coords)
+
+  - action: calculate_added_pixels
+    description: For each framing_pixel, calculate the position and color of the corresponding added_pixel.
+    inputs:
+      - source_pattern_row_details
+    outputs:
+      - list_of_added_pixels (coordinates and color)
+    logic: |
+      For each framing_pixel at (R_source, c_frame):
+        1. Calculate dist = min(|c_frame - c_central|) for all c_central in central_segment_coords.
+        2. Calculate R_output = R_source - dist - 1.
+        3. If R_output >= 0, create an added_pixel with coordinate (R_output, c_frame) and color C_central.
+
+  - action: construct_output_grid
+    description: Create the output grid by copying the input grid and placing the added_pixels.
+    inputs:
+      - input_grid
+      - list_of_added_pixels
+    outputs:
+      - output_grid
+    logic: |
+      1. Copy input_grid to output_grid.
+      2. For each added_pixel(coordinate, color):
+         Set output_grid[coordinate] = color.

@@ -1,0 +1,59 @@
+task_description: |
+  Extract the content enclosed within the largest gray rectangular frame.
+  Identify the background color (most frequent color) of this extracted content.
+  Apply a specific color transformation to the pixels of the extracted content based on the background color.
+  Create a new grid consisting of the transformed content surrounded by a 1-pixel gray border.
+
+objects:
+  - name: input_grid
+    type: grid
+  - name: output_grid
+    type: grid
+  - name: frame
+    type: rectangular_border
+    properties:
+      color: gray (5)
+      location: outermost gray rectangle in input_grid
+  - name: inner_content
+    type: subgrid
+    properties:
+      location: pixels strictly inside the 'frame' in input_grid
+      size: variable (depends on frame size)
+  - name: background_color
+    type: color_value
+    properties:
+      determination: most frequent color within 'inner_content'
+  - name: foreground_pixels
+    type: set_of_pixels
+    properties:
+      location: pixels within 'inner_content' that are not 'background_color'
+      transformation_rule: dependent on 'background_color' (see actions)
+
+actions:
+  - name: find_frame
+    input: input_grid
+    output: frame_location (coordinates of the gray rectangle)
+  - name: extract_inner_content
+    input: input_grid, frame_location
+    output: inner_content_grid
+  - name: determine_background
+    input: inner_content_grid
+    output: background_color
+  - name: define_color_map
+    input: background_color
+    output: color_map_rules
+    details: |
+      if background_color is Azure (8): { Blue(1): Yellow(4), Green(3): Red(2) }
+      if background_color is White (1): { Red(2): Yellow(4), Green(3): Orange(7), Magenta(6): Azure(8) }
+      All other colors map to themselves, including the background color.
+  - name: transform_content
+    input: inner_content_grid, color_map_rules
+    output: transformed_content_grid
+    details: Apply color_map_rules pixel-wise to inner_content_grid.
+  - name: create_output
+    input: transformed_content_grid, gray_color (5)
+    output: output_grid
+    details: |
+      Create a new grid with dimensions (transformed_height + 2, transformed_width + 2).
+      Fill the border with gray (5).
+      Place transformed_content_grid in the center.

@@ -1,0 +1,44 @@
+task_description: "Identify four 3-pixel L-shaped objects in the input grid. Extract the 2x2 pattern defined by each object's bounding box. Assign each pattern to a quadrant (TL, TR, BL, BR) in a 4x4 output grid based on the object colors sorted numerically (1st color -> TL, 2nd -> TR, 3rd -> BL, 4th -> BR). If the bounding box of either the object assigned to TL or the object assigned to TR crosses the grid's vertical center line, swap the patterns placed in the TL and TR quadrants of the output grid."
+
+grid_properties:
+  input_size: variable (e.g., 13x13)
+  output_size: fixed 4x4
+  background_color: 0 (black)
+
+objects:
+  - name: L-shape
+    count: 4 per input grid
+    pixels: 3 contiguous pixels of the same color
+    shape_details: Forms an 'L' shape within a 2x2 bounding box.
+    color: Varies (Blue, Red, Green, Yellow, Azure observed), unique for each object within a grid.
+    properties:
+      - bounding_box: Always 2x2.
+      - color_index: Integer 1-9.
+      - pattern: The 2x2 grid snippet defined by the bounding box.
+
+actions:
+  - action: find_objects
+    inputs: input_grid
+    outputs: list of 4 L-shape objects with their properties (color, bounding_box, pattern).
+  - action: sort_objects_by_color
+    inputs: list of objects
+    outputs: sorted list of objects based on color index (ascending).
+  - action: assign_patterns_to_quadrants
+    inputs: sorted list of objects
+    outputs: mapping {TL: obj1_pattern, TR: obj2_pattern, BL: obj3_pattern, BR: obj4_pattern}
+  - action: check_swap_condition
+    inputs: object assigned to TL, object assigned to TR, input_grid_width
+    outputs: boolean (True if swap needed, False otherwise)
+    condition: Swap is True if `bbox_min_c <= floor(width/2)` AND `bbox_max_c >= floor(width/2) + 1` for either the TL-assigned or TR-assigned object's bounding box.
+  - action: construct_output_grid
+    inputs: pattern mapping, swap_condition
+    outputs: 4x4 output_grid
+    logic:
+      - Place BL pattern at output[2:4, 0:2].
+      - Place BR pattern at output[2:4, 2:4].
+      - If swap_condition is True:
+          - Place TR pattern at output[0:2, 0:2].
+          - Place TL pattern at output[0:2, 2:4].
+      - Else (swap_condition is False):
+          - Place TL pattern at output[0:2, 0:2].
+          - Place TR pattern at output[0:2, 2:4].

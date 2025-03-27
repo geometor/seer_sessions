@@ -1,0 +1,79 @@
+task_description: Analyze three non-background objects; one moves towards the closer of the other two along a primary axis (vertical or horizontal), splitting it and moving to the grid edge.
+
+constants:
+  background_color: The most frequent color in the input grid.
+  num_objects: 3 (non-background).
+
+objects:
+  - role: mover
+    description: The object positioned between the other two along a primary axis.
+    properties:
+      color: Specific color per example.
+      shape: Rectangular or near-rectangular in examples.
+      size: Varies.
+      bbox: Bounding box.
+      center: Bounding box center.
+    action:
+      - Identify the closer of the other two objects (split_object).
+      - Determine movement direction towards split_object (Up, Down, Left, or Right).
+      - Move along the determined axis until its leading edge reaches the corresponding grid boundary.
+      - Final position: At the edge of the grid, aligned with its original position along the perpendicular axis.
+  - role: split_object
+    description: The object closer to the mover along the axis of alignment.
+    properties:
+      color: Specific color per example.
+      shape: Rectangular or near-rectangular in examples.
+      size: Varies.
+      bbox: Bounding box.
+      center: Bounding box center.
+    action:
+      - Is split perpendicular to the mover's movement direction.
+      - The split creates a gap aligned with the mover's bounding box along the split axis.
+      - Gap dimension: Equal to the mover's width (for vertical movement) or height (for horizontal movement).
+      - Gap position: Aligned with the mover's column(s) (for vertical movement) or row(s) (for horizontal movement).
+      - The two resulting pieces are shifted away from the gap.
+      - Shift amount: Seems to be `ceil(gap_dimension / 2)`. For a gap of 2, shift is 1.
+      - Final state: Two separate pieces positioned further apart than originally, maintaining their original extent along the movement axis.
+  - role: stable_object
+    description: The object further from the mover along the axis of alignment.
+    properties:
+      color: Specific color per example.
+      shape: Rectangular or near-rectangular in examples.
+      size: Varies.
+      bbox: Bounding box.
+      center: Bounding box center.
+    action:
+      - Remains unchanged in the output grid.
+      - Final state: Identical position and shape as in the input.
+
+identification_logic:
+  - Find the three non-background objects.
+  - Check for vertical alignment:
+    - Find an object `M` whose center row `M_r` is between the center rows `A_r` and `B_r` of the other two objects (`A` and `B`).
+    - Check if the column range of `M`'s bounding box overlaps with the column ranges of *both* `A` and `B`.
+    - If yes, `M` is the mover, movement is vertical. The object (`A` or `B`) with center row closer to `M_r` is `split_object`, the other is `stable_object`.
+  - Check for horizontal alignment:
+    - Find an object `M` whose center column `M_c` is between the center columns `A_c` and `B_c` of the other two objects (`A` and `B`).
+    - Check if the row range of `M`'s bounding box overlaps with the row ranges of *both* `A` and `B`.
+    - If yes, `M` is the mover, movement is horizontal. The object (`A` or `B`) with center column closer to `M_c` is `split_object`, the other is `stable_object`.
+  - If no clear alignment is found by center, potential alternative: check alignment by bounding box edges.
+
+split_details:
+  - Vertical Mover Movement (Split is Horizontal):
+    - Gap covers columns defined by `mover['bbox'][1]` to `mover['bbox'][3]`.
+    - Split occurs across these columns.
+    - Pixels in `split_object` within these columns are removed.
+    - Pixels in `split_object` left of the gap (`c < mover['bbox'][1]`) are shifted left by `ceil(mover['width'] / 2)`.
+    - Pixels in `split_object` right of the gap (`c > mover['bbox'][3]`) are shifted right by `ceil(mover['width'] / 2)`.
+  - Horizontal Mover Movement (Split is Vertical):
+    - Gap covers rows defined by `mover['bbox'][0]` to `mover['bbox'][2]`.
+    - Split occurs across these rows.
+    - Pixels in `split_object` within these rows are removed.
+    - Pixels in `split_object` above the gap (`r < mover['bbox'][0]`) are shifted up by `ceil(mover['height'] / 2)`.
+    - Pixels in `split_object` below the gap (`r > mover['bbox'][2]`) are shifted down by `ceil(mover['height'] / 2)`.
+
+grid_construction:
+  - Initialize output grid with the background color.
+  - Draw the `stable_object` in its original position.
+  - Draw the shifted pieces of the `split_object`.
+  - Draw the `mover` object in its final position at the grid edge.

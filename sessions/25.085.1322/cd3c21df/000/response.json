@@ -1,0 +1,38 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "*   **Perception:** The input grids contain various geometric shapes composed of different colors scattered on a white background. The output grid is always a smaller grid representing one specific object extracted from the input grid. The key is to identify which object is selected and why.\n\n*   **Analysis:**\n    *   In each example, the output grid corresponds precisely to a sub-grid of the input containing a single \"object\" (a contiguous group of non-white pixels).\n    *   The selected object consistently has the property of being a solid rectangle; its pixels perfectly fill its bounding box. Non-rectangular shapes (like L-shapes or T-shapes) are ignored.\n    *   In `train_1`, there are two rectangular objects: a 1x3 magenta line and a 2x2 orange square. The orange square is selected, which is the most \"square-like\" (aspect ratio closer to 1).\n    *   In `train_2`, there are two rectangular objects: a 4x1 yellow line and a 4x1 red line. They have the same shape and aspect ratio. The red line is selected. Comparing their top-left positions, the red line starts at a lower row index (and further right column index) than the yellow line. The selection seems to prioritize the object whose top-left corner is located furthest down, and then furthest right as a tie-breaker.\n    *   In `train_3`, there is only one object that forms a solid rectangle (a 2x3 shape made of red and blue pixels). This object is selected.\n\n*   **Hypothesis:** The transformation identifies all solid rectangular objects within the input grid. If multiple such objects exist, it selects the one that is most square-like (aspect ratio closest to 1). If there's a tie in squareness, it selects the object whose top-left corner has the highest row index, using the column index as a further tie-breaker. The output is the selected rectangular object, cropped to its bounding box.\n\n"
+          },
+          {
+            "text": "```yaml\nfacts:\n  - \n    description: Input grids contain multiple discrete objects composed of colored pixels (1-9) on a background (0).\n    applies_to: all_train_examples\n  - \n    description: Objects can be single-colored or multi-colored.\n    applies_to: train_1, train_3\n  - \n    description: Objects have various shapes, including lines, squares, L-shapes, T-shapes, and more complex forms.\n    applies_to: all_train_examples\n  - \n    description: The output grid is always a cropped version of the input grid, containing exactly one object from the input.\n    applies_to: all_train_examples\n  - \n    property: The selected object is always a solid rectangle (its pixels completely fill its bounding box).\n    applies_to: all_train_examples\n  - \n    rule: If multiple solid rectangular objects exist, the one with the aspect ratio (minimum dimension / maximum dimension) closest to 1 is chosen.\n    applies_to: train_1\n  - \n    rule: If multiple solid rectangular objects have the same maximal aspect ratio (tie), the one whose top-left corner has the largest row index is chosen.\n    applies_to: train_2\n  - \n    rule: If a tie still exists after comparing row indices, the object whose top-left corner has the largest column index is chosen.\n    applies_to: train_2 # (Implicitly tested, highest row index was sufficient)\n  - \n    action: Identify all contiguous non-background objects.\n    order: 1\n  - \n    action: Filter objects to keep only those that are solid rectangles.\n    order: 2\n  - \n    action: If multiple rectangular objects remain, select based on aspect ratio (closest to 1), then by top-left position (max row index, then max column index).\n    order: 3\n  - \n    action: Crop the input grid to the bounding box of the selected rectangular object.\n    order: 4\n  - \n    output: The cropped grid containing the selected object.\n    order: 5\n\n```"
+          },
+          {
+            "text": "\n\n"
+          },
+          {
+            "text": "```natural_language_program\n1.  Identify all distinct contiguous objects composed of non-background colors (pixels 1-9) in the input grid.\n2.  For each object, determine its bounding box (minimum and maximum row and column indices).\n3.  Filter these objects, keeping only those that form solid rectangles (i.e., the number of non-background pixels within the object equals the area of its bounding box).\n4.  If zero solid rectangular objects are found, the transformation rule is undefined by the examples (or possibly results in an empty grid, though not shown).\n5.  If exactly one solid rectangular object is found, select it.\n6.  If multiple solid rectangular objects are found:\n    a.  Calculate the aspect ratio for each object as `min(height, width) / max(height, width)`.\n    b.  Identify the object(s) with the maximum aspect ratio (closest to 1).\n    c.  If there is a unique object with the maximum aspect ratio, select it.\n    d.  If there is still a tie (multiple objects share the same maximum aspect ratio), compare their top-left corner positions (min_row, min_col). Select the object with the largest `min_row` index.\n    e.  If there is still a tie (multiple objects share the same maximum aspect ratio and the same largest `min_row`), select the object among them with the largest `min_col` index.\n7.  Extract the subgrid corresponding to the bounding box of the selected object. This subgrid is the output.\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 2143,
+    "candidates_token_count": 3910,
+    "total_token_count": 6053,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 33.277837,
+  "retries": null
+}

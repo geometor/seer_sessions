@@ -1,0 +1,58 @@
+task_type: grid_transformation
+grid_properties:
+  input_size: 5x9
+  output_size: 5x4
+  input_colors: [0, 4, 5, 8]  # white, yellow, gray, azure
+  output_colors: [0, 2]     # white, red
+objects:
+  - id: input_grid
+    description: The initial 5x9 grid.
+  - id: output_grid
+    description: The resulting 5x4 grid.
+  - id: separator_column
+    description: The central column (index 4) in the input grid, always yellow (4).
+    properties:
+      color: 4
+      column_index: 4
+  - id: left_subgrid
+    description: The portion of the input grid to the left of the separator (columns 0-3).
+    properties:
+      dimensions: 5x4
+      column_indices: [0, 1, 2, 3]
+  - id: right_subgrid
+    description: The portion of the input grid to the right of the separator (columns 5-8).
+    properties:
+      dimensions: 5x4
+      column_indices: [5, 6, 7, 8]
+relationships:
+  - type: division
+    source: input_grid
+    target: [left_subgrid, right_subgrid]
+    via: separator_column
+  - type: correspondence
+    source: [left_subgrid, right_subgrid]
+    target: output_grid
+    details: Output grid cells map 1:1 to cells in left/right subgrids based on row and relative column index.
+transformation:
+  - action: identify_separator
+    input: input_grid
+    output: separator_column
+  - action: extract_subgrids
+    input: input_grid
+    output: [left_subgrid, right_subgrid]
+  - action: create_output_grid
+    properties:
+      height: 5
+      width: 4
+      initial_value: 0 # Default to white
+  - action: pixel_wise_comparison
+    inputs: [left_subgrid, right_subgrid]
+    output: output_grid
+    rule: |
+      For each row `r` from 0 to 4 and each relative column `c` from 0 to 3:
+      Let `L_pixel = left_subgrid[r][c]`
+      Let `R_pixel = right_subgrid[r][c]`
+      If (L_pixel == 0 and R_pixel != 0) or (L_pixel != 0 and R_pixel == 0):
+        Set output_grid[r][c] = 2 (red)
+      Else:
+        Set output_grid[r][c] = 0 (white)

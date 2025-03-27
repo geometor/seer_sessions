@@ -1,0 +1,51 @@
+task_context:
+  problem_type: pattern_generation
+  grid_representation: 2D numpy array of integers 0-9 (colors)
+  output_grid_size: same as input grid size
+
+input_grid_properties:
+  - object: grid
+    properties:
+      - background_color: dominant color (most frequent pixel value)
+      - special_pixel: exactly one pixel with a color different from the background
+        properties:
+          - location: (row, column) coordinates (r0, c0)
+          - color: C0 (value from 0-9, different from background)
+
+output_grid_properties:
+  - object: grid
+    properties:
+      - size: same height and width as the input grid
+      - pixel_colors: determined by Manhattan distance from the input special_pixel location
+      - color_palette: uses exactly 9 colors - all colors from 0-9 *except* the input grid's background color.
+
+transformation_rules:
+  - action: identify_background_color
+    input: input_grid
+    output: background_color_value
+  - action: identify_special_pixel
+    input: input_grid, background_color_value
+    output: special_pixel_location (r0, c0), special_pixel_color (C0)
+  - action: determine_available_colors
+    input: background_color_value
+    output: list_of_9_colors (all integers 0-9 excluding background_color_value)
+  - action: define_canonical_color_sequence
+    # Based on observation from examples where background is 7 (orange)
+    # The sequence seems fixed for the set of available colors {0, 1, 2, 3, 4, 5, 6, 8, 9}
+    input: list_of_9_colors 
+    # Note: The mechanism for deriving this sequence generally is still TBD if background changes.
+    # For background=7, the observed sequence is: [3, 4, 0, 5, 2, 8, 9, 6, 1]
+    output: canonical_sequence (a specific permutation of the 9 available colors)
+    # Example canonical sequence for available={0,1,2,3,4,5,6,8,9}: [3, 4, 0, 5, 2, 8, 9, 6, 1] 
+  - action: create_output_sequence
+    input: canonical_sequence, special_pixel_color (C0)
+    process: find the index of C0 in the canonical_sequence, then rotate the canonical_sequence so C0 is the first element.
+    output: final_color_sequence (length 9)
+  - action: generate_output_grid
+    input: grid_dimensions (height, width), special_pixel_location (r0, c0), final_color_sequence
+    process:
+      - for each pixel location (r, c) in the output grid:
+        - calculate Manhattan distance: d = abs(r - r0) + abs(c - c0)
+        - calculate color index: index = d % 9
+        - assign color: output_grid[r, c] = final_color_sequence[index]
+    output: output_grid
