@@ -1,0 +1,48 @@
+task_description: Replace target-colored pixels with colors from a 2x2 key based on their quadrant relative to the target color's bounding box center.
+
+definitions:
+  - name: background_color
+    value: 0 # white
+  - name: border_color
+    value: 8 # azure (may be partial or absent)
+  - name: key_object
+    description: A 2x2 block of pixels where no pixel is the background_color or border_color. Usually found near a corner.
+    properties:
+      - location: Top-left coordinate (key_r, key_c)
+      - colors: [k00, k01, k10, k11] corresponding to [(key_r, key_c), (key_r, key_c+1), (key_r+1, key_c), (key_r+1, key_c+1)]
+  - name: target_color
+    description: The color to be transformed. Determined as the most frequent color in the grid, excluding background_color, border_color, and pixels at the key_object's location.
+  - name: target_pixels
+    description: All pixels in the input grid having the target_color.
+  - name: target_bounding_box
+    description: The smallest rectangle containing all target_pixels.
+    properties:
+      - coordinates: (min_r, max_r, min_c, max_c)
+      - center: (center_r, center_c) where center_r = (min_r + max_r) / 2.0 and center_c = (min_c + max_c) / 2.0
+  - name: quadrants
+    description: Division of the grid based on the target_bounding_box center.
+    rules:
+      - Top-Left: Pixel (r, c) where r <= center_r AND c < center_c
+      - Top-Right: Pixel (r, c) where r <= center_r AND c >= center_c
+      - Bottom-Left: Pixel (r, c) where r > center_r AND c < center_c
+      - Bottom-Right: Pixel (r, c) where r > center_r AND c >= center_c
+
+actions:
+  - name: find_key
+    input: grid, background_color, border_color
+    output: key_object or None
+  - name: find_target_color
+    input: grid, background_color, border_color, key_object location
+    output: target_color or None
+  - name: find_target_bounding_box
+    input: grid, target_color
+    output: target_bounding_box or None
+  - name: transform_pixels
+    description: Iterate through each pixel (r, c) in the input grid.
+    conditions:
+      - If the pixel (r, c) has the target_color AND is NOT part of the key_object:
+          - Determine its quadrant based on the quadrant rules and the center coordinates.
+          - Change the pixel's color in the output grid to the corresponding key_object color (k00 for TL, k01 for TR, k10 for BL, k11 for BR).
+      - Otherwise:
+          - Keep the original pixel color in the output grid.
+    output: transformed grid

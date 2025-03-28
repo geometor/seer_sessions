@@ -1,0 +1,41 @@
+task_description: Extends a primary shape based on the position of a single azure marker pixel. The marker indicates the target extent of the extension.
+
+definitions:
+  - object: grid
+    type: 2D array of integers (0-9) representing colors.
+    properties:
+      size: variable height and width (1-30).
+      background_color: white (0).
+  - object: shape
+    type: Contiguous area of non-white (0) and non-azure (8) pixels.
+    properties:
+      bounding_box: [min_row, max_row, min_col, max_col] defining the minimum rectangle enclosing the shape.
+      colors: Can contain multiple colors.
+      structure: Often appears as a frame around a core, but can be solid.
+  - object: marker
+    type: A single azure (8) pixel.
+    properties:
+      position: (row, col).
+      location_relative_to_shape: Can be outside the shape's bounding box. Specifically, in these examples, it's either directly to the right (same row range as shape, column > max_col) or directly below (same column range as shape, row > max_row).
+
+transformation:
+  action: extend_shape
+  input: grid containing a shape and a marker.
+  output: grid with the shape extended and the marker removed (set to white).
+  conditions:
+    - The marker pixel must exist.
+    - A non-white, non-azure shape must exist.
+    - The marker must be positioned directly to the right or directly below the shape's bounding box.
+  steps:
+    1. Create a copy of the input grid.
+    2. Locate the marker pixel at `(marker_row, marker_col)`.
+    3. Set the marker pixel's location in the output grid to white (0).
+    4. Identify the bounding box `[min_row, max_row, min_col, max_col]` of the shape (pixels != 0 and != 8).
+    5. Check extension direction:
+       a. If `marker_col > max_col` (and marker is within shape's row bounds): Horizontal extension.
+          - Identify the pattern: The column of pixels at index `max_col - 1` within the shape's row bounds (`grid[min_row : max_row + 1, max_col - 1]`).
+          - Apply the pattern: Copy this pattern into all columns from `max_col + 1` up to and including `marker_col` in the output grid, within the shape's row bounds.
+       b. If `marker_row > max_row` (and marker is within shape's column bounds): Vertical extension.
+          - Identify the pattern: The row of pixels at index `max_row - 1` within the shape's column bounds (`grid[max_row - 1, min_col : max_col + 1]`).
+          - Apply the pattern: Copy this pattern into all rows from `max_row + 1` up to and including `marker_row` in the output grid, within the shape's column bounds.
+    6. If no marker or no shape is found, or marker is not in a valid extension position, return the grid with only the marker removed (if present).

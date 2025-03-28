@@ -1,0 +1,55 @@
+task_description: Maps colored objects ('sources') to blue objects ('targets') across zones defined by yellow lines, transferring the source color to the targets and removing the original source object.
+
+definitions:
+  - name: Separators
+    type: Grid Features
+    properties:
+      - Horizontal separators are rows composed entirely of yellow pixels.
+      - Vertical separators are columns composed entirely of yellow pixels.
+  - name: Zones
+    type: Grid Regions
+    properties:
+      - Rectangular areas defined by grid boundaries and separators.
+      - Each zone has coordinates (zone_row, zone_col).
+  - name: Source Objects
+    type: Objects
+    properties:
+      - Contiguous areas of a single color.
+      - Color is not white (0), blue (1), or yellow (4).
+      - Located within a specific zone.
+  - name: Target Objects
+    type: Objects
+    properties:
+      - Contiguous areas of a single color.
+      - Color is blue (1).
+      - Located within a specific zone.
+
+transformation_steps:
+  - step: 1. Identify Grid Structure
+    action: Find all horizontal and vertical yellow separators.
+    result: Partition the grid into zones.
+  - step: 2. Identify Objects
+    action: In each zone, find all source objects and target objects.
+    details: Store each object's color, pixels, and zone coordinates.
+  - step: 3. Determine Mappings
+    action: Create mappings from source objects to target objects based on zone relationships, applying rules sequentially and ensuring each object is used in at most one rule category (intra, vertical, horizontal).
+    rules:
+      - rule_name: Intra-Zone
+        condition: A zone contains exactly one source object and one or more target objects.
+        mapping: Map the source to all targets within that zone.
+      - rule_name: Inter-Zone Vertical
+        condition: Two vertically adjacent zones (sharing a horizontal separator) exist where one contains exactly one *unmapped* source and the other contains one or more *unmapped* targets.
+        mapping: Map the source to all eligible targets in the adjacent zone. Check both directions (source above/targets below and source below/targets above).
+      - rule_name: Inter-Zone Horizontal
+        condition: Two horizontally adjacent zones (sharing a vertical separator) exist where one contains exactly one *unmapped* source and the other contains one or more *unmapped* targets.
+        mapping: Map the source to all eligible targets in the adjacent zone. Check both directions (source left/targets right and source right/targets left).
+    state_change: Mark objects involved in a successful mapping as 'mapped' to prevent reuse in subsequent rules within the same category or later categories if applicable (precise interaction depends on implementation, but the core idea is to prioritize unique mappings).
+  - step: 4. Apply Transformation
+    action: Modify a copy of the input grid based on the determined mappings.
+    sub_actions:
+      - action: Color Transfer
+        details: For each mapping (Source S -> Targets T_list), change the color of all pixels belonging to each target T in T_list to the color of source S.
+      - action: Source Removal
+        details: For every source object S that was part of *any* successful mapping in Step 3, change the color of all pixels originally belonging to S to white (0). This happens *after* the color transfer to targets.
+  - step: 5. Output
+    action: Return the modified grid.

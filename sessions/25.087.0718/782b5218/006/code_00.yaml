@@ -1,0 +1,96 @@
+task_context:
+  primary_color: red (2)
+  background_color: white (0)
+  grid_dimensions: variable (up to 30x30)
+  rules_prioritized: true
+
+rule_1_conditions:
+  - property: unique_colors_count
+    value: 3
+  - property: solid_row_exists
+    color: red (2)
+    value: true
+
+rule_1_actions:
+  - action: identify_third_color
+    inputs: [unique_colors, primary_color, background_color]
+  - action: find_topmost_solid_row
+    color: red (2)
+    output: solid_row_index
+  - action: create_output_grid
+    dimensions: input_grid_dimensions
+  - action: fill_rows
+    target: output_grid
+    rows: 0 to solid_row_index - 1
+    color: background_color (0)
+  - action: fill_row
+    target: output_grid
+    row: solid_row_index
+    color: primary_color (2)
+  - action: fill_rows
+    target: output_grid
+    rows: solid_row_index + 1 to end
+    color: third_color
+
+rule_2_conditions:
+  - property: unique_colors_count
+    value: 3
+  - property: solid_row_exists
+    color: red (2)
+    value: false
+  - property: all_pixels_of_color_satisfy_condition
+    color: red (2)
+    condition: row == col + 1 OR row == col + 2
+
+rule_2_actions:
+  - action: identify_third_color
+    inputs: [unique_colors, primary_color, background_color]
+  - action: create_output_grid
+    dimensions: input_grid_dimensions
+  - action: fill_by_position
+    target: output_grid
+    condition: row < col + 1
+    color: background_color (0)
+  - action: fill_by_position
+    target: output_grid
+    condition: row == col + 1 OR row == col + 2
+    color: primary_color (2)
+  - action: fill_by_position
+    target: output_grid
+    condition: row > col + 2
+    color: third_color
+
+rule_3_conditions: # Default rule if Rule 1 and Rule 2 do not apply
+  - property: default
+    value: true
+
+rule_3_actions:
+  - action: process_columns_independently
+    target: input_grid
+    output: output_grid
+  - sub_action: find_topmost_pixel_in_column
+    color: red (2)
+    input: input_column
+    output: topmost_red_row_index
+  - sub_action_conditional: if topmost_red_row_index is found
+    - sub_action: fill_column_rows
+      target: output_column
+      rows: 0 to topmost_red_row_index - 1
+      color: background_color (0)
+    - sub_action: set_pixel
+      target: output_column
+      row: topmost_red_row_index
+      color: primary_color (2) # Overwrite original color at this position
+    - sub_action: process_column_rows_downward
+      target: output_column
+      start_row: topmost_red_row_index + 1
+      logic: |
+        For each pixel (r, c) from start_row downwards:
+        If input_grid[r, c] is background_color (0):
+          output_grid[r, c] = output_grid[r - 1, c] (propagate from above)
+        Else:
+          output_grid[r, c] = input_grid[r, c] (keep original color)
+  - sub_action_conditional: if topmost_red_row_index is not found
+    - sub_action: copy_column
+      source: input_column
+      target: output_column

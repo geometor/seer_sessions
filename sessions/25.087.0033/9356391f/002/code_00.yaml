@@ -1,0 +1,71 @@
+task_description: Create a concentric square pattern centered around a target pixel, with colors and size determined by the top row of the input grid. A minor modification to the top row might occur based on adjacency.
+
+grid_properties:
+  - dimensions: variable (observed 16x16)
+  - background_color: white (0)
+
+objects:
+  - object: target_pixel
+    description: The single non-white pixel below row 1 (index 1).
+    properties:
+      - color: Any non-white color (target_color).
+      - position: (center_r, center_c), becomes the center of the output structure.
+  - object: top_row_sequence
+    description: Sequence of non-white pixels in row 0 to the left of the rightmost non-white pixel.
+    properties:
+      - colors: (sequence_colors) list of colors, order matters for extraction but only unique sorted values are used later.
+  - object: top_row_frame_pixel
+    description: The rightmost non-white pixel in row 0.
+    properties:
+      - color: (frame_color).
+      - position: (0, frame_col).
+      - frame_col_value: Determines the maximum radius (max_radius) of the concentric structure.
+  - object: top_row_modifier_pixel
+    description: The pixel immediately to the left of the top_row_frame_pixel.
+    properties:
+      - position: (0, frame_col - 1)
+      - color: Its color determines if the top_row_frame_pixel is modified.
+  - object: below_frame_pixel
+    description: The pixel in row 1 directly below the top_row_frame_pixel.
+    properties:
+      - position: (1, frame_col)
+      - color: Used as the replacement color for the top_row_frame_pixel if modification occurs.
+  - object: concentric_structure
+    description: A series of nested hollow squares centered at target_pixel's position.
+    properties:
+      - center: (center_r, center_c)
+      - max_radius: Determined by frame_col.
+      - colors: An ordered list (layer_colors) derived from target_color, sequence_colors (unique, sorted), and frame_color.
+      - layers: Drawn outwards from radius 0 (center) to max_radius.
+
+actions:
+  - action: identify_target
+    input: input_grid
+    output: target_color, center_pos=(center_r, center_c)
+    condition: Search rows 2 onwards for the first non-white pixel.
+  - action: analyze_top_row
+    input: input_grid
+    output: frame_color, frame_col, sequence_colors
+    steps:
+      - Find the rightmost non-white pixel in row 0 -> frame_color, frame_col.
+      - Collect non-white pixels left of frame_col -> sequence_colors.
+  - action: determine_layer_colors
+    input: target_color, sequence_colors, frame_color
+    output: ordered_unique_colors (layer_colors)
+    steps:
+      - Combine [target_color] + sorted(unique(sequence_colors)) + [frame_color].
+      - Remove duplicates while preserving order. Let num_layers = len(layer_colors).
+  - action: modify_top_row (conditional)
+    input: input_grid, frame_col
+    output: modified output_grid (potentially)
+    condition: If frame_col > 0 AND input_grid[0, frame_col - 1] is white (0).
+    effect: Change output_grid[0, frame_col] to input_grid[1, frame_col].
+  - action: construct_structure
+    input: center_pos, max_radius=frame_col, layer_colors, num_layers
+    output: output_grid with structure drawn
+    steps:
+      - Initialize output_grid (e.g., copy input_grid, apply top row mod).
+      - Set output_grid[center_pos] = layer_colors[0].
+      - For radius r from 1 to max_radius:
+        - Determine color: `color = layer_colors[r]` if `r < num_layers` else `layer_colors[num_layers - 1]`.
+        - Draw a hollow square frame of color `color` at Chebyshev distance `r` from center_pos, respecting grid boundaries.

@@ -1,0 +1,51 @@
+**Perception of task elements**
+
+1.  **Input/Output Grids:** The task takes a larger input grid and produces a smaller output grid.
+2.  **Colors:**
+    *   Input grids contain white (0), blue (1), red (2), and azure (8).
+    *   Output grids contain only white (0) and red (2).
+3.  **Key Colors:** Blue (1) and Azure (8) appear to be markers or signals, as they are present in the input but not the output. Red (2) and white (0) constitute the content of the output.
+4.  **Structure:** In each input grid, there are multiple instances of blue (1) and azure (8) pixels. Crucially, there are pairs of blue (1) and azure (8) pixels located on the *same row*.
+5.  **Transformation Pattern:** The output grid seems to be constructed by extracting specific horizontal segments from the input grid, guided by the locations of the blue (1) and azure (8) pairs.
+6.  **Extraction Logic:** For each pair of blue (1) and azure (8) pixels found on the same row, the segment of that row lying strictly *between* the blue and azure pixels is extracted.
+7.  **Output Construction:** The extracted horizontal segments are stacked vertically to form the final output grid. The order of stacking preserves the original top-to-bottom order of the rows from which the segments were extracted. The width of the output grid is determined by the length of these extracted segments (which is consistent within each example), and the height is determined by the number of such blue-azure pairs found on distinct rows.
+
+**YAML Facts**
+
+
+```yaml
+task_elements:
+  - Input Grid: A 2D array of pixels with colors white(0), blue(1), red(2), azure(8).
+  - Output Grid: A smaller 2D array of pixels containing only white(0) and red(2).
+  - Markers:
+      - Blue Pixels (1): Act as start/end markers for horizontal segments.
+      - Azure Pixels (8): Act as end/start markers for horizontal segments.
+  - Content Pixels: Red(2) and White(0) pixels form the content of the output.
+relationships:
+  - Horizontal Pairs: Blue(1) and Azure(8) pixels form pairs on the same row.
+  - Segment Definition: Each horizontal pair defines a segment on its row, located strictly between the blue and azure columns.
+  - Output Structure: The output grid is formed by vertically stacking the extracted segments.
+properties:
+  - Segment Consistency: Within a single input, all extracted segments have the same length.
+  - Order Preservation: The vertical order of the segments in the output matches the row order in the input.
+actions:
+  - Identify Pairs: Find all rows containing both a blue(1) and an azure(8) pixel.
+  - Determine Boundaries: For each pair, find the minimum and maximum column indices (min_col, max_col) of the blue and azure pixels.
+  - Extract Segment: Select the pixels from the row between columns min_col + 1 and max_col - 1 (exclusive of the markers).
+  - Stack Segments: Collect all extracted segments and arrange them as rows in a new grid, maintaining their original relative vertical order.
+```
+
+
+**Natural Language Program**
+
+1.  Initialize an empty list to store the rows of the output grid.
+2.  Iterate through each row of the input grid, keeping track of the row index.
+3.  For the current row, find the column indices of all blue (1) pixels and all azure (8) pixels.
+4.  Check if both at least one blue pixel and at least one azure pixel exist in the current row.
+5.  If they both exist (assuming there's exactly one of each per relevant row, or the first/min/max pair is relevant):
+    a.  Find the column index of the blue pixel (`blue_col`).
+    b.  Find the column index of the azure pixel (`azure_col`).
+    c.  Determine the leftmost column index (`min_col = min(blue_col, azure_col)`) and the rightmost column index (`max_col = max(blue_col, azure_col)`).
+    d.  Extract the segment of the current row starting from the column *after* `min_col` up to the column *before* `max_col`. This is the slice `input_row[min_col + 1 : max_col]`.
+    e.  Add this extracted segment as a new row to the list initialized in step 1.
+6.  After iterating through all rows of the input grid, assemble the collected segments (rows) into the final output grid. The order of segments in the list corresponds to the top-to-bottom order in the output grid.

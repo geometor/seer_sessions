@@ -1,0 +1,39 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom collections import deque\n\n\"\"\"\nIdentifies exactly three distinct gray (5) objects in the input grid.\nThese objects are assumed to be either horizontal lines (height=1, width>1) or vertical lines (width=1, height>1).\nThe objects are sorted based on their top-leftmost pixel coordinate (row-major order).\nThe first object (Obj1) is always recolored blue (1).\nThe second (Obj2) and third (Obj3) objects are recolored based on their shapes:\n- If both Obj2 and Obj3 are horizontal lines, Obj2 becomes red (2) and Obj3 becomes yellow (4).\n- Otherwise (any other combination of shapes), Obj2 becomes yellow (4) and Obj3 becomes red (2).\nThe background and any other pixels remain unchanged.\n\"\"\"\n\ndef find_objects(grid, color):\n    \"\"\"\n    Finds all connected components of a given color in the grid using BFS.\n    Connectivity is based on 4 neighbors (up, down, left, right).\n\n    Args:\n        grid (np.array): The input grid.\n        color (int): The color of the objects to find.\n\n    Returns:\n        list: A list of sets, where each set contains the (row, col) coordinates\n              of the pixels belonging to one object.\n    \"\"\"\n    rows, cols = grid.shape\n    visited = set()\n    objects = []\n    for r in range(rows):\n        for c in range(cols):\n            # If the cell has the target color and hasn't been visited yet\n            if grid[r, c] == color and (r, c) not in visited:\n                # Start a new object search (BFS)\n                current_object_coords = set()\n                q = deque([(r, c)])\n                visited.add((r, c))\n                while q:\n                    curr_r, curr_c = q.popleft()\n                    current_object_coords.add((curr_r, curr_c))\n                    # Check 4 cardinal neighbors\n                    for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n                        nr, nc = curr_r + dr, curr_c + dc\n                        # Check if neighbor is within bounds, has the target color, and hasn't been visited\n                        if 0 <= nr < rows and 0 <= nc < cols and \\\n                           grid[nr, nc] == color and (nr, nc) not in visited:\n                            visited.add((nr, nc))\n                            q.append((nr, nc))\n                # Add the found object's coordinates to the list if it's not empty\n                if current_object_coords:\n                    objects.append(current_object_coords)\n    return objects\n\ndef get_object_properties(obj_coords):\n    \"\"\"\n    Calculates properties (top-left coord, height, width) for an object.\n\n    Args:\n        obj_coords (set): A set of (row, col) coordinates for the object.\n\n    Returns:\n        dict: A dictionary containing 'top_left' (tuple), 'height' (int),\n              and 'width' (int). Returns None if obj_coords is empty.\n    \"\"\"\n    if not obj_coords:\n        return None\n    \n    # Extract all row and column indices\n    rows = [r for r, c in obj_coords]\n    cols = [c for r, c in obj_coords]\n    \n    # Find bounding box limits\n    min_row, max_row = min(rows), max(rows)\n    min_col, max_col = min(cols), max(cols)\n    \n    # Calculate height and width\n    height = max_row - min_row + 1\n    width = max_col - min_col + 1\n    \n    # Determine the top-left coordinate: minimum row, then minimum column within that row\n    min_row_coords = [(r,c) for r,c in obj_coords if r == min_row]\n    top_left_col = min(c for r,c in min_row_coords)\n    top_left = (min_row, top_left_col)\n\n    return {'top_left': top_left, 'height': height, 'width': width}\n\ndef transform(input_grid):\n    \"\"\"\n    Transforms the input grid based on the identified rules.\n\n    Args:\n        input_grid (np.array): The input 2D grid.\n\n    Returns:\n        np.array: The transformed 2D grid.\n    \"\"\"\n    # Initialize output_grid as a copy of the input\n    output_grid = np.copy(input_grid)\n    \n    # 1. Identify all distinct groups of connected gray (5) pixels\n    gray_objects_coords = find_objects(output_grid, 5)\n\n    # 2. Calculate properties for each object\n    object_data = []\n    for coords in gray_objects_coords:\n        if not coords: continue # Skip if coordinates set is empty\n        props = get_object_properties(coords)\n        if props:\n             object_data.append({'coords': coords, 'properties': props})\n\n    # 3. Sort objects based on top-left coordinates (row-major)\n    object_data.sort(key=lambda obj: obj['properties']['top_left'])\n\n    # Check if exactly 3 objects were found, as assumed from examples\n    if len(object_data) != 3:\n        # If not 3 objects, return the original grid or handle error appropriately.\n        # Based on the examples, the rule requires exactly 3 objects.\n        print(f\"Warning/Error: Expected 3 gray objects, but found {len(object_data)}. Returning input grid.\")\n        return input_grid \n\n    # Assign sorted objects\n    obj1, obj2, obj3 = object_data[0], object_data[1], object_data[2]\n\n    # 4. Determine the shape (H-line or V-line) for each object\n    def get_shape(props):\n        h, w = props['height'], props['width']\n        if h == 1 and w > 1: return \"H-line\"\n        if w == 1 and h > 1: return \"V-line\"\n        # Consider single pixel objects or other shapes if necessary\n        # For this problem, based on examples, only H/V lines > 1 size are expected\n        return \"Other\" \n\n    shape1 = get_shape(obj1['properties']) # Not strictly needed by rule, but good for consistency\n    shape2 = get_shape(obj2['properties'])\n    shape3 = get_shape(obj3['properties'])\n    \n    # 5. Recolor Object 1 to blue (1)\n    for r, c in obj1['coords']:\n        output_grid[r, c] = 1\n\n    # 6. Recolor Object 2 and Object 3 based on their shapes\n    if shape2 == \"H-line\" and shape3 == \"H-line\":\n        # If Obj2 is H-line AND Obj3 is H-line:\n        # Recolor Obj2 to red (2)\n        for r, c in obj2['coords']:\n            output_grid[r, c] = 2\n        # Recolor Obj3 to yellow (4)\n        for r, c in obj3['coords']:\n            output_grid[r, c] = 4\n    else:\n        # Else (any other combination):\n        # Recolor Obj2 to yellow (4)\n        for r, c in obj2['coords']:\n            output_grid[r, c] = 4\n        # Recolor Obj3 to red (2)\n        for r, c in obj3['coords']:\n            output_grid[r, c] = 2\n\n    # 7. Return the modified grid\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "citation_metadata": {
+        "citation_sources": [
+          {
+            "start_index": 7169,
+            "end_index": 7328,
+            "uri": "https://www.cyberforum.ru/python-tasks/thread2910845.html",
+            "license_": ""
+          }
+        ]
+      },
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 3801,
+    "candidates_token_count": 1818,
+    "total_token_count": 5619,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 30.12752,
+  "retries": null
+}

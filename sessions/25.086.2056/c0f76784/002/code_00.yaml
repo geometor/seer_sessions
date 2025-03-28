@@ -1,0 +1,53 @@
+task_description: Apply two rules sequentially. First, fill certain white regions enclosed by gray borders based on area. Second, change specific gray pixels to magenta unless they border a filled region or a white pixel.
+
+definitions:
+  - object: grid
+    type: 2D array of integers 0-9
+    properties:
+      - height: integer
+      - width: integer
+  - object: region
+    type: contiguous set of pixels of the same color
+    properties:
+      - pixels: list of (row, col) tuples
+      - color: integer (0-9)
+      - area: integer (count of pixels)
+  - object: border
+    type: set of pixels adjacent (8-connectivity) to a region but not part of it
+    properties:
+      - pixels: list of (row, col) tuples
+      - color: integer (must be uniformly gray (5) for rule 1)
+  - object: hollow_rectangle_region
+    type: region
+    properties:
+      - color: white (0)
+      - border: must consist entirely of gray (5) pixels
+      - area: integer (1, 4, 6, or 9 for rule 1)
+  - object: isolated_gray_pixel
+    type: pixel
+    properties:
+      - color: gray (5)
+      - condition: has no adjacent (4-connectivity) white (0) neighbors in the input grid
+      - condition: is not part of the gray border of a hollow_rectangle_region that gets filled by rule 1
+
+rule_1_area_color_map:
+  1: magenta (6)
+  4: orange (7)
+  6: orange (7) # Note: Area 6 also maps to orange
+  9: azure (8)
+
+actions:
+  - action: identify_hollow_rectangles
+    input: input_grid
+    output: list of hollow_rectangle_regions and their gray borders
+    constraints: Only considers white regions completely enclosed by gray pixels. Only regions with areas 1, 4, 6, or 9 are relevant.
+  - action: fill_regions
+    input: output_grid (initially copy of input), hollow_rectangle_regions
+    effect: Changes the color of pixels within the identified hollow_rectangle_regions in the output_grid according to rule_1_area_color_map.
+  - action: identify_isolated_grays
+    input: input_grid, borders_of_filled_regions
+    output: list of isolated_gray_pixels
+    constraints: Checks gray pixels in the input grid. Excludes gray pixels with white neighbors (4-connectivity). Excludes gray pixels that are part of the borders identified in identify_hollow_rectangles for filled regions.
+  - action: change_isolated_grays
+    input: output_grid, isolated_gray_pixels
+    effect: Changes the color of identified isolated_gray_pixels to magenta (6) in the output_grid.

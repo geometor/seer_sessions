@@ -1,0 +1,64 @@
+task_description: Transforms a grid containing a unique 3x3 pattern and optional yellow markers.
+objects:
+  - object: grid
+    properties:
+      - type: 2D array of integers (0-9)
+      - size: variable (1x1 to 30x30)
+      - background_color: white (0)
+  - object: pattern
+    properties:
+      - type: subgrid
+      - size: 3x3
+      - composition: contains only blue (1) and azure (8) pixels
+      - uniqueness: exactly one such pattern exists per input grid
+      - location: variable within the main grid
+      - derived_properties:
+          - count_blue: number of blue pixels
+          - count_azure: number of azure pixels
+          - count_corner_blue: number of blue pixels at the four corners (0,0), (0,2), (2,0), (2,2) relative to the pattern's top-left
+          - center_coords: row and column index of the pattern's central pixel
+  - object: markers
+    properties:
+      - type: collection of pixels
+      - color: yellow (4)
+      - count: zero or more
+      - distribution: scattered within the main grid
+      - derived_properties:
+          - median_row: median row index of all yellow pixels
+          - median_col: median column index of all yellow pixels
+          - target_location: final consolidated location (row, col)
+
+actions:
+  - action: find_pattern
+    inputs: grid
+    outputs: pattern object (including location and derived properties)
+    description: Locate the unique 3x3 subgrid composed of only blue (1) and azure (8) pixels. Calculate counts and center coordinates.
+  - action: determine_rotation
+    inputs: pattern object (count_blue, count_azure, count_corner_blue)
+    outputs: rotation_type (0, 90_CCW, 180, 90_CW)
+    description: |
+      Compare counts to determine rotation:
+      - If count_azure > count_blue, rotation is 180 degrees.
+      - If count_blue > count_azure:
+        - If count_corner_blue is 4, rotation is 90 degrees CW.
+        - If count_corner_blue is 3, rotation is 90 degrees CCW.
+        - If count_corner_blue is 2, rotation is 90 degrees CCW.
+        - (Other corner counts when Blue > Azure not observed in examples)
+      - Otherwise (counts equal or pattern invalid), rotation is 0 degrees (no rotation).
+  - action: apply_rotation
+    inputs: pattern object, rotation_type, output_grid
+    outputs: modified output_grid
+    description: Rotate the identified 3x3 pattern according to the determined rotation_type and update the corresponding area in the output_grid.
+  - action: consolidate_markers
+    inputs: markers object (locations, median_row, median_col), pattern object (center_coords), output_grid
+    outputs: modified output_grid
+    description: |
+      If yellow markers exist:
+      1. Calculate median row and column.
+      2. Determine target row/column using custom rounding:
+         - If median coordinate ends in .5, round towards the pattern's center coordinate.
+         - Otherwise, use standard rounding (round half up).
+      3. Set all original yellow marker locations in output_grid to white (0).
+      4. Set the calculated target location in output_grid to yellow (4).
+
+output: The final modified grid after applying rotation and marker consolidation.

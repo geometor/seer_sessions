@@ -1,0 +1,61 @@
+import numpy as np
+
+"""
+Simulate gravity on non-white (non-zero) pixels in a grid. 
+Non-white pixels fall downwards into white (zero) spaces until they hit another non-white pixel or the bottom boundary of the grid. 
+The process repeats until no more pixels can fall, reaching a stable state. Objects (contiguous groups of same-colored non-white pixels) effectively maintain their shape while falling.
+"""
+
+def transform(input_grid):
+    """
+    Applies gravity to non-white pixels in the input grid.
+
+    Args:
+        input_grid (list[list[int]]): A 2D list representing the input grid.
+
+    Returns:
+        list[list[int]]: A 2D list representing the grid after gravity simulation.
+    """
+    # Convert input list of lists to a NumPy array for easier manipulation
+    working_grid = np.array(input_grid, dtype=int)
+    height, width = working_grid.shape
+
+    # Loop indefinitely until no pixels move in a full pass
+    while True:
+        moved_this_iteration = False  # Flag to track if any pixel moved in this pass
+
+        # Iterate through the grid cells, starting from the second-to-last row and moving upwards.
+        # This bottom-up approach ensures that pixels fall as far as possible in one go
+        # and correctly handles interactions between falling pixels/objects.
+        for r in range(height - 2, -1, -1):  # Start from second-to-last row, go up to row 0
+            for c in range(width):             # Iterate through columns left to right
+                
+                color = working_grid[r, c]
+
+                # Check if the current pixel is non-white (can fall)
+                # and the pixel directly below it is white (empty space)
+                if color != 0 and working_grid[r + 1, c] == 0:
+                    
+                    # Find the lowest possible row this pixel can fall to in the current column
+                    fall_to_r = r + 1 # Start checking from the row below
+                    # Keep going down as long as we are within bounds and the cell below is white
+                    while fall_to_r + 1 < height and working_grid[fall_to_r + 1, c] == 0:
+                        fall_to_r += 1
+                        
+                    # Move the pixel to the lowest found empty spot (fall_to_r)
+                    working_grid[fall_to_r, c] = color
+                    # Set the original position of the pixel to white (empty)
+                    working_grid[r, c] = 0
+                    
+                    # Mark that a pixel moved in this iteration
+                    moved_this_iteration = True
+
+        # If no pixels moved during this entire pass through the grid,
+        # the grid has reached a stable state, so break the loop.
+        if not moved_this_iteration:
+            break
+
+    # Convert the final NumPy array back to a list of lists
+    output_grid = working_grid.tolist()
+    
+    return output_grid

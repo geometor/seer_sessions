@@ -1,0 +1,55 @@
+task_description: Compresses an input grid by extracting significant rows and columns and arranging them into a new grid that represents their intersections and connecting segments.
+
+definitions:
+  significant_row:
+    criteria: An input row index `r` is significant if the row `input[r, :]` meets either condition:
+      - Contains more than one distinct non-white color value (value > 0).
+      - Is entirely filled with the same single non-white color value.
+    purpose: Represents horizontal structural elements or lines containing key intersection information.
+  significant_column:
+    criteria: An input column index `c` is significant if the column `input[:, c]` contains at least one non-white pixel at a row index `r_pixel` such that `r_pixel` is NOT the index of a significant_row.
+    purpose: Represents vertical structural elements or lines containing key intersection information or colors not solely confined to significant rows.
+  output_grid:
+    height: 2 * (number of significant_rows) + 1
+    width: 2 * (number of significant_columns) + 1
+    structure: A grid alternating between background/segment rows/columns and intersection/segment rows/columns.
+
+actions:
+  1_identify_significant_rows:
+    input: input_grid
+    output: ordered list of significant_row indices (let's call it `sig_rows`).
+    process: Iterate through each row, apply `significant_row` criteria.
+  2_identify_significant_columns:
+    input: input_grid, sig_rows list
+    output: ordered list of significant_column indices (let's call it `sig_cols`).
+    process: Iterate through each column, apply `significant_column` criteria using the identified `sig_rows`.
+  3_determine_output_dimensions:
+    input: sig_rows list, sig_cols list
+    output: output_height, output_width
+    process: Use formulas height = 2 * len(sig_rows) + 1, width = 2 * len(sig_cols) + 1.
+  4_create_output_grid:
+    input: output_height, output_width
+    output: output_grid initialized with white (0).
+  5_populate_output_grid:
+    input: output_grid, input_grid, sig_rows, sig_cols
+    output: populated output_grid
+    process: Iterate through output cells (r_out, c_out).
+      - if r_out is odd and c_out is odd (Intersection):
+          r_in = sig_rows[r_out // 2]
+          c_in = sig_cols[c_out // 2]
+          color = input_grid[r_in, c_in]
+          output_grid[r_out, c_out] = color
+      - if r_out is odd and c_out is even (Horizontal Segment):
+          r_in = sig_rows[r_out // 2]
+          segment_colors = [input_grid[r_in, c] for c in range(input_grid.width) if c not in sig_cols and input_grid[r_in, c] != 0]
+          # Find the most frequent color in segment_colors (assuming one exists)
+          dominant_color = find_most_frequent(segment_colors) # Requires implementation detail
+          output_grid[r_out, c_out] = dominant_color if dominant_color is not None else 0
+      - if r_out is even and c_out is odd (Vertical Segment):
+          c_in = sig_cols[c_out // 2]
+          segment_colors = [input_grid[r, c_in] for r in range(input_grid.height) if r not in sig_rows and input_grid[r, c_in] != 0]
+          # Find the most frequent color in segment_colors (assuming one exists)
+          dominant_color = find_most_frequent(segment_colors) # Requires implementation detail
+          output_grid[r_out, c_out] = dominant_color if dominant_color is not None else 0
+      - if r_out is even and c_out is even (Corner):
+          output_grid[r_out, c_out] = 0 # white

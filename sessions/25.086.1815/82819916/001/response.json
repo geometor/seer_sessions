@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom typing import List, Tuple, Dict\n\n\"\"\"\nIdentifies the row with the widest horizontal extent of non-white pixels (template row).\nFor every other row containing non-white pixels (source row):\n1. Extracts the sequence of non-white pixels from the start up to the last non-white pixel (source pattern).\n2. Extracts the corresponding sequence from the template row (template pattern).\n3. Finds the unique non-white colors in both patterns, preserving the order of first appearance.\n4. Creates a mapping from the template's unique colors to the source's unique colors based on their respective order.\n5. Reconstructs the source row in the output grid by applying this mapping to the template pattern, extending it to the template pattern's length. The rest of the row becomes white.\nRows that are all white or the template row itself remain unchanged.\nIf the number of unique colors in a source pattern doesn't match the template pattern, the source row also remains unchanged.\n\"\"\"\n\ndef _get_pattern_info(row: np.ndarray) -> Tuple[np.ndarray, List[int], int]:\n    \"\"\"\n    Finds the pattern, ordered unique colors, and length for a row.\n\n    Args:\n        row: A 1D numpy array representing a grid row.\n\n    Returns:\n        A tuple containing:\n        - pattern: The slice of the row up to the last non-white pixel.\n        - ordered_unique_colors: A list of unique non-white colors in order of appearance.\n        - pattern_len: The length of the pattern (index of last non-white + 1).\n        Returns (None, [], -1) if the row is all white.\n    \"\"\"\n    non_white_indices = np.where(row != 0)[0]\n    if len(non_white_indices) == 0:\n        return None, [], -1  # Indicate all white row\n\n    last_nz_index = non_white_indices[-1]\n    pattern_len = last_nz_index + 1\n    pattern = row[:pattern_len]\n\n    ordered_unique_colors = []\n    seen_colors = set()\n    for color in pattern:\n        if color != 0 and color not in seen_colors:\n            ordered_unique_colors.append(color)\n            seen_colors.add(color)\n\n    return pattern, ordered_unique_colors, pattern_len\n\ndef transform(input_grid: List[List[int]]) -> List[List[int]]:\n    \"\"\"\n    Transforms the input grid based on pattern mapping derived from a template row.\n\n    Args:\n        input_grid: A list of lists representing the input grid.\n\n    Returns:\n        A list of lists representing the transformed output grid.\n    \"\"\"\n    input_arr = np.array(input_grid, dtype=int)\n    output_arr = np.copy(input_arr)\n    num_rows, num_cols = input_arr.shape\n\n    template_row_index = -1\n    max_pattern_len = -1\n    template_pattern = None\n    template_colors_ordered = []\n\n    # 1. Find the template row (widest pattern)\n    for r in range(num_rows):\n        pattern, _, pattern_len = _get_pattern_info(input_arr[r])\n        if pattern_len > max_pattern_len:\n            max_pattern_len = pattern_len\n            template_row_index = r\n            template_pattern = pattern\n            # Re-calculate ordered colors specifically for the final template\n            _, template_colors_ordered, _ = _get_pattern_info(template_pattern)\n\n\n    # If no non-white pixels found at all, return the original grid\n    if template_row_index == -1:\n        return output_arr.tolist()\n\n    # 2. Iterate through rows and apply transformation if applicable\n    for r in range(num_rows):\n        # Skip the template row itself\n        if r == template_row_index:\n            continue\n\n        current_row = input_arr[r]\n        source_pattern, source_colors_ordered, source_len = _get_pattern_info(current_row)\n\n        # Skip all-white rows or rows where pattern info couldn't be derived\n        if source_len == -1:\n            continue\n\n        # Check if the number of unique colors matches the template\n        if len(source_colors_ordered) == len(template_colors_ordered) and len(source_colors_ordered) > 0:\n            # 3. Create the color mapping\n            mapping: Dict[int, int] = {template_col: source_col for template_col, source_col\n                                       in zip(template_colors_ordered, source_colors_ordered)}\n\n            # 4. Construct the new row part based on the template pattern and mapping\n            new_row_part = np.zeros(max_pattern_len, dtype=int)\n            for c in range(max_pattern_len):\n                template_color = template_pattern[c]\n                # Map non-white template colors, keep white as white (0)\n                new_row_part[c] = mapping.get(template_color, 0)\n\n            # 5. Update the output grid row\n            output_arr[r, :max_pattern_len] = new_row_part\n            # Ensure the rest of the row is white\n            output_arr[r, max_pattern_len:] = 0\n        # Else: If color counts don't match, leave the row as it was (already copied)\n\n    return output_arr.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 2346,
+    "candidates_token_count": 1283,
+    "total_token_count": 3629,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 120.939812,
+  "retries": null
+}

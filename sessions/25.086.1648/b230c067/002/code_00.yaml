@@ -1,0 +1,64 @@
+perception:
+  input_grid:
+    description: A 2D grid of pixels with integer values 0-9.
+    relevant_pixels:
+      - color: 0 (white) - Represents background and potential enclosed 'holes'.
+      - color: 8 (azure) - Represents the primary objects to be analyzed and transformed.
+  output_grid:
+    description: A 2D grid of the same dimensions as the input.
+    relevant_pixels:
+      - color: 0 (white) - Unchanged background.
+      - color: 1 (blue) - Color assigned to some azure objects based on rules.
+      - color: 2 (red) - Color assigned to one specific azure object based on rules.
+
+objects:
+  - name: azure_object
+    description: A contiguous group of azure (8) pixels, connected 8-directionally (including diagonals).
+    properties:
+      - pixel_set: The set of (row, col) coordinates constituting the object.
+      - bounding_box: Defined by (min_row, min_col, max_row, max_col).
+      - has_hole: A boolean property, true if the object encloses one or more white (0) pixels that are not connected to the exterior of the object's bounding box + 1 pixel padding.
+      - position_sort_key: Derived from the bounding box (min_row, -max_col) for sorting (lowest row first, then highest column).
+
+transformations:
+  - action: identify_objects
+    input: input_grid
+    output: list of azure_objects
+    filter: color == 8
+    connectivity: 8-directional
+
+  - action: analyze_objects
+    input: list of azure_objects
+    output: list of azure_objects with properties (bounding_box, has_hole, position_sort_key) calculated.
+
+  - action: count_holes
+    input: list of analyzed azure_objects
+    output: integer count of objects where has_hole is true.
+
+  - action: select_red_object
+    description: Selects exactly one object to be colored red based on hole count and position.
+    conditions:
+      - if hole_count == 1:
+          input: non-hole azure_objects
+          selects: the object with the minimum min_row, breaking ties with maximum max_col.
+      - if hole_count == 0:
+          input: all azure_objects
+          selects: the object with the minimum min_row, breaking ties with maximum max_col.
+      - otherwise: no object is selected as red.
+
+  - action: select_blue_objects
+    description: Selects objects to be colored blue.
+    conditions:
+      - if hole_count == 1:
+          selects: the object with the hole AND all non-hole objects EXCEPT the one selected as red.
+      - if hole_count == 0:
+          selects: all objects EXCEPT the one selected as red.
+      - otherwise: no objects are selected as blue.
+
+  - action: color_output_grid
+    input: input_grid, selected_red_object, selected_blue_objects
+    output: output_grid
+    steps:
+      - Initialize output_grid with white (0) pixels.
+      - For the selected_red_object, change the color of its corresponding pixels in output_grid to red (2).
+      - For each selected_blue_object, change the color of its corresponding pixels in output_grid to blue (1).

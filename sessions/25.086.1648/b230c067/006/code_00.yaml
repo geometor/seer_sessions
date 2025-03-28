@@ -1,0 +1,70 @@
+task_context:
+  description: "Color azure objects blue or red based on the presence and count of internal holes and their relative positions."
+  input_colors: [white (0), azure (8)]
+  output_colors: [white (0), blue (1), red (2)]
+  grid_properties:
+    - dimensions_preserved: True
+
+components:
+  - role: "Background"
+    color: white (0)
+    properties: []
+  - role: "Shape"
+    color: azure (8)
+    properties:
+      - connectivity: "8-way (including diagonals)"
+      - structure: "Contiguous pixels of azure color form distinct objects."
+      - features:
+          - name: "Bounding Box"
+            definition: "(min_row, min_col, max_row, max_col)"
+          - name: "Hole"
+            definition: "A contiguous area of white (0) pixels fully enclosed by the azure object's pixels, not connected to the grid exterior relative to the object's bounding box or immediate surroundings."
+
+actions:
+  - name: "Identify Objects"
+    input: "Input grid"
+    output: "List of azure objects (sets of pixel coordinates)"
+    using: "Connected components analysis (8-way connectivity) on azure pixels."
+
+  - name: "Analyze Objects"
+    input: "List of azure objects, Grid shape"
+    output: "List of objects with properties (pixels, bounding box, has_hole)"
+    steps:
+      - "Calculate bounding box for each object."
+      - "Determine if each object contains a hole."
+
+  - name: "Count Holes"
+    input: "List of objects with properties"
+    output: "hole_count (integer)"
+    steps:
+      - "Count how many objects have the 'has_hole' property set to True."
+
+  - name: "Determine Object Colors"
+    input: "List of objects with properties, hole_count"
+    output: "Designated red object (optional), List of designated blue objects"
+    condition: "Based on hole_count"
+    logic:
+      - if: "hole_count == 1"
+        steps:
+          - "Object with hole -> Blue"
+          - "Find top-right-most object among those *without* holes -> Red (if any exist)"
+          - "All remaining objects -> Blue"
+      - if: "hole_count == 0"
+        steps:
+          - "Find top-right-most object among *all* objects -> Red (if any exist)"
+          - "All remaining objects -> Blue"
+      - if: "hole_count > 1"
+        steps:
+          - "No objects are colored red or blue."
+    definitions:
+      - name: "top-right-most"
+        criteria: "Object with the minimum 'min_row'. If tied, the object among those tied with the maximum 'max_col'."
+
+  - name: "Generate Output Grid"
+    input: "Input grid dimensions, Designated red object, List of designated blue objects"
+    output: "Output grid"
+    steps:
+      - "Create a white grid of the same dimensions as the input."
+      - "Color pixels of the designated red object with red (2)."
+      - "Color pixels of the designated blue objects with blue (1)."
+      - "Ensure red takes precedence if a pixel somehow belongs to both (unlikely with correct logic)."

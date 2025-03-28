@@ -1,0 +1,6 @@
+# ... find axis, shape, color ...
+for r_yellow, c_yellow in current_shape_pixels:
+    # ... calculate r_reflected, c_reflected ...
+    if 0 <= r_reflected < height and 0 <= c_reflected < width:
+        if input_grid[r_reflected, c_reflected] == 0:
+            output_grid[r_reflected, c_reflected] = reflection_color

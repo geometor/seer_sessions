@@ -1,0 +1,38 @@
+task_context:
+  grid_properties:
+    - dimensions_preserved: True # Input and Output grids have the same height and width.
+    - colors_preserved: True # The set of colors used remains the same.
+  background_color:
+    - typical_value: 0 # White is the background in examples.
+    - identification: Assumed to be the most frequent color.
+objects:
+  - object: pattern_block
+    description: A contiguous block of rows located at the bottom of the input grid.
+    properties:
+      - contains_non_background_pixels: True
+      - vertical_extent: Defined by the lowest and highest row indices within this bottom group that contain non-background pixels.
+      - content: The specific pixel values within these rows.
+actions:
+  - action: identify_pattern_block
+    input: input_grid
+    output: pattern_block (including its rows and height H)
+    logic: Find the lowest row index (max_row) containing a non-background pixel. Find the highest row index (min_row_of_block) such that all rows from min_row_of_block to max_row contain at least one non-background pixel OR are part of the connected structure starting from the bottom. A simpler definition might be: Find the index of the bottom-most non-background row (`last_row`). Find the index of the top-most non-background row (`first_row`). The block potentially spans `first_row` to `last_row`. However, looking at example 2, rows 3 and 7 are all background, separating patterns. The relevant block is only the *lowest* group. Revised Logic: Iterate rows from bottom to top. Identify the first row with non-background pixels (this is the bottom of the block). Continue iterating upwards as long as rows contain non-background pixels. The last such row marks the top of the block. Or even better: Find all rows containing non-background pixels. Identify the maximum row index (`max_r`). Find the minimum row index (`min_r_block`) such that `min_r_block` contains non-background pixels, and all rows between `min_r_block` and `max_r` (inclusive) form the lowest connected vertical block containing non-background elements. Let's simplify: Find the lowest row `R_bottom` with non-background pixels. Find the highest row `R_top` such that all rows between `R_top` and `R_bottom` (inclusive) define the lowest contiguous block containing non-background pixels.
+     refinement: Start from the last row. Find the index of the last row containing any non-background color (`bottom_row_idx`). Find the index of the first row, searching from `bottom_row_idx` upwards, such that this row contains any non-background color, and all rows below it down to `bottom_row_idx` also contained non-background colors (This definition is still tricky because of separating background rows like row 7 in train_2).
+    final_refinement: Find the index of the bottom-most row containing any non-background pixel (`max_row_idx`). Identify all row indices `r <= max_row_idx` that contain non-background pixels. Find the minimum row index (`min_row_idx`) among these. The pattern block consists of all rows from `min_row_idx` to `max_row_idx`, inclusive. Let H be `max_row_idx - min_row_idx + 1`.
+  - action: extract_rows
+    input: input_grid, pattern_block definition (min_row_idx, max_row_idx)
+    output: list_of_rows (representing the pattern)
+  - action: reverse_rows
+    input: list_of_rows
+    output: reversed_list_of_rows
+  - action: create_output_grid
+    input: input_grid, reversed_list_of_rows, H
+    output: output_grid
+    logic: Initialize output_grid as a copy of input_grid. Overwrite the top H rows (index 0 to H-1) of the output_grid with the rows from reversed_list_of_rows.
+relationships:
+  - relation: vertical_reversal
+    source: rows in identified pattern_block (from input)
+    target: rows placed at the top of the output grid
+  - relation: preservation
+    source: rows in input_grid outside the identified pattern_block range [min_row_idx, max_row_idx]
+    target: corresponding rows in output_grid (below row H-1)

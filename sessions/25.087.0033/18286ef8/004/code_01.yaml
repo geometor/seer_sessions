@@ -1,0 +1,85 @@
+task_description: The transformation involves relocating a marker and indicating the direction of relocation.
+
+grid_properties:
+  - height and width vary between examples.
+  - contain background colors (white 0, various shades of gray 7) and separators (black 0).
+  - contain various other colored pixels/objects (blue 1, red 2, green 3, yellow 4, gray 5, magenta 6, orange 7, azure 8, maroon 9) that are mostly static, except for the key objects involved in the transformation.
+
+key_objects:
+  - object_1:
+      description: A 3x3 pattern acting as the source or origin.
+      pixels:
+        - color: gray (5)
+          role: border (8 pixels surrounding the center)
+        - color: maroon (9)
+          role: center (1 pixel)
+      properties:
+        - unique within the grid
+        - location denoted as (r_s, c_s) for the center pixel.
+  - object_2:
+      description: A single pixel acting as the primary target or destination indicator.
+      pixels:
+        - color: magenta (6)
+          role: target indicator
+      properties:
+        - unique within the grid
+        - location denoted as (r_t1, c_t1).
+  - object_3:
+      description: A single pixel adjacent to the center of object_1, acting as the secondary target or direction indicator.
+      pixels:
+        - color: gray (5)
+          role: initial state (before change)
+      properties:
+        - adjacent (including diagonals) to the center of object_1.
+        - its specific location relative to object_1 depends on the vector between object_1 and object_2.
+        - location denoted as (r_n, c_n).
+
+actions:
+  - action_1:
+      description: Locate object_1 (source pattern).
+      inputs: input_grid
+      outputs: coordinates (r_s, c_s) of the maroon center.
+  - action_2:
+      description: Locate object_2 (unique magenta pixel).
+      inputs: input_grid
+      outputs: coordinates (r_t1, c_t1).
+  - action_3:
+      description: Calculate the relative vector V from source center to target 1.
+      inputs: (r_s, c_s), (r_t1, c_t1)
+      outputs: vector (dr, dc) = (r_t1 - r_s, c_t1 - c_s).
+  - action_4:
+      description: Determine the offset vector (dr_n, dc_n) for the neighbor pixel based on vector V.
+      inputs: vector (dr, dc)
+      outputs: offset vector (dr_n, dc_n)
+      logic:
+        - If dr=0 and dc=0, offset=(0, 0).
+        - If dr=0, offset=(0, sign(dc)).
+        - If dc=0, offset=(sign(dr), 0).
+        - If dr!=0 and dc!=0:
+            - ratio = min(abs(dr), abs(dc)) / max(abs(dr), abs(dc))
+            - threshold = 0.3 (approximately)
+            - If ratio < threshold: # Cardinal direction of dominant component
+                - If abs(dr) > abs(dc), offset=(sign(dr), 0).
+                - Else, offset=(0, sign(dc)).
+            - Else (ratio >= threshold): # Diagonal direction
+                - offset=(sign(dr), sign(dc)).
+  - action_5:
+      description: Calculate the coordinates of the neighbor pixel (object_3).
+      inputs: (r_s, c_s), (dr_n, dc_n)
+      outputs: coordinates (r_n, c_n) = (r_s + dr_n, c_s + dc_n).
+  - action_6:
+      description: Create the output grid by copying the input grid.
+      inputs: input_grid
+      outputs: output_grid
+  - action_7:
+      description: Modify the color of the source pattern center in the output grid.
+      inputs: output_grid, (r_s, c_s)
+      outputs: output_grid with pixel at (r_s, c_s) changed from maroon (9) to gray (5).
+  - action_8:
+      description: Modify the color of the primary target pixel in the output grid.
+      inputs: output_grid, (r_t1, c_t1)
+      outputs: output_grid with pixel at (r_t1, c_t1) changed from magenta (6) to maroon (9).
+  - action_9:
+      description: Modify the color of the neighbor pixel (secondary target) in the output grid.
+      inputs: output_grid, (r_n, c_n)
+      outputs: output_grid with pixel at (r_n, c_n) changed from gray (5) to maroon (9). (Ensure coordinates are within bounds).

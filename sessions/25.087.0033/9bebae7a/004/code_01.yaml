@@ -1,0 +1,75 @@
+task_description: Reflect a yellow object based on properties and relative position of a magenta object.
+
+input_features:
+  - object_1:
+      color: 4 (yellow)
+      count: 1
+  - object_2:
+      color: 6 (magenta)
+      count: 1
+  - background_color: 0 (white)
+
+output_features:
+  - object_1_original:
+      color: 4 (yellow)
+      source: input object_1
+  - object_1_reflected:
+      color: 4 (yellow)
+      source: transformation of input object_1
+  - background_color: 0 (white)
+  - magenta_object_removed: true
+
+transformation_rule:
+  - name: Identify Objects
+    inputs: [input_grid]
+    outputs: [yellow_object_pixels, magenta_object_pixels]
+    description: Find all pixels corresponding to color 4 and color 6.
+
+  - name: Get Bounding Boxes
+    inputs: [yellow_object_pixels, magenta_object_pixels]
+    outputs: [yellow_bbox, magenta_bbox]
+    description: Calculate the minimum bounding box for each object. (min_row, max_row, min_col, max_col)
+
+  - name: Calculate Magenta Dimensions
+    inputs: [magenta_bbox]
+    outputs: [m_height, m_width]
+    description: m_height = max_r_m - min_r_m + 1; m_width = max_c_m - min_c_m + 1
+
+  - name: Determine Reflection Type
+    inputs: [m_height, m_width]
+    outputs: [reflection_type] # 'Horizontal' or 'Vertical'
+    condition: |
+      if m_height >= m_width: reflection_type = 'Horizontal'
+      else: reflection_type = 'Vertical'
+
+  - name: Perform Reflection
+    inputs: [reflection_type, yellow_object_pixels, yellow_bbox, magenta_bbox]
+    outputs: [reflected_yellow_pixels]
+    logic: |
+      if reflection_type == 'Horizontal':
+        # Axis: x = max_c_y + 0.5
+        # Formula: reflected_col = max_c_y + (max_c_y - c + 1)
+        For each (r, c) in yellow_object_pixels, calculate reflected pixel (r, reflected_col).
+      else: # reflection_type == 'Vertical'
+        # Calculate yellow_center_c = (min_c_y + max_c_y) / 2.0
+        # Get min_c_m from magenta_bbox
+        if min_c_m >= yellow_center_c: # Reflect Above
+          # Axis: y = min_r_y - 0.5
+          # Formula: reflected_row = min_r_y - (r - min_r_y + 1)
+          For each (r, c) in yellow_object_pixels, calculate reflected pixel (reflected_row, c).
+        else: # Reflect Below
+          # Axis: y = max_r_y + 0.5
+          # Formula: reflected_row = max_r_y + (max_r_y - r + 1)
+          For each (r, c) in yellow_object_pixels, calculate reflected pixel (reflected_row, c).
+
+  - name: Construct Output Grid
+    inputs: [input_grid, yellow_object_pixels, reflected_yellow_pixels]
+    outputs: [output_grid]
+    description: |
+      Create a copy of the input grid.
+      Set all magenta (6) pixels to background (0).
+      Add the reflected_yellow_pixels to the grid, setting their color to yellow (4). Ensure coordinates are within grid bounds. Overlapping pixels remain yellow.
+
+edge_cases:
+  - If yellow object is missing, remove magenta object and return.
+  - If magenta object is missing, return input grid (no reflection, magenta implicitly absent).

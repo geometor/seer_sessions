@@ -1,0 +1,47 @@
+task_description: Propagate colored patterns adjacent to gray lines into white space. The direction and method of propagation depend on the orientation of the gray line relative to the pattern.
+
+elements:
+  - element: grid
+    description: A 2D array of pixels with values 0-9 representing colors. Size is typically 10x10 in examples.
+  - element: pixel
+    description: A single cell in the grid with a color value.
+    properties:
+      - color: white (0), blue (1), red (2), green (3), yellow (4), gray (5), magenta (6), orange (7), azure (8), maroon (9)
+      - position: (row, column) coordinates
+  - element: gray_segment
+    description: A contiguous line of gray (5) pixels, either horizontal or vertical.
+    properties:
+      - orientation: horizontal or vertical
+      - start_pos: (row, col) of one end
+      - end_pos: (row, col) of the other end
+    role: Acts as a boundary and a trigger for propagation. Remains unchanged.
+  - element: colored_pattern
+    description: A contiguous block (pixel, column, row, or rectangle) of non-white, non-gray pixels located immediately adjacent (below or right) to a gray segment.
+    properties:
+      - colors: The specific colors within the pattern.
+      - shape: The arrangement of pixels (e.g., vertical column, horizontal row(s)).
+      - location: Position relative to an adjacent gray segment.
+    role: Acts as the source material for propagation.
+  - element: white_space
+    description: Pixels with the background color white (0).
+    role: The target area to be filled by propagation.
+
+actions:
+  - action: identify_gray_segments
+    description: Locate all horizontal and vertical contiguous segments of gray pixels.
+  - action: identify_source_patterns
+    description: For each gray segment, find any non-white, non-gray pixels immediately below (for horizontal segments) or immediately to the right (for vertical segments). Group these adjacent pixels into pattern blocks (columns for horizontal, rows for vertical).
+  - action: propagate_horizontally
+    description: For each source pixel (r, c) found below a horizontal gray segment ending at column c_end, fill the white pixels (r, k) with the source pixel's color for c < k <= c_end.
+    triggered_by: Horizontal gray segment and colored pixel(s) immediately below it.
+    target: White pixels in the same row, to the right, bounded by the gray segment's extent.
+  - action: propagate_vertically
+    description: For a source pattern block (rows r_s_top to r_s_bot) found to the right of a vertical gray segment (rows r_top to r_bot), tile/repeat this block upwards into the white space in the same columns, filling rows r_top to r_s_top - 1. The tiling repeats the source block pattern cyclically from bottom to top.
+    triggered_by: Vertical gray segment and colored row(s) immediately to its right.
+    target: White pixels in the same columns, above the source pattern, bounded by the gray segment's extent.
+
+relationships:
+  - relationship: adjacency
+    description: Key relationship is between gray segments and colored patterns (non-diagonal adjacency - below or right). Also relevant for defining contiguous segments.
+  - relationship: bounding
+    description: Gray segments define the boundaries (spatial extent) for the propagation originating from adjacent colored patterns.

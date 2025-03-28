@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom collections import deque\n\n\"\"\"\nThe transformation rule identifies connected components (shapes) of non-white pixels (pixels with values 1-9, specifically 1 and 8 in the examples). \nFor each shape, it examines every azure pixel (value 8) within it.\nIf any azure pixel within a shape is 'enclosed' - meaning its 3x3 neighborhood (including itself) consists entirely of non-white pixels (1 or 8) - then the entire shape is removed (turned into white pixels, value 0) in the output grid.\nIf a shape contains no azure pixels, or if all of its azure pixels have at least one white pixel (value 0) in their 3x3 neighborhood, the shape is kept unchanged in the output grid.\nWhite background pixels remain white.\n\"\"\"\n\ndef get_neighbors(r, c, height, width):\n    \"\"\" Get valid neighbor coordinates within grid bounds \"\"\"\n    neighbors = []\n    for dr in [-1, 0, 1]:\n        for dc in [-1, 0, 1]:\n            nr, nc = r + dr, c + dc\n            if 0 <= nr < height and 0 <= nc < width:\n                neighbors.append((nr, nc))\n    return neighbors\n\ndef get_3x3_neighborhood(grid, r, c):\n    \"\"\" Get the 3x3 neighborhood values, handling boundaries \"\"\"\n    height, width = grid.shape\n    neighborhood = []\n    all_non_white = True\n    count = 0\n    for dr in [-1, 0, 1]:\n        for dc in [-1, 0, 1]:\n            nr, nc = r + dr, c + dc\n            count += 1\n            if 0 <= nr < height and 0 <= nc < width:\n                val = grid[nr, nc]\n                neighborhood.append(val)\n                if val == 0: # white pixel\n                    all_non_white = False\n            else:\n                # Treat out-of-bounds as not non-white\n                all_non_white = False\n                neighborhood.append(-1) # Placeholder for out-of-bounds\n\n    # Need exactly 9 cells in the neighborhood check to be considered fully surrounded within the grid\n    if count != 9:\n        all_non_white = False\n        \n    return neighborhood, all_non_white\n\n\ndef find_shape(grid, start_r, start_c, visited):\n    \"\"\" Find a connected component (shape) using BFS \"\"\"\n    height, width = grid.shape\n    q = deque([(start_r, start_c)])\n    shape_pixels = set()\n    azure_pixels = []\n    \n    while q:\n        r, c = q.popleft()\n        \n        if not (0 <= r < height and 0 <= c < width) or visited[r, c] or grid[r, c] == 0:\n            continue\n            \n        visited[r, c] = True\n        shape_pixels.add((r, c))\n        if grid[r,c] == 8: # azure\n             azure_pixels.append((r,c))\n\n        # Check 8 neighbors (cardinal + diagonal)\n        for dr in [-1, 0, 1]:\n            for dc in [-1, 0, 1]:\n                if dr == 0 and dc == 0:\n                    continue\n                nr, nc = r + dr, c + dc\n                if 0 <= nr < height and 0 <= nc < width and not visited[nr, nc] and grid[nr, nc] != 0:\n                    q.append((nr, nc))\n                    \n    return list(shape_pixels), azure_pixels\n\ndef transform(input_grid):\n    \"\"\"\n    Applies the transformation rule: removes shapes containing any 'enclosed' azure pixel.\n    An azure pixel is enclosed if its 3x3 neighborhood is entirely non-white.\n    \"\"\"\n    input_grid_np = np.array(input_grid, dtype=int)\n    height, width = input_grid_np.shape\n    \n    # Initialize output grid with white pixels\n    output_grid = np.zeros_like(input_grid_np)\n    \n    # Keep track of visited pixels to avoid processing shapes multiple times\n    visited = np.zeros_like(input_grid_np, dtype=bool)\n    \n    # Iterate through each pixel to find shapes\n    for r in range(height):\n        for c in range(width):\n            # If pixel is non-white and not yet visited, start finding its shape\n            if input_grid_np[r, c] != 0 and not visited[r, c]:\n                shape_pixels, azure_pixels = find_shape(input_grid_np, r, c, visited)\n                \n                # Determine if the shape should be kept or removed\n                remove_shape = False\n                if not azure_pixels:\n                    # If shape has no azure pixels, keep it (this case may not occur based on examples)\n                    remove_shape = False\n                else:\n                    # Check each azure pixel in the shape\n                    for az_r, az_c in azure_pixels:\n                        _, all_non_white = get_3x3_neighborhood(input_grid_np, az_r, az_c)\n                        # If any azure pixel is enclosed, mark shape for removal and break\n                        if all_non_white:\n                            remove_shape = True\n                            break\n                            \n                # If the shape is not marked for removal, copy it to the output grid\n                if not remove_shape:\n                    for pix_r, pix_c in shape_pixels:\n                        output_grid[pix_r, pix_c] = input_grid_np[pix_r, pix_c]\n\n    return output_grid.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 3454,
+    "candidates_token_count": 1330,
+    "total_token_count": 4784,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 179.404582,
+  "retries": null
+}

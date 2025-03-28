@@ -1,0 +1,41 @@
+task_description: "Draw concentric square layers based on colored objects found in the input grid."
+
+input_features:
+  - grid: A 2D array of pixels (colors 0-9).
+  - background_color: 0 (white).
+  - objects:
+      - definition: Contiguous areas of the same non-background color.
+      - properties:
+          - color: Integer 1-9.
+          - pixels: Set of (row, col) coordinates.
+          - bounding_box: Defined by min/max row/col.
+              - height: Bounding box height.
+              - width: Bounding box width.
+              - area: Bounding box area (height * width).
+
+processing_steps:
+  - 1_find_objects: Identify all distinct connected objects of non-background colors in the input grid.
+  - 2_calculate_properties: For each object, determine its color and bounding box (height, width, area).
+  - 3_filter_objects:
+      - group_by_color: Group objects by their color.
+      - select_largest_per_color: For each color group, retain only the object with the largest bounding box area. If multiple objects of the same color share the maximum area, the specific tie-breaking rule wasn't tested but seems irrelevant for these examples; assume any one is kept or it doesn't matter.
+      - result: A list of objects, with at most one object per color, representing the largest instance of that color.
+  - 4_identify_container: From the filtered list, select the object with the overall largest bounding box area. Use the smallest color index as a tie-breaker if areas are equal. This is the 'container' object.
+  - 5_determine_output_size: The output grid dimensions (height and width) are equal to the maximum of the container object's bounding box height and width.
+  - 6_identify_content: The remaining objects in the filtered list (after removing the container) are the 'content' objects.
+  - 7_sort_content: Sort the content objects primarily by bounding box area in descending order. Use the smallest color index as a tie-breaker (ascending order) if areas are equal.
+  - 8_construct_output:
+      - Initialize an output grid of the determined size with the background color (0).
+      - Define the sequence of layer colors: Start with the container object's color, followed by the colors of the sorted content objects.
+      - Draw concentric square frames (layers) onto the output grid, starting from the outermost frame and working inwards. The first layer uses the container color, the second layer uses the color of the first sorted content object, and so on.
+      - Each layer is a hollow square frame, 1 pixel thick. The process continues until the center is filled or all colors in the sequence have been used.
+
+output_features:
+  - grid: A square 2D array representing the concentric layers.
+  - structure: Concentric square frames, potentially filling to a central pixel or small square.
+  - colors: Derived from the filtered input objects.
+  - size: Determined by the container object's bounding box dimensions.
+
+examples_summary:
+  - Example 1: Input had 6 objects (2 were azure). Filtering kept 5 objects (largest azure). Container was green (area 63). Output size 9x9. Layers: green, azure, yellow, blue, red. Correct center is red.
+  - Example 2: Input had 5 objects (2 were azure). Filtering kept 4 objects (largest azure). Container was red (area 64). Output size 8x8. Layers: red, azure, green, yellow. Correct center is yellow.

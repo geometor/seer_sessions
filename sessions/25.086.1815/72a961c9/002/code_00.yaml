@@ -1,0 +1,59 @@
+task_description: |
+  Identify a unique horizontal 'base line' containing non-white pixels.
+  For specific 'trigger pixels' (azure or red) on this line, construct a vertical column directly above them.
+  The column's height and structure depend on the trigger pixel's color.
+  The output grid is the input grid modified with these new columns.
+
+definitions:
+  - object: grid
+    type: 2D array of integers (0-9) representing colors.
+  - object: base_line
+    properties:
+      - description: The unique horizontal row in the input grid that contains at least one non-white pixel.
+      - index: row_index (integer)
+  - object: trigger_pixel
+    properties:
+      - description: A pixel on the base_line whose color is not white (0) and not blue (1).
+      - location: (base_line_row, column_index)
+      - color: azure (8) or red (2)
+  - object: generated_column
+    properties:
+      - description: A vertical stack of pixels placed directly above a trigger pixel.
+      - trigger_color: The color of the trigger_pixel that caused this column.
+      - column_index: Same as the trigger_pixel's column_index.
+      - total_height: The number of pixels in the column above the base_line. Determined by trigger_color (azure=3, red=4).
+      - top_pixel:
+          - color: Same as trigger_color.
+          - row_index: base_line_row - total_height.
+      - fill_pixels:
+          - color: blue (1).
+          - count: total_height - 1.
+          - row_indices: Range from (top_pixel.row_index + 1) to (base_line_row - 1).
+
+actions:
+  - name: find_base_line
+    input: input_grid
+    output: base_line_row
+  - name: identify_triggers
+    input: input_grid, base_line_row
+    output: list of trigger_pixels (color, column_index)
+  - name: determine_column_height
+    input: trigger_pixel.color
+    output: total_height (3 for azure, 4 for red)
+  - name: construct_column
+    input: output_grid (initially copy of input), trigger_pixel, total_height, base_line_row
+    output: modified output_grid
+    steps:
+      - Calculate top_pixel_row = base_line_row - total_height.
+      - Place top_pixel (color = trigger_pixel.color) at [top_pixel_row, trigger_pixel.column_index].
+      - Fill pixels with blue (1) from row (top_pixel_row + 1) up to (base_line_row - 1) in the same column.
+
+process:
+  - Initialize output_grid as a copy of input_grid.
+  - Find base_line_row.
+  - For each column in the base_line:
+    - Check if the pixel is a trigger_pixel (azure or red).
+    - If it is:
+      - Determine total_height based on trigger_pixel.color.
+      - Construct the corresponding generated_column in the output_grid.
+  - Return the final output_grid.

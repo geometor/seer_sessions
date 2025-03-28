@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\nIdentifies the contiguous red (2) object and the contiguous azure (8) object.\nCalculates the horizontal and vertical gaps (number of background pixels) between their bounding boxes.\nDetermines the axis (horizontal or vertical) with the larger gap. If gaps are equal, chooses the vertical axis.\nTranslates the red object along the chosen axis towards the azure object.\nThe translation distance is equal to the calculated gap along that axis, resulting in a 1-pixel gap between the objects along that axis in the output.\nThe azure object remains stationary.\nThe output grid contains the translated red object and the original azure object on a white background.\n\"\"\"\n\nimport numpy as np\n\ndef get_object_pixels_and_bbox(grid, color):\n    \"\"\"\n    Finds all pixels of a given color and calculates their bounding box.\n\n    Args:\n        grid (np.array): The input grid.\n        color (int): The color value to search for.\n\n    Returns:\n        tuple: A tuple containing:\n            - list: A list of (row, col) tuples for each pixel of the specified color.\n            - tuple: The bounding box (min_row, max_row, min_col, max_col),\n                     or None if no pixels of the color are found.\n            Returns (None, None) if no pixels are found.\n    \"\"\"\n    pixels = np.argwhere(grid == color)\n    if pixels.size == 0:\n        return None, None\n    \n    min_row = np.min(pixels[:, 0])\n    max_row = np.max(pixels[:, 0])\n    min_col = np.min(pixels[:, 1])\n    max_col = np.max(pixels[:, 1])\n    \n    # Convert numpy array rows to tuples for consistency\n    pixel_list = [tuple(p) for p in pixels]\n    \n    return pixel_list, (min_row, max_row, min_col, max_col)\n\ndef transform(input_grid):\n    \"\"\"\n    Transforms the input grid by moving the red object towards the azure object\n    along the axis of greatest separation, leaving a 1-pixel gap.\n\n    Args:\n        input_grid (list[list[int]]): The input grid as a list of lists.\n\n    Returns:\n        list[list[int]]: The transformed grid.\n    \"\"\"\n    grid = np.array(input_grid, dtype=int)\n    height, width = grid.shape\n    \n    # --- Find objects and their bounding boxes ---\n    red_pixels, red_bbox = get_object_pixels_and_bbox(grid, 2)\n    azure_pixels, azure_bbox = get_object_pixels_and_bbox(grid, 8)\n\n    # Handle cases where one or both objects might be missing (though unlikely in valid ARC tasks)\n    if not red_pixels or not azure_pixels:\n        return input_grid # Return original grid if objects aren't found\n\n    r1_min, r1_max, c1_min, c1_max = red_bbox\n    r2_min, r2_max, c2_min, c2_max = azure_bbox\n\n    # --- Calculate horizontal and vertical gaps ---\n    h_gap = 0\n    if c1_max < c2_min: # Red is strictly left of azure\n        h_gap = c2_min - c1_max - 1\n    elif c2_max < c1_min: # Red is strictly right of azure\n        h_gap = c1_min - c2_max - 1\n\n    v_gap = 0\n    if r1_max < r2_min: # Red is strictly above azure\n        v_gap = r2_min - r1_max - 1\n    elif r2_max < r1_min: # Red is strictly below azure\n        v_gap = r1_min - r2_max - 1\n        \n    # Ensure gaps are non-negative (already handled by max(0, ...) logic implicitly)\n    h_gap = max(0, h_gap)\n    v_gap = max(0, v_gap)\n\n    # --- Determine translation direction and distance ---\n    dx = 0\n    dy = 0\n\n    if h_gap > v_gap:\n        # Move horizontally\n        if c1_max < c2_min: # Red left of azure -> move right\n            dx = h_gap\n        elif c2_max < c1_min: # Red right of azure -> move left\n            dx = -h_gap\n    elif v_gap >= h_gap : # v_gap >= h_gap (includes equality preference for vertical)\n        # Move vertically\n        if r1_max < r2_min: # Red above azure -> move down\n            dy = v_gap\n        elif r2_max < r1_min: # Red below azure -> move up\n            dy = -v_gap\n            \n    # If both gaps are 0 and objects don't touch/overlap, something is wrong,\n    # but current logic handles dx=0, dy=0 correctly (no move).\n\n    # --- Construct the output grid ---\n    output_grid = np.zeros_like(grid) # Initialize with background color (white=0)\n\n    # Place the static azure object\n    for r, c in azure_pixels:\n        # Check bounds just in case, though azure doesn't move\n        if 0 <= r < height and 0 <= c < width:\n            output_grid[r, c] = 8\n\n    # Place the translated red object\n    for r, c in red_pixels:\n        new_r, new_c = r + dy, c + dx\n        # Check bounds for the new position\n        if 0 <= new_r < height and 0 <= new_c < width:\n            output_grid[new_r, new_c] = 2\n        # else: pixel moves off-grid, ignore it.\n\n    # Convert back to list of lists for the expected output format\n    return output_grid.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 3365,
+    "candidates_token_count": 1392,
+    "total_token_count": 4757,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 35.220357,
+  "retries": null
+}

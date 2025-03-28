@@ -1,0 +1,60 @@
+task_description: Identify completely white rows and columns that act as separators between gray blocks and fill them, marking the edges of the fill.
+
+definitions:
+  - &white 0
+  - &blue 1
+  - &red 2
+  - &gray 5
+  - &grid_input The input 2D array of pixels.
+  - &grid_output The output 2D array of pixels.
+  - &height Height of the grid.
+  - &width Width of the grid.
+  - &gray_block A contiguous region of gray (*gray) pixels.
+
+grid_elements:
+  - type: background
+    color: *white
+  - type: object
+    color: *gray
+    description: Typically 2x2 squares, arranged with spacing.
+
+identification:
+  - step: find_separating_rows
+    input: *grid_input
+    output: list_of_row_indices
+    criteria:
+      - Row `r` (1 <= r < *height - 1) consists entirely of *white pixels.
+      - Row `r-1` contains at least one *gray pixel.
+      - Row `r+1` contains at least one *gray pixel.
+  - step: find_separating_columns
+    input: *grid_input
+    output: list_of_column_indices
+    criteria:
+      - Column `c` (1 <= c < *width - 1) consists entirely of *white pixels.
+      - Column `c-1` contains at least one *gray pixel.
+      - Column `c+1` contains at least one *gray pixel.
+
+transformations:
+  - step: initialize_output
+    action: Copy *grid_input to *grid_output.
+  - step: fill_separators
+    input:
+      - *grid_output
+      - list_of_row_indices
+      - list_of_column_indices
+      - *grid_input (for reference)
+    output: Modified *grid_output
+    action:
+      - Iterate through each cell `(r, c)` of the grid.
+      - If `r` is in list_of_row_indices OR `c` is in list_of_column_indices:
+        - If `grid_input[r][c]` is *white:
+          - Determine if the cell is an 'edge' cell:
+            - Check 4 neighbors `(nr, nc)` of `(r, c)`.
+            - An edge exists if a neighbor `(nr, nc)` is within grid bounds AND `grid_input[nr][nc]` is *white AND (`nr` is NOT in list_of_row_indices AND `nc` is NOT in list_of_column_indices).
+          - If an edge exists:
+            - Set `grid_output[r][c]` to *blue.
+          - Else (not an edge):
+            - Set `grid_output[r][c]` to *red.
+        # Implicitly: if grid_input[r][c] was not white (e.g., gray), it remains unchanged because grid_output started as a copy.
+
+final_output: *grid_output

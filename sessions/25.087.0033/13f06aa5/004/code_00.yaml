@@ -1,0 +1,64 @@
+task_context:
+  description: Modifies a grid based on a unique 'trigger' pixel and applies color-specific propagation and border modifications.
+  grid_properties:
+    height: Variable (1-30)
+    width: Variable (1-30)
+    colors: 0-9 (White, Blue, Red, Green, Yellow, Gray, Magenta, Orange, Azure, Maroon)
+
+objects:
+  - name: background
+    description: The most frequent color in the input grid.
+  - name: trigger_pixel
+    description: A unique pixel in the grid satisfying specific criteria.
+    properties:
+      - color: Must be Azure (8), Red (2), or Magenta (6).
+      - frequency: Appears exactly once in the input grid.
+      - relation_to_background: Must not be the background color.
+      - location: (trigger_r, trigger_c)
+
+actions:
+  - name: initialize_output
+    description: Create a copy of the input grid.
+  - name: conditional_propagation
+    description: Propagate the trigger color based on specific rules.
+    conditions:
+      - trigger_color is Azure (8) or Red (2):
+          action: Horizontal propagation from (trigger_r, trigger_c).
+          details:
+            - direction: Left and Right.
+            - step: Paint pixel at step `i=2, 4, 6,...` if the intermediate pixel at `i-1` (relative to trigger) is the background color in the *input* grid.
+            - boundary: Stop if out of bounds or intermediate pixel is not background.
+      - trigger_color is Magenta (6):
+          action: Vertical (downward) propagation from (trigger_r, trigger_c).
+          details:
+            - direction: Down.
+            - step: Paint pixel at step `i=2, 4, 6,...` if the intermediate pixel at `i-1` (relative to trigger) is the background color in the *input* grid.
+            - boundary: Stop if out of bounds or intermediate pixel is not background.
+  - name: border_modification
+    description: Modify specific borders of the output grid based on the trigger color. This step occurs *after* propagation.
+    conditions:
+      - trigger_color is Azure (8):
+          actions:
+            - Set rightmost column to Azure (8).
+            - Set top row (row 0) to Blue (1).
+            - Set top-right corner (0, Width-1) to White (0).
+            - Conditional row 1 update:
+                - For each column `c` from 0 to Width-1:
+                  - If `input_grid[1, c]` equals the background color AND Blue (1) exists anywhere in `input_grid[:, c]` (column `c` of the input grid):
+                      - Set `output_grid[1, c]` to Blue (1).
+      - trigger_color is Red (2):
+          actions:
+            - Set leftmost column to Red (2).
+            - Set top row (row 0) to Green (3).
+            - Set top-left corner (0, 0) to White (0).
+            - Conditional row 1 update:
+                - For each column `c` from 0 to Width-1:
+                  - If `input_grid[1, c]` equals the background color AND Green (3) exists anywhere in `input_grid[:, c]` (column `c` of the input grid):
+                      - Set `output_grid[1, c]` to Green (3).
+      - trigger_color is Magenta (6):
+          actions:
+            - Set bottommost row (row Height-1) to Magenta (6).
+            - (No conditional adjacent row update observed for this case).
+
+final_output: The modified grid.
+failure_condition: If no valid trigger pixel is found, return the original input grid.

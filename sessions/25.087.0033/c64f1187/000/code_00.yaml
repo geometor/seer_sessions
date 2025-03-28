@@ -1,0 +1,56 @@
+elements:
+  - object: color_marker
+    description: A single pixel of a non-grey, non-blue color in the upper region of the input grid.
+    properties:
+      - color: The specific color value (e.g., red, green, orange).
+      - location: Coordinates (y, x) in the input grid.
+  - object: blue_L_template
+    description: A shape composed of 3 blue pixels within a 2x2 area, located directly below a color_marker.
+    properties:
+      - shape: The relative 2x2 pattern of blue pixels (e.g., [[1,1],[1,0]], [[1,1],[0,1]], etc., where 1=blue, 0=not blue).
+      - location: Coordinates of the top-left of the 2x2 area in the input grid.
+    relationship:
+      - type: defines_template_for
+        target: color_marker
+        details: The blue_L_template below a specific color_marker defines the canonical L-shape for that color.
+  - object: grey_L_instance
+    description: A shape composed of 3 contiguous grey pixels forming an L-shape in the lower region of the input grid.
+    properties:
+      - location: Coordinates of the pixels forming the L.
+  - object: content_pixel
+    description: A single pixel located inside the 'corner' of a grey_L_instance (adjacent to exactly two of its grey pixels).
+    properties:
+      - color: The color value of this pixel.
+      - location: Coordinates (y, x) in the input grid.
+    relationship:
+      - type: contained_within
+        target: grey_L_instance
+        details: This pixel provides the color information for the instance.
+  - object: output_L_shape
+    description: An L-shape in the output grid.
+    properties:
+      - color: Determined by the content_pixel color of a corresponding grey_L_instance.
+      - shape: Determined by the blue_L_template associated with the content_pixel color.
+      - location: Coordinates in the output grid, derived from the relative position of the corresponding grey_L_instance.
+
+actions:
+  - action: map_color_to_template
+    actor: system
+    input: color_marker, blue_L_template
+    output: A dictionary mapping color values to 2x2 L-shape patterns.
+    details: Iterate through color_markers, find the blue_L_template below each, store the mapping {color -> shape}.
+  - action: find_instances
+    actor: system
+    input: input_grid (lower region)
+    output: A list of content_pixels with their colors and locations, associated with grey_L_instances.
+    details: Scan for 3-pixel grey L-shapes and identify the non-grey pixel in their inner corner. Ignore grey Ls with grey content pixels.
+  - action: determine_relative_layout
+    actor: system
+    input: List of content_pixel locations.
+    output: Relative row and column indices for each valid content_pixel.
+    details: Find the grid-like pattern of content_pixel locations (often spaced by 3 units) and assign relative indices (0,0), (0,1), etc.
+  - action: construct_output
+    actor: system
+    input: Color-to-template map, list of content_pixels with relative indices.
+    output: output_grid
+    details: Create an output grid. For each content_pixel (color C, relative index (r, c)), retrieve template shape S. Calculate output position (r*3, c*3). Draw shape S at that position using color C.

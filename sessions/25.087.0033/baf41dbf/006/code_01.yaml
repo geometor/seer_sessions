@@ -1,0 +1,42 @@
+task_description: "Resize a green frame based on the location of external magenta markers, preserving the original content within the frame's initial area."
+
+grid_properties:
+  - size: Variable (up to 30x30)
+  - background_color: white (0)
+
+objects:
+  - type: frame
+    color: green (3)
+    definition: A connected component of green pixels. May contain pixels of other colors within its bounding box.
+    properties:
+      - bounding_box: The smallest rectangle enclosing all the object's green pixels (`initial_bbox`).
+      - main_frame: If multiple disjoint green objects exist, the one with the largest `initial_bbox` area. Ties broken by top-most, then left-most corner of `initial_bbox`. (In observed examples, only one connected green object exists).
+      - content_area: The rectangular region defined by `initial_bbox`.
+  - type: marker
+    color: magenta (6)
+    definition: Single pixels of magenta color.
+    properties:
+      - location: (row, col) coordinates.
+      - classification:
+          - internal: Located within or on the border of the `initial_bbox`.
+          - external: Located strictly outside the `initial_bbox`.
+
+actions:
+  - 1_find_markers: Identify the coordinates of all magenta markers.
+  - 2_find_frame: Identify all connected green objects. If any exist, determine the `main_frame` and its `initial_bbox`. If no green frame exists, proceed to step 8.
+  - 3_classify_markers: Identify which magenta markers are `external` relative to `initial_bbox`.
+  - 4_calculate_new_bbox: Determine the target expansion boundaries based on `external` markers:
+      - target_top_boundary: Row index `r` such that `r = min(marker_row) + 1` for all external markers with `marker_row < initial_bbox.min_row`. Default is `initial_bbox.min_row`.
+      - target_bottom_boundary: Row index `r` such that `r = max(marker_row) - 1` for all external markers with `marker_row > initial_bbox.max_row`. Default is `initial_bbox.max_row`.
+      - target_left_boundary: Column index `c` such that `c = max(marker_col) + 1` for all external markers with `marker_col < initial_bbox.min_col`. Default is `initial_bbox.min_col`.
+      - target_right_boundary: Column index `c` such that `c = min(marker_col) - 1` for all external markers with `marker_col > initial_bbox.max_col`. Default is `initial_bbox.max_col`.
+      - The final new bounding box (`new_bbox`) encompasses the area from `min(initial_bbox.min_row, target_top_boundary)` to `max(initial_bbox.max_row, target_bottom_boundary)` and `min(initial_bbox.min_col, target_left_boundary)` to `max(initial_bbox.max_col, target_right_boundary)`, clamped to grid dimensions (0 to rows-1, 0 to cols-1).
+  - 5_create_output: Initialize an output grid of the same size as the input, filled with white (0).
+  - 6_copy_content: Copy the rectangular region defined by `initial_bbox` from the input grid to the output grid, placing it at the same `(row, col)` coordinates.
+  - 7_draw_new_frame_border: Draw a hollow rectangle using green (3) along the perimeter defined by `new_bbox` onto the output grid. This overwrites any pixels previously copied in step 6 that lie on this new perimeter.
+  - 8_draw_markers: Draw all magenta markers (found in step 1) onto the output grid at their original coordinates, overwriting any existing pixels.
+
+edge_cases:
+  - No green frame found: Output grid contains only the original magenta markers on a white background.
+  - No external markers found: `new_bbox` equals `initial_bbox`. The content is copied, the frame border is redrawn with green (potentially overwriting original non-border green pixels if the frame wasn't hollow), and markers are drawn.
+  - Markers only on some sides: Frame expands only in the directions indicated by external markers.

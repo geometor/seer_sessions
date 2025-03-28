@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom scipy.ndimage import label, find_objects, binary_dilation, generate_binary_structure\n\n\"\"\"\nIdentifies contiguous non-white objects in the input grid. For each object, it counts the number of distinct enclosed white regions (holes). If an object encloses exactly one hole, the hole is filled with gray (5). If an object encloses exactly two holes, both holes are filled with orange (7). White regions are identified using 4-way connectivity, while objects and enclosure checks use 8-way connectivity.\n\"\"\"\n\ndef find_neighbors(grid_shape, coords, connectivity=8):\n    \"\"\"Finds valid neighbor coordinates for a set of coordinates.\"\"\"\n    neighbors = set()\n    rows, cols = grid_shape\n    if connectivity == 4:\n        offsets = [(0, 1), (0, -1), (1, 0), (-1, 0)]\n    elif connectivity == 8:\n        offsets = [(0, 1), (0, -1), (1, 0), (-1, 0), (1, 1), (1, -1), (-1, 1), (-1, -1)]\n    else:\n        raise ValueError(\"Connectivity must be 4 or 8\")\n\n    for r, c in coords:\n        for dr, dc in offsets:\n            nr, nc = r + dr, c + dc\n            if 0 <= nr < rows and 0 <= nc < cols:\n                neighbors.add((nr, nc))\n    return neighbors\n\ndef transform(input_grid: np.ndarray) -> np.ndarray:\n    \"\"\"\n    Fills enclosed white regions (holes) within colored shapes based on the number of holes.\n    - 1 hole: fill with gray (5)\n    - 2 holes: fill with orange (7)\n    \"\"\"\n    output_grid = np.copy(input_grid)\n    rows, cols = input_grid.shape\n\n    # Define connectivity structures\n    struct_obj = generate_binary_structure(2, 2)  # 8-way connectivity for objects\n    struct_hole = generate_binary_structure(2, 1) # 4-way connectivity for holes\n\n    # 1. Identify all colored objects (non-zero pixels) using 8-way connectivity\n    colored_mask = input_grid != 0\n    obj_labels, num_objs = label(colored_mask, structure=struct_obj)\n\n    # 2. Identify all white regions (zero pixels) using 4-way connectivity\n    white_mask = input_grid == 0\n    hole_labels, num_holes_total = label(white_mask, structure=struct_hole)\n\n    # 3. Determine the label of the background white region\n    # The background usually touches the border. Find labels touching the border.\n    border_labels = set(hole_labels[0, :]) | set(hole_labels[-1, :]) | \\\n                    set(hole_labels[:, 0]) | set(hole_labels[:, -1])\n    # Filter out 0 (non-white areas)\n    background_labels = {lbl for lbl in border_labels if lbl != 0}\n    \n    # Heuristic: Assume the largest white area connected to the border is the background.\n    # If multiple areas touch the border, this might need refinement, but typically works.\n    bg_label = 0\n    max_size = -1\n    if background_labels:\n        for lbl in background_labels:\n             size = np.sum(hole_labels == lbl)\n             if size > max_size:\n                 max_size = size\n                 bg_label = lbl\n    # If no white touches border (fully enclosed grid?), this fails. Add fallback?\n    # For now, assume bg_label is correctly identified if white exists on border.\n\n    # 4. Iterate through each unique colored object\n    obj_indices = np.unique(obj_labels)\n    obj_indices = obj_indices[obj_indices != 0] # Exclude background label 0\n\n    for obj_id in obj_indices:\n        # Get coordinates of the current object\n        obj_coords_tuple = np.where(obj_labels == obj_id)\n        obj_coords_set = set(zip(obj_coords_tuple[0], obj_coords_tuple[1]))\n\n        # Find all 8-way neighbors of the object's pixels\n        neighbor_coords = find_neighbors((rows, cols), obj_coords_set, connectivity=8)\n\n        # Identify adjacent white region labels\n        adjacent_hole_labels = set()\n        for r, c in neighbor_coords:\n            # Check if the neighbor is within the grid and is white\n            if (r,c) not in obj_coords_set and input_grid[r,c] == 0:\n                 hole_label_at_coord = hole_labels[r, c]\n                 # Ensure it's a valid hole label (not 0)\n                 if hole_label_at_coord != 0:\n                     adjacent_hole_labels.add(hole_label_at_coord)\n\n        # Filter out the background label\n        enclosed_hole_labels = adjacent_hole_labels - {bg_label}\n        num_enclosed_holes = len(enclosed_hole_labels)\n\n        # Determine fill color based on the number of enclosed holes\n        fill_color = -1 # Default: no fill\n        if num_enclosed_holes == 1:\n            fill_color = 5 # Gray\n        elif num_enclosed_holes == 2:\n            fill_color = 7 # Orange\n\n        # 5. Fill the holes if a fill color was determined\n        if fill_color != -1:\n            for hole_id in enclosed_hole_labels:\n                # Find all coordinates belonging to this hole label\n                hole_coords = np.where(hole_labels == hole_id)\n                # Apply the fill color to the output grid\n                output_grid[hole_coords] = fill_color\n\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 3988,
+    "candidates_token_count": 1378,
+    "total_token_count": 5366,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 19.896435,
+  "retries": null
+}

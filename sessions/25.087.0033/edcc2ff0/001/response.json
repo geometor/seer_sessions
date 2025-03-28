@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\nTransformation rule:\n1. Identify the separator row, the first row fully composed of a single non-white color.\n2. Divide the grid into a 'control section' (above the separator) and a 'data section' (separator row and below).\n3. Copy the input grid to create the output grid. The data section remains unchanged.\n4. Iterate through the rows of the control section.\n5. For each row 'r', check the color 'C' of the pixel at column 0.\n6. If 'C' is non-white:\n    a. Count the number 'N' of distinct connected objects of color 'C' in the data section (using 8-way connectivity: horizontal, vertical, diagonal).\n    b. If N > 0, draw a horizontal line of color 'C' starting at (r, 0) with length N in the output grid. Ensure the line does not exceed grid width. Set pixels to the right of the line in that row to white (0).\n    c. If N == 0, set the pixel at (r, 0) in the output grid to white (0).\n7. Leave rows in the control section starting with white unchanged (they are already white except potentially at column 0, which is handled if it's non-white).\n8. Return the modified output grid.\n\"\"\"\n\nimport numpy as np\nfrom scipy.ndimage import label, generate_binary_structure\n\ndef find_objects_count(grid_section, color):\n    \"\"\"\n    Counts the number of distinct connected objects of a given color\n    in a grid section using 8-way connectivity.\n    \"\"\"\n    # Create a binary mask where 1 represents the target color, 0 otherwise\n    binary_mask = (grid_section == color)\n\n    # Define the connectivity structure (8-way)\n    structure = generate_binary_structure(2, 2) # 2 means connectivity includes diagonals\n\n    # Label connected components\n    labeled_array, num_features = label(binary_mask, structure=structure)\n\n    return num_features\n\ndef transform(input_grid):\n    \"\"\"\n    Applies the transformation rule based on object counts in the data section.\n    \"\"\"\n    input_np = np.array(input_grid, dtype=int)\n    output_grid = np.copy(input_np)\n    height, width = input_np.shape\n\n    # 1. Find the separator row\n    sep_row = -1\n    for r in range(height):\n        row = input_np[r, :]\n        # Check if all elements are the same and not white (0)\n        if np.all(row == row[0]) and row[0] != 0:\n            sep_row = r\n            break\n\n    # If no separator found (unlikely based on examples, but good practice)\n    if sep_row == -1:\n        #print(\"Warning: Separator row not found. Returning input grid.\")\n        return output_grid.tolist() # Or handle as an error\n\n    # 2. Define control and data sections\n    control_section_rows = range(sep_row)\n    data_section = input_np[sep_row:, :]\n\n    # 4. Iterate through control section rows\n    for r in control_section_rows:\n        # 5. Get the key color C\n        key_color = input_np[r, 0]\n\n        # 6. If C is non-white\n        if key_color != 0:\n            # a. Count objects N of color C in the data section\n            object_count = find_objects_count(data_section, key_color)\n\n            # b. If N > 0\n            if object_count > 0:\n                # Draw horizontal line of length N\n                line_length = object_count\n                draw_end_col = min(line_length, width) # Ensure not exceeding width\n                # Set line pixels\n                output_grid[r, 0:draw_end_col] = key_color\n                # Set remaining pixels in the row to white\n                if draw_end_col < width:\n                    output_grid[r, draw_end_col:] = 0\n            # c. If N == 0\n            else:\n                # Set pixel (r, 0) to white\n                output_grid[r, 0] = 0\n        # 7. If C is white, do nothing (output_grid already has the copied value)\n\n    # 8. Data section remains unchanged (already handled by copying)\n    \n    return output_grid.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 4653,
+    "candidates_token_count": 1041,
+    "total_token_count": 5694,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 11.999957,
+  "retries": null
+}

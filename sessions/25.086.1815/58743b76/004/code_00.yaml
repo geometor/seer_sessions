@@ -1,0 +1,60 @@
+task_description: Replace certain pixels based on their position relative to the center of a bounding box, using colors defined by a 2x2 key.
+
+definitions:
+  - name: background_color
+    value: 0 (white)
+    description: The most common color, usually forming the backdrop. Ignored during key/target identification and transformation.
+  - name: border_color
+    value: 8 (azure)
+    description: Color often forming a frame around the main content area. Ignored during key/target identification and transformation.
+  - name: key
+    description: A 2x2 block of pixels where none of the pixels are the background_color or border_color.
+    properties:
+      - location: Determined by scanning top-to-bottom, left-to-right, finding the first such 2x2 block. Often near a corner.
+      - colors: Four colors defining the mapping [Top-Left (TL), Top-Right (TR), Bottom-Left (BL), Bottom-Right (BR)]. Let these be k_TL, k_TR, k_BL, k_BR.
+      - positions: The set of four coordinate pairs occupied by the key block.
+  - name: target_color
+    description: The color of the pixels to be potentially transformed.
+    properties:
+      - identification: The single most frequent color in the input grid, EXCLUDING the background_color, the border_color, and any pixels located at the key positions.
+  - name: target_pixels
+    description: All pixels in the input grid having the target_color.
+  - name: transformable_pixels
+    description: The subset of target_pixels that are NOT located at the key positions. These are the only pixels that will have their color changed.
+  - name: bounding_box
+    description: The minimum rectangle containing all target_pixels.
+    properties:
+      - calculation: Determined by the minimum and maximum row and column indices of ALL pixels matching the target_color (including any target_pixels located within the key positions).
+      - coordinates: (min_row, max_row, min_col, max_col)
+  - name: center
+    description: The geometric center of the bounding_box.
+    properties:
+      - calculation: ( (min_row + max_row) / 2.0, (min_col + max_col) / 2.0 ). Coordinates can be non-integers.
+  - name: quadrants
+    description: Four regions defined relative to the center point (center_r, center_c).
+    properties:
+      - Top-Left: row < center_r and col < center_c
+      - Top-Right: row < center_r and col >= center_c
+      - Bottom-Left: row >= center_r and col < center_c
+      - Bottom-Right: row >= center_r and col >= center_c
+      - note: Pixels exactly on the center lines are assigned to the bottom/right halves.
+
+actions:
+  - name: find_key
+    input: grid, background_color, border_color
+    output: key_location, key_colors (k_TL, k_TR, k_BL, k_BR), key_positions
+  - name: find_target_color
+    input: grid, background_color, border_color, key_positions
+    output: target_color
+  - name: find_bounding_box
+    input: grid, target_color
+    output: bounding_box coordinates
+  - name: calculate_center
+    input: bounding_box coordinates
+    output: center coordinates (center_r, center_c)
+  - name: transform_pixels
+    input: grid, target_color, key_positions, center, key_colors
+    output: modified_grid
+    description: Iterate through each pixel (r, c) in the grid. If the pixel is a transformable_pixel (i.e., grid[r,c] == target_color AND (r,c) is not in key_positions), determine its quadrant relative to the center and replace its color with the corresponding key color (k_TL, k_TR, k_BL, k_BR). Pixels that are background, border, part of the key, or not the target color remain unchanged.
+
+output_grid: The final grid after applying the transform_pixels action. If no key or no target_color is found, the output grid is identical to the input grid.

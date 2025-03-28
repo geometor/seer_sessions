@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom collections import Counter\n\n\"\"\"\nTransforms the input grid based on column-wise sorting of specific colors relative to the top and bottom boundary rows.\n\n1. Identify the Top Boundary Color (TBC) from the first row and the Bottom Boundary Color (BBC) from the last row.\n2. Identify the Background Color (BGC) as the most frequent color between the first and last rows.\n3. Initialize an output grid of the same dimensions, initially filled with the BGC.\n4. Copy the first (TBC) and last (BBC) rows from the input to the output grid.\n5. For each column:\n    a. Count the occurrences of TBC (`count_TBC`) and BBC (`count_BBC`) in the input column, excluding the boundary rows.\n    b. In the output column, place `count_TBC` pixels of TBC color starting from the second row downwards.\n    c. In the output column, place `count_BBC` pixels of BBC color starting from the second-to-last row upwards.\n    d. Fill the remaining space in the column between the TBC stack and the BBC stack with the BGC.\n6. Return the modified output grid.\n\"\"\"\n\ndef find_background_color(grid, top_color, bottom_color):\n    \"\"\"Finds the most frequent color in the grid, excluding the boundary rows and specified colors.\"\"\"\n    h, w = grid.shape\n    if h <= 2:\n        # Cannot determine background if there's no middle section\n        # Defaulting to 0 (black/white) might be arbitrary, consider alternatives\n        # Or maybe just pick a color present that isn't top/bottom\n        present_colors = np.unique(grid)\n        for c in present_colors:\n            if c != top_color and c != bottom_color:\n                return c\n        return 0 # Fallback if only boundary colors exist or grid is tiny\n\n    middle_section = grid[1:-1, :]\n    counts = Counter(middle_section.flatten())\n\n    # Optionally remove boundary colors from consideration if they appear inside\n    # if top_color in counts: del counts[top_color]\n    # if bottom_color in counts: del counts[bottom_color]\n\n    if not counts:\n         # If middle is empty or only contains boundary colors that were removed\n         # Maybe pick the most frequent *overall* excluding boundaries?\n         overall_counts = Counter(grid.flatten())\n         if top_color in overall_counts: del overall_counts[top_color]\n         if bottom_color in overall_counts: del overall_counts[bottom_color]\n         if overall_counts:\n             return overall_counts.most_common(1)[0][0]\n         else:\n             return 0 # Ultimate fallback\n\n    # Return the most frequent color found in the middle section\n    return counts.most_common(1)[0][0]\n\n\ndef transform(input_grid):\n    \"\"\"\n    Applies the column-wise sorting transformation to the input grid.\n    \"\"\"\n    input_grid_np = np.array(input_grid, dtype=int)\n    h, w = input_grid_np.shape\n\n    if h <= 1:\n        # Grid is too small to have distinct top/bottom boundaries + middle\n        return input_grid_np.tolist()\n\n    # Identify boundary colors\n    top_boundary_color = input_grid_np[0, 0]\n    bottom_boundary_color = input_grid_np[h-1, 0]\n\n    # Identify background color (most frequent between boundaries)\n    # Need robust way if boundary colors appear inside\n    background_color = find_background_color(input_grid_np, top_boundary_color, bottom_boundary_color)\n\n    # Initialize output grid - fill with BGC is a good start\n    output_grid = np.full_like(input_grid_np, background_color)\n\n    # Copy boundary rows\n    output_grid[0, :] = input_grid_np[0, :]\n    output_grid[h-1, :] = input_grid_np[h-1, :]\n\n    # Process each column independently\n    for c in range(w):\n        count_tbc = 0\n        count_bbc = 0\n\n        # Count TBC and BBC pixels in the column between boundaries\n        if h > 2: # Only count if there is a middle section\n            for r in range(1, h - 1):\n                if input_grid_np[r, c] == top_boundary_color:\n                    count_tbc += 1\n                elif input_grid_np[r, c] == bottom_boundary_color:\n                    count_bbc += 1\n\n        # Place TBC pixels from the top (row 1 downwards)\n        if count_tbc > 0:\n            # Ensure we don't write past the row before the bottom boundary\n            end_row_tbc = min(1 + count_tbc, h - 1)\n            output_grid[1:end_row_tbc, c] = top_boundary_color\n\n        # Place BBC pixels from the bottom (row h-2 upwards)\n        if count_bbc > 0:\n             # Ensure we don't write past row 1 or overlap TBC\n            start_row_bbc = max(1, h - 1 - count_bbc)\n            output_grid[start_row_bbc:h-1, c] = bottom_boundary_color\n\n        # BGC is already filled by default, but if TBC/BBC overlapped,\n        # we might need to refill. The logic above ensures BGC remains\n        # in cells not overwritten by TBC or BBC stacks.\n        # The slicing `output_grid[1 + count_tbc : h - 1 - count_bbc, c] = background_color`\n        # is implicitly handled by the initial fill and the specific overwrites.\n\n    return output_grid.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 4578,
+    "candidates_token_count": 1353,
+    "total_token_count": 5931,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 16.158597,
+  "retries": null
+}

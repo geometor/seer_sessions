@@ -1,0 +1,66 @@
+task_description: Stamp a 3x3 pattern onto a grid based on marker locations, preserving specific elements.
+
+input_grid:
+  properties:
+    height: variable (9 in examples)
+    width: variable (13 in examples)
+    pixels:
+      - color: blue (1)
+        role: marker
+        location: variable coordinates
+        count: variable
+      - color: gray (5)
+        role: structure_to_preserve
+        location: variable coordinates (forms a vertical line at column 3 in examples)
+        count: variable
+      - color: various (0-9, excluding blue/gray in specific roles)
+        role: pattern_source / background
+        location: variable
+
+output_grid:
+  properties:
+    height: same as input
+    width: same as input
+    derivation:
+      - step: Initialize with background color (white, 0).
+      - step: Copy gray (5) pixels from input to output at same coordinates.
+      - step: Copy the 3x3 top-left pattern from input to output at top-left (0,0), respecting preserved gray pixels (do not overwrite gray).
+      - step: Identify blue (1) markers in the input grid.
+      - step: For each marker, copy the 3x3 top-left input pattern onto the output grid, anchored at the marker's coordinates. This copy respects boundary clipping and preserved gray pixels (do not overwrite gray).
+
+source_pattern:
+  source: input_grid[0:3, 0:3]
+  properties:
+    height: 3
+    width: 3
+
+actions:
+  - action: initialize_grid
+    target: output_grid
+    properties:
+      fill_color: white (0)
+      dimensions: same as input_grid
+  - action: copy_pixels
+    source: input_grid
+    target: output_grid
+    properties:
+      color_to_copy: gray (5)
+      condition: copy only gray pixels to their identical coordinates.
+  - action: copy_pattern
+    source: source_pattern (derived from input_grid[0:3, 0:3])
+    target: output_grid[0:3, 0:3]
+    properties:
+      condition: do not overwrite existing gray pixels in the target area.
+  - action: find_markers
+    source: input_grid
+    properties:
+      color: blue (1)
+    output: list of marker coordinates (r, c)
+  - action: stamp_pattern
+    source: source_pattern
+    target: output_grid
+    properties:
+      anchor_points: list of marker coordinates from find_markers
+      placement: top-left of pattern at anchor point
+      clipping: apply boundary clipping
+      condition: do not overwrite existing gray pixels in the target area.

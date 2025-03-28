@@ -1,0 +1,83 @@
+task_description: Recolors pixels within a bounded area based on their quadrant, using a 2x2 color key found elsewhere.
+
+definitions:
+  - object: Grid
+    properties:
+      - is_2d_array
+      - contains_pixels_0_to_9
+      - has_height_and_width
+
+  - object: Key
+    properties:
+      - is_2x2_subgrid
+      - located_outside_the_main_transformation_area
+      - contains_4_pixels
+      - pixel_colors_are_not_white_0
+      - pixel_colors_are_not_azure_8
+      - defines_target_colors_for_quadrants
+    location_rule: Find the unique 2x2 block where all cells are not 0 and not 8.
+    color_mapping:
+      - top_left_key_color -> maps_to -> top_left_quadrant_target_color
+      - top_right_key_color -> maps_to -> top_right_quadrant_target_color
+      - bottom_left_key_color -> maps_to -> bottom_left_quadrant_target_color
+      - bottom_right_key_color -> maps_to -> bottom_right_quadrant_target_color
+
+  - object: TargetArea (Canvas)
+    properties:
+      - is_rectangular_subgrid
+      - contains_pixels_to_be_potentially_modified
+      - may_be_framed_by_azure_8_pixels
+      - location_is_distinct_from_the_key
+    identification_rule:
+      1. Find the bounding box of all non-azure (8) pixels in the grid.
+      2. Check if this bounding box is immediately surrounded by a 1-pixel thick frame of azure (8) pixels.
+      3. If such a frame exists, the TargetArea is the region strictly *inside* the frame.
+      4. If no such frame exists (not observed in examples, but consider), the TargetArea might be the bounding box of non-azure (8) pixels itself, excluding the Key area. (Needs confirmation if this case occurs). Assume framed case for now.
+
+  - object: SourcePixel
+    properties:
+      - located_within_the_TargetArea
+      - has_SourceColor
+    identification_rule: Pixels within the TargetArea matching the SourceColor.
+
+  - object: SourceColor
+    properties:
+      - is_single_color_value
+      - present_in_the_Key
+      - present_in_the_TargetArea_in_the_input_grid
+      - is_not_white_0
+      - is_not_azure_8
+    identification_rule: Find the unique color that exists both within the Key's 4 pixels and also exists (excluding white 0) within the identified TargetArea in the input grid.
+
+transformation:
+  - action: Identify Key
+    actor: grid
+    target: Key object
+    result: key_matrix, key_location
+
+  - action: Identify TargetArea
+    actor: grid
+    target: TargetArea object
+    inputs: azure_color (8)
+    result: area_boundaries (top, left, bottom, right), area_shape (height, width)
+
+  - action: Identify SourceColor
+    actor: grid
+    target: SourceColor value
+    inputs: Key colors, TargetArea
+    result: source_color_value
+
+  - action: Divide TargetArea into Quadrants
+    actor: TargetArea
+    inputs: area_shape
+    result: quadrant_definitions (based on midpoints height//2, width//2)
+
+  - action: Recolor SourcePixels
+    actor: grid (copy)
+    inputs: SourcePixels, TargetArea quadrants, Key color mapping
+    process:
+      - For each SourcePixel within the TargetArea:
+        - Determine its quadrant (Top-Left, Top-Right, Bottom-Left, Bottom-Right).
+        - Find the corresponding color from the Key matrix based on the quadrant.
+        - Change the pixel's color in the output grid to this target color.
+    output: Modified grid

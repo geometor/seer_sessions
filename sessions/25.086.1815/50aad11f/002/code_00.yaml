@@ -1,0 +1,48 @@
+Input:
+  Grid: A 2D array of pixels with colors 0-9.
+  Objects:
+    - Type: Background
+      Color: 0 (white)
+    - Type: Marker
+      Color: Any color except 0 (white) and 6 (magenta)
+      Properties:
+        - Position (row, col)
+        - Color
+    - Type: TemplateShape
+      Color: 6 (magenta)
+      Properties:
+        - Composed of one or more contiguous magenta pixels (connectivity likely 4-way, needs confirmation).
+        - Has a specific shape.
+        - Has a location/extent (defined by its pixels).
+
+Output:
+  Grid: A 2D array, potentially smaller or larger than the input.
+  Objects:
+    - Type: ColoredShape
+      Properties:
+        - Shape: Derived from a TemplateShape from the input.
+        - Color: Derived from a Marker from the input.
+        - Position: Relative position within the output grid depends on an arrangement rule.
+    - Type: Background
+      Color: 0 (white) - Used for padding if needed.
+
+Relationships_Actions:
+  - Find: Identify all Marker pixels and their properties (position, color).
+  - Find: Identify all distinct TemplateShapes (groups of connected magenta pixels) and their constituent pixels.
+  - Associate: Each Marker must be linked to exactly one TemplateShape.
+      Rule: The Marker is associated with the TemplateShape containing the magenta pixel closest to the Marker (using Manhattan distance).
+      Constraint: A TemplateShape can only be associated with one Marker. If multiple Markers are closest to the same TemplateShape, or one Marker is equidistant to multiple shapes, the ambiguity is resolved by processing pairs in globally increasing order of distance (assigning the closest available marker-template pair first).
+  - Generate: For each associated (Marker, TemplateShape) pair:
+      1. Determine the bounding box of the TemplateShape.
+      2. Create a new temporary grid of the bounding box size, initialized to white (0).
+      3. For each pixel within the bounding box, if the corresponding pixel in the input grid was part of the TemplateShape (i.e., magenta), set the pixel in the temporary grid to the Marker's color. This creates a ColoredShape.
+  - Arrange: Determine the layout of the generated ColoredShapes in the output grid.
+      1. Calculate the range of row indices and column indices occupied by the Markers in the input grid.
+      2. If the column range is strictly greater than the row range, the arrangement is 'horizontal'.
+      3. Otherwise (row range >= column range), the arrangement is 'vertical'.
+  - Order: Within the determined arrangement:
+      1. If 'horizontal', sort the ColoredShapes based on the column index of their associated Marker (left-to-right).
+      2. If 'vertical', sort the ColoredShapes based on the row index of their associated Marker (top-to-bottom).
+  - Combine: Assemble the sorted ColoredShapes into the final output grid.
+      1. If 'horizontal', place the shapes side-by-side, aligning their top edges. Pad shorter shapes with white (0) at the bottom to match the height of the tallest shape.
+      2. If 'vertical', place the shapes one below the other, aligning their left edges. Pad narrower shapes with white (0) on the right to match the width of the widest shape.

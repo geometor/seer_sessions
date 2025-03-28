@@ -1,0 +1,60 @@
+task_context:
+  description: The task involves identifying specific trigger pixels and associated patterns, then moving the pattern based on the trigger's location and type, potentially with additional grid modifications based on the trigger type.
+  input_type: 2D grid of integers (colors)
+  output_type: 2D grid of integers (colors)
+  background_color: 0 (white)
+
+identified_objects:
+  - object: trigger_pixel
+    properties:
+      - color: Red (2) or Orange (7)
+      - role: Initiates the transformation. The first trigger (scan order) whose associated pattern exists is the active one.
+  - object: mover_pattern
+    properties:
+      - type: Green L with Azure (associated with Red trigger)
+        color_composition: Green (3), Azure (8)
+        shape: L-like, 3x4 bounding box
+        definition: [(0,0,3), (0,1,3), (0,2,3), (0,3,3), (1,2,8), (1,3,3), (2,3,3)]
+        role: Is moved (erased and redrawn) when the Red trigger is active.
+      - type: Magenta L with Orange (associated with Orange trigger)
+        color_composition: Magenta (6), Orange (7)
+        shape: L-like, 3x3 bounding box
+        definition: [(0,0,6), (0,1,6), (0,2,6), (1,0,6), (1,1,7), (2,0,6)]
+        role: Is moved (erased and redrawn) when the Orange trigger is active.
+  - object: removable_pixels
+    properties:
+      - color: Magenta (6) or Maroon (9)
+      - role: Pixels to be removed (set to white/0) ONLY if the active trigger is Red (2). These pixels are distinct from the mover_pattern pixels.
+
+transformation_rules:
+  - rule: find_active_trigger_and_pattern
+    steps:
+      - Scan the input grid top-to-bottom, left-to-right to find all trigger pixels (Red=2 or Orange=7).
+      - For each trigger found, check if its associated mover pattern exists anywhere in the grid.
+      - The *first* trigger (in scan order) for which the corresponding mover pattern is found becomes the 'active trigger'. Its associated pattern becomes the 'active pattern'.
+      - Record the location (top-left corner) of the active trigger and the active pattern.
+      - If no such trigger/pattern pair is found, the transformation stops, and the input grid is returned unchanged.
+  - rule: perform_move
+    steps:
+      - Erase the active pattern from its original location by setting its pixels to the background color (white=0).
+      - Determine the 'placement offset' based on the active trigger's color: (0, 2) for Red, (0, 0) for Orange.
+      - Calculate the new top-left location for the pattern: (active_trigger_row + offset_row, active_trigger_col + offset_col).
+      - Redraw the active pattern at the calculated new location.
+  - rule: conditional_cleanup (NEW)
+    condition: The active trigger color is Red (2).
+    steps:
+      - After performing the move, iterate through the entire grid.
+      - Set any pixel that is Magenta (6) or Maroon (9) to the background color (white=0). This removal happens *after* the pattern has been moved and redrawn.
+
+execution_order:
+  - find_active_trigger_and_pattern
+  - If an active pair is found:
+    - perform_move
+    - conditional_cleanup (only if trigger was Red)
+  - Return the modified grid.
+
+edge_cases:
+  - No trigger pixel found: Return input grid unchanged.
+  - Trigger pixel(s) found, but corresponding pattern(s) not found: Return input grid unchanged.
+  - Mover pattern overlaps with trigger pixel: Rules still apply as written.
+  - Redrawing pattern goes out of bounds: Pixels outside bounds are ignored.

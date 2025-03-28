@@ -1,0 +1,40 @@
+task_context:
+  problem_description: Recolor specific regions of azure (light blue) pixels based on a sequence of vertical color lines located to their left.
+  grid_properties:
+    - Input and output grids have the same dimensions.
+    - Output grid background is white (0).
+    - Specific regions in the output are colored based on input patterns.
+
+input_objects:
+  - object: vertical_lines
+    description: Columns consisting entirely of a single, non-white (0), non-azure (8) color. They appear on the left side of the grid.
+    properties:
+      - color: The single color filling the column.
+      - column_index: The index of the column.
+      - count: Variable number per example.
+    ordering: Left-to-right based on column_index.
+  - object: azure_regions
+    description: Connected components (regions) of azure (8) pixels. Adjacency likely includes diagonals (8-way).
+    properties:
+      - pixels: Set of coordinates (row, col) belonging to the region.
+      - bounding_box: Min/max row and column indices covered by the region.
+      - width: Calculated as (max_col - min_col + 1) from the bounding box.
+      - count: Variable number per example.
+    ordering: Left-to-right based on minimum column index of the bounding box.
+
+transformation:
+  actions:
+    - identify: Find all 'vertical_lines' in the input grid.
+    - identify: Find all 'azure_regions' (connected components of color 8) in the input grid.
+    - filter: Select only those 'azure_regions' whose 'width' property is greater than 1.
+    - order: Sort the identified 'vertical_lines' by their 'column_index'.
+    - order: Sort the filtered 'azure_regions' by their minimum column index.
+    - map: Create a one-to-one mapping between the sorted 'vertical_lines' and the sorted, filtered 'azure_regions'. The i-th line maps to the i-th region. The number of lines must equal the number of filtered regions.
+    - create_output: Generate an output grid of the same size as the input, initialized to white (0).
+    - apply_colors: For each mapping (line -> region):
+        - Get the 'color' from the vertical line.
+        - Get the set of 'pixels' from the mapped azure region.
+        - For each pixel coordinate (r, c) in the region's pixel set, set the output grid at (r, c) to the line's color.
+
+output_grid:
+  content: Contains the recolored azure regions according to the mapping. All other pixels, including those from original vertical lines, background, and azure regions with width=1, are white (0).

@@ -1,0 +1,44 @@
+task_description: Identifies a primary azure (8) structure, copies it to the output, and projects other colored pixels onto rows/columns adjacent to the azure structure based on its orientation.
+
+definitions:
+  - object: azure_structure
+    description: A connected component of azure (8) pixels. Connectivity includes diagonals. Assumed to be a single primary structure per input grid.
+    properties:
+      - coordinates: List of (row, col) tuples for each azure pixel.
+      - bounding_box: Defined by min/max row and column indices (min_r, min_c, max_r, max_c).
+      - orientation: Determined as 'horizontal' if width > height, 'vertical' if height > width, or 'square' otherwise. (Note: Example 3 has gaps, the code identified bbox based on actual pixels, but conceptually it's horizontal).
+  - object: other_pixel
+    description: Any pixel in the input grid that is not white (0) and not azure (8).
+    properties:
+      - coordinate: (row, col)
+      - color: Integer value (1-7, 9).
+
+actions:
+  - action: identify_azure_structure
+    input: input_grid
+    output: azure_structure_object (including coordinates, bounding_box, orientation)
+    description: Find all connected azure pixels and determine the properties of the resulting structure. (Requires refinement for handling gaps or multiple components if necessary, but current examples suggest one main component).
+  - action: initialize_output
+    input: input_grid_dimensions
+    output: output_grid
+    description: Create a new grid of the same dimensions as the input, filled entirely with white (0).
+  - action: copy_azure
+    input: azure_structure_object, output_grid
+    output: modified_output_grid
+    description: Copy the azure pixels from their original coordinates in the input to the same coordinates in the output grid.
+  - action: project_pixels
+    input: input_grid, azure_structure_object, output_grid
+    output: final_output_grid
+    description: >
+      Iterate through each `other_pixel` in the input grid.
+      Based on `azure_structure.orientation`:
+      - If 'horizontal':
+          - Let `azure_min_r`, `azure_max_r` be the row bounds of the azure structure.
+          - If `other_pixel.row < azure_min_r` and `azure_min_r > 0`, set `output_grid[azure_min_r - 1, other_pixel.col] = other_pixel.color`.
+          - If `other_pixel.row > azure_max_r` and `azure_max_r < grid_height - 1`, set `output_grid[azure_max_r + 1, other_pixel.col] = other_pixel.color`.
+      - If 'vertical':
+          - Let `azure_min_c`, `azure_max_c` be the column bounds and `azure_min_r`, `azure_max_r` be the row bounds of the azure structure.
+          - If `azure_min_r <= other_pixel.row <= azure_max_r`:
+              - If `other_pixel.col < azure_min_c` and `azure_min_c > 0`, set `output_grid[other_pixel.row, azure_min_c - 1] = other_pixel.color`.
+              - If `other_pixel.col > azure_max_c` and `azure_max_c < grid_width - 1`, set `output_grid[other_pixel.row, azure_max_c + 1] = other_pixel.color`.
+      (Note: Potential overlaps - if multiple pixels project to the same cell, the last one processed overwrites previous ones. The examples are consistent with this overwrite behavior.)

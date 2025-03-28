@@ -1,0 +1,97 @@
+task_description: Extract non-white objects, determine their relative alignment based on center coordinates, sort them based on alignment (color for horizontal/scattered, position for vertical), and assemble them either horizontally adjacent or vertically stacked into the output grid.
+
+definitions:
+  object: A contiguous group of pixels of the same non-white color, identified using 8-way connectivity.
+  bounding_box: The smallest rectangle enclosing all pixels of an object. (min_row, min_col, height, width).
+  subgrid: The rectangular portion of the input grid corresponding to an object's bounding box.
+  center: The geometric center of the bounding box ((min_row + (height-1)/2), (min_col + (width-1)/2)).
+  alignment: Classification based on the standard deviation of object center coordinates.
+    - Vertical: stddev(center_cols) < stddev(center_rows)
+    - Horizontal/Scattered: stddev(center_cols) >= stddev(center_rows)
+    - Single: Only one object exists.
+    - None: No objects exist.
+
+examples:
+  example_1:
+    input_size: [13, 17]
+    objects:
+      - id: 0
+        color: 2 # red
+        bbox: [1, 1, 3, 3] # Note: Code found (1,1) while analysis found (1,2). Check find_objects. Let's trust the code output for now.
+        center: [2.0, 2.0]
+        subgrid_shape: [3, 3]
+      - id: 1
+        color: 8 # azure
+        bbox: [2, 13, 3, 3] # Code found (2,13), analysis (2,14)
+        center: [3.0, 14.0]
+        subgrid_shape: [3, 3]
+      - id: 2
+        color: 3 # green
+        bbox: [5, 4, 3, 3] # Code found (5,4), analysis (5,5)
+        center: [6.0, 5.0]
+        subgrid_shape: [3, 3]
+    # BBox differences seem minor, potentially due to slight variations in connectivity/implementation. Sticking with code output.
+    analysis:
+      alignment: Horizontal/Scattered # std(rows)=1.70, std(cols)=5.10
+      sorting_criteria: color
+      sorted_colors: [2, 3, 8]
+      assembly_rule: horizontal_adjacent
+      output_size_calculation: height=max(3,3,3)=3, width=sum(3,3,3)=9
+      expected_output_size: [3, 9] # Match
+  example_2:
+    input_size: [16, 10]
+    objects:
+      - id: 0
+        color: 3 # green
+        bbox: [1, 2, 3, 3]
+        center: [2.0, 3.0]
+        subgrid_shape: [3, 3]
+      - id: 1
+        color: 1 # blue
+        bbox: [6, 3, 3, 3]
+        center: [7.0, 4.0]
+        subgrid_shape: [3, 3]
+      - id: 2
+        color: 8 # azure
+        bbox: [11, 4, 3, 3]
+        center: [12.0, 5.0]
+        subgrid_shape: [3, 3]
+    analysis:
+      alignment: Vertical # std(rows)=4.08, std(cols)=0.82
+      sorting_criteria: top_left
+      sorted_top_left: [[1,2], [6,3], [11,4]] # Corresponds to Green, Blue, Azure
+      assembly_rule: vertical_stack
+      output_size_calculation: height=sum(3,3,3)=9, width=max(3,3,3)=3
+      expected_output_size: [9, 3] # Match
+  example_3:
+    input_size: [12, 10]
+    objects:
+      - id: 0
+        color: 2 # red
+        bbox: [1, 3, 3, 3]
+        center: [2.0, 4.0]
+        subgrid_shape: [3, 3]
+      - id: 1
+        color: 1 # blue
+        bbox: [6, 1, 3, 3]
+        center: [7.0, 2.0]
+        subgrid_shape: [3, 3]
+    analysis:
+      alignment: Vertical # std(rows)=2.50, std(cols)=1.00
+      sorting_criteria: top_left
+      sorted_top_left: [[1,3], [6,1]] # Corresponds to Red, Blue
+      assembly_rule: vertical_stack
+      output_size_calculation: height=sum(3,3)=6, width=max(3,3)=3
+      expected_output_size: [6, 3] # Match
+
+transformation_rules:
+  - step: Identify all distinct non-white objects (contiguous pixels of same color, 8-way connectivity).
+  - step: For each object, find its minimal bounding box, extract the subgrid, determine its color, and calculate its center coordinates.
+  - step: If zero objects, output a 1x1 white grid.
+  - step: If one object, output its extracted subgrid.
+  - step: If multiple objects, calculate standard deviation of row centers (std_rows) and column centers (std_cols).
+  - step: Determine alignment type: 'Vertical' if std_cols < std_rows, otherwise 'Horizontal/Scattered'.
+  - step: Sort the objects: by top-left position (row then col) if 'Vertical', by color index (ascending) if 'Horizontal/Scattered'.
+  - step: Assemble output based on alignment:
+      - If 'Vertical': Stack sorted subgrids vertically, left-aligned. Output width is max subgrid width, output height is sum of subgrid heights. Pad right with white if needed.
+      - If 'Horizontal/Scattered': Place sorted subgrids horizontally adjacent, top-aligned. Output height is max subgrid height, output width is sum of subgrid widths. Pad bottom with white if needed.

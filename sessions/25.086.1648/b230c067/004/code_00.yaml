@@ -1,0 +1,45 @@
+observations:
+  input_grid:
+    properties:
+      - contains_pixels: [white (0), azure (8)]
+      - background_color: white (0)
+  output_grid:
+    properties:
+      - same_dimensions_as_input: true
+      - contains_pixels: [white (0), blue (1), red (2)]
+      - background_color: white (0)
+  objects:
+    - type: azure_object
+      definition: Contiguous group of azure (8) pixels (using 8-way connectivity).
+      properties:
+        - pixels: Set of (row, col) coordinates.
+        - bounding_box: (min_row, min_col, max_row, max_col).
+        - has_hole: Boolean, true if the object encloses a region of white (0) pixels disconnected from the grid exterior.
+  actions:
+    - action: identify_azure_objects
+      inputs: [input_grid]
+      outputs: [list_of_azure_objects]
+    - action: analyze_azure_objects
+      inputs: [list_of_azure_objects, input_grid_shape]
+      outputs: [list_of_object_data (including pixels, bounding_box, has_hole)]
+    - action: count_objects_with_holes
+      inputs: [list_of_object_data]
+      outputs: [hole_count]
+    - action: determine_coloring
+      inputs: [list_of_object_data, hole_count]
+      outputs: [object_to_color_red, list_of_objects_to_color_blue]
+      condition: |
+        if hole_count == 1:
+          - Object with hole -> blue.
+          - Top-right-most object without hole -> red.
+          - Other objects without hole -> blue.
+        elif hole_count == 0:
+          - Top-right-most object among all -> red.
+          - All other objects -> blue.
+        elif hole_count > 1:
+          - No objects colored red or blue.
+        "Top-right-most" definition: Minimum top row index (min_row), tie-broken by maximum right column index (max_col).
+    - action: generate_output_grid
+      inputs: [input_grid_shape, object_to_color_red, list_of_objects_to_color_blue]
+      outputs: [output_grid]
+      description: Create a white grid and paint the pixels of designated objects red (2) or blue (1).

@@ -1,0 +1,60 @@
+Version: 1.0
+Objects:
+  - type: Background
+    color: white (0)
+    role: Provides a canvas for other elements.
+  - type: MarkerPixel
+    properties:
+      - color: Any color except white (0) and magenta (6).
+      - count: Typically 2 or 3 per input grid.
+      - spatial_role: Acts as a seed or identifier. Its color determines the output color, and its position influences association and final arrangement.
+  - type: TemplateShape
+    properties:
+      - color: magenta (6)
+      - structure: Contiguous blocks of pixels forming distinct shapes.
+      - count: At least as many as MarkerPixels.
+      - spatial_role: Provides the structural pattern for output shapes.
+  - type: OutputShape
+    properties:
+      - color: Derived from an associated MarkerPixel's color.
+      - structure: Derived from an associated TemplateShape's structure.
+      - count: One for each MarkerPixel.
+      - spatial_role: Constituent elements of the final output grid.
+
+Relationships:
+  - type: Association
+    between: MarkerPixel, TemplateShape
+    rule: Each MarkerPixel is associated with the spatially closest TemplateShape (e.g., based on minimum distance).
+  - type: Derivation
+    input: MarkerPixel, associated TemplateShape
+    output: OutputShape
+    rule: The OutputShape inherits its color from the MarkerPixel and its structure (within its bounding box) from the TemplateShape. Magenta pixels from the template become the marker's color; other pixels become white.
+  - type: Arrangement
+    based_on: Relative positions of MarkerPixels in the input grid.
+    determines: The layout (horizontal or vertical stacking) and order of OutputShapes in the final output grid.
+    rule:
+      - Calculate row_range = max(marker_row) - min(marker_row).
+      - Calculate col_range = max(marker_col) - min(marker_col).
+      - If col_range > row_range: Arrange horizontally, ordered by marker column index.
+      - Else (col_range <= row_range): Arrange vertically, ordered by marker row index.
+
+Actions:
+  - name: Identify
+    target: MarkerPixels, TemplateShapes
+    result: Lists of positions and colors (for markers), and pixel sets (for shapes).
+  - name: Associate
+    target: MarkerPixels, TemplateShapes
+    rule: Calculate distances and find the closest pairs.
+    result: Pairs of (MarkerPixel, TemplateShape).
+  - name: Extract
+    target: Associated TemplateShape
+    result: A subgrid containing the shape within its minimal bounding box.
+  - name: Recolor
+    target: Extracted subgrid
+    using: Color of the associated MarkerPixel
+    rule: Replace magenta (6) pixels with the marker's color, other non-background pixels potentially become background (0).
+    result: A colored OutputShape pattern.
+  - name: ArrangeAndCombine
+    target: Recolorored OutputShape patterns
+    using: Arrangement rule derived from MarkerPixel positions.
+    result: The final output grid.

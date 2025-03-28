@@ -1,0 +1,69 @@
+task_description: Recolor magenta patterns based on nearby markers and arrange them.
+
+input_features:
+  - name: background
+    color: white (0)
+    description: The default empty space in the grid.
+  - name: pattern_shape
+    color: magenta (6)
+    description: Connected components of magenta pixels forming distinct shapes. Each shape acts as a template.
+    properties:
+      - location (coordinates)
+      - bounding_box (top-left corner is key)
+      - connectivity (defines distinct objects)
+  - name: marker
+    color: any color except white (0) and magenta (6)
+    description: Typically single pixels, acting as color sources and position anchors.
+    properties:
+      - color
+      - location (row, column)
+
+transformations:
+  - action: identify_objects
+    inputs: [input_grid]
+    outputs: [markers, pattern_shapes]
+    description: Find all markers and distinct magenta pattern_shapes.
+
+  - action: associate_marker_to_shape
+    inputs: [markers, pattern_shapes]
+    outputs: [associations]
+    description: For each marker, find the geometrically closest magenta pattern_shape based on the minimum Euclidean distance between the marker pixel and any pixel of the shape. Each marker is associated with exactly one shape.
+
+  - action: extract_and_recolor
+    inputs: [association, input_grid]
+    outputs: [colored_pattern (4x4 grid)]
+    description: |
+      For each association:
+      1. Find the top-left corner (min_row, min_col) of the associated pattern_shape's bounding box.
+      2. Create an empty 4x4 grid (all white).
+      3. Iterate through the pixels of the associated pattern_shape.
+      4. For each pixel (r, c) belonging to the shape, calculate its relative position (pr = r - min_row, pc = c - min_col) within the 4x4 grid.
+      5. If the relative position (pr, pc) is within the 4x4 bounds (0 <= pr < 4 and 0 <= pc < 4), set the pixel at (pr, pc) in the 4x4 grid to the marker's color.
+
+  - action: determine_arrangement
+    inputs: [markers]
+    outputs: [arrangement_mode ('horizontal' or 'vertical'), sort_key ('row' or 'column')]
+    description: |
+      1. Calculate the range of marker row indices (max_row - min_row).
+      2. Calculate the range of marker column indices (max_col - min_col).
+      3. If row_range > col_range, set arrangement_mode to 'vertical' and sort_key to 'row'.
+      4. Otherwise (col_range >= row_range), set arrangement_mode to 'horizontal' and sort_key to 'column'.
+      5. Handle single-marker case: default to 'horizontal' arrangement and 'column' sort key.
+
+  - action: sort_patterns
+    inputs: [list_of_colored_patterns_with_marker_info, sort_key]
+    outputs: [sorted_list_of_colored_patterns]
+    description: Sort the generated 4x4 colored_patterns based on the specified sort_key (either the row or column index of the original marker associated with the pattern).
+
+  - action: concatenate_patterns
+    inputs: [sorted_list_of_colored_patterns, arrangement_mode]
+    outputs: [output_grid]
+    description: Combine the sorted 4x4 patterns into the final output grid. If arrangement_mode is 'vertical', stack them vertically. If arrangement_mode is 'horizontal', stack them horizontally.
+
+output_features:
+  - name: final_grid
+    description: A grid composed of the recolored 4x4 patterns, arranged either horizontally or vertically based on the relative positions of the input markers.
+    properties:
+      - height: 4 if arranged horizontally, 4 * num_markers if arranged vertically.
+      - width: 4 * num_markers if arranged horizontally, 4 if arranged vertically.
+      - colors: Contains white (0) and the colors of the markers used.

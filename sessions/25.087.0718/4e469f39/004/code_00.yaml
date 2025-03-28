@@ -1,0 +1,43 @@
+task_description: "Identify gray shapes, draw a red line above their bounding box, and fill specific adjacent white pixels within the bounding box with red."
+
+grid_properties:
+  - size: Variable (e.g., 10x10 in examples)
+  - background_color: white (0)
+
+objects:
+  - type: primary
+    color: gray (5)
+    description: "Contiguous shapes formed by gray pixels (using 4-way adjacency)."
+    properties:
+      - bounding_box: Minimum and maximum row/column encompassing the object.
+      - location: Defined by the coordinates of its constituent pixels.
+      - relationship_to_border: Can touch or not touch any border.
+
+actions:
+  - name: find_gray_objects
+    input: input_grid
+    output: list_of_gray_objects (each object is a set of coordinates)
+    condition: None
+
+  - name: process_each_gray_object
+    input: gray_object (set of coordinates), input_grid
+    output: modifications to output_grid
+    steps:
+      - 1: Calculate bounding_box (min_r, max_r, min_c, max_c) for the gray_object.
+      - 2: Check if object touches top border (min_r == 0).
+      - 3: If min_r > 0:
+          action: draw_red_line
+          target_pixels: output_grid[min_r - 1, min_c : max_c + 1]
+          color: red (2)
+      - 4: Iterate through pixels (r, c) where min_r <= r <= max_r and min_c <= c <= max_c.
+      - 5: For each pixel (r, c) within the bounding box:
+          condition:
+            - input_grid[r, c] is white (0)
+            - pixel (r, c) has at least one 4-way neighbor (nr, nc) such that (nr, nc) belongs to the current gray_object.
+          action: fill_pixel
+          target_pixel: output_grid[r, c]
+          color: red (2)
+
+final_grid:
+  - composition: Contains original gray pixels, newly added red pixels, and unchanged white/other pixels from the input.
+  - unchanged_pixels: All pixels not explicitly changed by the actions (gray pixels, white pixels outside bounding boxes or not meeting fill criteria).

@@ -1,0 +1,28 @@
+task_type: object_copying_conditional
+grid_properties:
+  - dimensions_preserved: True
+  - background_color: white (0) # Generally preserved
+objects:
+  - type: contiguous_pixels # Non-white pixels adjacent (including diagonals) form objects
+  - properties:
+      - color: Any non-white color (1-9)
+      - size: Number of pixels in the object
+      - position: Coordinates of pixels, often represented by top-left corner or bounding box
+      - location_constraint: In one condition, objects must be within the left half (columns 0 to width // 2 - 1)
+  - key_object_color: magenta (6) # Presence acts as a condition switch
+actions:
+  - action: identify_objects # Find all contiguous non-white pixel groups
+  - action: check_condition # Check if magenta (6) pixels exist in the input
+  - action: filter_objects # Based on condition (location or size)
+  - action: calculate_shift_vector
+      - if_magenta_absent: shift = (0, grid_width // 2 - 1)
+      - if_magenta_present:
+          - find_magenta_blocks
+          - sort_magenta_blocks_by_position # Top-left corner, row then column
+          - select_second_magenta_block
+          - shift = top_left_coordinates_of_second_block
+  - action: copy_object(s) # Apply shift vector to selected object(s) pixels
+  - action: draw_copy # Place copied pixels onto the output grid, overwriting existing pixels
+relationships:
+  - if_magenta_absent: Shift depends on grid_width. Applies to objects in the left half.
+  - if_magenta_present: Shift depends on the position of the second magenta block. Applies only to the largest object.

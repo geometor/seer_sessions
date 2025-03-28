@@ -1,0 +1,35 @@
+task_description: Copies objects based on the presence or absence of magenta markers. The output grid starts as a copy of the input.
+
+conditions:
+  - name: No Magenta Markers
+    condition: The input grid contains no magenta (color 6) pixels.
+    actions:
+      - action: Calculate Shift
+        details: shift_row = 0, shift_col = floor(grid_width / 2) - 1.
+      - action: Identify Objects
+        details: Find all single-color, non-white objects located entirely within the left half of the grid (columns 0 to floor(grid_width / 2) - 1). Use 8-way connectivity.
+      - action: Copy Objects
+        details: For each identified object, copy its pixels to the output grid, applying the calculated shift (shift_row, shift_col) to each pixel's coordinates. Overwrite existing pixels.
+
+  - name: Magenta Markers Present
+    condition: The input grid contains at least one magenta (color 6) pixel.
+    assumptions: Requires at least two distinct magenta objects to define the shift.
+    actions:
+      - action: Identify Source Object
+        details: Find the first non-white, non-magenta pixel scanning top-to-bottom, left-to-right. Perform a search (e.g., BFS/DFS) starting from this pixel to find all connected non-white pixels (using 8-way connectivity). The "Source Object" consists of all pixels in this connected component *excluding* any magenta pixels.
+      - action: Identify Magenta Markers
+        details: Find all distinct magenta (color 6) objects using 8-way connectivity.
+      - action: Determine Marker Positions
+        details: Calculate the top-left coordinate (minimum row, then minimum column) for each distinct magenta object.
+      - action: Calculate Shift
+        details: Sort the magenta marker top-left coordinates first by row, then by column. The shift vector (shift_row, shift_col) is the coordinate pair of the *second* marker in the sorted list.
+      - action: Copy Source Object
+        details: Copy the pixels of the "Source Object" (the non-magenta parts of the connected component found earlier) to the output grid, applying the calculated shift (shift_row, shift_col) to each pixel's coordinates. Overwrite existing pixels.
+
+common_elements:
+  - Background Color: White (0)
+  - Connectivity: 8-way (including diagonals) for object identification.
+  - Output Grid: Starts as a copy of the input grid; copied objects overwrite existing pixels.
+  - Object Definition (No Magenta Case): Contiguous block of same non-white color.
+  - Object Definition (Magenta Case - Source Object): Contiguous block of non-white pixels connected to the first non-magenta pixel found, excluding magenta pixels within the block.
+  - Object Definition (Magenta Case - Markers): Contiguous block of magenta pixels.

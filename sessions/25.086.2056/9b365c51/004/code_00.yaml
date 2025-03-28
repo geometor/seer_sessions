@@ -1,0 +1,50 @@
+task_description: Replace azure pixel regions with colors derived from vertical lines to their left.
+
+input_objects:
+  - object: vertical_line
+    definition: A full-height column of a single color, excluding white (0) and azure (8).
+    properties:
+      - color: The color of the line (1-7, 9).
+      - col_index: The column index of the line.
+    count: N (variable per example, e.g., 3, 3, 4 in the examples).
+    order: Sorted left-to-right by col_index.
+  - object: azure_pixel
+    definition: A pixel with color value 8.
+  - object: azure_segment
+    definition: A maximal contiguous horizontal sequence of azure pixels in a single row.
+    properties:
+      - row_index: The row index.
+      - start_col: The starting column index.
+      - end_col: The ending column index.
+  - object: azure_segment_group
+    definition: A collection of azure_segments that all share the same start_col.
+    properties:
+      - start_col: The common starting column index.
+      - segments: A list of segments [(r, start_col, end_col), ...].
+    count: M (variable per example, should equal N for the transformation to apply).
+    order: Sorted left-to-right by start_col.
+
+transformation:
+  - action: Initialize an output grid of the same dimensions as the input, filled with white (0).
+  - action: Identify all vertical_lines and sort them left-to-right. Let the sorted list be L.
+  - action: Identify all azure_segments.
+  - action: Group azure_segments by their start_col, creating azure_segment_groups.
+  - action: Sort the azure_segment_groups left-to-right based on their start_col. Let the sorted list be G.
+  - condition: Check if the number of vertical_lines (N) equals the number of azure_segment_groups (M).
+  - branching:
+      if_true:
+        action: For each index i from 0 to N-1:
+          - Get the color C from the i-th vertical_line in L.
+          - Get the i-th azure_segment_group Gi from G.
+          - For each segment (r, c_start, c_end) in Gi:
+            - Fill the pixels in the output grid from (r, c_start) to (r, c_end) with color C.
+      if_false:
+        action: The output grid remains white (no transformation applied).
+  - action: Return the final output grid.
+
+output_objects:
+  - object: colored_region
+    definition: A region in the output grid corresponding to an azure_segment_group, filled with the color of the corresponding vertical_line.
+    properties:
+      - color: Inherited from the mapped vertical_line.
+      - shape: The union of the horizontal segments in the corresponding azure_segment_group.

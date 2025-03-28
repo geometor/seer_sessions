@@ -1,0 +1,32 @@
+facts:
+  - task_description: "Identify a template shape and a color palette from the input grid. Generate an output grid by replicating the template shape vertically, forming a stack. The colors of the stacked shapes and their order are determined by the sequence of colors in the palette. The stack's position is anchored relative to the topmost instance of the template shape found in the input."
+  - input_components:
+      - type: template_instances
+        count: 2+
+        description: "Multiple instances of the same geometric shape (the 'template'). Each instance typically has a single solid color and is larger than palette components."
+        properties: [shape_signature, color, bounding_box, coordinates, pixel_count]
+      - type: color_palette_structure
+        count: 1
+        description: "A distinct group of pixels or small objects forming a compact structure (e.g., line, rectangle) that contains multiple different colors. This structure defines an ordered sequence of colors."
+        properties: [coordinates, colors, orientation, order, shape (e.g., linear, rectangular)]
+  - actions:
+      - action: identify_objects
+        description: "Segment the input grid into connected components of non-background pixels using 8-way connectivity."
+      - action: group_objects_by_shape
+        description: "Calculate a shape signature for each object and group objects with identical signatures."
+      - action: differentiate_palette_and_template_candidates
+        description: "Separate objects into two groups: potential template instances (typically larger, recurring shapes) and potential palette components (often smaller, possibly non-recurring shapes, forming a distinct multi-color cluster). Use heuristics like shape frequency, pixel count, bounding box size, and spatial clustering."
+      - action: identify_palette
+        description: "Confirm the palette components cluster. Determine the palette's bounding box, orientation (horizontal/vertical), and extract the ordered sequence of unique colors (`Palette Colors`) by scanning along the primary axis."
+      - action: identify_template
+        description: "Confirm the template shape from the remaining non-palette objects. Determine the definitive `Template Signature`, height (`H`), and width (`W`) based on the most likely candidate (e.g., largest recurring shape among non-palette objects)."
+        output: [Template Signature, H, W, Template Objects]
+      - action: identify_anchor_instance
+        description: "Find the `Template Object` with the minimum starting row (top-most). Record its top row (`min_orig_row`), left column (`colS`), and color (`anchor_color`)."
+      - action: determine_anchor_palette_index
+        description: "Find the 0-based index (`k`) of `anchor_color` within the `Palette Colors` list."
+      - action: calculate_output_stack_start_row
+        description: "Calculate the starting row (`R_start`) for the output stack: `R_start = min_orig_row - (k * H)`."
+      - action: generate_output_stack
+        description: "Create a background-filled output grid. For each color `ci` at index `i` in `Palette Colors`, calculate the drawing row `current_row = R_start + (i * H)`. Draw the template shape (using `Template Signature`) at (`current_row`, `colS`) with color `ci`."
+  - output_description: "A grid containing a vertical stack of the template shape, replacing the original template instances and palette structure. Each shape in the stack uses a color from the palette, ordered according to the palette sequence, and positioned relative to the original anchor instance."

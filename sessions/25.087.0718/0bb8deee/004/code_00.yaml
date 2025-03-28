@@ -1,0 +1,42 @@
+task_description: >
+  Divide the input grid into four quadrants using intersecting horizontal and vertical lines of a unique, non-background color. Extract the content (excluding background and dividing line colors) from each quadrant using its minimal bounding box. Assemble these contents into a 6x6 output grid, placing each quadrant's content into a corresponding 3x3 subgrid (TL, TR, BL, BR), aligned to the top-left corner of the subgrid and cropped if necessary.
+
+grid_properties:
+  - width: variable (1-30)
+  - height: variable (1-30)
+  - background_color: 0 (white)
+
+objects:
+  - type: dividing_line
+    properties:
+      - orientation: horizontal or vertical
+      - color: C (a single color from 1-9, unique for both lines)
+      - pixels: consists only of color C or background color 0
+      - span: conceptually covers the full width (horizontal) or height (vertical)
+      - intersection: the horizontal and vertical lines share the same color C and cross at a pixel of color C.
+  - type: quadrant_content
+    properties:
+      - location: Top-Left, Top-Right, Bottom-Left, or Bottom-Right relative to dividing lines (excluding the lines themselves)
+      - pixels: all non-background (0) and non-dividing_line_color pixels within the quadrant's boundaries.
+      - shape: defined by the minimal bounding box around the content pixels within the quadrant.
+      - empty: a quadrant might contain no relevant content.
+
+actions:
+  - name: find_dividing_lines
+    input: input_grid
+    output: row_index, column_index, dividing_color
+    description: Identify the unique color C and the indices (R, Col) where a horizontal line of C (at row R) intersects a vertical line of C (at column Col). Both lines must consist only of color C or background (0).
+  - name: define_quadrants
+    input: grid_dimensions, row_index (R), column_index (Col)
+    output: four coordinate sets (TL, TR, BL, BR)
+    description: Define the four rectangular areas excluding the dividing lines: TL(0:R, 0:Col), TR(0:R, Col+1:end), BL(R+1:end, 0:Col), BR(R+1:end, Col+1:end).
+  - name: extract_content
+    input: input_grid, quadrant_coordinates, dividing_color
+    output: content_grid (or None if empty)
+    description: >
+      For a given quadrant, identify all pixels whose color is not background (0) and not the dividing_color. If any such pixels exist, find the minimal bounding box enclosing them within the quadrant. Return the subgrid defined by this bounding box. Otherwise, return None.
+  - name: assemble_output
+    input: four content_grids (TL, TR, BL, BR)
+    output: 6x6 output_grid
+    description: >
+      Create a 6x6 grid initialized with background color (0). Place each content_grid into its corresponding 3x3 subgrid: TL->(0:3, 0:3), TR->(0:3, 3:6), BL->(3:6, 0:3), BR->(3:6, 3:6). The content_grid should be placed starting at the top-left corner of the subgrid. If the content_grid is larger than 3x3, crop the bottom/right. If smaller, pad with background (0). If content_grid is None, the subgrid remains background.

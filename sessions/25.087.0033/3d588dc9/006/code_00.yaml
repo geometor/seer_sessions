@@ -1,0 +1,54 @@
+task_description: Modifies white objects based on interaction with 'trigger' pixels (green or gray). The type of trigger determines the modification rule.
+
+definitions:
+  - name: trigger_pixel
+    description: A pixel whose color is green (3) or gray (5).
+  - name: white_object
+    description: A contiguous area of white (0) pixels (using 8-way connectivity).
+  - name: green_trigger_rows
+    description: The set of unique row indices containing at least one green pixel.
+  - name: gray_trigger_rows
+    description: The set of unique row indices containing at least one gray pixel.
+
+transformation_logic:
+  - priority: 1
+    condition: green_trigger_rows is not empty.
+    actions:
+      - for_each: white_object
+        conditions:
+          - let: intersecting_rows = intersection of white_object rows and green_trigger_rows
+          - intersecting_rows is not empty
+        actions:
+          - let: highest_intersecting_row = max(intersecting_rows)
+          - let: max_col = maximum column index within the white_object
+          - for_each: pixel (r, c) in white_object
+            actions:
+              - if: r < highest_intersecting_row
+                then: change pixel color to orange (7)
+              - elif: c == max_col # and r >= highest_intersecting_row
+                then: change pixel color to magenta (6)
+    post_action: Halt processing (do not check gray trigger).
+
+  - priority: 2
+    condition: green_trigger_rows is empty AND gray_trigger_rows is not empty.
+    actions:
+      - for_each: white_object
+        conditions:
+          - let: intersecting_rows = intersection of white_object rows and gray_trigger_rows
+          - intersecting_rows is not empty
+          - let: min_col = minimum column index within the white_object
+          - let: max_col = maximum column index within the white_object
+          - let: width = max_col - min_col + 1
+          - width >= 2
+        actions:
+          - for_each: pixel (r, c) in white_object
+            actions:
+              - if: c == min_col
+                then: change pixel color to magenta (6)
+
+  - priority: 3
+    condition: No trigger conditions met (no green pixels, or no gray pixels, or no white objects met respective trigger conditions).
+    actions:
+      - No changes to the grid.
+
+output: The modified grid.

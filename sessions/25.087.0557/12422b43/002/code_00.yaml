@@ -1,0 +1,59 @@
+objects:
+  - type: grid
+    properties:
+      height: variable (1-30)
+      width: variable (1-30)
+      pixels: color values (0-9)
+  - type: marker
+    properties:
+      color: gray (5)
+      shape: vertical column segment (may not be solid, can contain white)
+      location: typically column 0, but identified as the first column containing gray pixels
+      extent: defines a range of rows (min_gray_row to max_gray_row)
+  - type: pattern
+    properties:
+      source: a block of rows in the input grid
+      location: defined by the row range [min_gray_row, max_gray_row] determined by the marker
+      content: pixels in the source rows, excluding the marker column
+      height: (max_gray_row - min_gray_row + 1)
+  - type: background
+    properties:
+      color: white (0)
+  - type: content
+    properties:
+      color: non-white (1-9)
+      location: pixels outside the marker column, potentially extending below the pattern rows
+  - type: copy_area
+    properties:
+      location: rows below the lowest non-white pixel in the input grid
+      initial_state: entirely white (0)
+
+actions:
+  - name: identify_marker_column
+    input: grid
+    output: column index (gray_col)
+    description: Find the index of the first column containing any gray (5) pixels.
+  - name: identify_pattern_rows
+    input: grid, gray_col
+    output: row range (min_gray_row, max_gray_row)
+    description: Find the minimum and maximum row indices containing gray (5) pixels within the gray_col.
+  - name: determine_pattern_height
+    input: min_gray_row, max_gray_row
+    output: pattern_height
+    description: Calculate the height of the pattern block.
+  - name: find_lowest_content_row
+    input: grid
+    output: max_content_row
+    description: Find the maximum row index containing any non-white (1-9) pixel.
+  - name: find_copy_start_row
+    input: grid, max_content_row
+    output: start_copy_row
+    description: Find the index of the first row below max_content_row that consists entirely of white (0) pixels.
+  - name: copy_pattern
+    input: grid, pattern_rows(min_gray_row, max_gray_row), gray_col, start_copy_row, pattern_height
+    output: modified grid
+    description: |
+      Iterate through the target rows from start_copy_row to the bottom of the grid.
+      For each target row, calculate the corresponding source row index within the pattern block using modular arithmetic: source_row = min_gray_row + (target_row - start_copy_row) % pattern_height.
+      Copy the pixels from the source_row to the target_row, excluding the gray_col.
+      Set the pixel in the gray_col of the target_row to white (0).

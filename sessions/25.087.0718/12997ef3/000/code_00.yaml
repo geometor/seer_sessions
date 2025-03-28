@@ -1,0 +1,66 @@
+task_elements:
+  - type: grid
+    role: input
+    content: contains background, a template object, and color objects
+  - type: grid
+    role: output
+    content: constructed from transformed template objects
+
+objects:
+  - id: background
+    type: area
+    properties:
+      color: white (0)
+      location: fills the space not occupied by other objects
+
+  - id: template
+    type: object
+    properties:
+      color: blue (1)
+      shape: contiguous block, always fits within a 3x3 bounding box
+      location: variable within the input grid
+      role: defines the shape/stencil for output blocks
+
+  - id: color_pixels
+    type: collection of objects
+    properties:
+      count: one or more per input grid
+      color: any color except white (0) or blue (1)
+      shape: single pixel (1x1)
+      location: variable within the input grid, separate from the template
+      role: provides the fill colors for the output blocks
+
+relationships:
+  - type: spatial_arrangement
+    between: [color_pixels]
+    details: The relative horizontal vs. vertical spread of color pixels determines the output concatenation direction.
+      - If horizontal spread > vertical spread, concatenate horizontally.
+      - If vertical spread > horizontal spread, concatenate vertically.
+      - If spreads are equal or only one color pixel, default to horizontal? (Based on example 1 vs 2/3/4, seems horizontal is default if not clearly vertical). Let's refine: horizontal if col_range >= row_range, vertical if row_range > col_range.
+    ordering: The order of concatenation (left-to-right or top-to-bottom) matches the spatial order (left-to-right or top-to-bottom) of the color pixels in the input.
+
+actions:
+  - id: find_template
+    input: input grid
+    output: 3x3 template grid (containing 0s and 1s)
+    description: Identify the bounding box of all blue (1) pixels and extract it.
+
+  - id: find_colors
+    input: input grid
+    output: list of color values and their coordinates
+    description: Identify all pixels that are not white (0) and not blue (1). Record their color and position.
+
+  - id: determine_order_and_concatenation
+    input: list of color pixel coordinates
+    output: sorted list of color values, concatenation direction (horizontal/vertical)
+    description: Calculate row and column ranges of color pixels. Determine concatenation direction based on which range is larger (vertical if row_range > col_range, else horizontal). Sort colors based on primary axis (column for horizontal, row for vertical).
+
+  - id: apply_color_to_template
+    input: template grid, color value
+    output: colored template grid (3x3)
+    description: Create a copy of the template grid. Replace all blue (1) pixels with the input color value.
+
+  - id: concatenate_blocks
+    input: list of colored template grids, concatenation direction
+    output: final output grid
+    description: Arrange the colored template grids sequentially according to the specified direction (horizontally or vertically).

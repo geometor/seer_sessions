@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom typing import List, Tuple, Optional\n\n\"\"\"\nIdentifies a rectangular frame defined by the bounding box of a single non-white color \nwhose pixels exclusively occupy the perimeter of that bounding box within the grid. \nIt then extracts the content (subgrid) located strictly inside this frame, excluding \nthe frame pixels themselves. If multiple such valid frames exist, the one whose \nbounding box encloses the largest area is chosen. If no such frame is found, or \nif the selected frame is too small (less than 3x3) to contain any content, \nan empty grid is returned.\n\"\"\"\n\ndef _find_bounding_box(grid: np.ndarray, color: int) -> Optional[Tuple[int, int, int, int]]:\n    \"\"\"Finds the min/max row/col for a given color.\"\"\"\n    rows, cols = np.where(grid == color)\n    if rows.size == 0:\n        return None\n    return rows.min(), cols.min(), rows.max(), cols.max()\n\ndef _is_valid_frame(grid: np.ndarray, color: int, r1: int, c1: int, r2: int, c2: int) -> bool:\n    \"\"\"\n    Checks if the pixels of the specified 'color' perfectly form *only* the \n    perimeter of the 'bounding_box' defined by r1, c1, r2, c2.\n    Uses NumPy slicing for efficiency and robustness.\n    \"\"\"\n    height, width = grid.shape\n    box_h = r2 - r1 + 1\n    box_w = c2 - c1 + 1\n\n    # 1. Check if all pixels on the perimeter within the bounding box match the color.\n    \n    # Check top row\n    if not np.all(grid[r1, c1:c2+1] == color):\n        return False\n        \n    # Check bottom row (only if height > 1)\n    if box_h > 1 and not np.all(grid[r2, c1:c2+1] == color):\n        return False\n        \n    # Check left column (excluding corners, only if height > 2)\n    if box_h > 2 and not np.all(grid[r1+1:r2, c1] == color):\n        return False\n        \n    # Check right column (excluding corners, only if height > 2 and width > 1)\n    if box_h > 2 and box_w > 1 and not np.all(grid[r1+1:r2, c2] == color):\n        return False\n\n    # 2. Check if all pixels of this color *only* lie on the perimeter of the bounding box.\n    #    Find all pixels of 'color' within the bounding box.\n    subgrid = grid[r1:r2+1, c1:c2+1]\n    color_rows, color_cols = np.where(subgrid == color)\n\n    # For each pixel of 'color', check if it's on the perimeter relative to the subgrid (0, 0, box_h-1, box_w-1)\n    for r, c in zip(color_rows, color_cols):\n        is_on_perimeter = (r == 0 or r == box_h - 1 or c == 0 or c == box_w - 1)\n        if not is_on_perimeter:\n            return False # Found a pixel of 'color' inside the frame, not just on perimeter\n\n    return True\n\n\ndef transform(input_grid: List[List[int]]) -> List[List[int]]:\n    \"\"\"\n    Extracts the content inside the largest valid rectangular frame.\n\n    Args:\n        input_grid: A list of lists representing the input grid.\n\n    Returns:\n        A list of lists representing the extracted content subgrid, or an empty list \n        if no suitable frame is found or the frame contains no content.\n    \"\"\"\n    # Handle empty input grid\n    if not input_grid or not input_grid[0]:\n        return []\n\n    # Convert input to numpy array for efficient processing\n    grid = np.array(input_grid, dtype=int)\n    height, width = grid.shape\n\n    # Find unique non-white colors (potential frame colors)\n    potential_frame_colors = np.unique(grid[grid != 0]) # 0 is white/background\n\n    best_frame_coords = None # Store as (min_row, min_col, max_row, max_col)\n    max_frame_area = -1\n\n    # Iterate through each potential frame color\n    for color in potential_frame_colors:\n        # Determine the bounding box of this color\n        bbox = _find_bounding_box(grid, color)\n        if bbox is None:\n            continue # No pixels of this color found\n            \n        min_r, min_c, max_r, max_c = bbox\n\n        # Validate that this color forms a proper frame\n        if _is_valid_frame(grid, color, min_r, min_c, max_r, max_c):\n            # Calculate the area enclosed by this frame's bounding box\n            area = (max_r - min_r + 1) * (max_c - min_c + 1)\n\n            # Update if this is the largest valid frame found so far\n            if area > max_frame_area:\n                max_frame_area = area\n                best_frame_coords = (min_r, min_c, max_r, max_c)\n\n    # If a valid frame was found\n    if best_frame_coords:\n        min_r, min_c, max_r, max_c = best_frame_coords\n\n        # Check if the frame has inner content (i.e., it's at least 3x3)\n        # Frame needs width > 2 and height > 2 to have something inside\n        if max_r > min_r + 1 and max_c > min_c + 1:\n            # Extract the content strictly inside the frame\n            # Numpy slicing end index is exclusive\n            content_grid_np = grid[min_r + 1 : max_r, min_c + 1 : max_c]\n            \n            # Convert the numpy array back to a list of lists\n            output_grid = content_grid_np.tolist()\n            return output_grid\n        else:\n            # Frame exists but is too small to contain anything \n            # (e.g., a line or 2xN rect). Return empty grid.\n             return [] \n    else:\n        # No suitable frame found. Return empty grid.\n        return []\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 4509,
+    "candidates_token_count": 1536,
+    "total_token_count": 6045,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 17.294716,
+  "retries": null
+}

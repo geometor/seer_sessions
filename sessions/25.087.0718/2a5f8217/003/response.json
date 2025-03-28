@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\nTransformation Rule Description:\n\n1.  Identify all distinct connected components (objects) of blue pixels (color 1) in the input grid.\n2.  Identify all distinct connected components (objects) of \"influencer\" pixels (any color other than white (0) or blue (1)).\n3.  For each blue object, determine its size (number of pixels).\n4.  For each influencer object, determine its size (number of pixels) and its color.\n5.  Match each blue object to exactly one influencer object based on the following criteria:\n    a.  **Primary Criterion: Size.** A blue object should ideally be matched with an influencer object of the exact same size.\n    b.  **Secondary Criterion (if no exact size match): Closest Size.** If a blue object has no exact size match among the available (unmatched) influencer objects, match it with an available influencer object whose size is closest to the blue object's size.\n    c.  **Tie-breaking (if multiple influencers have the same closest size):** \n        i.  Identify all blue objects that need tie-breaking (i.e., have multiple potential matches based on closest size).\n        ii. Identify all influencer objects involved in these ties.\n        iii. Sort the tied blue objects based on their top-left coordinate (first by row index, then by column index).\n        iv. Sort the tied influencer objects based on their color index (ascending).\n        v. Assign the first sorted blue object to the first sorted influencer object, the second to the second, and so on.\n    d.  **Uniqueness:** Each influencer object can only be matched to one blue object. Perform exact size matches first. Then handle closest-size matches, resolving ties as needed.\n6.  Create the output grid by copying the input grid.\n7.  For each blue object in the input grid, change the color of all its pixels in the output grid to the color of the influencer object it was matched with.\n8.  If there are no blue pixels or no influencer pixels, the output grid is identical to the input grid.\n\"\"\"\n\nimport numpy as np\nfrom scipy.ndimage import label, find_objects\nfrom collections import defaultdict\nimport copy\n\ndef get_component_info(grid, target_color=None, exclude_colors=None):\n    \"\"\"\n    Finds connected components of a specific color or all colors except excluded ones.\n    \n    Args:\n        grid (np.ndarray): The input grid.\n        target_color (int, optional): If specified, find components of this color.\n        exclude_colors (list, optional): If specified, find components of any color not in this list.\n\n    Returns:\n        list: A list of dictionaries, each containing info about a component:\n              {'label': int, 'coords': list of tuples, 'size': int, 'color': int, 'top_left': tuple}\n              Returns empty list if no components are found.\n    \"\"\"\n    components_info = []\n    if target_color is not None:\n        mask = (grid == target_color)\n        labeled_array, num_features = label(mask)\n        if num_features == 0:\n            return []\n        \n        object_slices = find_objects(labeled_array)\n        for i in range(num_features):\n            label_val = i + 1\n            coords = np.argwhere(labeled_array == label_val)\n            top_left = tuple(coords.min(axis=0))\n            components_info.append({\n                'label': label_val,\n                'coords': coords.tolist(),\n                'size': len(coords),\n                'color': target_color,\n                'top_left': top_left\n            })\n            \n    elif exclude_colors is not None:\n        unique_colors = np.unique(grid)\n        influencer_colors = [c for c in unique_colors if c not in exclude_colors]\n        \n        current_label = 0\n        # We need a way to store labeled components across different colors\n        master_labeled_array = np.zeros_like(grid, dtype=int)\n\n        for color in influencer_colors:\n            mask = (grid == color)\n            # Use structure for diagonal connectivity if needed, default is orthogonal\n            labeled_array, num_features = label(mask) \n            \n            if num_features > 0:\n                 object_slices = find_objects(labeled_array)\n                 for i in range(num_features):\n                    component_label_in_color = i + 1\n                    current_label += 1 # Unique label across all colors\n                    \n                    coords = np.argwhere(labeled_array == component_label_in_color)\n                    top_left = tuple(coords.min(axis=0))\n                    \n                    # Add to master labeled array (optional, mainly for visualization/debug)\n                    master_labeled_array[labeled_array == component_label_in_color] = current_label\n                    \n                    components_info.append({\n                        'label': current_label, # Use the unique master label\n                        'coords': coords.tolist(),\n                        'size': len(coords),\n                        'color': color,\n                        'top_left': top_left\n"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 2,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 14360,
+    "candidates_token_count": 1177,
+    "total_token_count": 15537,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 203.960507,
+  "retries": null
+}

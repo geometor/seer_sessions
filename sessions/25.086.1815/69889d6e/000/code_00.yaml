@@ -1,0 +1,66 @@
+task_elements:
+  - description: "Grid structure"
+    properties:
+      type: "2D array"
+      cell_values: "Integers 0-9 representing colors"
+      background_color: "white (0)"
+
+  - description: "Input Objects"
+    properties:
+      - type: "Pixel"
+        color: "red (2)"
+        role: "Seed/Origin for pattern generation"
+        location: "Variable, typically near bottom-left"
+      - type: "Pixel"
+        color: "blue (1)"
+        role: "Obstacle (non-overwritable)"
+        location: "Variable, scattered"
+        present: "Sometimes"
+
+  - description: "Output Objects"
+    properties:
+      - type: "Pixel pattern"
+        color: "red (2)"
+        shape: "Diagonal structure, composed of specific 3-pixel units relative to a path"
+        origin: "Derived from input red pixel(s)"
+      - type: "Original Pixels"
+        color: "All non-white pixels from input"
+        persistence: "Retained unless target location is white (0)"
+
+actions:
+  - name: "Identify Seed Pixels"
+    input: "Input grid"
+    output: "Coordinates of all red (2) pixels"
+    
+  - name: "Generate Diagonal Path"
+    input: "Seed pixel coordinate (r0, c0), grid dimensions"
+    process: "Start at (r0, c0). Iteratively move to (r-1, c+1). Stop when row < 0 or col >= grid_width."
+    output: "List of coordinates forming the path"
+
+  - name: "Determine Target Pixels for Coloring"
+    input: "Each coordinate (r, c) from the diagonal path, grid dimensions"
+    process: |
+      For a path coordinate (r, c), identify potential target coordinates:
+      1. (r, c)
+      2. (r, c+1)
+      3. (r-1, c+1)
+      Filter these targets to ensure they are within grid boundaries.
+    output: "Set of valid target coordinates for potential coloring for each path step"
+
+  - name: "Apply Coloring Rule"
+    input: "Input grid, all valid target coordinates from all paths"
+    process: |
+      Create a copy of the input grid.
+      For each target coordinate (tr, tc):
+        If the pixel at (tr, tc) in the *input* grid is white (0):
+          Set the pixel at (tr, tc) in the *copy* to red (2).
+    output: "Final output grid"
+
+relationships:
+  - type: "Generation"
+    from: "Input red pixel(s)"
+    to: "Output red pattern"
+    rule: "Each input red pixel generates a diagonal pattern upwards and rightwards."
+  - type: "Constraint"
+    element: "Non-white pixels (e.g., blue)"
+    effect: "Prevent overwriting by the generated red pattern at their location."

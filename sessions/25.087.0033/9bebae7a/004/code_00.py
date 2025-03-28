@@ -1,0 +1,6 @@
+        if magenta_center_c > yellow_center_c:
+            # Reflect Above: axis is above yellow bbox min row (y = min_r_y - 0.5)
+            ...
+        else:
+            # Reflect Below: axis is below yellow bbox max row (y = max_r_y + 0.5)
+            ...

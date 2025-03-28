@@ -1,0 +1,116 @@
+background_color: 0 # white
+grid_properties:
+  - size_remains_constant: true
+  - background_color_remains_constant: true # Except where overwritten by expansion
+objects:
+  - type: pixel
+    definition: A single cell in the grid.
+  - type: contiguous_group
+    definition: A set of one or more non-background pixels of the same color connected orthogonally or diagonally.
+  - type: isolated_pixel
+    definition: A non-background pixel with no neighbors (orthogonally or diagonally) of the same color.
+    properties:
+      - color: The color value (1-9) of the pixel.
+      - location: The (row, column) coordinate.
+actions:
+  - name: identify_isolated_pixels
+    input: input_grid
+    output: list of isolated_pixel objects
+    description: Iterate through each non-background pixel. Check its 8 neighbors. If none have the same color, identify it as isolated.
+  - name: expand_pixel
+    input: isolated_pixel object, output_grid
+    output: modified output_grid
+    description: |
+      Based on the color of the isolated_pixel, determine a 3x3 expansion pattern.
+      Draw this pattern onto the output_grid, centered at the isolated_pixel's location, using the pixel's color.
+      Handle boundary conditions (do not draw outside the grid).
+      Overwrite existing pixels in the output_grid.
+    patterns:
+      - color: 1 # Blue
+        shape_name: solid_square
+        pattern: |
+          C C C
+          C C C
+          C C C
+          (Where C is the pixel's color)
+      - color: 2 # Red
+        shape_name: plus
+        pattern: |
+          0 C 0
+          C C C
+          0 C 0
+          (Where C is the pixel's color, 0 is background)
+      - color: 3 # Green
+        shape_name: diamond
+        pattern: |
+          0 C 0
+          C 0 C  <- Correction: Should be Center + Diagonals
+          0 C 0
+        corrected_pattern: |
+          C 0 C
+          0 C 0
+          C 0 C
+        re-corrected_pattern: |
+          # From Example 2 Expected Output analysis:
+          # Rows 8,9,10, Cols 4,5,6 center (9,5)
+          # . 3 0 3 .
+          # . 0 3 0 .
+          # . 3 0 3 .
+          C 0 C
+          0 C 0
+          C 0 C -> This pattern seems wrong. It's Center + Diagonals *relative to the 3x3*
+          Relative coordinates (-1,-1), (-1,1), (0,0), (1,-1), (1,1) should be filled.
+          Let's represent the 3x3 pattern itself:
+          Color 3 Pattern (Center (r,c)):
+            (r-1, c-1): Color
+            (r-1, c+1): Color
+            (r,   c  ): Color
+            (r+1, c-1): Color
+            (r+1, c+1): Color
+            Others in 3x3: Background (0)
+          Visual:
+          C 0 C
+          0 C 0
+          C 0 C -> No, center is (r,c). So:
+          C 0 C
+          0 C 0
+          C 0 C -> Still seems wrong. Let's check expected again:
+          Row 8: 3 0 3 (relative positions: (-1,-1), (-1,0)=Bg!, (-1,1))
+          Row 9: 0 3 0 (relative positions: (0,-1)=Bg!, (0,0), (0,1)=Bg!)
+          Row 10: 3 0 3 (relative positions: (1,-1), (1,0)=Bg!, (1,1))
+          Okay, the pattern IS: Center + Diagonals.
+          Visual (C=Color, 0=Background):
+          C 0 C
+          0 C 0
+          C 0 C
+      - color: 6 # Magenta
+        shape_name: vertical_bar_hollow
+        pattern: |
+          # From Example 3 Expected Output analysis:
+          # Rows 0-2, Cols 8-10 center (1,9)
+          # 6 6 6
+          # 0 6 0
+          # 6 6 6
+          C C C
+          0 C 0
+          C C C
+      - color: 8 # Azure
+        shape_name: hollow_square
+        pattern: |
+          # From Example 3 Expected Output analysis:
+          # Rows 4-6, Cols 5-7 center (5,6)
+          # 8 8 8
+          # 8 0 8
+          # 8 8 8
+          C C C
+          C 0 C
+          C C C
+transformation_process:
+  - step: 1
+    action: Create a copy of the input grid to serve as the initial output grid.
+  - step: 2
+    action: identify_isolated_pixels using the input grid.
+  - step: 3
+    action: For each identified isolated_pixel, perform the expand_pixel action on the output grid.
+  - step: 4
+    action: Return the final output grid.

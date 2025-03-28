@@ -1,0 +1,66 @@
+task_context:
+  description: "Draws vertical and horizontal lines extending from each non-white pixel to the nearest corresponding grid edge."
+  grid_properties:
+    - dimensions_vary: True
+    - background_color: white (0)
+    - content: Contains isolated non-white pixels.
+
+identified_objects:
+  - name: source_pixel
+    description: "An individual pixel in the input grid with a color other than white (0)."
+    properties:
+      - position: (row, column)
+      - color: (1-9)
+      - grid_height: H
+      - grid_width: W
+      - distance_to_top_edge: row
+      - distance_to_bottom_edge: H - 1 - row
+      - distance_to_left_edge: column
+      - distance_to_right_edge: W - 1 - column
+    count_per_grid: varies (1 or more in examples)
+
+actions:
+  - name: identify_source_pixels
+    input: input_grid
+    output: list_of_source_pixels
+
+  - name: determine_projection_directions
+    input: source_pixel, grid_height, grid_width
+    output: vertical_direction (up/down), horizontal_direction (left/right)
+    logic: |
+      vertical_direction = 'up' if distance_to_top_edge <= distance_to_bottom_edge else 'down'
+      horizontal_direction = 'left' if distance_to_left_edge <= distance_to_right_edge else 'right'
+
+  - name: draw_vertical_line
+    input: output_grid, source_pixel, vertical_direction
+    output: modified_output_grid
+    logic: |
+      Color pixels in the source_pixel's column with the source_pixel's color.
+      If vertical_direction is 'up', color from row 0 to source_pixel.row (inclusive).
+      If vertical_direction is 'down', color from source_pixel.row to grid_height - 1 (inclusive).
+
+  - name: draw_horizontal_line
+    input: output_grid, source_pixel, horizontal_direction
+    output: modified_output_grid
+    logic: |
+      Color pixels in the source_pixel's row with the source_pixel's color.
+      If horizontal_direction is 'left', color from column 0 to source_pixel.column (inclusive).
+      If horizontal_direction is 'right', color from source_pixel.column to grid_width - 1 (inclusive).
+
+relationships:
+  - type: generation
+    from: source_pixel
+    to: vertical_line, horizontal_line
+    details: "Each source pixel generates one vertical and one horizontal line of its own color."
+  - type: dependency
+    element: line_direction
+    depends_on: source_pixel_position, grid_dimensions
+    details: "The direction of projection depends on the relative distance of the source pixel to the grid edges."
+  - type: composition
+    element: output_grid
+    composed_of: input_grid, all_generated_lines
+    details: "The output grid starts as the input grid and is then modified by drawing all generated lines."
+
+output_specification:
+  - grid_size: Same as input grid size.
+  - content: Input grid content overlaid with the generated vertical and horizontal lines originating from each source pixel.

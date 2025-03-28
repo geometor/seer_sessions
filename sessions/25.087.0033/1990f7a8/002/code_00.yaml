@@ -1,0 +1,56 @@
+task_description: >
+  Transform an input grid containing scattered red pixel patterns into a fixed 7x7 output grid.
+  The output grid arranges representations of four visual groups from the input into four 3x3 quadrants, separated by a white cross.
+
+input_properties:
+  - grid: 2D array of integers (colors), variable size.
+  - background_color: white (0).
+  - object_color: red (2).
+  - objects:
+      - Composed of red pixels.
+      - Appear as four distinct visual groups, potentially fragmented by 4-connectivity analysis.
+      - Each group is spatially located roughly in one of the four quadrants of the input grid.
+      - The internal pattern of each group seems confined to a 3x3 area or smaller.
+
+output_properties:
+  - grid: Fixed size 7x7.
+  - background_color: white (0).
+  - structure:
+      - Four 3x3 quadrants (Top-Left, Top-Right, Bottom-Left, Bottom-Right).
+      - Separated by a central row (row 3) and central column (column 3), which are always white.
+  - content: Each 3x3 quadrant contains the combined pattern of the red fragments found in the corresponding quadrant of the input grid.
+
+transformations:
+  - action: Identify Objects/Fragments
+    - tool: Find all 4-connected components of red pixels in the input grid.
+    - result: A list of fragments, each with its pixels and bounding box.
+  - action: Determine Input Grid Center
+    - calculation: `center_row = (input_height - 1) / 2`, `center_col = (input_width - 1) / 2`.
+  - action: Assign Fragments to Quadrants
+    - rule: For each fragment, calculate its bounding box center. Compare the center coordinates with the input grid center to assign the fragment to one of four input quadrants (TL, TR, BL, BR).
+  - action: Determine Group Origin
+    - rule: For each quadrant (TL, TR, BL, BR), find the minimum row (`min_r_group`) and minimum column (`min_c_group`) across the bounding boxes of *all* fragments assigned to that quadrant. This defines the origin for the combined pattern.
+  - action: Combine Fragment Patterns
+    - rule: For each quadrant (TL, TR, BL, BR):
+        - Create an empty 3x3 pattern grid (initialized to white).
+        - Iterate through all fragments assigned to this quadrant.
+        - For each pixel `(r, c)` in the fragment:
+            - Calculate its relative position: `rel_r = r - min_r_group`, `rel_c = c - min_c_group`.
+            - If `0 <= rel_r < 3` and `0 <= rel_c < 3`, set the color of the 3x3 pattern grid at `(rel_r, rel_c)` to red.
+  - action: Assemble Output Grid
+    - Create a 7x7 white grid.
+    - Place the combined 3x3 TL pattern at output `[0:3, 0:3]`.
+    - Place the combined 3x3 TR pattern at output `[0:3, 4:7]`.
+    - Place the combined 3x3 BL pattern at output `[4:7, 0:3]`.
+    - Place the combined 3x3 BR pattern at output `[4:7, 4:7]`.
+
+constants:
+  - output_size: 7
+  - quadrant_size: 3
+  - red_color: 2
+  - background_color: 0
+  - output_quadrant_origins:
+      TL: (0, 0)
+      TR: (0, 4)
+      BL: (4, 0)
+      BR: (4, 4)

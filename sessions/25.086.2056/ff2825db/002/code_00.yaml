@@ -1,0 +1,36 @@
+grid_dimensions:
+  - input_shape: [10, 10] # Constant across examples
+  - output_shape: [10, 10] # Constant across examples
+
+structure:
+  - common:
+      - top_row: Copied directly from input to output (row 0).
+      - frame: Defined by row 1, row 9, column 0, and column 9.
+      - inner_area: Defined by rows 2-8 and columns 1-8 (size 7x8).
+
+color_assignment:
+  - frame_color:
+      - input: Determined by the color in the input grid's second row (row 1). Assumed uniform. (Example 1: Yellow(4), Example 2: Red(2), Example 3: Blue(1)).
+      - output: Determined by the most frequent color within the input grid's inner_area, excluding white(0) and the input frame_color. This color becomes the `Output Fill Color`. (Example 1: Gray(5), Example 2: Green(3), Example 3: Yellow(4)).
+      - rule: The output grid's frame (row 1, row 9, col 0, col 9) is filled entirely with the `Output Fill Color`.
+  - inner_area_fill:
+      - seed_points: Locations within the input grid's inner_area that have the `Output Fill Color`.
+      - initial_state: The output grid's inner_area starts as white(0), except for the frame boundary at row 2 (cols 1-8), which is part of the output frame and is filled with the `Output Fill Color`.
+      - transformation:
+          - Place the `Output Fill Color` at the `seed_points` locations within the output grid's inner_area.
+          - Perform a flood fill (4-way adjacency) starting from these `seed_points`.
+          - Constraint: The flood fill spreads the `Output Fill Color` only into adjacent cells within the inner_area that satisfy BOTH conditions:
+              1. The cell is currently white(0) in the output grid.
+              2. The corresponding cell in the input grid was also white(0).
+
+derived_properties:
+  - output_fill_color_determination:
+      - area: Input grid inner_area (rows 2-8, cols 1-8).
+      - excluded_colors: [White(0), Input Frame Color].
+      - method: Find the color with the maximum count among the remaining colors.
+  - inner_area_white_pixels:
+      - expected_output: The number of white(0) pixels remaining in the inner_area matches the number of pixels incorrectly filled by the previous code (Pixels Off). (Example 1: 40, Example 2: 34, Example 3: 38).
+      - transformed_output: The previous code resulted in 0 white pixels in the inner area.
+
+error_analysis:
+  - previous_code_issue: The flood fill implementation did not check the corresponding cell color in the input grid, causing it to fill all reachable white space within the inner area, instead of only the white space that was originally white in the input.

@@ -1,0 +1,31 @@
+facts:
+  - task_description: "Identify a template shape and a color palette. Replicate the template shape multiple times, stacking them vertically. The color of each replica and its vertical position in the stack are determined by the order of colors in the palette and the position of an 'anchor' instance of the template shape relative to the palette."
+  - input_components:
+      - type: template_instances
+        count: typically 2 or more
+        description: "Multiple instances of the same geometric shape (the 'template'), each instance having a single solid color. These instances are the primary shapes being manipulated."
+        properties: [shape_signature, color, bounding_box, coordinates]
+      - type: color_palette
+        count: 1
+        description: "A distinct, often rectangular or linear, arrangement of pixels defining an ordered sequence of colors. This sequence dictates the colors and order of the output stack."
+        properties: [coordinates, colors, orientation, order]
+  - actions:
+      - action: identify_objects
+        description: "Segment the input grid into connected components of non-background pixels using 8-way connectivity."
+      - action: identify_palette_and_template
+        description: "Distinguish between the objects forming the color palette and the objects representing instances of the template shape. Heuristics might involve shape frequency, size, color count within objects, and spatial arrangement (e.g., palette often being a compact multi-color group)."
+      - action: extract_palette_colors
+        description: "Determine the ordered sequence of unique colors from the identified palette structure based on its orientation (horizontal or vertical)."
+      - action: identify_template_shape
+        description: "Determine the shape signature and dimensions (height, width) of the template shape from its instances."
+      - action: identify_anchor_instance
+        description: "Find the instance of the template shape with the minimum starting row (top-most)."
+      - action: determine_anchor_palette_index
+        description: "Find the 0-based index ('k') of the anchor instance's color within the extracted palette color sequence."
+      - action: calculate_output_stack_position
+        description: "Calculate the starting row ('R_start') for the output stack using the anchor's top row ('min_orig_row'), the template height ('H'), and the anchor's palette index ('k'): R_start = min_orig_row - (k * H)."
+        parameters: [min_orig_row, H, k]
+      - action: generate_output_stack
+        description: "Create an empty output grid. Iterate through the palette colors. For each color at index 'i', draw the template shape using that color at the calculated vertical position: starting_row = R_start + (i * H), starting_col = anchor_instance's starting column."
+        parameters: [output_grid, palette_colors, template_signature, template_height, R_start, anchor_col_start]
+  - output_description: "A grid containing a vertical stack of the template shape. Each shape in the stack corresponds to a color from the input palette, ordered according to the palette. The original template instances and palette structure are removed, replaced by this new stack."

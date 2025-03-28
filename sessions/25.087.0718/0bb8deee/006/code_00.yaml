@@ -1,0 +1,59 @@
+task_description: "Divide the input grid into four quadrants using solid horizontal and vertical lines of the same color. Extract the content (excluding the dividing color and background) from each quadrant, find its minimal bounding box, and place the top-left 3x3 portion of this content into a corresponding 3x3 section of a 6x6 output grid."
+
+definitions:
+  - object: background
+    properties:
+      - color: white (0)
+  - object: dividing_line
+    properties:
+      - type: horizontal or vertical
+      - composition: solid line (no white pixels)
+      - color: single, non-white color (C)
+      - extent: spans the full width (horizontal) or height (vertical) of the grid
+  - object: dividing_intersection
+    properties:
+      - location: intersection of the unique horizontal and vertical dividing lines
+      - color: must match the color (C) of the dividing lines
+  - object: quadrant
+    properties:
+      - location: top-left (TL), top-right (TR), bottom-left (BL), bottom-right (BR)
+      - definition: rectangular areas defined by the grid boundaries and the dividing lines (excluding the lines themselves)
+  - object: quadrant_content
+    properties:
+      - source_pixels: all pixels within a quadrant *except* background (0) and the dividing color (C)
+      - shape: minimal bounding box enclosing all source_pixels relative to the quadrant's origin
+      - representation: a potentially empty subgrid containing the source_pixels within their bounding box
+  - object: output_grid
+    properties:
+      - size: 6x6
+      - initial_state: all background (0)
+      - structure: composed of four 3x3 target areas corresponding to the input quadrants (TL, TR, BL, BR)
+
+actions:
+  - action: find_dividing_lines
+    input: input_grid
+    output: row_index (R), col_index (Col), dividing_color (C)
+    steps:
+      - Identify all solid horizontal lines of a single non-white color.
+      - Identify all solid vertical lines of a single non-white color.
+      - Find the unique pair of horizontal and vertical lines that share the same color (C).
+      - Return the row index (R), column index (Col), and color (C) of these lines.
+  - action: extract_content
+    input: input_grid, quadrant_boundaries, dividing_color (C)
+    output: quadrant_content (subgrid or None)
+    steps:
+      - Isolate the subgrid for the quadrant.
+      - Find all pixels != 0 and != C.
+      - If no such pixels, return None.
+      - Calculate the minimal bounding box of these pixels.
+      - Extract the subgrid defined by the bounding box.
+  - action: assemble_output
+    input: content_TL, content_TR, content_BL, content_BR
+    output: output_grid (6x6)
+    steps:
+      - Create a 6x6 white grid.
+      - Define the four 3x3 target areas.
+      - For each quadrant's content:
+        - If content exists:
+          - Determine copy dimensions (min(content_h, 3), min(content_w, 3)).
+          - Copy the top-left portion of the content to the top-left of the corresponding target area.

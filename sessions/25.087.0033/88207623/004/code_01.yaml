@@ -1,0 +1,78 @@
+version: 1.0
+description: Describes the reflection task based on axes, shapes, and sources.
+data_elements:
+  - element: grid
+    description: A 2D array of pixels with colors 0-9.
+    properties:
+      height: integer
+      width: integer
+      pixels: list of lists of integers (colors)
+
+objects:
+  - object: axis
+    definition: A contiguous vertical line of red (2) pixels.
+    properties:
+      column_index: integer
+      pixel_coords: list of (row, col) tuples
+
+  - object: shape
+    definition: A contiguous group of yellow (4) pixels, where contiguity includes diagonal adjacency (8-connectivity). Must be adjacent (sharing a side, not just diagonal) to at least one pixel of an `axis`.
+    properties:
+      pixel_coords: list of (row, col) tuples
+      adjacent_axis: reference to an `axis` object
+      side: string ('left' or 'right' relative to the axis)
+
+  - object: source
+    definition: Any pixel in the input grid that is not white (0), red (2), or yellow (4).
+    properties:
+      coord: (row, col) tuple
+      color: integer (1, 3, 5, 6, 7, 8, or 9)
+
+  - object: structure
+    definition: The combined set of pixels belonging to an `axis` and one associated adjacent `shape`.
+    properties:
+      pixel_coords: set of (row, col) tuples
+
+actions:
+  - action: identify_axes
+    description: Find all vertical red lines in the input grid.
+    inputs: input_grid
+    outputs: list of `axis` objects
+
+  - action: identify_shapes
+    description: For each axis, find adjacent yellow pixels (seeds). For each seed, perform an 8-connectivity search (BFS or DFS including diagonals) to find the complete `shape`. Ensure each shape is processed only once. Determine which side ('left' or 'right') the shape is on relative to its axis.
+    inputs: input_grid, list of `axis` objects
+    outputs: list of `shape` objects, each linked to an `axis`
+
+  - action: identify_sources
+    description: Find all pixels in the input grid with colors other than 0, 2, 4.
+    inputs: input_grid
+    outputs: list of `source` objects
+
+  - action: find_closest_source
+    description: For each `structure` (axis + shape pair), calculate the Manhattan distance from every pixel in the `structure` to every `source` pixel. The `source` with the minimum distance to any part of the `structure` determines the `reflection_color`. Ties are broken implicitly (first one found with min distance).
+    inputs: `structure` object, list of `source` objects
+    outputs: `reflection_color` (integer)
+
+  - action: reflect_shape
+    description: For each pixel in a `shape`, calculate its reflected coordinate across the vertical line defined by the `adjacent_axis`. The row remains the same; the column is mirrored (`c_reflected = axis_col - (shape_col - axis_col)` or `axis_col + (axis_col - shape_col)`).
+    inputs: `shape` object
+    outputs: list of (reflected_row, reflected_col) tuples
+
+  - action: apply_reflection
+    description: Create the output grid by copying the input grid. For each `shape` and its corresponding `reflection_color` and reflected coordinates: if a reflected coordinate `(r, c)` is within the grid bounds AND the pixel at `input_grid[r, c]` is white (0), set `output_grid[r, c]` to the `reflection_color`.
+    inputs: input_grid, list of `shape` objects, associated `reflection_color` for each shape, associated reflected coordinates for each shape
+    outputs: output_grid
+
+workflow:
+  - step: Initialize output_grid as a copy of input_grid.
+  - step: Execute identify_axes.
+  - step: Execute identify_sources.
+  - step: Execute identify_shapes (using 8-connectivity). Keep track of processed shapes.
+  - step: For each unique axis-shape pair:
+    - Define the `structure`.
+    - Execute find_closest_source to get `reflection_color`.
+    - If a `reflection_color` is found:
+      - Execute reflect_shape to get reflected coordinates.
+      - Execute apply_reflection for this shape's reflected coordinates and color, updating the output_grid.
+  - step: Return output_grid.

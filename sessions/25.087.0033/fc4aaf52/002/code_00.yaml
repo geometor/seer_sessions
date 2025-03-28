@@ -1,0 +1,62 @@
+task_description: "Identify a single non-background object (background=azure/8), create two potentially color-swapped copies, and place them at shifted positions on an output grid of the same size."
+
+input_features:
+  - grid_size: variable (observed 16x16)
+  - background_color: azure (8)
+  - objects:
+      - count: 1
+      - composition: contiguous non-background pixels
+      - colors: variable (observed white/gray, blue/red)
+      - properties:
+          - bounding_box: [min_row, min_col, max_row, max_col]
+          - top_left_coord: (min_row, min_col)
+          - contains_blue_and_red: boolean
+
+transformations:
+  - step: 1
+    action: identify_object
+    source: input_grid
+    target: object_pixels, object_colors, object_bbox
+    details: Find all connected pixels not matching the background color (8). Determine the set of colors present and the bounding box (top-left corner).
+  - step: 2
+    action: check_color_swap_condition
+    source: object_colors
+    target: needs_swap (boolean)
+    details: Check if both blue (1) and red (2) are present in object_colors.
+  - step: 3
+    action: create_copies
+    source: object_pixels, needs_swap
+    target: copy_A_pattern, copy_B_pattern
+    details: Create two identical lists of relative coordinates and colors for the object pixels. If needs_swap is true, swap blue (1) and red (2) colors in both lists.
+  - step: 4
+    action: determine_shifts
+    source: needs_swap, object_bbox
+    target: shift_A, shift_B
+    details: |
+      Define shift vectors relative to the object's top-left corner (min_row, min_col).
+      Shift A is always (delta_row=4, delta_col=0).
+      Shift B depends on the swap condition:
+        - If needs_swap is true: Shift B = (delta_row=0, delta_col=5).
+        - If needs_swap is false: Shift B = (delta_row=0, delta_col=3).
+  - step: 5
+    action: place_copies
+    source: input_grid_size, background_color, copy_A_pattern, shift_A, copy_B_pattern, shift_B, object_bbox
+    target: output_grid
+    details: |
+      Initialize an output grid of the same size as the input, filled with the background color.
+      For each pixel (rel_r, rel_c), color in copy_A_pattern:
+        Calculate target position: (object_min_row + rel_r + shift_A.delta_row, object_min_col + rel_c + shift_A.delta_col)
+        Place the color at the target position if within grid bounds.
+      For each pixel (rel_r, rel_c), color in copy_B_pattern:
+        Calculate target position: (object_min_row + rel_r + shift_B.delta_row, object_min_col + rel_c + shift_B.delta_col)
+        Place the color at the target position if within grid bounds.
+
+output_features:
+  - grid_size: same as input
+  - background_color: azure (8)
+  - objects:
+      - count: 2 (copies of the input object)
+      - properties:
+          - colors: potentially swapped (blue<=>red) if input contained both
+          - position_A: input object shifted by shift_A
+          - position_B: input object shifted by shift_B

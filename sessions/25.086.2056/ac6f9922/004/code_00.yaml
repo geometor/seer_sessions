@@ -1,0 +1,42 @@
+task_description: Map locations of special color blocks from input to a compressed output grid.
+
+definitions:
+  border_color: The color of the pixel at (0, 0) in the input grid.
+  inner_background_color: The most frequent color in the input grid, excluding the border_color.
+  special_color: Any color present in the input grid that is neither the border_color nor the inner_background_color.
+  special_object: A contiguous block of pixels of the same special_color.
+  object_bounding_box: The smallest rectangle containing all pixels of a special_object.
+  object_top_left: The (row, column) coordinate of the top-left corner of an object_bounding_box.
+
+input_grid_properties:
+  - variable_size: True
+  - contains_border: True (defined by top-left pixel)
+  - contains_inner_background: True (most frequent non-border color)
+  - contains_special_objects: True (blocks of special_color)
+
+output_grid_properties:
+  - background_color: Same as input grid's border_color.
+  - dimensions:
+      height: max(2, number of unique row coordinates from object_top_lefts)
+      width: max(2, number of unique column coordinates from object_top_lefts)
+  - content: Pixels corresponding to mapped object_top_lefts contain the special_color of the respective object. Other pixels retain the background_color.
+
+transformation_steps:
+  1. Identify the border_color from the input grid (top-left pixel).
+  2. Identify the inner_background_color (most frequent non-border color).
+  3. Find all special_colors present in the grid.
+  4. For each special_color:
+     a. Identify all contiguous blocks (special_objects) of that color.
+     b. Determine the bounding_box for each special_object.
+     c. Record the object_top_left coordinate and the special_color for each object.
+     * Note: It seems sufficient to find the overall bounding box for *all* pixels of a given special color, rather than per-object, and use its top-left. Let's refine: Find the set of all unique special colors. For each unique special color, find the minimum row, minimum column of any pixel with that color. This gives the effective top-left for that color. Record these (color, min_row, min_col) tuples.
+  5. Collect all unique min_row values and sort them. Create a mapping from row value to its index in the sorted list (output row index).
+  6. Collect all unique min_col values and sort them. Create a mapping from column value to its index in the sorted list (output column index).
+  7. Determine output grid height as max(2, number of unique min_rows).
+  8. Determine output grid width as max(2, number of unique min_cols).
+  9. Create the output grid initialized with the border_color.
+  10. For each recorded (color, min_row, min_col) tuple:
+      a. Find the output_row index using the row map.
+      b. Find the output_col index using the column map.
+      c. Set the pixel at (output_row, output_col) in the output grid to the recorded color.
+  11. Return the output grid.

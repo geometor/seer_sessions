@@ -1,0 +1,41 @@
+task_description: "Transform a grid by relocating magenta pixels based on their relative position to blue pixels, changing their color to orange and rotating the relative position vector by -90 degrees."
+grid_properties:
+  background_color: 8 # azure
+  dimensions_preserved: true
+objects:
+  - object_type: marker
+    color: 1 # blue
+    behavior: static, acts as an anchor point for transformation
+  - object_type: indicator
+    color: 6 # magenta
+    behavior: indicates direction relative to a blue pixel, removed in output
+  - object_type: result
+    color: 7 # orange
+    behavior: appears in output at a calculated position based on blue/magenta pairs
+relationships:
+  - type: spatial_alignment
+    object1: blue (1) pixel
+    object2: magenta (6) pixel
+    details: "Each blue pixel is associated with exactly one magenta pixel located in the same row or same column."
+transformations:
+  - action: identify_pairs
+    input_objects: blue (1), magenta (6)
+    condition: "Find pairs where blue pixel at (r_b, c_b) and magenta pixel at (r_m, c_m) satisfy r_b == r_m OR c_b == c_m."
+  - action: calculate_delta
+    input_objects: paired blue (r_b, c_b), magenta (r_m, c_m)
+    output: vector (dr, dc) where dr = r_m - r_b, dc = c_m - c_b
+  - action: calculate_target_position
+    input: blue position (r_b, c_b), delta vector (dr, dc)
+    output: orange position (r_o, c_o) where r_o = r_b - dc, c_o = c_b + dr
+  - action: place_pixel
+    target_grid: output
+    position: (r_o, c_o)
+    color: 7 # orange
+    condition: "(r_o, c_o) must be within grid boundaries."
+  - action: remove_pixel
+    target_grid: output
+    position: (r_m, c_m) # position of the original magenta pixel
+    replacement_color: 8 # azure (background)
+    condition: "Magenta pixel was part of a processed pair."
+  - action: copy_unmodified
+    details: "All pixels not involved in the transformation (original blue pixels, background pixels, magenta pixels without a row/column aligned blue pixel) are copied from input to output, except for the magenta pixels which are removed."

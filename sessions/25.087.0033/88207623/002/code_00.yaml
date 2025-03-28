@@ -1,0 +1,55 @@
+task_description: Reflect shapes across axes, coloring the reflection based on the nearest source pixel.
+
+definitions:
+  - object: grid
+    description: A 2D array of pixels with colors 0-9.
+  - object: axis
+    description: A contiguous vertical line of red (2) pixels.
+  - object: shape
+    description: A contiguous group of yellow (4) pixels.
+  - object: source_pixel
+    description: A single pixel whose color is not background (0), red (2), or yellow (4).
+  - object: structure
+    description: The union of pixels forming an axis and a specific adjacent shape.
+
+interactions:
+  - action: find_axes
+    input: grid
+    output: list of axis objects (pixel coordinates)
+  - action: find_shapes_adjacent_to_axis
+    input: grid, axis
+    output: list of shape objects (pixel coordinates)
+    condition: The shape must contain at least one pixel horizontally adjacent to a pixel in the axis.
+    algorithm_hint: Use connected components (flood fill or similar) starting from yellow pixels adjacent to the axis.
+  - action: find_closest_source
+    input: grid, structure (axis + shape)
+    output: color of the source_pixel
+    condition: The source_pixel must be the one with the minimum Manhattan distance to *any* pixel within the structure. Ties are broken implicitly (or need further clarification if examples show otherwise).
+  - action: reflect_shape
+    input: shape, axis
+    output: set of reflected pixel coordinates
+    details: For each pixel (r, c_yellow) in the shape, and its adjacent axis pixel column c_axis, the reflected coordinate is (r, c_axis + (c_axis - c_yellow)).
+  - action: color_reflection
+    input: grid, reflected_coordinates, source_color
+    output: modified grid
+    condition: Only change pixels in the grid at the reflected_coordinates if the original color at that coordinate is background (0). The new color is the source_color.
+
+workflow:
+  - step: Initialize output_grid as a copy of input_grid.
+  - step: Identify all distinct vertical axes (red lines).
+  - step: For each axis:
+    - Identify all full, distinct, connected yellow shapes adjacent to this axis.
+    - For each adjacent yellow shape:
+      - Define the structure as the union of the axis pixels and the shape pixels.
+      - Find the closest source_pixel color to this structure.
+      - If a source_color is found:
+        - Calculate the reflected coordinates for all pixels in the shape across the axis.
+        - For each reflected coordinate (r_ref, c_ref):
+          - If (r_ref, c_ref) is within grid bounds AND input_grid[r_ref, c_ref] is background (0):
+            - Set output_grid[r_ref, c_ref] = source_color.
+  - step: Return output_grid.
+
+constraints:
+  - Reflection only colors background pixels; existing non-background pixels are preserved.
+  - Axes are strictly vertical.
+  - A shape is associated with an axis if it touches it horizontally.

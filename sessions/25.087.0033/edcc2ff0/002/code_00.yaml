@@ -1,0 +1,54 @@
+task_context:
+  description: Transforms a grid based on object counts below a separator line, modifying both the area above and below the separator.
+  grid_properties:
+    - height: variable (e.g., 20)
+    - width: variable (e.g., 10)
+    - colors: 0-9 palette
+
+input_structure:
+  separator:
+    - type: row
+    - property: first row fully composed of a single non-white color (S)
+    - location: divides grid into control_section (above) and data_section (separator row and below)
+  control_section:
+    - location: rows above the separator row
+    - features:
+        - key_pixels: located at column 0 of each row
+        - key_colors (K): set of non-white colors found in key_pixels
+  data_section:
+    - location: separator row and all rows below it
+    - features:
+        - contains various colored objects
+        - contains the separator color (S)
+        - may contain key colors (K)
+        - may contain other colors (O) not in K and not S
+
+transformation:
+  actions:
+    - action: copy_input_to_output
+      target: entire grid
+    - action: clean_data_section
+      target: output grid's data_section (including separator row)
+      condition: for each pixel (r, c) in data_section
+      rule: |
+        pixel_color = output_grid[r, c]
+        if pixel_color != separator_color (S) AND pixel_color is not in key_colors (K):
+          output_grid[r, c] = separator_color (S)
+    - action: process_control_section
+      target: output grid's control_section
+      condition: for each row (r) in control_section
+      rule: |
+        key_color = input_grid[r, 0]
+        if key_color is not white (0):
+          count (N) = number of distinct connected objects (8-way) of key_color in the *cleaned* data_section
+          if N > 0:
+            line_end = min(N, grid_width)
+            output_grid[r, 0:line_end] = key_color
+            output_grid[r, line_end:grid_width] = white (0)
+          else (N == 0):
+            output_grid[r, 0:grid_width] = white (0) # Set entire row to white
+        # else (key_color is white): row remains as copied from input (likely mostly white)
+
+output_structure:
+  control_section: modified with horizontal lines or cleared to white based on object counts.
+  data_section: separator row and below, matching the input data section EXCEPT where non-key, non-separator colors have been replaced by the separator color.

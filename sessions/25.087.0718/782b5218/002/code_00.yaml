@@ -1,0 +1,64 @@
+task_context:
+  description: Transforms an input grid based on the presence and arrangement of a key color (red=2) relative to other colors and grid structure.
+  key_color: 2 # Red
+  background_color: 0 # White
+
+definitions:
+  - object: grid
+    properties:
+      - height: integer
+      - width: integer
+      - pixels: 2D array of color values
+      - unique_colors: set of integers
+      - num_unique_colors: integer
+      - third_color: integer (the unique color that is not key_color or background_color, if exactly 3 unique colors exist)
+  - object: pixel
+    properties:
+      - color: integer (0-9)
+      - row: integer
+      - column: integer
+  - object: row
+    properties:
+      - index: integer
+      - pixels: list of pixel colors
+      - is_solid_key_color: boolean (true if all pixels in the row match key_color)
+  - object: column
+    properties:
+      - index: integer
+      - pixels: list of pixel colors
+      - topmost_key_pixel_row: integer (row index of the highest key_color pixel in the column, or -1 if none)
+
+transformation_rules:
+  - rule: Solid Row Separation
+    priority: 1
+    conditions:
+      - A row `is_solid_key_color` is true.
+      - `num_unique_colors` is 3.
+    actions:
+      - Create an output grid of the same dimensions.
+      - For rows above the solid key color row, fill with `background_color`.
+      - For the solid key color row, fill with `key_color`.
+      - For rows below the solid key color row, fill with `third_color`.
+  - rule: Fixed Diagonal Pattern Generation
+    priority: 2
+    conditions:
+      - Rule 1 conditions are false.
+      - `num_unique_colors` is 3.
+      - All pixels with `color == key_color` in the input grid satisfy the condition `row == column + 1` or `row == column + 2`.
+    actions:
+      - Create an output grid of the same dimensions.
+      - For each pixel(row, column):
+        - If `row == column + 1` or `row == column + 2`, set color to `key_color`.
+        - Else if `row > column + 2`, set color to `third_color`.
+        - Else (`row < column + 1`), set color to `background_color`.
+  - rule: Column Filter
+    priority: 3 (Default)
+    conditions:
+      - Rule 1 conditions are false.
+      - Rule 2 conditions are false.
+    actions:
+      - Create an output grid by copying the input grid.
+      - For each column in the output grid:
+        - Find the `topmost_key_pixel_row` for that column in the input grid.
+        - If `topmost_key_pixel_row` is not -1:
+          - For each row above `topmost_key_pixel_row` in that column, set the pixel color to `background_color`.

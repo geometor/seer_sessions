@@ -1,0 +1,69 @@
+task_description: Overwrite a specific white rectangular area with a pattern found elsewhere in the grid, identified by matching dimensions and surrounding background color.
+
+definitions:
+  - &grid_input The input 2D array of integers (colors).
+  - &grid_output The output 2D array of integers (colors).
+  - &white_block
+    type: object
+    description: The target region to be overwritten.
+    properties:
+      color: 0 # white
+      shape: rectangle
+      solid: true
+      unique: true # Assumed to be the only solid white rectangle.
+  - &pattern_block
+    type: object
+    description: The source region containing the pattern to be copied.
+    properties:
+      shape: rectangle
+      solid: false # Typically contains multiple colors.
+      contains_white: false
+      unique: true # Assumed to be the only block matching all criteria.
+  - &border_color
+    type: property
+    description: >
+      The single color of the pixels immediately adjacent to the outer border
+      of both the white_block and the pattern_block. This color is not white.
+
+grid_elements:
+  - <<: *white_block
+    location: A specific bounding box (row, col, height, width) within grid_input.
+    role: Target area for the copy operation.
+  - <<: *pattern_block
+    location: A specific bounding box (row, col, height, width) within grid_input, different from white_block location.
+    role: Source area for the copy operation.
+    relationship:
+      - type: size_match
+        target: *white_block
+        details: Has the exact same height and width as the white_block.
+      - type: border_match
+        target: *white_block
+        details: Is surrounded by the same border_color as the white_block.
+
+actions:
+  - name: identify_white_block
+    description: Locate the unique solid white rectangular block in the grid_input. Determine its bounding box (wr, wc, h, w).
+  - name: identify_border_color
+    description: >
+      Examine the pixels immediately adjacent to the bounding box of the white_block.
+      Verify they all share the same single color, C_border. C_border must not be white (0).
+  - name: find_pattern_block
+    description: >
+      Iterate through all possible top-left coordinates (pr, pc) in the grid_input.
+      For each, consider the h x w rectangle starting at (pr, pc).
+      Select the rectangle that satisfies ALL of the following:
+      1. Is not the white_block (i.e., (pr, pc) != (wr, wc)).
+      2. Contains no white (0) pixels within its h x w area.
+      3. Is fully surrounded by pixels of color C_border (identified in the previous step).
+      Assume exactly one such rectangle exists. This is the pattern_block. Record its location (pr, pc).
+  - name: perform_copy
+    description: >
+      Create the grid_output by copying the grid_input.
+      Extract the h x w pixel data from the pattern_block at location (pr, pc).
+      Overwrite the h x w area in the grid_output starting at location (wr, wc) with the extracted pattern data.
+
+assumptions:
+  - There is exactly one solid white rectangular block.
+  - The white block is surrounded by pixels of a single, non-white color.
+  - There is exactly one other block in the grid that matches the white block's dimensions, contains no white pixels, and is surrounded by the same border color.
+  - The border surrounding both blocks is at least one pixel thick where applicable (i.e., the blocks are not touching the grid edges everywhere).

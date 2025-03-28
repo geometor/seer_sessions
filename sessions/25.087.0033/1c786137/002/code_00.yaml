@@ -1,0 +1,44 @@
+task_description: Extract the content located strictly inside a rectangular frame.
+
+definitions:
+  grid: A 2D array of pixels with integer values representing colors (0-9).
+  background_color: white (0).
+  frame_color: A single non-white color C that forms a rectangular border.
+  frame_object: The set of all pixels with the frame_color C.
+  frame_bounding_box: The minimal bounding box enclosing all pixels of the frame_object. Coordinates (min_r, min_c, max_r, max_c).
+  content_object: The subgrid located strictly inside the frame_bounding_box.
+
+actions:
+  1. identify_potential_frame_colors: Find all unique non-white colors present in the input grid.
+  2. for_each potential_frame_color C:
+     a. find_pixels: Locate all pixels with color C.
+     b. calculate_bounding_box: Determine the minimum bounding box (min_r, min_c, max_r, max_c) enclosing these pixels.
+     c. verify_frame_perimeter: Check if all pixels on the perimeter of the bounding box (within the grid dimensions) have color C.
+     d. if verified: This color C defines the frame. Store its bounding box. Assume only one such frame exists per grid. *Correction: Select the frame that encloses the largest area if multiple candidates exist, or perhaps the outermost one.* Let's assume the unique outermost frame for now.
+  3. if frame_bounding_box found:
+     a. calculate_content_coordinates: Content starts at (min_r + 1, min_c + 1) and ends at (max_r - 1, max_c - 1).
+     b. extract_content: Slice the input grid using these coordinates: `input_grid[min_r + 1 : max_r, min_c + 1 : max_c]`.
+     c. handle_empty_content: If `max_r <= min_r + 1` or `max_c <= min_c + 1`, the content is empty. Return an empty grid.
+  4. else (no frame found): Return an empty grid. # Or handle based on specific task rules if no frame is found.
+
+examples_analysis:
+  - example_id: Train 1
+    frame_color: blue (1)
+    frame_bounding_box: (1, 1, 6, 6)
+    content_slice: input[2:6, 2:6]
+    output_matches: Yes
+  - example_id: Train 2
+    frame_color: red (2)
+    frame_bounding_box: (0, 0, 4, 4)
+    content_slice: input[1:4, 1:4]
+    output_matches: Yes
+  - example_id: Train 3
+    frame_color: yellow (4)
+    frame_bounding_box: (1, 1, 3, 4)
+    content_slice: input[2:3, 2:4] # Predicted output [[0, 0]]
+    output_matches: No # Actual output is [[0, 0], [4, 4]]
+    discrepancy: Rule predicts 1x2 output, actual is 2x2. The rule fails to account for this example.
+
+uncertainties:
+  - The exact rule for identifying the frame when multiple candidates exist (e.g., nested frames). Current assumption: outermost single-color rectangular border.
+  - The correct extraction logic for Example 3. The standard "remove 1-pixel border" rule does not produce the observed output.

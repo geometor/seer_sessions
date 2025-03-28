@@ -1,0 +1,39 @@
+task_description: Move a specific 'mover' pattern based on the location of the first valid 'trigger' pixel found. Apply conditional cleanup based on trigger color.
+
+definitions:
+  - name: trigger_pixel
+    description: A pixel whose color indicates a potential transformation.
+    colors: [Red (2), Orange (7)]
+  - name: green_l_pattern
+    description: A fixed shape composed of Green (3) and Azure (8) pixels.
+    shape: [[3, 3, 3, 3], [0, 0, 8, 3], [0, 0, 0, 3]] # GGGG, ..AG, ...G
+  - name: magenta_l_pattern
+    description: A fixed shape composed of Magenta (6) and Orange (7) pixels.
+    shape: [[6, 6, 6], [6, 7, 0], [6, 0, 0]] # MMM, MO., M..
+  - name: trigger_mapping
+    description: Associates trigger colors with mover patterns and placement offsets.
+    map:
+      Red (2): { pattern: green_l_pattern, offset: (0, 2) } # (dRow, dCol) relative to trigger
+      Orange (7): { pattern: magenta_l_pattern, offset: (0, 0) }
+  - name: cleanup_colors
+    description: Colors potentially affected by cleanup.
+    colors: [Magenta (6), Maroon (9)]
+
+transformation_steps:
+  - step: 1. Identify Active Trigger and Pattern
+    action: Scan the grid top-to-bottom, left-to-right for trigger pixels (Red or Orange).
+    condition: For each trigger found, check if its corresponding mover pattern (from trigger_mapping) exists elsewhere in the grid.
+    result: The *first* trigger pixel found for which its associated pattern also exists is the 'active trigger'. Store its color, location (r_trig, c_trig), its pattern, the pattern's original location (r_orig, c_orig), and the offset (dr_off, dc_off).
+    fallback: If no such trigger/pattern pair is found, return the input grid unchanged.
+  - step: 2. Erase Original Pattern
+    action: Set all pixels belonging to the mover pattern at its original location (r_orig, c_orig) to White (0).
+  - step: 3. Draw Pattern at New Location
+    action: Calculate the new top-left corner (r_new, c_new) = (r_trig + dr_off, c_trig + dc_off).
+    action_details: Draw the mover pattern starting at (r_new, c_new).
+  - step: 4. Conditional Cleanup (if active trigger was Red)
+    condition: The active trigger's color was Red (2).
+    action: Identify all Maroon (9) pixels in the grid.
+    action_details: Find the Maroon pixel(s) with the maximum row index. Among those, find the pixel(s) with the maximum column index. Set this specific Maroon pixel (the one furthest down and right) to White (0).
+    rationale: Based on Example 1, only the single Maroon pixel at (8,9) was removed. This pixel had the highest row index (8) and highest column index (9) among all Maroon pixels.
+  - step: 5. Return Grid
+    action: Return the modified grid.

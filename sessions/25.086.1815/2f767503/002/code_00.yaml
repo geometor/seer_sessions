@@ -1,0 +1,44 @@
+task_description: Modifies yellow pixels to orange within a specific region based on the presence and relative location of a vertical gray line and a maroon pixel.
+
+definitions:
+  - object: gray_line
+    properties:
+      - color: 5 (gray)
+      - shape: Must be a single contiguous vertical line segment.
+      - location: Defined by its column index `c_gray` and the set of row indices `R_gray` it occupies.
+      - derived_properties:
+          - `r_min`: Minimum row index in `R_gray`.
+          - `r_max`: Maximum row index in `R_gray`.
+          - `height`: `r_max - r_min + 1`.
+  - object: maroon_pixel
+    properties:
+      - color: 9 (maroon)
+      - count: Assumed to be one relevant pixel per grid (based on examples).
+      - location: `(r_m, c_m)`.
+  - object: yellow_pixel
+    properties:
+      - color: 4 (yellow)
+  - object: orange_pixel
+    properties:
+      - color: 7 (orange)
+
+transformation_trigger:
+  condition: ALL MUST BE TRUE
+    - A `gray_line` (vertical, contiguous) exists.
+    - A `maroon_pixel` exists.
+    - The `maroon_pixel` is immediately to the left of the `gray_line`: `c_m == c_gray - 1`.
+    - The `maroon_pixel`'s row is within the vertical span of the `gray_line`: `r_m` is in `R_gray`.
+
+transformation_action:
+  if_triggered:
+    - Calculate a bounding box:
+        - `r_start = r_min`
+        - `r_end = r_max + (r_m - r_min + 1)`
+        - `c_start = c_gray + (c_gray - c_m + 1)`
+        - `c_end = c_gray + height * 2`  # height = r_max - r_min + 1
+    - Create a copy of the input grid.
+    - Iterate through each pixel `(r, c)` in the grid.
+    - If the pixel is `yellow_pixel` (4) AND it falls within the calculated bounding box (`r >= r_start`, `r <= r_end`, `c >= c_start`, `c <= c_end`), change its color to `orange_pixel` (7) in the copied grid.
+    - All other pixels retain their original color.
+  if_not_triggered:
+    - Return the input grid unchanged.

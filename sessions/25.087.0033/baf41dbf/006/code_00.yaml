@@ -1,0 +1,41 @@
+task_description: "Resize a green frame based on the location of external magenta markers, preserving the original content within the frame's initial area."
+
+grid_properties:
+  - size: Variable (up to 30x30)
+  - background_color: white (0)
+
+objects:
+  - type: frame
+    color: green (3)
+    definition: A connected component of green pixels. May be hollow or contain other colors.
+    properties:
+      - bounding_box: The smallest rectangle enclosing the object.
+      - main_frame: If multiple green objects exist, the one with the largest bounding box area. Ties broken by top-most, then left-most bounding box corner. (In observed examples, only one green object exists).
+  - type: marker
+    color: magenta (6)
+    definition: Single pixels of magenta color.
+    properties:
+      - location: (row, col) coordinates.
+      - classification:
+          - internal: Located within or on the border of the main_frame's initial bounding box.
+          - external: Located strictly outside the main_frame's initial bounding box.
+
+actions:
+  - 1_find_markers: Identify the coordinates of all magenta markers.
+  - 2_find_frame: Identify all connected green objects and determine the main_frame and its initial bounding box (`initial_bbox`).
+  - 3_classify_markers: Identify which magenta markers are external to `initial_bbox`.
+  - 4_calculate_new_bbox: Determine the target expansion boundaries based on external markers:
+      - target_top: Row below the lowest external marker above `initial_bbox`.
+      - target_bottom: Row above the highest external marker below `initial_bbox`.
+      - target_left: Column right of the rightmost external marker left of `initial_bbox`.
+      - target_right: Column left of the leftmost external marker right of `initial_bbox`.
+      - The final new bounding box (`new_bbox`) is the union of `initial_bbox` and the area defined by the target boundaries, clamped to grid dimensions.
+  - 5_create_output: Initialize an output grid of the same size as the input, filled with white (0).
+  - 6_copy_content: Copy the rectangular region defined by `initial_bbox` from the input grid to the output grid at the same coordinates.
+  - 7_draw_new_frame: Draw a hollow rectangle using green (3) along the perimeter defined by `new_bbox` onto the output grid.
+  - 8_draw_markers: Draw all original magenta markers (both internal and external) onto the output grid at their original coordinates.
+
+edge_cases:
+  - No green frame found: Output should contain only the magenta markers on a white background.
+  - No external markers found: The frame is not resized (`new_bbox` equals `initial_bbox`). Content is copied, frame border is redrawn (potentially changing internal green pixels to border green pixels if the original wasn't hollow), markers are drawn.
+  - Markers only on some sides: Frame expands only in the directions indicated by external markers.

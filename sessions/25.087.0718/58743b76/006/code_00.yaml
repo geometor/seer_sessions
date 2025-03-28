@@ -1,0 +1,44 @@
+---
+task_description: Recolor pixels of a specific 'source' color within a 'target area' based on their quadrant, using colors defined by a 2x2 'key'.
+
+definitions:
+  - object: Key
+    description: A 2x2 block of pixels where no color is white (0) or azure (8). It is unique in each grid.
+    properties:
+      - colors: A set of 4 colors defining the replacement palette. {TL, TR, BL, BR}.
+      - location: Top-left coordinates (row, col).
+  - object: Source Color Pixel
+    description: A pixel whose color needs to be changed.
+    properties:
+      - color: The 'Source Color'. This color is unique and is characterized by being present both in the Key's colors and elsewhere in the grid (outside the Key, excluding white and azure).
+      - location: Coordinates (row, col) outside the Key's 2x2 area.
+  - object: Target Area
+    description: The spatial region used to determine quadrants for recoloring.
+    properties:
+      - boundaries: Defined by the minimum and maximum row and column of all Source Color Pixels (outside the Key).
+      - center: The conceptual dividing lines (horizontal and vertical) used for quadrant assignment. Calculated using integer division based on the boundaries.
+        - mid_row_exclusive = min_row + height // 2
+        - mid_col_exclusive = min_col + width // 2
+  - object: Other Pixels
+    description: Pixels that are not Source Color Pixels.
+    properties:
+      - color: Remains unchanged in the output grid. Includes white(0), azure(8), pixels within the Key, and any other pixels not matching the Source Color.
+
+actions:
+  - action: Find Key
+    description: Locate the unique 2x2 block with no white or azure pixels. Extract its colors and location.
+  - action: Identify Source Color
+    description: Find the unique color present both in the Key colors and among the non-white, non-azure pixels outside the Key's location.
+  - action: Define Target Area
+    description: Determine the bounding box enclosing all Source Color Pixels found outside the Key.
+  - action: Calculate Quadrant Boundaries
+    description: Compute the row and column indices that divide the Target Area into four quadrants (Top-Left, Top-Right, Bottom-Left, Bottom-Right).
+  - action: Recolor Source Pixels
+    description: For each Source Color Pixel (outside the Key), determine its quadrant within the Target Area and change its color to the corresponding color from the Key (TL, TR, BL, BR).
+
+observations_from_failed_code:
+  - observation: The initial assumption that the target area is defined by the inner region of an azure (8) frame is incorrect. Example 2 shows azure pixels adjacent to, not surrounding, the area of transformation.
+  - verification: The `find_target_area_by_frame` function returned incorrect/invalid bounds for Example 2. The `find_source_color` function, dependent on these bounds, subsequently failed.
+  - correction: The target area definition must be based on the distribution of the Source Color pixels themselves, specifically their bounding box.
+  - verification: The revised logic (bounding box of source pixels outside key) correctly identifies the target area boundaries and quadrant splits matching the expected output for both examples. Example 1 target area (rows 2-9, cols 3-9), Example 2 target area (rows 2-11, cols 0-9). The quadrant split points also match the logic required to produce the correct output.
+---

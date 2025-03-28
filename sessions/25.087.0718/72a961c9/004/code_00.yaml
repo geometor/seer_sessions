@@ -1,0 +1,51 @@
+observations:
+  - data_structure:
+      type: grid
+      format: 2d_array
+      pixels: integer_color_codes (0-9)
+      background: white (0)
+  - input_features:
+      - single_horizontal_line:
+          description: A contiguous horizontal sequence of non-white pixels.
+          location: Varies vertically, but only one such line exists per grid.
+          content: Contains various colors, including potential trigger colors.
+      - trigger_pixels:
+          description: Specific colors within the horizontal line that initiate an action.
+          colors:
+            - red (2)
+            - azure (8)
+          location: Found at specific column indices (c) within the horizontal line row (r_line).
+  - output_features:
+      - base_grid: The output grid starts as a copy of the input grid.
+      - vertical_segments:
+          description: Columns of pixels drawn *above* the location of trigger pixels in the input line.
+          location: In the same column (c) as the trigger pixel.
+          height: Determined by the trigger pixel color.
+          colors: Determined by a specific rule involving the trigger color and blue (1).
+actions:
+  - identify:
+      target: horizontal_line
+      result: row_index (r_line)
+  - iterate:
+      target: columns (c) of the horizontal_line (r_line) in the input grid
+  - identify:
+      target: pixel_color at input[r_line, c]
+      condition: Check if the color is red (2) or azure (8).
+  - determine_height:
+      input: trigger_pixel_color
+      rules:
+        - if red (2): height (h) = 4
+        - if azure (8): height (h) = 3
+        - otherwise: h = 0 (no action)
+  - construct_vertical_segment:
+      condition: height (h) > 0
+      location: column (c) of the output grid
+      vertical_range: from row (r_line - h) up to (r_line - 1)
+      pixel_placement:
+        - topmost_pixel:
+            location: (r_line - h, c)
+            color: trigger_pixel_color (input[r_line, c])
+        - remaining_pixels:
+            location: (r, c) for r from (r_line - h + 1) to (r_line - 1)
+            color: blue (1)
+      boundary_conditions: Ensure target row indices (r) are non-negative (>= 0). Pixels outside the grid boundaries are not drawn.

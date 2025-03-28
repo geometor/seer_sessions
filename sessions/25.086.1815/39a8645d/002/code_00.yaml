@@ -1,0 +1,63 @@
+version: 1.0
+observations:
+  - task_type: grid_transformation
+  - input_output_relationship: one_to_one
+  - output_grid_properties:
+      size: constant (3x3)
+      content: derived_from_input
+  - input_grid_properties:
+      relevant_features:
+        - set_of_unique_non_white_colors
+        - count_of_unique_non_white_colors
+        - presence_of_specific_patterns:
+            - pattern_type: strict_plus_shape (center+cardinal=color, corners=white)
+            - target_color: Azure (8)
+            - context: relevant_only_when_count_is_2
+  - objects:
+      - object: color_pixel
+        properties:
+          - value: integer (0-9)
+          - non_white: value > 0
+      - object: unique_non_white_colors
+        properties:
+          - count: N
+      - object: output_grid
+        properties:
+          - size: 3x3
+          - pattern: dependent_on_N_and_input_patterns
+          - color: dependent_on_N_and_input_colors
+      - object: pattern_strict_plus
+        properties:
+          - definition: 3x3 area where center and cardinal neighbors match a specific color, and corner neighbors are white (0).
+      - object: pattern_shape_A
+        properties:
+          - definition: 3x3 pattern `[[C,0,0],[0,C,C],[C,0,0]]`
+      - object: pattern_shape_X
+        properties:
+          - definition: 3x3 pattern `[[C,0,C],[0,C,0],[C,0,C]]`
+      - object: pattern_shape_plus
+        properties:
+          - definition: 3x3 pattern `[[0,C,0],[C,C,C],[0,C,0]]`
+  - actions:
+      - action: analyze_input_grid
+        steps:
+          - identify unique non-white colors
+          - count unique non-white colors (N)
+          - if N == 3: determine maximum color value (max_C)
+          - if N == 2: check if a strict_plus_shape exists for Azure (8)
+      - action: determine_output_color (C_out)
+        rules:
+          - if N == 3: C_out = max_C
+          - if N == 2: C_out = Azure (8)
+          - otherwise: C_out = White (0) # Default/fallback
+      - action: determine_output_shape
+        rules:
+          - if N == 3: shape = pattern_shape_A
+          - if N == 2:
+              - if strict_plus_shape for Azure(8) exists in input: shape = pattern_shape_plus
+              - else: shape = pattern_shape_X
+          - otherwise: shape = all_white # Default/fallback
+      - action: construct_output_grid
+        steps:
+          - create a 3x3 grid filled with White (0)
+          - apply the determined_output_shape using the determined_output_color (C_out)

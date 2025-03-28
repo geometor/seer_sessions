@@ -1,0 +1,43 @@
+task_description: Draws a concentric square structure centered around a target pixel, with colors and size determined by the top row of the input grid.
+observations:
+  - grid_properties:
+      - Input and output grids have the same dimensions.
+      - Most of the grid is white (0) background.
+      - Row 0 contains control information (colors and size).
+      - Row 1 contains a horizontal line of gray (5) pixels, its role is unclear but might be decorative or related to other constraints not active in these examples.
+      - A single 'target' pixel exists somewhere in the grid at row index 2 or below.
+  - objects:
+      - control_info (Row 0): A sequence of non-white pixels.
+          - properties:
+              - rightmost_pixel: Defines the `frame_color` and its column index defines the `max_radius` of the structure.
+              - sequence_pixels: Pixels to the left of the rightmost pixel. Their colors define the inner layers of the structure.
+      - target_pixel: A single non-white pixel at row >= 2.
+          - properties:
+              - color: Defines the centermost color of the structure.
+              - position: Defines the center (`center_r`, `center_c`) of the structure.
+      - output_structure: A structure of concentric square layers centered at `target_pixel`.
+          - properties:
+              - center_color: `target_color`.
+              - inner_layer_colors: Unique, sorted colors from `sequence_pixels`.
+              - frame_color: Color of the rightmost pixel in Row 0.
+              - radius: Extends up to `max_radius` (Chebyshev distance from center).
+              - shape: Square layers, clipped by grid boundaries.
+  - actions:
+      - identify_parameters:
+          - Find `target_color` and `center_pos` (row >= 2).
+          - Analyze Row 0: Find `frame_color`, `max_radius` (column index), and `sequence_colors` (colors left of `frame_color`).
+      - determine_layer_colors:
+          - Create an ordered list: [`target_color`, sorted unique `sequence_colors`, `frame_color`]. Remove duplicates while preserving order. Let the number of unique colors be `num_layers`.
+      - modify_top_row (conditional):
+          - If `max_radius > 0` and the pixel `(0, max_radius - 1)` is white (0), change the pixel `(0, max_radius)` in the output to the color of the pixel below it in the input `(1, max_radius)`.
+      - draw_structure:
+          - Start with a copy of the input grid.
+          - Draw inner layers:
+              - For `r` from 0 to `num_layers - 2`:
+                  - Get color `layer_colors[r]`.
+                  - Draw a hollow square frame of this color centered at `center_pos` with radius `r`. Overwrite existing pixels.
+          - Draw frame layer(s):
+              - Get `frame_color = layer_colors[num_layers - 1]`.
+              - For `r` from `num_layers - 1` to `max_radius`:
+                  - Identify all pixels at Chebyshev distance `r` from `center_pos`.
+                  - For each such pixel within the grid boundaries: If the pixel's current color in the output grid is white (0), change it to `frame_color`. Do *not* overwrite non-white pixels.

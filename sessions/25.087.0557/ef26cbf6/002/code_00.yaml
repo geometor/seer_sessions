@@ -1,0 +1,66 @@
+version: 1.0
+description: Analysis of task based on initial code execution results.
+task_name: unnamed_task # Requires actual task ID if known
+elements:
+  - element: grid
+    properties:
+      - background_color: white (0)
+      - width: variable
+      - height: variable
+  - element: separator
+    properties:
+      - type: horizontal
+      - color: yellow (4)
+      - extent: spans full grid width
+      - location: variable rows
+      - function: divides grid into horizontal bands
+    properties:
+      - type: vertical
+      - color: yellow (4)
+      - extent: spans full grid height
+      - location: variable columns
+      - function: divides grid into vertical bands
+  - element: zone
+    properties:
+      - definition: rectangular area bounded by separators and/or grid edges
+      - content: can contain source objects, target objects, or be empty
+  - element: source_object
+    properties:
+      - definition: contiguous object of a single color
+      - color: any color except white (0), blue (1), yellow (4)
+      - location: resides within a single zone
+      - role: provides color for mapping
+  - element: target_object
+    properties:
+      - definition: contiguous object of a single color
+      - color: blue (1)
+      - location: resides within a single zone
+      - role: receives color during mapping
+actions:
+  - action: identify_zones
+    description: Locate all full horizontal and vertical yellow lines to define rectangular zones.
+  - action: identify_objects_per_zone
+    description: For each zone, find all source objects and target objects.
+  - action: map_colors
+    description: Determine pairings between source objects and target objects based on zone relationships.
+    rules:
+      - rule: intra_zone_mapping
+        condition: A zone contains exactly one source object and one or more target objects.
+        effect: The source object maps its color to all target objects in that same zone.
+      - rule: inter_zone_horizontal_mapping
+        condition: A zone Z_src at (row_band, col_band_1) contains exactly one source object S, and another zone Z_tgt at (row_band, col_band_2) in the same row_band contains one or more target objects T.
+        effect: Source S maps its color to all targets T in Z_tgt. (Priority might be needed for multiple sources/targets). Example 2 suggests mapping happens between adjacent columns within the same row band.
+      - rule: inter_zone_vertical_mapping
+        condition: A zone Z_src at (row_band_1, col_band) contains exactly one source object S, and another zone Z_tgt at (row_band_2, col_band) in the same col_band contains one or more target objects T, where row_band_1 and row_band_2 are separated by exactly one horizontal separator.
+        effect: Source S maps its color to all targets T in Z_tgt. Example 1 suggests this mapping.
+    post_conditions:
+      - Each source object participates in at most one mapping rule application.
+      - Source objects used in mapping are marked.
+      - Target objects receiving color are marked.
+  - action: apply_transformation
+    description: Modify a copy of the input grid based on the mappings.
+    steps:
+      - step: color_targets
+        effect: For each mapping from source S to target T, change the color of all pixels belonging to T to the color of S.
+      - step: clear_sources
+        effect: Change the color of all pixels belonging to mapped source objects to white (0).

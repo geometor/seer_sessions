@@ -1,0 +1,79 @@
+task: Summarize quadrant information around separator lines.
+
+elements:
+  - object: input_grid
+    properties:
+      - type: 2D array of integers (colors)
+      - size: variable (e.g., 19x19)
+  - object: output_grid
+    properties:
+      - type: 2D array of integers (colors)
+      - size: fixed 3x3
+  - object: separator_line_horizontal
+    properties:
+      - type: row in input_grid
+      - content: single color spanning full width
+      - attribute: separator_color (color of the line)
+      - attribute: row_index (R)
+  - object: separator_line_vertical
+    properties:
+      - type: column in input_grid
+      - content: single color spanning full height
+      - attribute: separator_color (must match horizontal line's color)
+      - attribute: column_index (C)
+  - object: quadrant
+    properties:
+      - count: 4 (Top-Left, Top-Right, Bottom-Left, Bottom-Right)
+      - definition: Regions of the input_grid divided by the separator lines.
+      - attribute: dominant_color (most frequent color within the quadrant, excluding the separator_color)
+
+relationships:
+  - relation: defines
+    subject: separator_line_horizontal
+    object: row_index (R)
+    details: Identifies the row dividing top and bottom quadrants.
+  - relation: defines
+    subject: separator_line_vertical
+    object: column_index (C)
+    details: Identifies the column dividing left and right quadrants.
+  - relation: defines
+    subject: [separator_line_horizontal, separator_line_vertical]
+    object: separator_color
+    details: The color shared by both lines.
+  - relation: maps_to
+    subject: separator_color
+    object: output_grid center cross (pixels (0,1), (1,0), (1,1), (1,2), (2,1))
+    details: The center cross of the output grid takes the separator_color.
+  - relation: maps_to
+    subject: dominant_color of Top-Left quadrant
+    object: output_grid pixel (0, 0)
+  - relation: maps_to
+    subject: dominant_color of Top-Right quadrant
+    object: output_grid pixel (0, 2)
+  - relation: maps_to
+    subject: dominant_color of Bottom-Left quadrant
+    object: output_grid pixel (2, 0)
+  - relation: maps_to
+    subject: dominant_color of Bottom-Right quadrant
+    object: output_grid pixel (2, 2)
+
+actions:
+  - action: find_separator_lines
+    actor: system
+    input: input_grid
+    output: [row_index (R), column_index (C), separator_color]
+    description: Locate the unique row and column composed of a single, identical color.
+  - action: identify_quadrants
+    actor: system
+    input: [input_grid, R, C]
+    output: four quadrant subgrids (TL, TR, BL, BR)
+  - action: find_dominant_color
+    actor: system
+    input: [quadrant_subgrid, separator_color]
+    output: dominant_color
+    description: Count color frequencies in the subgrid (excluding separator_color) and return the color with the highest frequency.
+  - action: construct_output
+    actor: system
+    input: [separator_color, dominant_color_TL, dominant_color_TR, dominant_color_BL, dominant_color_BR]
+    output: output_grid (3x3)
+    description: Assemble the 3x3 grid according to the defined structure.

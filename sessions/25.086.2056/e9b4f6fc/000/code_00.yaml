@@ -1,0 +1,54 @@
+task_description: Apply color transformations to the largest object based on external color pairings.
+elements:
+  - type: grid
+    role: input
+    properties:
+      - Contains a background color (White/0).
+      - Contains one largest contiguous non-background object (main_object).
+      - Contains small, scattered non-background pixel groups (scattered_elements) outside the main_object.
+      - Some scattered_elements consist of adjacent pairs of different colors.
+  - type: grid
+    role: output
+    properties:
+      - Smaller than the input grid.
+      - Dimensions match the bounding box of the input's main_object.
+      - Contains pixels derived from the main_object after color transformation.
+objects:
+  - id: main_object
+    description: The largest contiguous block of non-background pixels in the input grid.
+    properties:
+      - Has a specific frame_color.
+      - Encloses internal_pixels of various colors (can be same as frame_color).
+      - Has a bounding_box.
+  - id: scattered_elements
+    description: Small groups (1 or 2 pixels) of non-background colors outside the main_object's bounding box.
+  - id: adjacent_pairs
+    description: Pairs of non-background pixels within scattered_elements that are orthogonally adjacent.
+    properties:
+      - Each pair consists of two colors (color_A, color_B).
+      - Defines a mapping rule: color_B maps to color_A.
+relationships:
+  - type: extraction
+    source: input_grid.main_object.bounding_box
+    target: output_grid
+    description: The output grid corresponds spatially to the bounding box of the main object.
+  - type: color_mapping
+    source: adjacent_pairs
+    target: main_object_pixels
+    description: The adjacent pairs define how colors within the main object (including its frame) are transformed. If (color_A, color_B) form an adjacent pair, then color_B pixels within the main object become color_A in the output. Pixels with colors not found as color_B in any adjacent pair retain their original color.
+actions:
+  - action: find_largest_object
+    input: input_grid
+    output: main_object, bounding_box
+    description: Identify the largest contiguous non-background object and its bounding box.
+  - action: find_adjacent_pairs
+    input: input_grid, bounding_box
+    output: color_map (dictionary)
+    description: Find all orthogonally adjacent non-background pixel pairs outside the bounding_box. Create a mapping dictionary where {color_B: color_A} if color_A is adjacent to color_B.
+  - action: extract_subgrid
+    input: input_grid, bounding_box
+    output: subgrid (pixels within main_object's bounding box)
+  - action: apply_color_map
+    input: subgrid, color_map
+    output: output_grid
+    description: Create the output grid by applying the color_map to each pixel in the subgrid. If a pixel's color is a key in the color_map, change it to the corresponding value. Otherwise, keep the original color.

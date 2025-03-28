@@ -1,0 +1,52 @@
+task_context:
+  description: "Create a green 'aura' around contiguous groups (size >= 2) of red pixels."
+  grid_properties:
+    - dimensions_variable: True # Examples have different sizes
+    - colors_used_input: [white(0), red(2)]
+    - colors_used_output: [white(0), red(2), green(3)]
+
+input_elements:
+  - element_type: pixel
+    color: white(0)
+    role: background / potential_target_for_change
+  - element_type: pixel
+    color: red(2)
+    role: source_marker / potential_trigger
+
+output_elements:
+  - element_type: pixel
+    color: white(0)
+    role: background / unchanged_target
+  - element_type: pixel
+    color: red(2)
+    role: source_marker (preserved from input)
+  - element_type: pixel
+    color: green(3)
+    role: indicator / aura (marks neighborhood of 'paired' red pixels)
+
+transformation_steps:
+  - step: 1
+    action: identify_pixels
+    input: input_grid
+    condition: color == red(2)
+    result: set of all red pixel coordinates `AllReds`
+  - step: 2
+    action: filter_pixels
+    input: `AllReds`
+    condition: "For a red pixel P in `AllReds`, check its 8 neighbors. If at least one neighbor is also in `AllReds`, keep P."
+    result: set of 'paired' red pixel coordinates `PairedReds`
+  - step: 3
+    action: initialize_output_grid
+    based_on: input_grid (copy)
+  - step: 4
+    action: iterate_grid
+    target: each pixel `(r, c)` in the input grid
+    condition: "input_grid[r, c] == white(0)"
+    sub_steps:
+      - action: check_neighbors
+        target: 8 neighbors of `(r, c)`
+        condition: "any neighbor coordinate `(nr, nc)` exists in the `PairedReds` set"
+        effect_if_true: "set output_grid[r, c] = green(3)"
+  - step: 5
+    action: finalize
+    result: output_grid

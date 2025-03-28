@@ -1,0 +1,57 @@
+task_description: Transforms a grid containing a unique 3x3 pattern and scattered yellow markers.
+observations:
+  - The grid background is white (0).
+  - There is always exactly one 3x3 pattern composed solely of blue (1) and azure (8) pixels.
+  - There may be zero or more yellow (4) pixels scattered across the grid.
+  - The transformation involves two independent parts: rotating the 3x3 pattern and consolidating the yellow pixels.
+
+pattern_object:
+  description: A 3x3 subgrid composed entirely of blue (1) and azure (8) pixels.
+  properties:
+    - color_blue: 1
+    - color_azure: 8
+    - count_blue: The number of blue pixels in the pattern.
+    - count_azure: The number of azure pixels in the pattern.
+    - corner_pixels: The four pixels at the corners of the 3x3 pattern.
+    - count_corner_blue: The number of blue pixels among the corner pixels.
+    - center_pixel_coords: Coordinates (row+1, col+1) relative to the pattern's top-left (row, col).
+  actions:
+    - identify: Locate the top-left corner of the pattern.
+    - analyze: Count blue, azure, and corner blue pixels.
+    - rotate: Rotate the pattern in place based on counts.
+
+yellow_marker_object:
+  description: Pixels with color yellow (4). Can be multiple.
+  properties:
+    - color: 4
+    - coordinates: List of (row, column) pairs for each yellow pixel.
+    - median_row: Median of the row coordinates.
+    - median_col: Median of the column coordinates.
+  actions:
+    - identify: Find all yellow pixels and their coordinates.
+    - calculate_median: Compute median row and column.
+    - consolidate:
+        - Remove all existing yellow pixels (set to white 0).
+        - Calculate a target coordinate based on median values, using a custom rounding rule relative to the pattern's center.
+        - Place a single yellow pixel at the target coordinate.
+
+transformation_rules:
+  - pattern_rotation:
+      - condition: If `count_azure > count_blue`.
+        action: Rotate the 3x3 pattern 180 degrees.
+      - condition: If `count_blue > count_azure`.
+        action:
+          - If `count_corner_blue` == 4, rotate 90 degrees clockwise.
+          - If `count_corner_blue` == 3, rotate 90 degrees counter-clockwise.
+          - If `count_corner_blue` == 2, rotate 180 degrees.
+  - yellow_consolidation:
+      - condition: If one or more yellow pixels exist in the input.
+        action:
+          - Find coordinates of all yellow pixels.
+          - Calculate median row and column.
+          - Find the center coordinates of the 3x3 pattern.
+          - Calculate target row/column using custom rounding for medians ending in .5 (round towards pattern center), standard rounding otherwise.
+          - Set all original yellow pixel locations to white (0).
+          - Set the calculated target location to yellow (4).
+      - condition: If no yellow pixels exist.
+        action: No change related to yellow pixels.

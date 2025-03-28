@@ -1,0 +1,47 @@
+elements:
+  - object: MainRedObject
+    description: The largest contiguous area of red (2) pixels in the input grid. It often contains internal holes.
+    properties: [color: red, shape: variable, contains_holes: often true]
+  - object: StampObject
+    description: Smaller contiguous objects made of non-red, non-white colors, located separately from the MainRedObject.
+    properties: [color: various (non-red, non-white), shape: specific pattern, size: smaller than MainRedObject]
+  - object: WhiteHole
+    description: Contiguous areas of white (0) pixels located inside the MainRedObject's boundary, surrounded by red pixels.
+    properties: [color: white, shape: specific pattern, location: inside MainRedObject]
+  - object: Background
+    description: Pixels with color white (0) surrounding the main objects.
+    properties: [color: white]
+
+actions:
+  - action: IdentifyAndLocate
+    target: MainRedObject
+    result: Bounding box coordinates and pixel map of the MainRedObject.
+  - action: IdentifyAndLocate
+    target: StampObjects
+    result: List of StampObjects, each with its bounding box, shape (relative coordinates), and pattern (relative coordinates to color map).
+  - action: IdentifyAndLocate
+    target: WhiteHoles
+    result: List of WhiteHoles within the MainRedObject, each with its shape (relative coordinates within MainRedObject's bounding box) and location.
+  - action: MatchShapes
+    source: WhiteHole shapes
+    target: StampObject shapes
+    result: Pairing of WhiteHoles with StampObjects that have identical shapes (set of relative coordinates).
+  - action: FillHole
+    target: WhiteHole in an intermediate output grid (initially a copy of the MainRedObject)
+    using: Pattern (colors and relative positions) from the matched StampObject.
+    result: The WhiteHole area in the intermediate output grid is replaced with the StampObject's pattern.
+  - action: Crop
+    target: MainRedObject (after holes are filled)
+    using: Bounding box of the MainRedObject.
+    result: The final output grid.
+
+relationships:
+  - type: ShapeEquivalence
+    between: WhiteHole, StampObject
+    description: A WhiteHole's shape (relative pixel coordinates) must exactly match a StampObject's shape (relative pixel coordinates within its own bounding box) for a fill operation to occur.
+  - type: Containment
+    container: MainRedObject
+    contains: WhiteHoles
+  - type: PositionalCorrespondence
+    between: WhiteHole pixels, StampObject pixels
+    description: When filling a hole, the color of a pixel in the StampObject pattern is applied to the pixel at the corresponding relative position within the WhiteHole area in the output.

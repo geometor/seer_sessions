@@ -1,0 +1,57 @@
+task_description: Extract 6x6 pixel patterns associated with significant colored shapes, clean them, sort by position, and stack vertically.
+
+definitions:
+  - name: grid
+    type: 2D array of integers (colors)
+  - name: background_color
+    description: The most frequent color in the input grid, excluding gray (5) unless gray is the only significant color. Determined per input grid.
+  - name: noise_color
+    value: 5 (gray)
+    description: A color generally ignored when identifying primary shapes.
+  - name: component
+    type: A contiguous group of pixels of the same color (using 8-way adjacency), excluding background and noise colors.
+  - name: significant_component
+    criteria: A component with a size (pixel count) greater than a threshold (e.g., > 4 pixels).
+  - name: component_bounding_box
+    type: (min_row, min_col, max_row, max_col)
+    description: The smallest rectangle enclosing all pixels of a component.
+  - name: component_top_left
+    type: (min_row, min_col)
+    description: The top-left coordinate of a component's bounding box.
+  - name: raw_pattern
+    type: 6x6 subgrid
+    location: Extracted from the input grid starting at the component_top_left of a significant_component.
+    condition: The 6x6 area must fit entirely within the input grid boundaries.
+  - name: primary_color
+    description: The color of the significant_component used to define the raw_pattern.
+  - name: cleaned_pattern
+    type: 6x6 subgrid
+    derivation: Created from a raw_pattern.
+    rule: Contains only pixels matching the primary_color and the background_color. All other pixels (including noise_color and other component colors) within the 6x6 area are replaced with the background_color.
+  - name: output_grid
+    construction: Formed by vertically stacking the cleaned_patterns.
+    order: The cleaned_patterns are stacked in ascending order based on the component_top_left coordinates (first by row, then by column) of the significant_components they were derived from.
+
+observations:
+  - Background color varies between examples (Red, Green, Yellow, Azure).
+  - Gray (5) consistently acts as noise, ignored for component identification.
+  - Only 'significant' components (size > ~4) define the patterns for the output. Small components (size 1-2) are ignored.
+  - Other colors present within the 6x6 extraction area that are not the primary color or background are treated as noise during cleaning and replaced by the background color.
+  - The number of patterns in the output equals the number of significant components found.
+  - Output width is always 6 pixels.
+  - Output height is 6 times the number of significant components found.
+
+actions:
+  1. Identify the background_color.
+  2. Find all components of colors other than background_color and noise_color (5).
+  3. Filter these components to keep only significant_components (e.g., size > 4).
+  4. For each significant_component:
+     a. Determine its component_top_left coordinate (min_r, min_c).
+     b. Check if a 6x6 area starting at (min_r, min_c) fits within the input grid.
+     c. If it fits, extract the 6x6 raw_pattern.
+     d. Identify the primary_color (the color of the significant_component).
+     e. Create the cleaned_pattern by replacing pixels in raw_pattern that are not primary_color and not background_color with background_color.
+     f. Store the cleaned_pattern along with its associated component_top_left coordinate.
+  5. Sort the stored (coordinate, cleaned_pattern) pairs based on the coordinate (row, then column).
+  6. Vertically stack the sorted cleaned_patterns to create the output_grid.
+  7. If no significant components are found, output an empty grid (e.g., 0x6).

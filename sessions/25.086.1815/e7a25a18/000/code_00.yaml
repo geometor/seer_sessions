@@ -1,0 +1,53 @@
+- task_description: "Extract a pattern of specific 'content' colors from the input, scale it up by 2x2, and add a red border."
+- elements:
+    - input_grid:
+        - properties:
+            - contains_background: True
+              color: white (0)
+            - contains_frame: True
+              color: red (2)
+              shape: rectangle (hollow)
+            - contains_content_pixels: True
+              colors: [blue (1), green (3), yellow (4), gray (5), magenta (6), azure (8)] # Colors other than background and frame
+              location: inside the red frame
+    - output_grid:
+        - properties:
+            - contains_border: True
+              color: red (2)
+              thickness: 1 pixel
+            - contains_scaled_content: True
+              source: content_pixels from input
+              scale_factor: 2x2
+- relationships:
+    - relationship: "Input content pixels define the source pattern."
+      source: input_grid.content_pixels
+      target: source_pattern (intermediate)
+    - relationship: "Source pattern is scaled to form the output's inner area."
+      source: source_pattern
+      target: output_grid.scaled_content
+      transformation: scale each pixel to a 2x2 block
+    - relationship: "Output border color matches the input frame color."
+      source: input_grid.frame.color
+      target: output_grid.border.color
+    - relationship: "The minimal bounding box of input content pixels determines the source pattern."
+      source: input_grid.content_pixels
+      target: source_pattern
+      transformation: find minimal bounding box, extract subgrid
+- actions:
+    - action: find_content_pixels
+      input: input_grid
+      output: coordinates of pixels not white (0) and not red (2)
+    - action: determine_bounding_box
+      input: coordinates of content_pixels
+      output: top-left and bottom-right coordinates of the minimal bounding box
+    - action: extract_source_pattern
+      input: input_grid, bounding_box
+      output: subgrid (source_pattern)
+    - action: scale_pattern
+      input: source_pattern
+      parameter: scale_factor (2x2)
+      output: scaled_grid (inner area of output)
+    - action: add_border
+      input: scaled_grid
+      parameter: border_color (red, 2), border_thickness (1)
+      output: final output_grid

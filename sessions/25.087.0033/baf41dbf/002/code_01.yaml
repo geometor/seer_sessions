@@ -1,0 +1,55 @@
+task_description: Transforms input grids containing green frame-like objects and magenta markers into output grids with resized green frames and original markers.
+
+grid_properties:
+  - background_color: 0 (white)
+  - dimensions: variable (up to 30x30)
+
+objects:
+  - object_type: frame
+    color: 3 (green)
+    properties:
+      - represents a connected component of green pixels, often resembling a rectangle but may have internal gaps or structures.
+      - characterized by an initial bounding box (min_row, min_col, max_row, max_col).
+  - object_type: marker
+    color: 6 (magenta)
+    properties:
+      - single pixels.
+      - location relative to frames determines the transformation.
+
+transformation:
+  - action: identify_objects
+    inputs: [input_grid]
+    outputs: [green_frames (coordinates sets), magenta_markers (coordinate list)]
+  - action: calculate_initial_bboxes
+    inputs: [green_frames]
+    outputs: [initial_bboxes (list of tuples)]
+  - action: calculate_new_bboxes
+    inputs: [initial_bboxes, magenta_markers, grid_dims]
+    outputs: [new_bboxes (list of tuples)]
+    rule: |
+      For each initial_bbox (min_r, min_c, max_r, max_c):
+      Find markers strictly outside the initial_bbox.
+      Determine target boundaries based on these external markers, stopping one step short:
+        target_min_r = min(m_r + 1 for markers above initial_bbox) if any, else grid_height
+        target_max_r = max(m_r - 1 for markers below initial_bbox) if any, else -1
+        target_min_c = min(m_c + 1 for markers left of initial_bbox) if any, else grid_width
+        target_max_c = max(m_c - 1 for markers right of initial_bbox) if any, else -1
+      Calculate the new_bbox:
+        new_min_r = min(initial_min_r, target_min_r)
+        new_max_r = max(initial_max_r, target_max_r)
+        new_min_c = min(initial_min_c, target_min_c)
+        new_max_c = max(initial_max_c, target_max_c)
+  - action: create_output_grid
+    inputs: [input_grid_dims]
+    outputs: [output_grid (initialized to white)]
+  - action: draw_frames
+    inputs: [output_grid, new_bboxes]
+    outputs: [output_grid (modified)]
+    rule: For each new_bbox, draw a hollow green rectangle on the output_grid corresponding to its perimeter.
+  - action: draw_markers
+    inputs: [output_grid, magenta_markers]
+    outputs: [output_grid (modified)]
+    rule: Draw each magenta marker at its original coordinates on the output_grid.
+
+uncertainties:
+  - The exact drawing rule for Example 3's output. The expected output shows internal green lines not accounted for by a simple hollow rectangle rule. Assuming hollow rectangle for now as it fits Examples 1 & 2.

@@ -1,0 +1,77 @@
+task_description: Transforms an input grid based on the vertical position of its non-background (non-white) pixels.
+
+definitions:
+  - name: background_pixel
+    value: 0 # white
+  - name: pattern
+    description: The set of all non-background pixels in the input grid.
+  - name: pattern_present
+    description: Boolean indicating if any non-background pixels exist in the grid.
+  - name: min_r
+    description: The minimum row index containing a pattern pixel. Returns None if no pattern present.
+  - name: max_r
+    description: The maximum row index containing a pattern pixel. Returns None if no pattern present.
+  - name: touches_top_edge
+    description: Boolean, True if min_r == 0.
+
+examples:
+  - id: 1
+    input_metrics:
+      shape: [5, 5]
+      pattern_present: True
+      min_r: 3
+      max_r: 4
+      touches_top_edge: False
+      non_bg_colors: [8] # azure
+    output_metrics: # Expected & Transformed match
+      shape: [5, 5]
+      pattern_present: True
+      min_r: 0
+      max_r: 4 # Note: The original pattern pixels are now split between top and bottom
+      touches_top_edge: True
+      non_bg_colors: [8] # azure
+    transformation_applied: Yes (Flip & Move)
+
+  - id: 2
+    input_metrics:
+      shape: [11, 11]
+      pattern_present: True
+      min_r: 0
+      max_r: 10
+      touches_top_edge: True
+      non_bg_colors: [2] # red
+    expected_output_metrics:
+      shape: [11, 11]
+      pattern_present: True
+      min_r: 0
+      max_r: 10
+      touches_top_edge: True
+      non_bg_colors: [2] # red
+      # Note: Identical to input metrics
+    transformed_output_metrics: # Incorrect output from previous code
+      shape: [11, 11]
+      pattern_present: True
+      min_r: 0
+      max_r: 10
+      touches_top_edge: True
+      non_bg_colors: [2] # red
+      # Incorrect geometry due to flawed shift logic
+    transformation_applied: No (Should be no change)
+
+conditions:
+  - condition: No pattern present (grid is all background pixels)
+    action: Return the input grid unchanged.
+  - condition: Pattern is present AND touches_top_edge is True (min_r == 0)
+    action: Return the input grid unchanged.
+  - condition: Pattern is present AND touches_top_edge is False (min_r > 0)
+    action: Apply "Flip & Move" transformation.
+
+actions:
+  - name: Flip & Move
+    steps:
+      - Identify the minimum (min_r) and maximum (max_r) row indices containing pattern pixels.
+      - Calculate the height of the pattern's row span: `block_height = max_r - min_r + 1`.
+      - Extract the block of rows from the input grid spanning `min_r` to `max_r` (inclusive), covering the full width of the grid.
+      - Create a vertically flipped copy of this extracted block.
+      - Create the output grid as a copy of the input grid.
+      - Replace the top `block_height` rows of the output grid (rows 0 to `block_height - 1`) with the flipped block. Ensure not to write past the grid boundaries if the grid height is less than `block_height`.

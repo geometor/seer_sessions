@@ -1,0 +1,67 @@
+task_description: Expands a two-color framed object by two pixels and swaps colors internally.
+grid_properties:
+  background_color: 0 (white)
+  dimensions_variable: Yes (input and output grids can differ in size)
+
+input_objects:
+  - object_type: contiguous_block
+    description: A single non-white object per grid.
+    properties:
+      - structure: two_color_frame
+        frame_color: color C1 (outer layer of the object)
+        content_color: color C2 (inner part of the object)
+        frame_thickness: assumed 1 pixel based on examples
+      - shape: rectangular (or near-rectangular)
+      - size: variable, minimum 3x3 observed for distinct frame/content
+
+output_objects:
+  - object_type: contiguous_block
+    description: A single non-white object, larger than the input object.
+    derivation: derived from the input object
+    properties:
+      - structure: multi_layer
+        outer_layers_color: input frame_color (C1)
+        outer_layers_thickness: 2 pixels
+        inner_area_structure: swapped_colors
+        inner_area_origin: corresponds spatially to the input object's bounding box
+        inner_area_color_1: input content_color (C2) (where input was C1)
+        inner_area_color_2: input frame_color (C1) (where input was C2)
+      - shape: rectangular (matching expanded bounding box)
+      - size: input object size + 4 in height and width
+
+actions:
+  - action: identify_object
+    inputs: input_grid
+    outputs: input_object_bbox, frame_color (C1), content_color (C2)
+    criteria: find the bounding box of non-white pixels; identify C1 from the border, C2 from the interior.
+  - action: calculate_output_bbox
+    inputs: input_object_bbox
+    outputs: output_object_bbox
+    rule: expand input_object_bbox by 2 pixels in each direction (top, bottom, left, right).
+  - action: determine_output_grid_size
+    inputs: output_object_bbox, input_grid_size
+    outputs: output_grid_size
+    rule: ensure grid is large enough to contain output_object_bbox; can be same as input if expansion fits, otherwise larger.
+  - action: create_output_grid
+    inputs: output_grid_size, background_color
+    outputs: output_grid (initialized)
+  - action: fill_output_grid
+    inputs: output_grid, output_object_bbox, input_object_bbox, frame_color (C1), content_color (C2), input_grid
+    outputs: filled_output_grid
+    rules:
+      - For each pixel (r, c) within output_object_bbox:
+          - If (r, c) is *outside* the input_object_bbox (i.e., in the 2-pixel expansion border):
+              set output_grid[r, c] = frame_color (C1)
+          - If (r, c) is *inside* the input_object_bbox:
+              - Get original_color = input_grid[r, c]
+              - If original_color == frame_color (C1):
+                  set output_grid[r, c] = content_color (C2)
+              - Else if original_color == content_color (C2):
+                  set output_grid[r, c] = frame_color (C1)
+              - Else (e.g., background within object, unlikely based on examples):
+                  set output_grid[r, c] = background_color (0)
+      - All other pixels remain background_color (0).
+
+edge_cases:
+  - Input object smaller than 3x3: Behavior undefined by examples, but assume frame/content might be same color or follow line logic. Color swap becomes identity if C1==C2. Expansion rule should still apply.
+  - Input object touches grid boundary: Expansion might require increasing output grid size.

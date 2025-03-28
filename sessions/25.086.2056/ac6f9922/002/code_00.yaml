@@ -1,0 +1,57 @@
+facts:
+  - object: input_grid
+    description: A 2D grid of pixels representing the input state.
+    properties:
+      - dimensions: Variable height and width (within 1x1 to 30x30).
+      - pixels: Each pixel has a color value (0-9).
+      - border: Contains a border, typically 1 pixel thick and of a uniform color. The border color can be identified from edge pixels (e.g., top-left).
+      - content: May contain solid 2x2 squares of a single color, distinct from the border color.
+  - object: uniform_2x2_square
+    description: A 2x2 block of pixels within the input grid, all having the same color.
+    properties:
+      - color: The single color filling the 2x2 square. This color must not be the same as the input grid's border color.
+      - location: Defined by the row and column index of its top-left pixel within the input grid.
+  - object: output_grid
+    description: A 2D grid of pixels representing the transformed state, summarizing the detected squares.
+    properties:
+      - dimensions: Determined by the spatial distribution of the detected uniform_2x2_squares.
+          height: Equals the count of unique row coordinates of the detected squares, with a minimum value of 2.
+          width: Equals the count of unique column coordinates of the detected squares, with a minimum value of 2.
+      - background_color: Initialized with the border color identified from the input grid.
+      - content: Pixels corresponding to the relative positions of detected squares are set to the color of those squares.
+  - action: identify_border_color
+    description: Determine the border color of the input grid.
+    inputs:
+      - input_grid
+    outputs:
+      - border_color: The color value of the border pixels.
+    assumptions:
+      - Border is 1 pixel thick.
+      - Border color is uniform.
+      - Top-left pixel (0,0) represents the border color.
+  - action: find_qualifying_squares
+    description: Scan the input grid to locate all uniform_2x2_squares whose color is not the border_color.
+    inputs:
+      - input_grid
+      - border_color
+    outputs:
+      - found_squares: A list of tuples, each containing (color, row, col) for a qualifying square's top-left corner.
+  - action: map_coordinates_and_build_output
+    description: Create the output grid by mapping the found squares based on their relative positions.
+    inputs:
+      - found_squares
+      - border_color
+    outputs:
+      - output_grid
+    process:
+      - If no squares were found (`found_squares` is empty):
+          - Create a 2x2 grid filled with `border_color`.
+          - Return this grid.
+      - Extract unique row coordinates (`unique_rows`) and unique column coordinates (`unique_cols`) from `found_squares`. Sort both lists.
+      - Determine output grid dimensions: `out_h = max(2, len(unique_rows))`, `out_w = max(2, len(unique_cols))`.
+      - Create index mappings: `row_map = {row_val: index for index, row_val in enumerate(unique_rows)}`, `col_map = {col_val: index for index, col_val in enumerate(unique_cols)}`.
+      - Initialize the `output_grid` of size `out_h` x `out_w` with `border_color`.
+      - For each `(color, r, c)` in `found_squares`:
+          - Determine output coordinates: `out_r = row_map[r]`, `out_c = col_map[c]`.
+          - Set `output_grid[out_r, out_c] = color`.
+      - Return the final `output_grid`.

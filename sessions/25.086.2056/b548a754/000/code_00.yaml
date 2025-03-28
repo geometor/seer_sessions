@@ -1,0 +1,52 @@
+task_description: Extend a shape based on the position of a marker pixel.
+
+elements:
+  - role: background
+    color: white (0)
+    description: The base color of the grid.
+  - role: shape
+    color: any non-white, non-azure color (e.g., green, red, blue, magenta)
+    description: A contiguous object or pattern, often rectangular, that is the main subject of the transformation. Can contain internal patterns.
+    properties:
+      - bounding_box: Defines the min/max row and column indices.
+  - role: marker
+    color: azure (8)
+    description: A single, isolated pixel indicating the direction and extent of the transformation.
+    properties:
+      - position: Row and column index (r, c).
+      - relative_position: Position relative to the shape's bounding box (e.g., right of, below).
+
+actions:
+  - name: identify_shape_bounds
+    input: input_grid
+    output: min_row, max_row, min_col, max_col for non-white, non-azure pixels.
+  - name: identify_marker_position
+    input: input_grid
+    output: marker_row, marker_col for the azure pixel.
+  - name: determine_extension_direction
+    input: shape_bounds, marker_position
+    output: direction ('right' or 'down')
+    logic: If marker_col > max_col, direction is 'right'. If marker_row > max_row, direction is 'down'. (Based on examples, assuming only these two directions).
+  - name: determine_extension_boundary
+    input: marker_position, direction
+    output: boundary_index (target column or row)
+    logic: If direction is 'right', boundary_index is marker_col. If direction is 'down', boundary_index is marker_row.
+  - name: extract_edge_pattern
+    input: input_grid, shape_bounds, direction
+    output: edge_pixel_pattern (a row or column of pixels)
+    logic: If direction is 'right', extract the column at max_col within shape's row bounds. If direction is 'down', extract the row at max_row within shape's column bounds.
+  - name: apply_extension
+    input: input_grid, shape_bounds, direction, boundary_index, edge_pattern
+    output: output_grid
+    logic: Create a copy of the input grid. If direction is 'right', copy the edge_pattern (column) into columns from max_col + 1 to boundary_index, within the shape's original row bounds. If direction is 'down', copy the edge_pattern (row) into rows from max_row + 1 to boundary_index, within the shape's original column bounds. Set the original marker pixel position to white (0).
+
+relationships:
+  - The marker's position relative to the shape determines the extension direction.
+  - The marker's column index determines the new right boundary for rightward extension.
+  - The marker's row index determines the new bottom boundary for downward extension.
+  - The pixels on the edge of the original shape are used as the pattern for the extension.
+
+output_grid_properties:
+  - Contains the extended shape.
+  - Does not contain the azure marker pixel.
+  - Background remains white.
