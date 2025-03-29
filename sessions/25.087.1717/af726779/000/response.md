@@ -1,0 +1,47 @@
+*   **Perception:** The input grid consists primarily of a green background (3) with a single horizontal row containing a pattern of orange (7) and green (3) pixels. The output grid retains the original input grid's content but adds new horizontal patterns below the original orange row. These new patterns are copies of the orange pattern from the input row, placed two rows below the previous pattern (original or copy). The colors of these copies alternate: the first copy below the original orange row uses magenta (6) instead of orange (7), the next copy uses orange (7), the next magenta (6), and so on. The number of copies generated seems to depend on the row index of the original orange pattern in the input.
+
+*   **Facts:**
+    
+```yaml
+    task_elements:
+      - element: grid
+        properties:
+          - background_color: green (3)
+          - dimensions: variable height, fixed width (16) in examples
+      - element: pattern_row
+        properties:
+          - content: contains orange (7) pixels, potentially mixed with background green (3)
+          - uniqueness: only one such row exists in the input
+          - location: defined by its row index 'R'
+      - element: generated_copies
+        properties:
+          - pattern: identical to the orange (7) pattern in pattern_row, but using alternating colors
+          - colors: alternates between magenta (6) and orange (7), starting with magenta for the first copy
+          - placement: each copy is placed 2 rows below the previous pattern (original or preceding copy)
+          - quantity: determined by the formula '5 - R', where R is the row index of the original pattern_row (using 0-based indexing)
+          - constraint: copying stops if the calculated number of copies is reached OR if the next copy position falls outside the grid's bottom boundary
+
+    relationships:
+      - type: dependency
+        description: The number of generated copies depends directly on the row index 'R' of the original orange pattern row.
+      - type: transformation
+        description: Orange pixels (7) in the original pattern_row are mapped to either magenta (6) or orange (7) in the generated copies based on an alternating sequence.
+      - type: spatial
+        description: Generated copies maintain the same horizontal alignment as the original pattern_row but are shifted vertically downwards in steps of 2 rows.
+    ```
+
+
+*   **Natural Language Program:**
+    1.  Initialize the output grid as a copy of the input grid.
+    2.  Identify the row index `R` of the unique row in the input grid that contains at least one orange (7) pixel.
+    3.  Calculate the target number of copies to generate: `num_copies = 5 - R`. If `num_copies` is less than or equal to 0, stop.
+    4.  Set the row index for the current pattern being used as a reference for placing the next copy: `current_row = R`.
+    5.  Set the color to use for the first copy: `copy_color = magenta (6)`.
+    6.  Iterate from 1 up to `num_copies`:
+        a.  Calculate the row index for the new copy: `next_copy_row = current_row + 2`.
+        b.  Check if `next_copy_row` is a valid row index within the output grid (i.e., `next_copy_row < grid_height`). If not, stop the iteration process.
+        c.  Iterate through each column `c` of the grid:
+            i.  If the pixel at `[R, c]` in the *input* grid is orange (7), set the pixel at `[next_copy_row, c]` in the *output* grid to `copy_color`.
+        d.  Update the reference row for the next iteration: `current_row = next_copy_row`.
+        e.  Toggle the `copy_color` for the next iteration (if it was magenta (6), change it to orange (7); if it was orange (7), change it to magenta (6)).
+    7.  Return the modified output grid.

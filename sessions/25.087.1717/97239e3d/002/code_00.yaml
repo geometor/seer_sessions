@@ -1,0 +1,49 @@
+task_description: Fill rectangular regions based on marker pixels, respecting a background grid structure.
+
+grid_properties:
+  - background: Composed primarily of white (0) and azure (8) pixels.
+  - structure: Often contains horizontal and vertical lines of white (0) pixels, typically at indices that are multiples of 4 (0, 4, 8, 12, 16...). These lines visually divide the grid into cells.
+  - dimensions: Variable, up to 30x30 (e.g., 17x17 in examples).
+
+objects:
+  - type: marker_pixel
+    definition: Any pixel that is not white (0) or azure (8).
+    properties:
+      - color: The specific color value (1-7, 9).
+      - location: (row, column) coordinates.
+    grouping: Markers of the same color define a single region. Examples show 2 markers per color.
+  - type: fill_rectangle
+    definition: A rectangular area in the output grid associated with a specific marker color.
+    properties:
+      - color: Same as the associated marker pixels.
+      - boundaries: Determined by the locations of the associated marker pixels and the grid structure.
+
+actions:
+  - name: identify_markers
+    input: input_grid
+    output: dictionary mapping marker color to list of marker locations.
+  - name: define_initial_bounding_box
+    input: list of marker locations for a single color
+    output: min_row, max_row, min_col, max_col coordinates enclosing all markers of that color.
+  - name: expand_bounding_box
+    input: initial_bounding_box (min_r, max_r, min_c, max_c), grid dimensions, white line locations (optional, might infer structure)
+    output: final_fill_rectangle (final_min_r, final_max_r, final_min_c, final_max_c)
+    logic: Expand the initial bounding box outwards (up, down, left, right) to the nearest white grid lines (or grid edges if no white line exists beyond the box). If a marker is on a white line, that line counts as the boundary. Specifically:
+      - final_min_r: The largest row index <= initial min_r that is either 0 or contains a full row of white pixels.
+      - final_max_r: The smallest row index >= initial max_r that is either the last row or contains a full row of white pixels.
+      - final_min_c: The largest col index <= initial min_c that is either 0 or contains a full col of white pixels.
+      - final_max_c: The smallest col index >= initial max_c that is either the last col or contains a full col of white pixels.
+      *Refinement*: The definition of "white grid line" might be simplified. It seems to align with indices 0, 4, 8, 12, 16... The expansion goes to the boundary indices enclosing the marker box from this set {0, 4, 8, 12, 16, ..., grid_dim-1}. Example 1 Blue (rows 13-16) expands to 12-16. Example 3 Orange (rows 0-3) expands to 0-4. Example 3 Green (cols 1-11) expands to 0-12. This seems more robust than checking for actual white lines.
+  - name: fill_rectangle
+    input: output_grid (initially copy of input_grid), final_fill_rectangle, marker_color
+    output: modified output_grid
+    logic: Iterate through all pixels (r, c) within the final_fill_rectangle. If the pixel at input_grid[r, c] is white (0), set output_grid[r, c] to the marker_color. Otherwise, leave output_grid[r, c] unchanged.
+
+process_flow:
+  - Initialize output_grid as a copy of input_grid.
+  - Identify all marker pixels and group them by color.
+  - For each marker color group:
+    - Define the initial bounding box based on marker locations.
+    - Expand the bounding box to determine the final fill rectangle boundaries, likely aligning with indices {0, 4, 8, ...}.
+    - Fill the white pixels within the final fill rectangle in the output_grid with the marker color.
+  - Return the final output_grid.

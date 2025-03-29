@@ -1,0 +1,45 @@
+task_type: object_transformation
+objects:
+  - name: shape
+    description: A contiguous area of pixels of the same non-white color (primary_color). Must contain exactly one pixel of a different non-white color (marker_pixel).
+    properties:
+      primary_color: The most frequent non-white color in the contiguous component.
+      marker_pixel:
+        coordinate: (row, col)
+        color: A non-white color different from the primary_color.
+      border_pixels: Pixels of the primary_color adjacent (4-directionally) to pixels outside the shape component or the grid boundary.
+      interior_pixels: Pixels of the primary_color that are not border_pixels.
+      all_pixels: Set of all coordinates belonging to the connected component.
+actions:
+  - name: identify_shapes
+    description: Find all connected components of non-white pixels in the input grid.
+  - name: filter_shapes
+    description: Select only those shapes that have a single marker_pixel. Shapes not meeting this criterion remain unchanged.
+  - name: process_filtered_shapes
+    description: Apply transformations to the selected shapes.
+    sub_actions:
+      - name: preserve_border
+        description: Keep the border_pixels of the shape unchanged (retain their primary_color).
+      - name: generate_hollow_diamond
+        description: Create a hollow diamond pattern centered at the marker_pixel's coordinate.
+        details:
+          - The pattern uses the marker_pixel's color.
+          - It expands outwards layer by layer based on Manhattan distance (d=1, 2, 3...).
+          - A layer consists of all pixels exactly at the current Manhattan distance `d` from the marker_pixel's coordinate.
+          - Only pixels belonging to the shape's original interior_pixels set can be colored by the diamond pattern.
+          - The expansion stops when a layer contains no pixels that overlap with the shape's original interior_pixels.
+          - The final pattern consists of all pixels successfully colored during the expansion.
+      - name: clear_interior
+        description: Set the color of pixels within the shape's original interior_pixels that are *not* part of the generated hollow diamond pattern to white (0).
+      - name: clear_marker
+        description: Set the color of the original marker_pixel's coordinate to white (0).
+input_output_relation:
+  - For each shape identified and filtered:
+      1. Copy the input grid to the output grid.
+      2. Identify the shape's components (border, interior, marker).
+      3. Generate the hollow diamond pattern using the marker color, coloring only original interior pixels.
+      4. Update the output grid with the diamond pattern pixels.
+      5. Update the output grid by setting non-diamond interior pixels to white (0).
+      6. Update the output grid by setting the original marker pixel location to white (0).
+      7. Border pixels are implicitly preserved as they were copied and not modified.
+  - Pixels not part of any identified and filtered shape remain unchanged.

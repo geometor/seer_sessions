@@ -1,0 +1,68 @@
+task_description: Move gray objects from inside a red frame to the outside, reflecting them based on proximity to the frame's inner boundary.
+
+definitions:
+  - object: Frame
+    color: 2 (Red)
+    shape: Typically a hollow rectangle, 1 pixel thick. Assumed to be the largest red object or the one enclosing others.
+    properties: Defines an inner area and an outer area. Remains unchanged in the output.
+  - object: Content
+    color: 5 (Gray)
+    properties: Can be any shape. Initially located within the inner area defined by the Frame.
+    status: Moved and transformed.
+
+transformations:
+  - action: Identify
+    actor: System
+    target: Frame object
+    details: Find the coordinates and bounding box (min_r, max_r, min_c, max_c) of the single Frame object.
+  - action: Identify
+    actor: System
+    target: Content objects
+    details: Find all Gray objects.
+  - action: Filter
+    actor: System
+    input: Content objects
+    output: Internal Content objects
+    condition: All pixels (r, c) of a Content object must satisfy `frame_bbox['min_r'] < r < frame_bbox['max_r']` AND `frame_bbox['min_c'] < c < frame_bbox['max_c']`.
+  - action: Erase
+    actor: System
+    target: Internal Content objects
+    details: Set the original pixels of Internal Content objects in the input grid to background color 0 (White).
+  - for_each: Internal Content object
+    actions:
+      - action: Calculate Distance
+        actor: System
+        target: Current Internal Content object
+        reference: Frame object's inner boundaries
+        details: |
+          Calculate the minimum distance from the object's bounding box edges to the corresponding inner boundary of the frame:
+          dist_top = obj_bbox['min_r'] - (frame_bbox['min_r'] + 1)
+          dist_bottom = (frame_bbox['max_r'] - 1) - obj_bbox['max_r']
+          dist_left = obj_bbox['min_c'] - (frame_bbox['min_c'] + 1)
+          dist_right = (frame_bbox['max_c'] - 1) - obj_bbox['max_c']
+        output: nearest_boundary ('top', 'bottom', 'left', or 'right') based on minimum non-negative distance (>=0). Ties broken by priority (e.g., top > bottom > left > right).
+      - action: Reflect
+        actor: System
+        target: Current Internal Content object
+        details: |
+          If nearest_boundary is 'left' or 'right', reflect the object horizontally relative to its own bounding box vertical center.
+          If nearest_boundary is 'top' or 'bottom', reflect the object vertically relative to its own bounding box horizontal center.
+        output: reflected_object_pixels (relative coordinates)
+      - action: Calculate Placement
+        actor: System
+        target: Reflected object pixels
+        reference: Frame object's outer boundaries
+        details: |
+          Determine the top-left coordinate (new_top_left_r, new_top_left_c) to place the reflected object based on the nearest_boundary, ensuring a 1-pixel gap from the frame's outer edge:
+          left: new_top_left_r = obj_bbox['min_r'], new_top_left_c = frame_bbox['min_c'] - 1 - object_width
+          right: new_top_left_r = obj_bbox['min_r'], new_top_left_c = frame_bbox['max_c'] + 1 + 1 = frame_bbox['max_c'] + 2
+          top: new_top_left_r = frame_bbox['min_r'] - 1 - object_height, new_top_left_c = obj_bbox['min_c']
+          bottom: new_top_left_r = frame_bbox['max_r'] + 1 + 1 = frame_bbox['max_r'] + 2, new_top_left_c = obj_bbox['min_c']
+      - action: Draw
+        actor: System
+        target: Output grid
+        details: Place the reflected_object_pixels onto the output grid starting at the calculated (new_top_left_r, new_top_left_c).
+
+grid_properties:
+  background_color: 0 (White)
+  size_constraint: Max 30x30

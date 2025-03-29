@@ -1,0 +1,57 @@
+task_description: "Transforms a grid by moving specific single-colored pixels (Green, Magenta, Orange, Azure) along diagonal paths, leaving trails. Static objects (Red blocks) remain unchanged."
+
+definitions:
+  - &dynamic_colors
+    Green: 3
+    Magenta: 6
+    Orange: 7
+    Azure: 8
+  - &static_colors
+    Red: 2
+    White: 0 # Background
+  - &directions
+    Green: [-1, 1] # Top-Right
+    Magenta: [1, 1]  # Bottom-Right
+    Orange: [1, -1] # Bottom-Left
+    Azure: [-1, -1] # Top-Left
+
+grid_properties:
+  size: Variable height and width (up to 30x30).
+  background_color: White (0).
+
+objects:
+  - type: Dynamic Pixel
+    colors: *dynamic_colors
+    description: Single pixels of Green, Magenta, Orange, or Azure.
+    count: Can be multiple instances of each color.
+  - type: Static Object
+    colors: [2] # Red
+    shape: Often 2x2 blocks, but potentially other shapes.
+    description: Remain unchanged in the output.
+
+actions:
+  - action: Identify Locations
+    description: Find coordinates (r, c) of all dynamic pixels in the input grid.
+  - action: Determine Target Locations
+    description: Assign a target starting location for each path based on a cyclic permutation of the original dynamic pixel locations.
+    rule: "The path corresponding to the original Green pixel starts at the original Magenta pixel's location. The Magenta path starts at the Orange location. The Orange path starts at the Azure location. The Azure path starts at the Green location."
+    # Alternative phrasing based on hypothesis 2 (seems more robust):
+    # rule: "The location originally occupied by a Green pixel will become the start of the Azure path. Magenta location -> Green path start. Orange location -> Magenta path start. Azure location -> Orange path start."
+  - action: Draw Paths
+    description: For each dynamic color type, draw a path starting from its assigned target location.
+    properties:
+      - path_color: Determined by the dynamic color type (Green path is Green, etc.).
+      - path_direction: Determined by the dynamic color type (Green->TR, Magenta->BR, Orange->BL, Azure->TL). See *directions*.
+      - path_start: The target location determined by the cyclic rule. The first pixel of the path overwrites whatever was at the target location.
+      - path_trace: Extend the path one step at a time in the specified direction.
+      - path_termination: Stop drawing the path if the *next* step meets either condition:
+          1. The coordinates are outside the grid boundaries.
+          2. The cell at the *next* step's coordinates in the *original input grid* contains a non-white (non-zero) color.
+  - action: Preserve Static Objects
+    description: Ensure all non-dynamic, non-white pixels from the input grid are present in the output grid. (This is handled implicitly by starting with a copy and only overwriting with paths).
+
+# Noted Discrepancy:
+# The stopping rule (terminate path if next step hits non-zero in input) does not correctly predict
+# the short Azure path length starting from input Green@(7,4) in Example 2. The expected output
+# suggests the path stops immediately, but the input grid is clear along the expected trajectory.
+# Further investigation needed if this hypothesis fails coding.

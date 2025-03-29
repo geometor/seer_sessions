@@ -1,0 +1,35 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "**Perception**\n\n1.  **Grid Structure:** Each input and output is a grid of pixels with different colors.\n2.  **Background Color:** In each example, there's a predominant background color (blue in Ex1, azure in Ex2, yellow in Ex3).\n3.  **Key Pixel:** Each input grid contains exactly one pixel that is neither the background color nor white (color 0). This pixel seems to be the \"source\" or \"trigger\" for the transformation. Its color varies between examples (green in Ex1, red in Ex2, azure in Ex3).\n4.  **White Pixels:** There are also white pixels (color 0) present in the input grids, often forming simple shapes. These white pixels, along with the background, seem to remain unchanged in the output, *unless* overwritten by the transformation process. They don't appear to directly influence the core transformation logic.\n5.  **Transformation:** The primary transformation involves adding a pattern of pixels to the grid. The color of the added pixels is the same as the color of the \"source\" pixel identified in step 3.\n6.  **Pattern Characteristics:** The shape and relative position of the added pattern depend entirely on the *color* of the source pixel. Each source color (green, red, azure) corresponds to a unique, fixed pattern of relative coordinates.\n7.  **Pattern Application:** The pattern (defined as a set of relative row/column offsets) is applied relative to the location of the source pixel. The source pixel itself is part of the pattern (offset (0,0)). Pixels in the input grid at the target locations are overwritten with the source pixel's color.\n8.  **Boundary Conditions:** The pattern application respects the grid boundaries; only pixels within the grid dimensions are modified.\n\n**Facts**\n\n"
+          },
+          {
+            "text": "```yaml\ntask_elements:\n  - element: grid\n    attributes:\n      - background_color: most frequent color in the input grid\n      - dimensions: height and width\n  - element: source_pixel\n    description: A single pixel in the input grid whose color is neither the background color nor white (0).\n    attributes:\n      - color: identifies the type of transformation/pattern\n      - location: (row, column) coordinates, serves as the anchor point for the pattern\n  - element: pattern\n    description: A set of relative (row, column) offsets specific to the source_pixel's color.\n    attributes:\n      - color_association: Each potential source_pixel color (e.g., green, red, azure) maps to a distinct pattern.\n      - shape: The collection of offsets defines the shape of the pixels to be added/changed.\n      - origin: Includes the offset (0,0), meaning the source_pixel location is part of the pattern.\n  - element: white_pixels\n    description: Pixels with color 0.\n    attributes:\n      - role: Appear to be distractors or fixed elements, preserved unless overwritten by the pattern application.\n\ntransformation:\n  - action: identify_background_color\n    inputs: input_grid\n    outputs: background_color\n  - action: identify_source_pixel\n    inputs: input_grid, background_color\n    outputs: source_pixel (color and location)\n  - action: select_pattern\n    inputs: source_pixel_color\n    outputs: pattern (set of relative offsets)\n    details: Uses a predefined mapping {source_color -> pattern}.\n      - color_3_pattern: '{(0,0), (1,0), (1,1), (1,2), (2,-2), (2,0), (3,-3), (3,-2), (3,-1), (4,-4), (4,-2), (5,-4), (5,-3)}'\n      - color_2_pattern: '{(0,0), (1,-1), (1,1), (2,0), (2,2), (3,1), (3,3), (4,2), (4,4), (5,3), (5,5), (6,4), (6,6)}'\n      - color_8_pattern: '{(-4,0), (-4,1), (-4,3), (-4,4), (-3,0), (-3,1), (-3,3), (-3,4), (-2,2), (-1,0), (-1,1), (-1,3), (-1,4), (0,0), (0,1), (0,3), (0,4)}'\n  - action: apply_pattern\n    inputs: input_grid, source_pixel (color and location), selected_pattern\n    outputs: output_grid\n    details:\n      - Create a copy of the input grid.\n      - For each offset (dr, dc) in the pattern:\n        - Calculate target coordinates (source_row + dr, source_col + dc).\n        - If target coordinates are within grid bounds, set the pixel at that location in the copied grid to the source_pixel's color.\n\nrelationships:\n  - The output pattern's color matches the source_pixel's color.\n  - The output pattern's shape and position relative to the source_pixel depend only on the source_pixel's color.\n  - The background color helps identify the source_pixel but doesn't directly influence the pattern shape or color.\n  - White pixels are static elements unless overwritten.\n```"
+          },
+          {
+            "text": "\n\n**Natural Language Program**\n\n1.  Initialize the output grid as a copy of the input grid.\n2.  Determine the most frequent color in the input grid; this is the `background_color`.\n3.  Find the coordinates (`source_row`, `source_col`) and color (`source_color`) of the unique pixel in the input grid that is neither the `background_color` nor white (color 0).\n4.  Define the patterns associated with specific `source_color` values:\n    *   `pattern_green` = `{(0,0), (1,0), (1,1), (1,2), (2,-2), (2,0), (3,-3), (3,-2), (3,-1), (4,-4), (4,-2), (5,-4), (5,-3)}`\n    *   `pattern_red` = `{(0,0), (1,-1), (1,1), (2,0), (2,2), (3,1), (3,3), (4,2), (4,4), (5,3), (5,5), (6,4), (6,6)}`\n    *   `pattern_azure` = `{(-4,0), (-4,1), (-4,3), (-4,4), (-3,0), (-3,1), (-3,3), (-3,4), (-2,2), (-1,0), (-1,1), (-1,3), (-1,4), (0,0), (0,1), (0,3), (0,4)}`\n5.  Select the appropriate pattern based on the identified `source_color`:\n    *   If `source_color` is green (3), select `pattern_green`.\n    *   If `source_color` is red (2), select `pattern_red`.\n    *   If `source_color` is azure (8), select `pattern_azure`.\n    *   (Assume other colors, if encountered, might have their own patterns or default behavior, though only these three are shown).\n6.  Iterate through each relative offset coordinate (`dr`, `dc`) in the selected pattern.\n7.  For each offset, calculate the target grid coordinates: `target_row = source_row + dr`, `target_col = source_col + dc`.\n8.  Check if the `target_row` and `target_col` are within the valid row and column ranges of the grid.\n9.  If the target coordinates are within the grid boundaries, update the pixel at (`target_row`, `target_col`) in the output grid to be the `source_color`.\n10. Return the modified output grid."
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 3467,
+    "candidates_token_count": 6914,
+    "total_token_count": 10381,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 57.159785,
+  "retries": null
+}

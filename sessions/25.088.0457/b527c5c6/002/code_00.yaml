@@ -1,0 +1,64 @@
+task_description: Expand specific objects into adjacent empty space based on a marker pixel.
+
+components:
+  - object: marker
+    color: red (2)
+    role: Indicates which objects to expand and determines the expansion direction.
+    properties:
+      - Must have exactly one orthogonally adjacent white (0) pixel.
+      - Must be orthogonally adjacent to at least one green (3) pixel.
+  - object: shape_component
+    color: green (3)
+    role: Forms the body of the expandable object along with the marker pixel.
+    properties:
+      - Must be orthogonally connected to the marker pixel or other shape_component pixels that are part of the same object.
+  - object: expandable_object
+    definition: A contiguous group of pixels consisting of one red marker pixel and all orthogonally connected green shape_component pixels.
+  - object: empty_space
+    color: white (0)
+    role: The area into which the expandable_object expands.
+  - object: boundary / obstruction
+    color: Any non-white color (1-9) or grid edge.
+    role: Stops the expansion.
+
+actions:
+  - name: identify_objects
+    inputs: grid
+    steps:
+      - Find all red (2) pixels.
+      - For each red pixel, perform a flood fill (orthogonal neighbors) to find all connected green (3) pixels.
+      - The red pixel plus its connected green pixels form one `expandable_object`.
+  - name: determine_expansion_direction
+    inputs: red_pixel_location, grid
+    steps:
+      - Check the four orthogonal neighbors (up, down, left, right) of the red pixel.
+      - Identify the neighbor cell that contains a white (0) pixel.
+      - The direction from the red pixel to this white pixel is the `expansion_direction`.
+    output: expansion_direction (e.g., 'Up', 'Down', 'Left', 'Right')
+  - name: expand_object
+    inputs: expandable_object_pixels, expansion_direction, grid
+    steps:
+      - Create a copy of the input grid to modify.
+      - For each pixel (r, c) belonging to the `expandable_object`:
+        - Get the original color of this pixel.
+        - Determine the step vector (dr, dc) corresponding to the `expansion_direction`.
+        - Start from the cell adjacent to (r, c) in the expansion direction: (nr, nc) = (r + dr, c + dc).
+        - While the cell (nr, nc) is within the grid boundaries AND the cell at (nr, nc) in the *copied* grid is white (0):
+          - Set the color of the cell (nr, nc) in the copied grid to the original color of the pixel (r, c).
+          - Move to the next cell in the expansion direction: (nr, nc) = (nr + dr, nc + dc).
+    output: modified_grid
+
+workflow:
+  - step: Initialize an output grid as a copy of the input grid.
+  - step: Find all red (2) pixels in the input grid.
+  - step: For each red pixel found:
+      - Identify the full `expandable_object` connected to it (itself + connected green pixels). (Use `identify_objects`)
+      - Determine the `expansion_direction` based on the white neighbor of the red pixel. (Use `determine_expansion_direction`)
+      - If a direction is found:
+          - Expand the object into the output grid. (Use `expand_object` on the output grid, using the coordinates from the `expandable_object` found in the input grid)
+  - step: Return the final output grid.
+
+constraints:
+  - Expansion only fills white (0) pixels.
+  - Expansion stops at grid boundaries or non-white pixels.
+  - Each red pixel initiates one expansion process for its connected object.

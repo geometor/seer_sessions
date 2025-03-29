@@ -1,0 +1,61 @@
+task_context:
+  description: "The task involves identifying three distinct color roles based on frequency and object count, and then modifying objects based on their roles and geometric properties."
+  grid_properties:
+    - background_color: The most frequent color in the input grid.
+    - color_A: A color that forms exactly one contiguous object (using 4-way adjacency).
+    - color_B: A color that forms two or more contiguous objects (using 4-way adjacency).
+
+object_properties:
+  - type: Background
+    color: background_color
+    description: The background is generally static and serves as the default color when objects are removed.
+  - type: Object A
+    color: color_A
+    count: 1
+    description: A single contiguous object of color_A. Its fate depends on the comparison between color_A and color_B.
+  - type: Object B
+    color: color_B
+    count: Multiple (>1)
+    description: Multiple distinct contiguous objects of color_B. Some may be modified based on their geometric center.
+
+actions:
+  - name: Identify Colors
+    inputs: input_grid
+    outputs: [background_color, color_A, color_B]
+    description: Determine the background color (most frequent) and identify color_A (1 object) and color_B (>1 object).
+  - name: Identify Objects
+    inputs: [input_grid, color_A, color_B]
+    outputs: [object_A_pixels, objects_B_pixels_list]
+    description: Find the pixel coordinates for the single object of color_A and the list of pixel coordinate sets for each object of color_B.
+  - name: Modify Centers of B Objects
+    inputs: [output_grid, objects_B_pixels_list, color_A]
+    outputs: modified_output_grid
+    description: >
+      For each object in objects_B_pixels_list:
+      1. Calculate the geometric center (average row, average column).
+      2. Check if the center coordinates are integers (within floating point tolerance).
+      3. Check if the pixel at the integer center coordinates is part of the current B object.
+      4. If all conditions are met, change the color of the center pixel in the output_grid to color_A.
+  - name: Conditionally Remove A Object
+    inputs: [output_grid, object_A_pixels, color_A, color_B, background_color]
+    outputs: final_output_grid
+    condition: color_A < color_B
+    description: >
+      If color_A is numerically less than color_B, change all pixels belonging to object_A_pixels
+      in the output_grid to the background_color. Otherwise, leave the object_A pixels unchanged.
+
+transformation_flow:
+  - Initialize output_grid as a copy of input_grid.
+  - Perform "Identify Colors".
+  - Perform "Identify Objects".
+  - Perform "Modify Centers of B Objects" on output_grid.
+  - Perform "Conditionally Remove A Object" on output_grid.
+  - Return the final output_grid.
+
+assumptions:
+  - There will always be exactly one background color (most frequent).
+  - There will always be exactly one color forming a single object (color_A).
+  - There will always be exactly one color forming multiple objects (color_B).
+  - Contiguity is defined by 4-way adjacency (up, down, left, right).
+  - Geometric center calculation uses the simple average of row and column indices.
+  - Integer center check requires both row and column averages to be effectively integers.

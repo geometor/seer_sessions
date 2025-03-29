@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom scipy.ndimage import label, find_objects\n\n\"\"\"\nIdentifies all distinct contiguous objects composed of green pixels (color 3).\nFor each green object, determines if its bounding box completely contains the bounding box of any other distinct green object.\nRecolors the objects based on containment relationships:\n- If a green object's bounding box contains another green object's bounding box, the containing object is recolored blue (color 1).\n- If a green object's bounding box is contained within another green object's bounding box, the contained object is recolored magenta (color 6).\n- If a green object neither contains nor is contained by any other green object, it is recolored red (color 2).\nAll other pixels remain their original color (typically white, color 0).\n\"\"\"\n\ndef find_green_objects(grid):\n    \"\"\"\n    Finds all connected components (objects) of green pixels (3) in the grid.\n\n    Args:\n        grid (np.ndarray): The input grid.\n\n    Returns:\n        tuple: A tuple containing:\n            - labeled_array (np.ndarray): An array where each green object has a unique integer label.\n            - object_slices (list): A list of slice objects representing the bounding box of each found object.\n            - object_coords (dict): A dictionary mapping object labels (int > 0) to lists of (row, col) coordinates.\n    \"\"\"\n    green_mask = (grid == 3)\n    labeled_array, num_features = label(green_mask)\n    object_slices = find_objects(labeled_array)\n    \n    object_coords = {}\n    if num_features > 0:\n        for label_id in range(1, num_features + 1):\n            coords = np.argwhere(labeled_array == label_id)\n            object_coords[label_id] = [tuple(coord) for coord in coords]\n            \n    return labeled_array, object_slices, object_coords\n\ndef get_bounding_box(obj_slice):\n    \"\"\" Extracts min/max row/col from object slices. \"\"\"\n    min_row, max_row = obj_slice[0].start, obj_slice[0].stop\n    min_col, max_col = obj_slice[1].start, obj_slice[1].stop\n    return min_row, min_col, max_row, max_col # Note: max_row/max_col are exclusive bounds from slices\n\ndef is_contained(bbox1, bbox2):\n    \"\"\" Checks if bbox2 is strictly contained within bbox1. \"\"\"\n    min_r1, min_c1, max_r1, max_c1 = bbox1\n    min_r2, min_c2, max_r2, max_c2 = bbox2\n    return min_r1 <= min_r2 and min_c1 <= min_c2 and max_r1 >= max_r2 and max_c1 >= max_c2\n\ndef transform(input_grid):\n    \"\"\"\n    Transforms the input grid by recoloring green objects based on bounding box containment.\n\n    Args:\n        input_grid (list of lists): The input grid.\n\n    Returns:\n        list of lists: The transformed grid.\n    \"\"\"\n    input_np = np.array(input_grid, dtype=int)\n    output_grid = np.copy(input_np) # Start with a copy\n\n    # Find all green objects and their properties\n    labeled_array, object_slices, object_coords = find_green_objects(input_np)\n    num_objects = len(object_slices)\n\n    if num_objects == 0:\n        return output_grid.tolist() # No green objects, return original\n\n    # Calculate bounding boxes for all objects\n    bboxes = {}\n    for i, obj_slice in enumerate(object_slices):\n         if obj_slice is not None: # find_objects can return None for missing labels\n            label_id = i + 1 # Labels are 1-based\n            bboxes[label_id] = get_bounding_box(obj_slice)\n\n    # Determine containment relationships\n    contains_other = {label_id: False for label_id in bboxes}\n    is_contained_by_other = {label_id: False for label_id in bboxes}\n\n    object_ids = list(bboxes.keys())\n    for i in range(len(object_ids)):\n        for j in range(len(object_ids)):\n            if i == j:\n                continue # Don't compare an object to itself\n\n            label_id1 = object_ids[i]\n            label_id2 = object_ids[j]\n            bbox1 = bboxes[label_id1]\n            bbox2 = bboxes[label_id2]\n\n            if is_contained(bbox1, bbox2):\n                contains_other[label_id1] = True\n                is_contained_by_other[label_id2] = True\n\n    # Recolor objects based on containment\n    for label_id, coords in object_coords.items():\n        new_color = 0 # Default or placeholder\n        if contains_other[label_id]:\n            new_color = 1 # Blue for container\n        elif is_contained_by_other[label_id]:\n            new_color = 6 # Magenta for contained\n        else:\n            new_color = 2 # Red for standalone\n\n        # Apply the new color to the output grid\n        for r, c in coords:\n            output_grid[r, c] = new_color\n\n    return output_grid.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 3814,
+    "candidates_token_count": 1286,
+    "total_token_count": 5100,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 96.150527,
+  "retries": null
+}

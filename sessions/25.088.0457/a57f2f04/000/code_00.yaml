@@ -1,0 +1,51 @@
+task_description: Fill white areas within distinct regions using a repeating pattern derived from the colored pixels within that region.
+
+elements:
+  - element: grid
+    description: A 2D array of pixels with colors 0-9.
+  - element: background_pixel
+    value: 8 (azure)
+    property: Fills the space outside defined regions, usually the most frequent pixel value.
+  - element: region
+    description: A connected component of non-background pixels. Each region contains white pixels and pixels of exactly one other color.
+    property: Bounded by background pixels.
+  - element: pattern_color_pixel
+    description: The single non-white, non-background color within a region (e.g., blue, red, green, yellow).
+  - element: white_pixel
+    value: 0 (white)
+    description: Pixels within a region that act as the target area for filling.
+  - element: pattern_box
+    description: The minimal bounding box containing all 'pattern_color_pixels' within a region.
+    relation: Defines the spatial extent and origin of the pattern tile.
+  - element: pattern_tile
+    description: The subgrid extracted from the input corresponding to the 'pattern_box'. It contains the pattern color pixels and any white pixels within that box.
+    property: Defines the repeating unit for tiling.
+  - element: target_box
+    description: The minimal bounding box containing all non-background pixels (pattern color and white) within a region.
+    relation: Defines the area where the tiling operation occurs (specifically on the white pixels within it).
+
+actions:
+  - action: identify_regions
+    description: Find connected components of non-background pixels.
+  - action: identify_pattern_box
+    input: region
+    output: pattern_box coordinates and dimensions, pattern_color
+    description: Find the pattern color and its bounding box within the region.
+  - action: extract_pattern_tile
+    input: input_grid, pattern_box
+    output: pattern_tile (subgrid)
+    description: Get the pixel data from the input grid within the pattern box.
+  - action: identify_target_box
+    input: region
+    output: target_box coordinates and dimensions
+    description: Find the bounding box of all non-background pixels in the region.
+  - action: tile_fill
+    input: input_grid, output_grid, region, pattern_tile, pattern_box, target_box
+    output: modified_output_grid
+    description: Iterate through the white pixels within the target_box in the input grid. For each white pixel at (r, c), calculate its corresponding position within the pattern_tile using modulo arithmetic based on the pattern_box origin and dimensions. Set the output pixel output[r, c] to the color found in the pattern_tile. Non-white pixels within the target box are copied directly from input to output. Background pixels remain unchanged.
+
+relationships:
+  - relationship: tiling
+    element1: pattern_tile
+    element2: white_pixels within target_box
+    description: The pattern_tile is repeatedly used to determine the color of white pixels within the target_box based on their relative coordinates modulo the pattern_tile dimensions.

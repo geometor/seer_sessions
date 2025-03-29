@@ -1,0 +1,48 @@
+# Defines colors used in the task
+colors:
+  BACKGROUND: 0 # white
+  BLUE: 1
+  RED: 2
+
+# Describes the process
+process:
+  - Identify objects:
+      - Find all connected components (8-way adjacency) of RED pixels.
+      - Find all connected components (8-way adjacency) of BLUE pixels in the input.
+      - Create a set of all coordinates occupied by input BLUE pixels.
+  - Filter RED objects:
+      - A RED object is 'isolated' if none of its pixels are adjacent (8-way, including diagonals) to any input BLUE pixel.
+      - Separate RED objects into 'isolated' and 'non-isolated'. Non-isolated objects are ignored.
+  - Process isolated RED objects:
+      - Initialize the output grid as a copy of the input grid.
+      - Sort isolated RED objects based on their top-left bounding box corner (row, then column).
+      - Attempt to find and process pairs first, marking processed objects.
+      - Check for Vertical 1x1 Pairs:
+          - Condition: Two *unprocessed* isolated RED objects, both are single pixels (1x1), located at `(r1, c)` and `(r2, c)` where `r2 == r1 + 3`.
+          - Action: Draw two blue T-shapes.
+              - T1 below (r1, c): Horizontal bar at `(r1+1, c-1:c+1)`, stem at `(r1+2, c)`.
+              - T2 below (r2, c): Horizontal bar at `(r2+1, c-1:c+1)`, stem at `(r2+2, c)`.
+          - Mark both objects as processed.
+      - Check for Horizontal 2x2 Pairs:
+          - Condition: Two *unprocessed* isolated RED objects, both are 2x2 squares, located with top-left corners at `(r, c1)` and `(r, c2)` where `c2 > c1 + 1` (meaning the squares share the same rows `r, r+1` and there's a horizontal gap between them). Let the first square end at column `c1+1`.
+          - Action: Draw a blue structure connecting and below the pair.
+              - Connector: Rectangle from `(r, c1+2)` to `(r+1, c2-1)`.
+              - Mid-Square: 2x2 square starting at row `r+2`, horizontally positioned below the connector such that its columns are `sc` and `sc+1`, where `sc = (c1+2) + floor((c2 - (c1+1) - 2) / 2)`. Simplified: `sc = c1 + 2 + floor((c2 - c1 - 3) / 2)`. Re-simplified: `sc = (c1+2) + floor((conn_width)/2)`. (Where `conn_width = c2 - 1 - (c1+2) + 1`). Let's stick to the logic derived from example 2: `start_col = connector_start_col + floor(connector_width / 2)`. Connector starts col `c1+1+1 = c1+2`. Connector ends col `c2-1`. Width `w = (c2-1) - (c1+2) + 1 = c2 - c1 - 2`. Square start col `sc = (c1+2) + floor(w/2)`.
+              - Bottom Rectangle: Rectangle from `(r+4, c1+2)` to `(r+5, c2+1)`.
+          - Mark both objects as processed.
+      - Process Remaining Single Isolated Objects:
+          - Condition: Any isolated RED object that has not been marked as processed.
+          - Action:
+              - Get the object's bounding box `(r1, c1, r2, c2)`.
+              - If `c1 > 0`, draw a blue rectangle covering rows `r1` to `r2` and columns `0` to `c1-1`.
+
+# Input/Output relationship
+transformation:
+  - Input grid contains RED (2) and sometimes BLUE (1) objects.
+  - Output grid is the input grid plus additional BLUE (1) shapes.
+  - The presence and configuration of *isolated* RED objects determine which, if any, BLUE shapes are added.
+  - Isolation means a RED object is not adjacent (8-way) to any original BLUE pixel.
+  - Three patterns trigger blue additions:
+      1. Vertically aligned 1x1 isolated red pair -> Two blue T-shapes below.
+      2. Horizontally aligned 2x2 isolated red pair -> Blue connector/square/rectangle structure.
+      3. Single isolated red object (not part of a pair) -> Blue rectangle to its left.

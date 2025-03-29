@@ -1,0 +1,50 @@
+task_description: Transforms a grid with sparse colored pixels into a grid with colored horizontal zones defined by these pixels.
+input_features:
+  - name: grid
+    type: 2D array of integers (0-9)
+    description: Represents a grid where most pixels are white (0) and a few are colored.
+  - name: colored_pixels
+    type: list of (row, column, color) tuples
+    description: Non-white pixels in the input grid. Their row indices and colors are significant. Column indices are irrelevant for determining the transformation rule.
+  - name: unique_rows
+    type: list of (row, color) tuples
+    description: The unique rows containing colored pixels, paired with the color found in that row (first encountered if multiple). Sorted by row index. Let these be (R_1, C_1), (R_2, C_2), ..., (R_n, C_n).
+output_features:
+  - name: zoned_grid
+    type: 2D array of integers (0-9)
+    description: Grid of the same dimensions as the input, filled with colored horizontal zones and vertical borders.
+    properties:
+      - height: Same as input grid height.
+      - width: Same as input grid width.
+      - background: White (0) in the interior, away from borders and horizontal lines.
+      - horizontal_lines:
+          - location: At rows R_1, R_2, ..., R_n.
+          - color: Full width line with color C_i at row R_i.
+      - top_boundary:
+          - location: Row 0.
+          - color: Full width line with color C_1.
+      - bottom_boundary:
+          - location: Last row (height - 1).
+          - color: Full width line with color C_n.
+      - vertical_borders:
+          - location: Column 0 and last column (width - 1).
+          - segments:
+            - From row 1 to R_1 - 1: Color C_1.
+            - From row R_i + 1 to R_{i+1} - 1: Color C_i (for i = 1 to n-1).
+            - From row R_n + 1 to height - 2: Color C_n.
+transformation:
+  actions:
+    - Find all non-white pixels in the input grid.
+    - Identify the unique rows containing these pixels and associate each row with its color.
+    - Sort these unique rows R_1, ..., R_n with corresponding colors C_1, ..., C_n.
+    - Initialize an output grid of the same size with white (0).
+    - Draw horizontal lines:
+        - Draw line at row 0 with color C_1.
+        - Draw line at row R_i with color C_i for all i from 1 to n.
+        - Draw line at the last row with color C_n.
+    - Draw vertical borders (columns 0 and width-1):
+        - Fill rows 1 to R_1 - 1 with color C_1.
+        - Fill rows R_i + 1 to R_{i+1} - 1 with color C_i (for i = 1 to n-1).
+        - Fill rows R_n + 1 to height - 2 with color C_n.
+  edge_cases:
+    - If no non-white pixels are found in the input, return an all-white grid.

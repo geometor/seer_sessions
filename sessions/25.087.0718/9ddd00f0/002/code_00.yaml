@@ -1,0 +1,44 @@
+task_description: |-
+  The transformation operates on vertical blocks of columns separated by columns containing only the background color (white, 0).
+  The core operation involves the first identified content block (non-separator columns). Subsequent blocks and separators are potentially preserved.
+
+grid_properties:
+  - background_color: 0 (white)
+  - separator_column: A column containing only the background color.
+  - content_block: A contiguous sequence of one or more columns that are not separator columns.
+
+objects:
+  - object: first_content_block
+    definition: The leftmost content_block in the input grid.
+    properties:
+      - start_column: index of the first column of the block.
+      - end_column: index of the last column of the block.
+      - width: number of columns in the block.
+      - data: the pixel values within the block's columns.
+      - preceded_by_separator: boolean, true if start_column > 0 and column (start_column - 1) is a separator_column.
+      - preceding_separator_index: index of the separator column immediately before the block, if it exists.
+
+actions:
+  - action: initialize_output
+    source: input_grid
+    target: output_grid
+    effect: Create the output grid as an exact copy of the input grid.
+
+  - action: reflect_and_place
+    condition: Applies only to the first_content_block.
+    source_object: first_content_block
+    target_grid: output_grid
+    steps:
+      - step: Reflect the block's data vertically (across the horizontal midline).
+      - step: Determine placement based on preceded_by_separator:
+          - If TRUE:
+              - Calculate target_start_column = start_column - (preceding_separator_index + 1).
+              - Calculate target_end_column = target_start_column + width - 1.
+              - Ensure target columns are within grid bounds.
+          - If FALSE:
+              - target_start_column = start_column.
+              - target_end_column = end_column.
+      - step: Clear the content within the target columns (target_start_column to target_end_column) in the output_grid, setting them to the background color.
+      - step: Place the vertically reflected block data into the target columns of the output_grid.
+
+final_state: The output_grid after the reflect_and_place action has been applied to the first_content_block based on the initialization from the input_grid. All other parts of the grid remain as they were in the original input.

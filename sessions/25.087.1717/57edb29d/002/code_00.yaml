@@ -1,0 +1,59 @@
+task_description: Extract the shape of a specific object enclosed within a border based on color presence and position.
+
+definitions:
+  border_color: 4 # Yellow
+  background_color: 0 # White
+  grid_object: A connected component of pixels with the same color, not matching the border_color.
+  enclosed_object: A grid_object where every adjacent pixel (N, S, E, W) is either part of the object itself or is the border_color. Objects touching the grid boundary are not enclosed.
+  object_color: The color of the pixels composing the grid_object (assumed monochromatic for enclosed objects).
+  object_coordinates: The set of (row, col) tuples belonging to the object.
+  bounding_box: The minimal rectangle (min_row, min_col, max_row, max_col) containing all object_coordinates.
+  top_left_corner: The (min_row, min_col) of the bounding_box.
+  object_content: A minimal grid representing the object's shape, created by mapping the object's pixels onto a new grid initialized with background_color.
+
+processing_steps:
+  - step: Identify Border and Objects
+    input: input_grid
+    output: list of potential grid_objects, border_color
+    actions:
+      - Find all connected components of non-border colors.
+  - step: Filter for Enclosed Objects
+    input: list of potential grid_objects, input_grid, border_color
+    output: list of enclosed_objects_data (containing object_color, object_coordinates, bounding_box, top_left_corner)
+    actions:
+      - For each potential grid_object, check if it is enclosed using adjacency rules (neighbors must be object pixel or border_color, cannot touch grid edge).
+      - Store color, coordinates, and bounding box details for enclosed objects.
+  - step: Determine Selection Criteria
+    input: list of enclosed_objects_data
+    output: target_object_color (if applicable), target_object_position (if applicable)
+    actions:
+      - Extract the colors of all enclosed objects.
+      - Check if Blue(1) is present among the enclosed object colors.
+  - step: Select Target Object
+    input: list of enclosed_objects_data, selection_criteria
+    output: selected_object_data
+    actions:
+      - If Blue(1) is NOT present: Find the object with object_color Azure(8).
+      - If Blue(1) IS present: Find the object with the minimum top_left_corner.row, breaking ties with the minimum top_left_corner.col.
+      - Select the data (color, coordinates, bounding box) of this target object.
+  - step: Generate Output Grid
+    input: selected_object_data, background_color
+    output: output_grid
+    actions:
+      - Calculate output grid dimensions based on selected_object's bounding_box.
+      - Create an empty grid filled with background_color.
+      - Draw the selected_object onto the output grid using its coordinates and color, relative to its top_left_corner.
+
+examples_summary:
+  - example: 1
+    enclosed_colors: [1, 2, 3, 8] # Blue is present
+    top_leftmost_object: Red(2) at (1,1)
+    output: Content of Red(2) object.
+  - example: 2
+    enclosed_colors: [2, 3, 8] # Blue is absent
+    target_color: Azure(8)
+    output: Content of Azure(8) object.
+  - example: 3
+    enclosed_colors: [1, 2, 3, 8] # Blue is present
+    top_leftmost_object: Green(3) at (1,1)
+    output: Content of Green(3) object.

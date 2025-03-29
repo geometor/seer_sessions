@@ -1,0 +1,54 @@
+task_description: Extract inner colors from framed rectangles and arrange them spatially in the output grid.
+
+input_features:
+  - name: grid
+    type: 2D array of integers (colors)
+    properties:
+      - Contains a background pattern or noise.
+      - Contains prominent horizontal and/or vertical lines of a single color forming a grid or separators. This color acts as the 'frame_color'.
+      - Contains one or more solid rectangular blocks ('inner_blocks') of various colors ('inner_color').
+      - Each 'inner_block' is immediately surrounded by a 1-pixel thick border of the 'frame_color'.
+
+output_features:
+  - name: output_grid
+    type: 2D array of integers (colors)
+    properties:
+      - Dimensions are determined by the spatial arrangement of the input 'inner_blocks'.
+      - Each cell corresponds to one 'inner_block' from the input.
+      - The color of a cell is the 'inner_color' of the corresponding 'inner_block'.
+      - The position of a cell reflects the relative row/column position of the corresponding 'inner_block' in the input grid.
+
+objects:
+  - name: framed_rectangle
+    properties:
+      - inner_color: The color of the solid rectangular block inside the frame.
+      - frame_color: The color of the 1-pixel thick border surrounding the inner block. This color is consistent for all framed_rectangles within a single example and typically forms grid lines throughout the input.
+      - inner_top_left_coord: The (row, column) coordinate of the top-left pixel of the inner block.
+      - inner_shape: Rectangular and solid (all pixels same inner_color).
+      - frame_shape: 1-pixel thick border completely enclosing the inner block.
+
+actions:
+  - name: identify_frame_color
+    description: Determine the single color used for framing the rectangles. This can be inferred by finding the color that forms the most prominent grid-like lines (e.g., horizontal/vertical segments of length >= 3).
+    input: input_grid
+    output: frame_color
+
+  - name: find_framed_rectangles
+    description: Locate all instances of 'framed_rectangle' objects within the input grid using the identified 'frame_color'.
+    input: input_grid, frame_color
+    output: list of (inner_color, inner_top_left_row, inner_top_left_col) tuples
+
+  - name: determine_output_layout
+    description: >
+      Collect the unique inner_top_left_row coordinates and sort them to define the output rows.
+      Collect the unique inner_top_left_col coordinates and sort them to define the output columns.
+      Create mappings from input coordinates to output indices.
+    input: list of object coordinates
+    output: output_height, output_width, row_map, col_map
+
+  - name: construct_output_grid
+    description: >
+      Create an empty grid of the determined output dimensions (filled with white/0).
+      Place the 'inner_color' of each found 'framed_rectangle' into the output grid at the position determined by its mapped 'inner_top_left_coord'.
+    input: output_height, output_width, list of (inner_color, inner_top_left_row, inner_top_left_col), row_map, col_map
+    output: output_grid

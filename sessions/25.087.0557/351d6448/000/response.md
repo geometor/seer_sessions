@@ -1,0 +1,75 @@
+Okay, let's break down the perception, facts, and the natural language program for this task based on the provided examples.
+
+## Perception
+
+1.  **Input Structure:** The input grids are relatively large (15x13) and feature horizontal lines of gray pixels (5) that divide the grid into distinct sections or bands. Each band above a gray line (or the topmost band) seems to contain a specific colored shape or pattern placed on a single row, surrounded by the background white color (0).
+2.  **Objects & Sequence:** Within each section defined by the gray lines, there's a primary object (a sequence of red-red-green pixels in `train_1`, a sequence of blue pixels in `train_2`). These objects appear sequentially from top to bottom.
+3.  **Pattern/Progression:** There's a clear progression or pattern in the properties of these objects as we move down the sections.
+    *   In `train_1`, the `2 2 3` shape shifts one column to the right in each subsequent section.
+    *   In `train_2`, the `1 ... 1` shape increases its length by 2 pixels in each subsequent section, while maintaining its starting column.
+4.  **Output Structure:** The output grid is much smaller (3x13), having the same width as the input but only 3 rows high. It contains only *one* object.
+5.  **Transformation Logic:** The core task seems to be identifying the sequence of objects presented in the input sections, understanding the rule governing their change from one section to the next (either position or size in the examples), and then predicting/extrapolating what the *next* object in that sequence would be. This predicted "next" object is then placed in the middle row of a standard 3-row high output grid, preserving the input width. The gray lines and the original sequence objects are discarded.
+
+## Facts
+
+
+```yaml
+task_context:
+  description: Identify a sequence of objects presented in sections separated by gray lines, determine the rule governing the change between sequential objects, extrapolate the next object in the sequence, and output this single extrapolated object in a minimal 3-row grid.
+  grid_properties:
+    - background_color: 0 (white)
+    - separator_color: 5 (gray)
+    - separator_orientation: horizontal lines
+    - output_dimensions: fixed height of 3 rows, width matches input width.
+
+objects:
+  - name: primary_object
+    description: A contiguous horizontal sequence of non-background, non-separator pixels found within a single row in each section of the input grid.
+    properties:
+      - color_pattern: The sequence of colors forming the object (e.g., [2, 2, 3] or [1, 1, ...]).
+      - starting_column: The column index where the object begins.
+      - length: The number of pixels composing the object horizontally.
+      - row_index: The row where the object resides within the input.
+
+relationships:
+  - type: sequence
+    description: The primary objects form a sequence from top to bottom, corresponding to the sections separated by gray lines.
+  - type: pattern_of_change
+    description: Properties of the primary objects (e.g., starting_column, length) change predictably from one object to the next in the sequence.
+
+actions:
+  - name: identify_sections
+    inputs: [input_grid]
+    outputs: [list_of_section_boundaries]
+    description: Locate the row indices of the horizontal gray (5) lines.
+  - name: extract_objects
+    inputs: [input_grid, list_of_section_boundaries]
+    outputs: [list_of_primary_objects_with_properties]
+    description: Find the primary object within each section and record its properties (color_pattern, starting_column, length, row_index).
+  - name: determine_pattern
+    inputs: [list_of_primary_objects_with_properties]
+    outputs: [transformation_rule]
+    description: Analyze the changes in properties between consecutive objects in the list to find the rule (e.g., "increment starting_column by 1", "increment length by 2").
+  - name: extrapolate_next_object
+    inputs: [last_object_properties, transformation_rule]
+    outputs: [next_object_properties]
+    description: Apply the transformation rule to the properties of the last object in the sequence to predict the properties of the next object.
+  - name: generate_output_grid
+    inputs: [next_object_properties, input_grid_width]
+    outputs: [output_grid]
+    description: Create a 3-row grid of the same width as the input, filled with the background color (0). Place the extrapolated object (using its predicted properties) into the middle row (row index 1).
+
+final_output:
+  - source: generate_output_grid
+  - description: The 3xW grid containing only the extrapolated next object in the sequence.
+```
+
+
+## Natural Language Program
+
+1.  **Identify Separators:** Scan the input grid row by row to find all rows composed entirely of the gray color (5). Note their row indices. These define the boundaries of the sections containing objects.
+2.  **Extract Object Sequence:** For each section (the area above the first gray line, and the areas between subsequent gray lines), locate the row containing pixels that are not background (0) and not gray (5). Extract this sequence of colored pixels as the "object" for that section. Record its properties: the sequence of colors, the starting column index, and its length. Store these objects and their properties in a list, ordered from top section to bottom section.
+3.  **Determine Transformation Rule:** Analyze the list of extracted objects. Compare the properties (starting column, length, color pattern) of consecutive objects (object 1 vs object 2, object 2 vs object 3, etc.) to identify a consistent pattern of change. Determine if the starting column changes, if the length changes, or if the color pattern changes, and by how much or in what way.
+4.  **Predict Next Object:** Take the properties of the *last* object found in the input sequence. Apply the transformation rule identified in step 3 one more time to these properties to calculate the properties (starting column, length, color pattern) of the *next* object that would logically follow in the sequence.
+5.  **Construct Output:** Create a new grid with the same width as the input grid but with a height of exactly 3 rows. Fill this grid entirely with the background color (0). Using the predicted properties (starting column, length, color pattern) of the next object calculated in step 4, draw this object onto the middle row (row index 1) of the new 3-row grid.
+6.  **Return Result:** Output the constructed 3-row grid.

@@ -1,0 +1,69 @@
+task_description: "Identify contiguous shapes of a primary color containing exactly one pixel of a different 'marker' color. Transform the shape's interior by drawing an expanding hollow diamond pattern from the marker using the marker's color, clearing unused interior pixels and the marker itself to white. Preserve the shape's border and pixels outside any such shape."
+
+definitions:
+  - object: "Shape"
+    description: "A contiguous area of non-white pixels connected 4-directionally."
+    properties:
+      - primary_color: "The most frequent non-white color within the shape."
+      - marker_pixel: "A single pixel within the shape whose color is non-white and different from the primary_color."
+      - border_pixels: "Pixels of the primary_color that are adjacent (4-directionally) to a pixel outside the shape or off the grid."
+      - interior_pixels: "Pixels of the primary_color that are not border_pixels."
+      - marker_coord: "The (row, column) coordinate of the marker_pixel."
+      - marker_color: "The color of the marker_pixel."
+    criteria: "Must contain exactly one marker_pixel to be transformed."
+
+actions:
+  - action: "Identify Shapes"
+    actor: "System"
+    input: "Input Grid"
+    output: "List of identified shapes meeting criteria (having primary_color and exactly one marker_pixel)."
+    steps:
+      - "Perform BFS/DFS on non-white pixels to find connected components."
+      - "For each component, count pixel colors."
+      - "If more than one color exists, identify the primary_color (most frequent)."
+      - "Identify potential marker pixels (non-primary, non-white)."
+      - "If exactly one marker pixel exists, classify the component as a transformable Shape."
+
+  - action: "Identify Borders"
+    actor: "System"
+    input: "A transformable Shape (primary_pixels, all_shape_pixels, grid_shape)"
+    output: "Set of border_pixel coordinates."
+    steps:
+      - "Iterate through primary_pixels."
+      - "Check 4 neighbors for each primary_pixel."
+      - "If any neighbor is outside the grid or not in all_shape_pixels, mark the primary_pixel as a border_pixel."
+
+  - action: "Generate Hollow Diamond Pattern"
+    actor: "System"
+    input: "Shape (marker_coord, marker_color, interior_pixels, grid_shape)"
+    output: "Set of pattern_pixel coordinates."
+    steps:
+      - "Initialize empty set pattern_pixels."
+      - "Initialize Manhattan distance d = 1."
+      - "Loop:"
+      - "  Generate coordinates (r, c) exactly at Manhattan distance d from marker_coord."
+      - "  Filter these coordinates: keep only those within grid bounds AND present in the shape's interior_pixels set."
+      - "  If no coordinates remain after filtering, break the loop."
+      - "  Add the filtered coordinates to the pattern_pixels set."
+      - "  Increment d."
+
+  - action: "Transform Grid"
+    actor: "System"
+    input: "Input Grid, List of Shapes, Border Pixels per Shape, Pattern Pixels per Shape"
+    output: "Output Grid"
+    steps:
+      - "Create a copy of the Input Grid as the Output Grid."
+      - "For each identified Shape:"
+      - "  Get its border_pixels, interior_pixels, marker_coord, marker_color, and pattern_pixels."
+      - "  For each coordinate (r, c) in pattern_pixels:"
+      - "    Set Output Grid[r, c] = marker_color."
+      - "  Calculate unused_interior_pixels = interior_pixels - pattern_pixels."
+      - "  For each coordinate (r, c) in unused_interior_pixels:"
+      - "    Set Output Grid[r, c] = 0 (white)."
+      - "  Set Output Grid[marker_coord] = 0 (white)."
+      - "(Border pixels retain their original primary_color as they were copied initially and not modified)."
+      - "(Pixels outside any processed shape remain unchanged)."
+
+constants:
+  - connectivity: "4-directional (Von Neumann neighborhood)"
+  - background_color: "0 (white)"

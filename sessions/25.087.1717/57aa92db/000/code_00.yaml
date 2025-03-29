@@ -1,0 +1,46 @@
+task_description: Apply transformations based on adjacency rules between pairs of objects.
+
+object_types:
+  - single_pixel: A 1x1 object of a non-white color.
+  - square: An NxN solid block of a non-white color.
+  - other: Any other shape (e.g., cross, U-shape).
+
+relationships:
+  - adjacency: Objects sharing an edge or corner.
+  - edge_adjacency: Objects sharing a full edge (not just a corner).
+  - relative_position: Direction of one object relative to another (Above, Below, Left, Right).
+
+rules:
+  - rule_name: Single Pixel Expansion
+    condition:
+      - object_A is a single_pixel of color C_A.
+      - object_B is a single_pixel of color C_B.
+      - object_A and object_B are adjacent.
+    action:
+      - object_A remains unchanged in the output.
+      - object_B is replaced by a 3x3 cross shape (center + 4 orthogonal neighbors) of color C_B, centered at object_B's original location.
+    applies_to_examples: [train_2, train_3]
+
+  - rule_name: Adjacent Square Transformation
+    condition:
+      - object_X is a square of size NxN and color C_X.
+      - object_Y is a square of size NxN (same N) and color C_Y.
+      - object_X and object_Y have edge_adjacency.
+    action:
+      - Determine the relative_position of X to Y (e.g., Above, Left).
+      - Define a target area A of size (3N)x(3N), centered such that object_Y occupies the exact central NxN block of A.
+      - Fill area A with C_X.
+      - Place object_Y (color C_Y, size NxN) back into the central NxN block of A.
+      - Identify the NxN block within A that is in the opposite relative position from the center block compared to X's original position relative to Y (e.g., if X was Above Y, target the block Below Y).
+      - Fill the identified "opposite" NxN block with white (0).
+      - This pattern overwrites the corresponding region in the output grid, replacing object_X.
+    applies_to_examples: [train_1, train_3, train_4]
+
+  - rule_name: Default Copy
+    condition: An object does not participate as A, B, X, or Y in the above rules.
+    action: Copy the object unchanged from input to output.
+    applies_to_examples: [train_1, train_2, train_3, train_4]
+
+grid_properties:
+  - background_color: white (0).
+  - boundaries: Transformations must respect grid boundaries.

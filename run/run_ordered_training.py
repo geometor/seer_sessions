@@ -21,7 +21,7 @@ def run():
 
     seer = Seer(config)
 
-    seer.run(tasks[100:200])
+    seer.run(tasks[200:300], "ARCv1 EVAL sorted 200:300")
     #  seer.run(tasks)
 
 

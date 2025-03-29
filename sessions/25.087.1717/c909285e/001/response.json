@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nimport collections\n\n\"\"\"\nTransformation Rule:\n1. Identify a rectangular frame within the input grid. This frame is characterized by having all its border pixels (top row, bottom row, left column, right column) composed of a single, uniform color. This framing color is unique for each task example (e.g., red, green, magenta). Common background colors like white (0) are typically not the frame color.\n2. Determine the coordinates (top row, left column, bottom row, right column) of this identified frame.\n3. Extract the subgrid enclosed by and including the frame from the input grid.\n4. The extracted subgrid is the output grid.\n\"\"\"\n\ndef find_frame(grid):\n    \"\"\"\n    Scans the input grid to locate a rectangular frame formed by a single color.\n\n    Args:\n        grid (np.array): The input grid.\n\n    Returns:\n        tuple: A tuple (min_r, min_c, max_r, max_c, frame_color) representing the \n               top-left and bottom-right coordinates and the color of the frame, \n               or None if no such frame is found.\n    \"\"\"\n    rows, cols = grid.shape\n    # Get unique colors present, excluding white (0) as it's unlikely to be the frame\n    # Based on examples, red(2), green(3), magenta(6) were frames. Gray(5) seems structural.\n    # Let's prioritize non-zero colors.\n    candidate_colors = sorted([c for c in np.unique(grid) if c != 0])\n\n    for color in candidate_colors:\n        # Find all coordinates where the current color appears\n        pixel_coords = np.argwhere(grid == color)\n        if len(pixel_coords) < 4:  # Need at least 4 pixels for a minimal frame\n            continue\n\n        # Determine the bounding box of these pixels\n        min_r = np.min(pixel_coords[:, 0])\n        max_r = np.max(pixel_coords[:, 0])\n        min_c = np.min(pixel_coords[:, 1])\n        max_c = np.max(pixel_coords[:, 1])\n\n        # Check if this bounding box forms a valid frame of the current color\n        is_frame = True\n\n        # Check top edge\n        if not np.all(grid[min_r, min_c:max_c+1] == color):\n            is_frame = False\n        # Check bottom edge\n        if is_frame and not np.all(grid[max_r, min_c:max_c+1] == color):\n            is_frame = False\n        # Check left edge\n        if is_frame and not np.all(grid[min_r:max_r+1, min_c] == color):\n             is_frame = False\n        # Check right edge\n        if is_frame and not np.all(grid[min_r:max_r+1, max_c] == color):\n            is_frame = False\n\n        # If all edges match the color, we found the frame\n        if is_frame:\n            # Verify that *only* frame pixels within the bounding box have the frame color\n            # (this helps distinguish from solid blocks of the same color)\n            is_solid_block = True\n            for r in range(min_r + 1, max_r):\n                for c in range(min_c + 1, max_c):\n                    if grid[r, c] != color:\n                        is_solid_block = False\n                        break\n                if not is_solid_block:\n                    break\n            \n            # A frame should not be a solid block of the frame color.\n            # (Unless the inside is 1x1 or 0xN etc., handled by edge checks)\n            if max_r > min_r + 1 and max_c > min_c + 1 and is_solid_block:\n                 continue # Skip solid blocks mistaken for frames\n\n            # We found a valid frame\n            return min_r, min_c, max_r, max_c, color\n\n    # If no frame found after checking all candidate colors\n    return None\n\ndef extract_subgrid(grid, frame_coords):\n    \"\"\"\n    Extracts the subgrid defined by the frame coordinates.\n\n    Args:\n        grid (np.array): The input grid.\n        frame_coords (tuple): (min_r, min_c, max_r, max_c) coordinates of the frame.\n\n    Returns:\n        np.array: The extracted subgrid.\n    \"\"\"\n    min_r, min_c, max_r, max_c = frame_coords\n    return grid[min_r : max_r + 1, min_c : max_c + 1]\n\ndef transform(input_grid):\n    \"\"\"\n    Identifies a single-color rectangular frame in the input grid and extracts \n    the subgrid defined by that frame.\n    \n    Args:\n        input_grid (np.array): A 2D numpy array representing the input grid.\n\n    Returns:\n        np.array: A 2D numpy array representing the output grid (the extracted subgrid).\n    \"\"\"\n    # Find the frame coordinates and color\n    frame_info = find_frame(input_grid)\n\n    if frame_info:\n        min_r, min_c, max_r, max_c, _ = frame_info\n        # Extract the subgrid based on the frame coordinates\n        output_grid = extract_subgrid(input_grid, (min_r, min_c, max_r, max_c))\n        return output_grid\n    else:\n        # Handle error case: No frame found (shouldn't happen based on examples)\n        # Returning the input grid or an empty grid might be options,\n        # but for ARC, it implies the logic is wrong. Let's return input for now.\n        print(\"Warning: No frame found in the input grid.\")\n        return input_grid # Or raise an error, or return None/empty array\n\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 6300,
+    "candidates_token_count": 1389,
+    "total_token_count": 7689,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 21.801637,
+  "retries": null
+}

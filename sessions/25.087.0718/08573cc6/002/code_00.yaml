@@ -1,0 +1,63 @@
+task_description: Draw a specific shape centered on a blue pixel, where the shape and its colors are determined by key colors in the input grid.
+input_grid:
+  properties:
+    - type: 2D array of integers (colors 0-9)
+    - size: variable (up to 30x30)
+    - background: predominantly white (0)
+  objects:
+    - object: fill_color_key
+      location: top-left corner (0, 0)
+      description: Determines the fill color of the shape to be drawn.
+    - object: outline_color_key
+      location: adjacent to fill_color_key (0, 1)
+      description: Determines the outline color of the shape to be drawn.
+    - object: anchor_pixel
+      color: blue (1)
+      count: exactly one per grid
+      location: variable within the grid
+      description: Acts as the central reference point for drawing the shape.
+output_grid:
+  properties:
+    - type: 2D array of integers (colors 0-9)
+    - size: same as input grid
+    - background: white (0)
+  objects:
+    - object: drawn_shape
+      description: A specific geometric pattern composed of two colors.
+      location: Centered relative to the position of the input anchor_pixel.
+      properties:
+        - fill_color: Determined by input fill_color_key.
+        - outline_color: Determined by input outline_color_key.
+        - structure: Defined by a fixed set of relative coordinates (offsets from the anchor_pixel) for fill and outline pixels. This structure is uniquely determined by the pair (fill_color_key, outline_color_key).
+    - object: anchor_pixel
+      color: blue (1)
+      location: Retained at its original input position.
+transformation:
+  action: identify_keys
+  inputs: input_grid
+  outputs: fill_color, outline_color
+  description: Read the colors at input_grid[0, 0] and input_grid[0, 1].
+
+  action: find_anchor
+  inputs: input_grid
+  outputs: anchor_location (row, col)
+  description: Find the coordinates of the single blue (1) pixel.
+
+  action: select_shape_pattern
+  inputs: fill_color, outline_color
+  outputs: shape_definition (set of fill relative coordinates, set of outline relative coordinates)
+  description: Use the (fill_color, outline_color) pair to look up the predefined sets of relative coordinates that define the shape's fill and outline structure. (Requires correction based on analysis).
+
+  action: draw_shape
+  inputs: anchor_location, shape_definition, fill_color, outline_color, input_grid_dimensions
+  outputs: output_grid
+  description: 
+    1. Create a new grid of the same dimensions as the input, initialized to white (0).
+    2. For each relative coordinate (dr, dc) in the shape's fill set, calculate the absolute coordinate (anchor_row + dr, anchor_col + dc). If within bounds, set the output grid pixel at this coordinate to fill_color.
+    3. For each relative coordinate (dr, dc) in the shape's outline set, calculate the absolute coordinate (anchor_row + dr, anchor_col + dc). If within bounds, set the output grid pixel at this coordinate to outline_color. (Outline overwrites fill if coordinates overlap).
+    4. Set the pixel at the original anchor_location in the output grid to blue (1).
+
+corrections_required:
+  - The initial `SHAPE_DATA` dictionary mapping (fill_color, outline_color) pairs to relative coordinate sets contained errors.
+  - Specific relative coordinates were incorrectly assigned to 'outline' instead of 'fill', or vice-versa, or were missing entirely.
+  - The analysis identified the specific corrections needed for the pairs (5, 6), (3, 2), and (5, 3) based on the training examples.

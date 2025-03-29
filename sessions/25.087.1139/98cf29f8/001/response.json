@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\n\n\"\"\"\nIdentifies two distinct non-white objects in the input grid. One object is a solid rectangle (the mask), and the other is the target object. \nThe output grid preserves the mask object entirely. The target object is clipped such that only the parts that spatially overlap with the mask object's area in the input grid are retained. Pixels of the target object outside the mask area are turned white (0).\n\"\"\"\n\ndef find_objects(grid):\n    \"\"\"\n    Finds distinct contiguous objects of non-background colors.\n    \"\"\"\n    objects = []\n    visited = np.zeros(grid.shape, dtype=bool)\n    rows, cols = grid.shape\n    \n    for r in range(rows):\n        for c in range(cols):\n            if grid[r, c] != 0 and not visited[r, c]:\n                color = grid[r, c]\n                obj_pixels = []\n                q = [(r, c)]\n                visited[r, c] = True\n                \n                while q:\n                    row, col = q.pop(0)\n                    obj_pixels.append((row, col))\n                    \n                    # Check neighbors (4-connectivity: up, down, left, right)\n                    for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n                        nr, nc = row + dr, col + dc\n                        if 0 <= nr < rows and 0 <= nc < cols and \\\n                           not visited[nr, nc] and grid[nr, nc] == color:\n                            visited[nr, nc] = True\n                            q.append((nr, nc))\n                            \n                objects.append({'color': color, 'pixels': set(obj_pixels)})\n                \n    return objects\n\ndef is_rectangle(obj_pixels_set):\n    \"\"\"\n    Checks if a set of pixels forms a solid rectangle.\n    \"\"\"\n    if not obj_pixels_set:\n        return False\n        \n    min_r = min(r for r, c in obj_pixels_set)\n    max_r = max(r for r, c in obj_pixels_set)\n    min_c = min(c for r, c in obj_pixels_set)\n    max_c = max(c for r, c in obj_pixels_set)\n    \n    expected_count = (max_r - min_r + 1) * (max_c - min_c + 1)\n    \n    if len(obj_pixels_set) != expected_count:\n        return False\n        \n    # Double check if all pixels within the bounds are present\n    for r in range(min_r, max_r + 1):\n        for c in range(min_c, max_c + 1):\n            if (r, c) not in obj_pixels_set:\n                return False # Should not happen if count matches, but good check\n                \n    return True\n\ndef transform(input_grid):\n    \"\"\"\n    Clips one object based on the spatial extent of a rectangular mask object.\n    \"\"\"\n    # Initialize output_grid as a copy of input_grid\n    output_grid = np.copy(input_grid)\n    \n    # Find all non-white objects\n    objects = find_objects(input_grid)\n    \n    # Should be exactly two objects based on examples\n    if len(objects) != 2:\n        # Handle unexpected cases or return input? For now, assume 2.\n        # Potentially raise an error or return input if assumptions fail.\n        print(f\"Warning: Expected 2 objects, found {len(objects)}. Returning input.\")\n        return input_grid \n\n    # Identify the mask (rectangle) and target objects\n    mask_obj = None\n    target_obj = None\n    \n    if is_rectangle(objects[0]['pixels']):\n        mask_obj = objects[0]\n        target_obj = objects[1]\n    elif is_rectangle(objects[1]['pixels']):\n        mask_obj = objects[1]\n        target_obj = objects[0]\n    else:\n        # Handle case where neither or both are rectangles (shouldn't happen based on examples)\n        print(\"Warning: Could not uniquely identify a single rectangular mask object. Returning input.\")\n        return input_grid\n\n    # Get the set of pixel coordinates occupied by the mask object\n    mask_pixels_coords = mask_obj['pixels']\n    \n    # Iterate through the pixels of the target object\n    for r, c in target_obj['pixels']:\n        # Check if the target pixel's location is outside the mask object's area\n        if (r, c) not in mask_pixels_coords:\n            # If outside, change the corresponding pixel in the output grid to white (0)\n            output_grid[r, c] = 0\n            \n    # Pixels of the mask object remain unchanged (already copied)\n    # Pixels of the target object overlapping the mask remain unchanged (already copied)\n    # Background pixels remain unchanged (already copied)\n\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 6888,
+    "candidates_token_count": 1165,
+    "total_token_count": 8053,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 15.456557,
+  "retries": null
+}

@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom typing import List, Tuple\n\n\"\"\"\nIdentify the vertical 'azure' (8) line and its column index (azure_col).\nIdentify 'marker rows' where the pixel at azure_col is 'blue' (1).\nFor each marker row, determine its associated 'marker color' (the color in the row other than 'blue' (1) and 'orange' (7)).\nCreate an output grid.\nIterate through each row 'r' of the output grid:\n  Find the marker row immediately above or including row 'r'. If 'r' is above the first marker row, use the first marker row's color.\n  Fill row 'r' with the marker color found.\nAfter filling all rows based on the marker colors above them:\n  Iterate through the marker rows again:\n    Overwrite the marker row in the output grid with 'blue' (1).\nFinally, adjust the azure_col in the output grid:\n  Set all pixels in azure_col to 'blue' (1).\n  Set the pixels in azure_col corresponding to the marker rows to 'azure' (8).\n\"\"\"\n\ndef find_azure_col(grid: np.ndarray) -> int:\n    \"\"\"Finds the column index containing the vertical azure (8) line.\"\"\"\n    height, width = grid.shape\n    for c in range(width):\n        if np.all(grid[:, c] != 7): # Check if column has non-orange values, likely the azure line context\n             # More robust check: find column with 8s and 1s primarily\n             counts = np.bincount(grid[:, c], minlength=10)\n             if counts[8] > 0 and counts[1] > 0:\n                 return c\n    # Fallback: Find first column containing an 8\n    for c in range(width):\n        if 8 in grid[:, c]:\n            return c\n    raise ValueError(\"Azure column (8) not found in the input grid.\")\n\ndef find_marker_rows_and_colors(grid: np.ndarray, azure_col: int) -> List[Tuple[int, int]]:\n    \"\"\"Finds marker rows (blue '1' at azure_col) and their associated dominant color.\"\"\"\n    marker_info = []\n    height = grid.shape[0]\n    for r in range(height):\n        if grid[r, azure_col] == 1:\n            marker_color = -1  # Default/error value\n            for c_val in grid[r, :]:\n                # Find the color that isn't the marker (1) or background (7)\n                if c_val != 1 and c_val != 7:\n                    marker_color = c_val\n                    break\n            if marker_color != -1:\n                 marker_info.append((r, marker_color))\n            else:\n                # Handle edge case if row only contains 1 and 7 (shouldn't happen based on examples)\n                # Let's try finding any color not 7 in the row as a fallback\n                 for c_val in grid[r, :]:\n                     if c_val != 7:\n                        marker_color = c_val\n                        break\n                 if marker_color != -1:\n                     marker_info.append((r, marker_color))\n                 else: # If truly only 7s, maybe use 0? This seems unlikely for ARC.\n                     marker_info.append((r, 0)) # Defaulting to 0 if no other color found\n\n    if not marker_info:\n        raise ValueError(\"No marker rows (blue '1' in azure column) found.\")\n\n    # Sort by row index just in case they weren't found in order\n    marker_info.sort(key=lambda item: item[0])\n    return marker_info\n\ndef transform(input_grid: List[List[int]]) -> List[List[int]]:\n    \"\"\"\n    Transforms the input grid based on marker rows and colors.\n\n    Identifies a vertical 'azure' line and horizontal 'marker rows' indicated by\n    a 'blue' pixel on the azure line. The color of the marker row determines the\n    fill color for the region below it, until the next marker row. Marker rows\n    themselves become 'blue', with the intersection point becoming 'azure'.\n    The vertical line remains 'blue' except at these intersections.\n    \"\"\"\n    input_np = np.array(input_grid, dtype=int)\n    height, width = input_np.shape\n    output_np = np.zeros_like(input_np)\n\n    # Find the column with the azure line\n    azure_col = find_azure_col(input_np)\n\n    # Find marker rows and their associated colors\n    marker_info = find_marker_rows_and_colors(input_np, azure_col)\n    marker_row_indices = {info[0] for info in marker_info}\n\n    # Fill the output grid based on marker regions\n    current_marker_index = 0\n    for r in range(height):\n        # Find the marker that defines the color for this row\n        # If r is above the first marker, use the first marker's color\n        # Otherwise, use the color of the last marker whose index is <= r\n        relevant_marker_idx = 0\n        for i in range(len(marker_info)):\n            if marker_info[i][0] <= r:\n                relevant_marker_idx = i\n            else:\n                break # Markers are sorted, no need to check further\n\n        fill_color = marker_info[relevant_marker_idx][1]\n        output_np[r, :] = fill_color\n\n    # Overwrite marker rows with blue (1)\n    for r_idx, _ in marker_info:\n        output_np[r_idx, :] = 1\n\n    # Set the azure column correctly\n    output_np[:, azure_col] = 1  # Default to blue\n    for r_idx, _ in marker_info:\n        output_np[r_idx, azure_col] = 8 # Set intersections to azure\n\n    return output_np.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 4178,
+    "candidates_token_count": 1397,
+    "total_token_count": 5575,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 42.39363,
+  "retries": null
+}

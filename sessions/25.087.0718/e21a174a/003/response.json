@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\nTransforms the input grid by identifying each distinct non-background colored object, \nflipping the object's pattern vertically within its bounding box, and repositioning \nthe flipped object in the output grid. The new vertical position is determined by \ninverting the original top boundary of the object's bounding box relative to the \ngrid height. The horizontal position remains unchanged. The background remains white.\n\"\"\"\n\nimport numpy as np\nfrom scipy.ndimage import label, find_objects\n\ndef transform(input_grid):\n    \"\"\"\n    Applies a vertical flip and repositioning transformation to each non-background object.\n\n    Args:\n        input_grid (list[list[int]]): A 2D list representing the input grid.\n\n    Returns:\n        list[list[int]]: A 2D list representing the transformed output grid.\n    \"\"\"\n    input_array = np.array(input_grid, dtype=int)\n    height, width = input_array.shape\n    background_color = 0\n\n    # Initialize the output grid with the background color\n    output_array = np.full_like(input_array, background_color)\n\n    # Find all unique non-background colors\n    unique_colors = np.unique(input_array)\n    non_background_colors = unique_colors[unique_colors != background_color]\n\n    # Process objects for each color\n    for color in non_background_colors:\n        # Create a mask for the current color\n        color_mask = (input_array == color)\n\n        # Label connected components (objects) for the current color\n        # Use a structure that connects diagonally as well\n        structure = np.array([[1,1,1], [1,1,1], [1,1,1]], dtype=bool)\n        labeled_mask, num_features = label(color_mask, structure=structure)\n\n        # Find the bounding boxes for each distinct object of this color\n        object_slices = find_objects(labeled_mask)\n\n        # Process each object found\n        for i, obj_slice in enumerate(object_slices):\n            object_label = i + 1 # Labels start from 1\n\n            # Get bounding box coordinates and dimensions\n            r_slice, c_slice = obj_slice\n            r_min, r_max = r_slice.start, r_slice.stop\n            c_min, c_max = c_slice.start, c_slice.stop\n            bbox_height = r_max - r_min\n            bbox_width = c_max - c_min\n\n            # Extract the subgrid corresponding to the bounding box from the labeled mask\n            object_mask_in_bbox = (labeled_mask[obj_slice] == object_label)\n\n            # Extract the actual pixel values from the input grid within the bounding box,\n            # keeping only the pixels belonging to the current object.\n            input_subgrid = input_array[obj_slice]\n            isolated_object_subgrid = np.where(object_mask_in_bbox, input_subgrid, background_color)\n\n            # Flip the isolated object pattern vertically\n            flipped_object_subgrid = np.flipud(isolated_object_subgrid)\n\n            # Calculate the new top row position for the flipped object\n            # new_top = grid_height - old_bottom = grid_height - r_max\n            # Alternative based on previous derivation: new_top = grid_height - old_top - bbox_height\n            r_target = height - r_min - bbox_height\n\n            # Place the flipped object onto the output grid\n            # Iterate through the flipped subgrid and place non-background pixels\n            for r_sub in range(bbox_height):\n                for c_sub in range(bbox_width):\n                    pixel_color = flipped_object_subgrid[r_sub, c_sub]\n                    if pixel_color != background_color:\n                        # Calculate target coordinates in the full output grid\n                        target_row = r_target + r_sub\n                        target_col = c_min + c_sub\n                        \n                        # Ensure target coordinates are within bounds (should be, but safe check)\n                        if 0 <= target_row < height and 0 <= target_col < width:\n                           output_array[target_row, target_col] = pixel_color\n\n    # Convert the NumPy array back to a list of lists\n    output_grid = output_array.tolist()\n\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 15540,
+    "candidates_token_count": 1006,
+    "total_token_count": 16546,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 18.831321,
+  "retries": null
+}

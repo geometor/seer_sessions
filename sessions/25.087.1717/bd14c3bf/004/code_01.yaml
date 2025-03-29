@@ -1,0 +1,67 @@
+task_description: Identify contiguous blue objects and determine if they are adjacent to 'internal' white regions (holes). Recolor these specific blue objects to red.
+
+definitions:
+  - name: Blue Object
+    type: Object
+    description: A contiguous group of blue (1) pixels connected via 4-way adjacency.
+  - name: White Pixel
+    type: Pixel
+    properties:
+      color: white (0)
+  - name: Reachable White Pixel
+    type: Pixel State
+    description: A white pixel that can be reached from any white pixel on the grid's border by traversing only adjacent (4-way) white pixels.
+  - name: Unreachable White Pixel (Hole)
+    type: Pixel State
+    description: A white pixel that is *not* a Reachable White Pixel. It is isolated from the border white pixels by non-white pixels.
+  - name: Target Blue Object
+    type: Object State
+    description: A Blue Object where at least one of its pixels is 4-way adjacent to an Unreachable White Pixel (Hole).
+
+actions:
+  - name: Identify Blue Objects
+    tool: find_objects (using 4-way adjacency)
+    input: input grid, blue color (1)
+    output: list of pixel coordinates for each distinct blue object
+  - name: Identify Reachable White Pixels
+    tool: flood_fill_background (using 4-way adjacency)
+    input: input grid, white color (0)
+    output: boolean mask where True indicates a white pixel is reachable from the border
+  - name: Identify Holes
+    input: input grid, reachable white pixel mask
+    output: coordinates of white pixels where the mask is False
+  - name: Check Adjacency to Hole
+    tool: has_adjacent_hole (using 4-way adjacency)
+    input: input grid, blue object pixels, reachable white pixel mask, white color (0)
+    output: boolean indicating if any pixel in the blue object is adjacent to a hole pixel
+  - name: Recolor Target Blue Objects
+    input: input grid, target blue objects
+    output: output grid where pixels of target blue objects are changed from blue (1) to red (2)
+  - name: Preserve Other Pixels
+    input: input grid, non-target objects/pixels
+    output: output grid where these pixels retain their original color
+
+examples_summary:
+  - example: 1
+    status: FAIL
+    reason: Code identified 0 holes, expected multiple. Flood fill failed.
+    blue_objects_found: 7
+    holes_found_by_code: 0
+    objects_changed_by_code: 0
+    objects_expected_to_change: 4 (visual inspection)
+  - example: 2
+    status: FAIL
+    reason: Code identified 1 hole, expected multiple. Flood fill mostly failed. Only 1/3 objects correctly identified to change.
+    blue_objects_found: 6
+    holes_found_by_code: 1
+    objects_changed_by_code: 1
+    objects_expected_to_change: 3 (visual inspection)
+  - example: 3
+    status: SUCCESS
+    reason: Code correctly identified 10 holes and the 4 blue objects adjacent to them.
+    blue_objects_found: 8
+    holes_found_by_code: 10
+    objects_changed_by_code: 4
+    objects_expected_to_change: 4
+
+likely_error_location: The `flood_fill_background` function appears to incorrectly identify white pixels reachable from the border in Examples 1 and 2, marking internal 'hole' pixels as reachable.

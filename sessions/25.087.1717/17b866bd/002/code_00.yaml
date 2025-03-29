@@ -1,0 +1,45 @@
+grid_structure:
+  type: Tiling
+  properties:
+    - The input and output grids can be conceptually divided into non-overlapping 5x5 blocks (pattern units).
+    - The top-left corner of each block has coordinates (row, col) where both row and col are multiples of 5.
+    - Grids may not be perfect multiples of 5x5; blocks can be truncated at the edges.
+
+objects:
+  - object: pattern_unit
+    description: A 5x5 block of pixels.
+    properties:
+      - size: 5x5 (potentially smaller if truncated at grid edge)
+      - location: Defined by top-left corner (r, c) where r % 5 == 0 and c % 5 == 0.
+  - object: trigger_pixel
+    description: The pixel at the top-left corner of a pattern unit.
+    properties:
+      - location: (r, c) where r % 5 == 0 and c % 5 == 0.
+      - color: The color value of the pixel in the input grid.
+      - is_active: True if the color is not white (0).
+  - object: fill_area
+    description: The set of white (0) pixels within a pattern unit in the input grid.
+    properties:
+      - location: Relative to the pattern unit's top-left corner.
+      - excludes_trigger: Does not include the trigger pixel itself, even if it were white (which it cannot be if it's an active trigger).
+
+actions:
+  - action: identify_trigger
+    actor: system
+    input: input_grid
+    output: list of active trigger pixels (location and color)
+    rule: Iterate through all coordinates (r, c) where r % 5 == 0 and c % 5 == 0. If input_grid[r, c] is not white (0), it's an active trigger.
+  - action: fill_block
+    actor: system
+    input: active trigger pixel (location trigger_r, trigger_c and color fill_color), input_grid
+    output: modified output_grid (initially a copy of input_grid)
+    rule:
+      - Set output_grid[trigger_r, trigger_c] to white (0).
+      - Iterate through pixels (y, x) within the 5x5 block starting at (trigger_r, trigger_c).
+      - If y == trigger_r and x == trigger_c, skip.
+      - If input_grid[y, x] is white (0), set output_grid[y, x] to fill_color.
+
+state_change:
+  - Initial state: output_grid is a copy of input_grid.
+  - Intermediate state: For each active trigger pixel identified, the corresponding 5x5 block in output_grid is modified by the fill_block action.
+  - Final state: The output_grid after all active trigger pixels have been processed.

@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\n\n\"\"\"\nProcesses objects on a background grid by:\n1. Conditionally filling a 9x9 square area if exactly one single-pixel non-background object exists in the input. The fill color and center location are determined by this single pixel.\n2. Removing the outermost layer of pixels (noise) from all non-background objects present in the original input. A pixel is considered noise if it's not the background color and has at least one neighbor (8-connectivity) that is the background color.\n\nThe background color is orange (7).\nThe conditional fill happens first on a copy of the input grid.\nThe noise removal happens second, modifying the potentially filled grid by setting identified noise pixels (based on the *original* input) back to the background color.\n\"\"\"\n\ndef find_single_pixels(grid, background_color):\n    \"\"\"\n    Finds all pixels of non-background color that are completely surrounded\n    by the background color (8-connectivity).\n    Returns a list of tuples: (row, col, color).\n    \"\"\"\n    single_pixels = []\n    height, width = grid.shape\n    for r in range(height):\n        for c in range(width):\n            color = grid[r, c]\n            if color != background_color:\n                is_single = True\n                # Check 8 neighbors\n                for dr in [-1, 0, 1]:\n                    for dc in [-1, 0, 1]:\n                        if dr == 0 and dc == 0:\n                            continue\n                        nr, nc = r + dr, c + dc\n                        # Check bounds\n                        if 0 <= nr < height and 0 <= nc < width:\n                            if grid[nr, nc] != background_color:\n                                is_single = False\n                                break\n                        # Implicitly, out-of-bounds is like background for isolation check\n                    if not is_single:\n                        break\n                \n                if is_single:\n                    single_pixels.append((r, c, color))\n    return single_pixels\n\ndef find_noise_pixels(grid, background_color):\n    \"\"\"\n    Finds all non-background pixels that have at least one background neighbor\n    (8-connectivity).\n    Returns a set of coordinate tuples: {(row, col), ...}.\n    \"\"\"\n    noise_locations = set()\n    height, width = grid.shape\n    for r in range(height):\n        for c in range(width):\n            if grid[r, c] != background_color:\n                is_noise = False\n                # Check 8 neighbors\n                for dr in [-1, 0, 1]:\n                    for dc in [-1, 0, 1]:\n                        if dr == 0 and dc == 0:\n                            continue\n                        nr, nc = r + dr, c + dc\n                        # Check bounds\n                        if 0 <= nr < height and 0 <= nc < width:\n                            if grid[nr, nc] == background_color:\n                                is_noise = True\n                                break\n                        else: # Out of bounds counts as background neighbor\n                           is_noise = True\n                           break \n                    if is_noise:\n                        break\n                \n                if is_noise:\n                    noise_locations.add((r, c))\n    return noise_locations\n\ndef transform(input_grid):\n    \"\"\"\n    Applies the transformation rule to the input grid.\n    \"\"\"\n    input_np = np.array(input_grid, dtype=int)\n    output_grid = np.copy(input_np)\n    height, width = input_np.shape\n    background_color = 7\n\n    # 1. Find single-pixel objects in the *input* grid\n    single_pixels = find_single_pixels(input_np, background_color)\n\n    # 2. Perform Conditional Fill if exactly one single pixel found\n    if len(single_pixels) == 1:\n        center_r, center_c, fill_color = single_pixels[0]\n        \n        # Calculate the 9x9 area bounds, centered on (center_r, center_c)\n        # Top-left corner calculation\n        top = max(0, center_r - 4)\n        left = max(0, center_c - 4)\n        \n        # Bottom-right corner calculation (exclusive for slicing)\n        # Ensure the size is up to 9x9 within grid boundaries\n        bottom = min(height, top + 9)\n        right = min(width, left + 9)\n\n        # Adjust top/left if clipping affected the size potential from bottom/right\n        top = max(0, bottom - 9)\n        left = max(0, right - 9)\n\n        # Fill the calculated area in the output grid\n        output_grid[top:bottom, left:right] = fill_color\n\n    # 3. Identify noise pixels based on the *original input* grid\n    noise_locations = find_noise_pixels(input_np, background_color)\n\n    # 4. Remove noise pixels from the *output* grid\n    for r, c in noise_locations:\n        # Ensure coordinates are valid just in case (should be by find_noise_pixels logic)\n        if 0 <= r < height and 0 <= c < width:\n             output_grid[r, c] = background_color\n\n    # Convert back to list of lists for the required output format\n    return output_grid.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 6733,
+    "candidates_token_count": 1237,
+    "total_token_count": 7970,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 21.189863,
+  "retries": null
+}

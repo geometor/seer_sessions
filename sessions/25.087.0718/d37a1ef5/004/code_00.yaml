@@ -1,0 +1,46 @@
+task_description: Fill enclosed areas within the largest object (frame), preserving internal objects and their adjacent white pixels.
+
+grid_properties:
+  - dimensions: Variable height and width.
+  - colors: Multiple colors present, including white (0) for background, one color for the main frame object, and potentially other colors for internal objects.
+
+objects:
+  - type: Frame
+    description: The largest connected component of non-white pixels using 4-way adjacency. It encloses an area.
+    properties:
+      - color: The color of the frame pixels (e.g., red=2 in examples).
+      - shape: Typically rectangular or boundary-like.
+    actions:
+      - Used to determine the fill color for enclosed white areas.
+      - Acts as a barrier for reachability checks.
+  - type: Internal Object
+    description: Any non-white connected component that is *not* the frame. Located within the area enclosed by the frame.
+    properties:
+      - color: Can be any non-white color (e.g., gray=5 in examples).
+      - shape: Variable.
+    actions:
+      - Acts as a barrier for reachability checks.
+      - Prevents orthogonally adjacent white pixels from being filled.
+  - type: Background Pixel
+    description: Pixels with color white (0).
+    properties:
+      - color: white (0)
+    subtypes:
+      - External White: White pixels connected to the grid border via other white pixels, not crossing any non-white barriers. Remain unchanged.
+      - Internal Protected White: White pixels *not* connected to the border, but orthogonally adjacent to an Internal Object. Remain unchanged.
+      - Internal Fillable White: White pixels *not* connected to the border and *not* adjacent to an Internal Object. These are filled with the Frame's color.
+
+transformations:
+  - step: 1. Identify all distinct non-white connected components (objects).
+  - step: 2. Determine the largest component (the 'frame') and its color ('frame_color'). Identify all other components as 'internal_objects'.
+  - step: 3. Create a set of all non-white pixel coordinates ('barrier_coords').
+  - step: 4. Identify white pixels reachable from the border ('reachable_white_coords') using BFS, avoiding 'barrier_coords'.
+  - step: 5. Identify white pixels orthogonally adjacent to any 'internal_object' pixel ('protected_white_coords').
+  - step: 6. Create the output grid, initially a copy of the input.
+  - step: 7. Iterate through all white pixels (r, c) in the input grid.
+  - step: 8. If a white pixel (r, c) is *not* in 'reachable_white_coords' AND *not* in 'protected_white_coords', change its color in the output grid to 'frame_color'.
+  - step: 9. Return the modified output grid.
+
+edge_cases:
+  - If no non-white objects exist, return the input grid unchanged.
+  - If only one non-white object exists (it's the frame), there are no internal objects, so no white pixels are protected by adjacency. Fill occurs as in the previous logic.

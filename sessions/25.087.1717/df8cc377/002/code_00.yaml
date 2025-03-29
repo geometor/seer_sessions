@@ -1,0 +1,57 @@
+task_description: Fill the interior of a hollow rectangle based on an internal marker pixel.
+
+definitions:
+  - object: background
+    definition: Pixels with color 0 (white).
+  - object: rectangle_border
+    definition: A connected component of non-background pixels forming the perimeter of a rectangle (width >= 3, height >= 3) with no component pixels strictly inside its bounding box.
+    properties:
+      - color: Any non-background color.
+      - hollow: The area strictly inside the bounding box contains at least one background pixel or a marker pixel.
+      - connectivity: Cardinal (4-way) or possibly diagonal (8-way) - seems consistent with 4-way based on standard rectangle shape. Code used 4-way.
+      - size: Matches the perimeter calculation (2*width + 2*height - 4).
+  - object: marker
+    definition: A single-pixel connected component of a non-background color.
+    properties:
+      - color: Any non-background color, distinct from the rectangle border color it's associated with.
+      - location: Strictly inside the bounding box of a `rectangle_border` object.
+      - count_per_rectangle: Exactly one marker per rectangle observed in examples.
+  - object: rectangle_interior
+    definition: The set of all pixels strictly inside the bounding box of a `rectangle_border`.
+    properties:
+      - initial_state: Contains background pixels and exactly one `marker` pixel in input examples.
+      - final_state: All pixels within this area take the color of the `marker`.
+
+actions:
+  - action: identify
+    parameters:
+      - object: `rectangle_border`
+      - object: `marker`
+    description: Locate all instances of `rectangle_border` and `marker` objects in the input grid.
+  - action: associate
+    parameters:
+      - parent_object: `rectangle_border`
+      - child_object: `marker`
+    description: For each `rectangle_border`, find if there is exactly one `marker` located within its `rectangle_interior`.
+  - action: fill
+    parameters:
+      - target_area: `rectangle_interior` (associated with a `rectangle_border` containing a `marker`)
+      - fill_color: Color of the associated `marker`
+    description: Change the color of all pixels in the `target_area` to the `fill_color`.
+
+input_output_pairs:
+  - example: 1
+    input_summary: 7x7 grid, gray (5) hollow rectangle, red (2) marker inside.
+    output_summary: Gray rectangle unchanged, 3x3 interior filled with red.
+  - example: 2
+    input_summary: 8x8 grid, blue (1) hollow rectangle, green (3) marker inside.
+    output_summary: Blue rectangle unchanged, 4x4 interior filled with green.
+  - example: 3
+    input_summary: 7x11 grid, azure (8) hollow rectangle, yellow (4) marker inside.
+    output_summary: Azure rectangle unchanged, 3x7 interior filled with yellow.
+
+assumptions:
+  - Each relevant input grid contains exactly one hollow rectangle structure.
+  - Each hollow rectangle contains exactly one single-pixel marker strictly within its interior.
+  - The marker pixel's color is different from the rectangle's border color.
+  - The transformation only modifies the interior pixels of the identified rectangle; the border and pixels outside remain unchanged.

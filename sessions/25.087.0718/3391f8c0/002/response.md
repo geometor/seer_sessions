@@ -1,0 +1,79 @@
+## General Assessment
+
+The provided code attempted a simple pixel-wise color swap between the two non-white colors found in the input grid. The results clearly indicate this approach is insufficient. In all examples, the transformed output differs significantly from the expected output, although the correct colors are present. The key failure lies in not recognizing and preserving the *shapes* or *objects* formed by the colors. The transformation appears to involve swapping the colors of entire objects, not just individual pixels.
+
+The strategy going forward should be:
+
+1.  **Object Identification:** Implement a method to identify distinct, contiguous objects based on their color. A common approach is using flood fill or connected components labeling.
+2.  **Object Color Mapping:** Determine the two non-white colors present (Color A and Color B).
+3.  **Object Transformation:** For each identified object:
+    *   If the object's color is Color A, recreate the *exact same shape* in the output grid using Color B at the same location.
+    *   If the object's color is Color B, recreate the *exact same shape* in the output grid using Color A at the same location.
+4.  **Background Preservation:** Ensure the background (white pixels) remains unchanged.
+
+## Metrics and Analysis
+
+Let's analyze each example to confirm the object-swapping hypothesis. We'll identify the two non-white colors (C1, C2) and the shapes associated with them.
+
+**Example 1:**
+*   Input Colors: Blue (1), Azure (8)
+*   Input Objects: Several distinct Azure shapes, one complex Blue shape.
+*   Expected Output: Azure shapes become Blue, Blue shape becomes Azure. Locations and structures are preserved.
+*   Failed Code Output Analysis: Individual pixels were swapped. For instance, the single Azure pixel at (1, 8) became Blue, whereas in the expected output, it's part of a larger 3x1 Blue rectangle starting at (1, 7). This confirms the need to treat shapes as units.
+
+**Example 2:**
+*   Input Colors: Red (2), Green (3)
+*   Input Objects: Multiple Red 'L'/'U' shapes, one Green 'L' shape.
+*   Expected Output: Red shapes become Green, Green shape becomes Red. Locations and structures are preserved.
+*   Failed Code Output Analysis: Similar to Example 1, individual pixel swaps distort the shapes. The Red pixels at (1, 1) and (1, 2) become Green individually, but in the expected output, they are part of a 2x2 Green square.
+
+**Example 3:**
+*   Input Colors: Green (3), Azure (8)
+*   Input Objects: Several Green dot/line shapes, one Azure cross shape.
+*   Expected Output: Green shapes become Azure, Azure shape becomes Green. Locations and structures are preserved.
+*   Failed Code Output Analysis: The Azure cross shape at (5, 2) to (7, 2) etc., when swapped pixel-wise, becomes a Green cross. However, the Green dots/lines become individual Azure pixels, not Azure dots/lines matching the original Green structures.
+
+**Example 4:**
+*   Input Colors: Blue (1), Orange (7)
+*   Input Objects: Multiple Blue 'L' shapes, one Orange 'L' shape.
+*   Expected Output: Blue shapes become Orange, Orange shape becomes Blue. Locations and structures are preserved.
+*   Failed Code Output Analysis: Pixel-wise swaps fail again. The Blue 'L' shape starting at (1, 1) should become an Orange 'L' shape, but the pixel swap only changes the color of the individual cells, not preserving the object structure during the color change.
+
+**Summary of Metrics:** In all cases, the input contains exactly two non-white colors. The transformation consistently involves swapping these two colors, but the swap applies to the entire contiguous shape formed by each color, preserving the shape's structure and position.
+
+## Documented Facts
+
+
+```yaml
+task_context:
+  grid_properties:
+    - Input and output grids have the same dimensions.
+    - Background color is white (0) and remains unchanged.
+    - Exactly two non-white colors are present in the input grid.
+  object_definition:
+    - An object is a contiguous group of pixels of the same non-white color.
+    - Contiguity includes adjacent pixels (sharing a side), potentially diagonals as well (need to confirm, but side-adjacency seems sufficient based on examples).
+  transformation:
+    - Identify the two non-white colors (Color A, Color B).
+    - Identify all distinct objects made of Color A.
+    - Identify all distinct objects made of Color B.
+    - The transformation swaps the color identity of these objects.
+  output_generation:
+    - Create an output grid initialized with the background color (white).
+    - For each object identified in the input:
+      - If the object was made of Color A, draw the identical object shape using Color B at the same position in the output grid.
+      - If the object was made of Color B, draw the identical object shape using Color A at the same position in the output grid.
+    - The structure, size, and location of each object are preserved; only its color changes according to the swap rule.
+```
+
+
+## Natural Language Program
+
+1.  Initialize the output grid as a copy of the input grid or as a new grid of the same dimensions filled with the background color (white, 0).
+2.  Find the two unique non-white colors present in the input grid. Let these be `color1` and `color2`.
+3.  Identify all distinct contiguous objects (groups of connected pixels) in the input grid that are composed of `color1`. Store the locations of the pixels belonging to each `color1` object.
+4.  Identify all distinct contiguous objects in the input grid that are composed of `color2`. Store the locations of the pixels belonging to each `color2` object.
+5.  Iterate through the stored `color1` objects. For each object, change the color of the corresponding pixels in the output grid to `color2`.
+6.  Iterate through the stored `color2` objects. For each object, change the color of the corresponding pixels in the output grid to `color1`.
+7.  Ensure all pixels not part of any identified `color1` or `color2` object retain their original color (which should be white/0 if starting from a blank grid, or will be preserved if starting from a copy).
+8.  Return the modified output grid.

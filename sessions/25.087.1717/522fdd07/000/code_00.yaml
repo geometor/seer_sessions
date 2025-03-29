@@ -1,0 +1,52 @@
+task_description: Process objects on a background grid by removing noise pixels and conditionally adding a filled rectangle based on input features.
+background_color: 7 (orange)
+
+objects:
+  - type: Contiguous blocks of non-background colors.
+  - properties:
+      - color: Various (0-6, 8-9)
+      - shape: Mostly rectangular/square, can be single pixels.
+      - location: Scattered across the grid.
+
+actions:
+  - name: Identify Noise Pixels
+    input: Input grid
+    target: Non-background pixels
+    condition: The pixel has at least one neighbor (8-connectivity) that is the background color (7).
+    output: A set of coordinates for noise pixels.
+
+  - name: Identify Single-Pixel Objects
+    input: Input grid
+    target: Non-background objects
+    condition: The object consists of exactly one pixel.
+    output: A list of single-pixel objects (color and location).
+
+  - name: Conditional Fill
+    input: Output grid, list of single-pixel objects
+    condition: Exactly one single-pixel object exists in the input.
+    parameters:
+      - fill_color: Color of the single-pixel object.
+      - center_row: Row of the single-pixel object.
+      - center_col: Column of the single-pixel object.
+      - size: 9x9
+    action:
+      - Calculate top-left corner: (max(0, center_row - 4), max(0, center_col - 4)).
+      - Calculate bounds: Determine the 9x9 area, clipped by grid dimensions.
+      - Modify output grid: Fill the calculated area with fill_color.
+
+  - name: Remove Noise
+    input: Output grid, set of noise pixel coordinates
+    action:
+      - For each coordinate in the noise set, set the corresponding pixel in the output grid to the background color (7).
+
+order_of_operations:
+  1. Initialize output grid from input.
+  2. Identify single-pixel objects.
+  3. Perform Conditional Fill (if applicable) on the output grid.
+  4. Identify Noise Pixels based on the *input* grid.
+  5. Perform Remove Noise on the output grid.
+
+relationships:
+  - The trigger for the Conditional Fill action is the count (must be exactly 1) of single-pixel objects found in the input.
+  - The color and center location for the Conditional Fill are determined by the unique single-pixel object.
+  - The Remove Noise action uses noise locations identified from the *input* but modifies the *output* grid (which might have already been modified by the Conditional Fill).

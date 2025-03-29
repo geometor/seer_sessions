@@ -1,0 +1,46 @@
+task_description: Transform the input grid by identifying a frame object and multiple nested objects, then reconstruct them concentrically in a new grid based on size and specific rules.
+
+definitions:
+  object: A contiguous area of pixels of the same non-white color (0), identified using 4-way adjacency. Each object has properties like color, pixel coordinates, bounding box (min_row, min_col, max_row, max_col), height, width, and bbox_area (height * width).
+  singleton: An object whose bbox_area is 1.
+  significant_object: An object that is not a singleton.
+  frame_object: The significant_object with the strictly largest bbox_area. Assumed to be unique among significant objects.
+  frame_color: The color of the frame_object.
+  nested_objects: All significant_objects except for the frame_object.
+  largest_nested_object: The nested_object with the largest bbox_area.
+  innermost_object: The nested_object with the smallest bbox_area.
+
+input_processing:
+  - Action: Find all objects in the input grid.
+  - Action: Filter out singleton objects to get the set of significant_objects.
+
+frame_and_nesting_logic:
+  - If no significant_objects exist: The transformation result might be undefined or default (e.g., empty or small white grid - current behavior leads to 3x3 default).
+  - If significant_objects exist:
+    - Action: Identify the frame_object by finding the one with the maximum bbox_area. Store its frame_color.
+    - Action: Define nested_objects as the set of all other significant_objects.
+
+output_grid_determination:
+  - If nested_objects set is empty:
+      - Output grid size: 3x3.
+      - Output grid fill color: frame_color.
+  - If nested_objects set is not empty:
+      - Action: Find the largest_nested_object based on bbox_area.
+      - Output grid size: (largest_nested_object.height + 2) x (largest_nested_object.width + 2).
+      - Output grid initial fill color: frame_color.
+
+output_grid_population:
+  - Condition: Only if nested_objects set is not empty.
+  - Action: Sort nested_objects by bbox_area in descending order (largest area first).
+  - Action: Iterate through the sorted nested_objects:
+      - Get the object's minimal grid representation (pixels within its bounding box).
+      - Calculate centering position: Top-left `(r, c)` to place the object's bounding box centered within the output grid's inner area (area excluding the 1-pixel border). `r = (output_height - object_height) // 2`, `c = (output_width - object_width) // 2`.
+      - Action: Draw the object's non-white pixels onto the output grid at `(r, c)`, overwriting previous content.
+
+center_pixel_logic:
+  - Condition: Only if nested_objects set is not empty.
+  - Action: Identify the innermost_object (smallest bbox_area).
+  - Condition: Check if innermost_object.height is odd AND innermost_object.width is odd.
+  - Action: If both dimensions are odd, calculate the absolute center coordinates of the output grid (`center_row = output_height // 2`, `center_col = output_width // 2`) and set the pixel at that location to Red (color 2).
+
+final_output: The fully constructed output grid.

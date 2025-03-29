@@ -1,0 +1,70 @@
+task_context:
+  description: Fill the interior of a hollow rectangular frame with colors derived from pixels outside the frame.
+  input_features:
+    - name: background
+      description: White pixels (0).
+      value: 0
+    - name: frame
+      description: A hollow rectangular object made of a single, non-white color. Assumed to be the largest such object, or potentially the one made of the most frequent non-white color.
+      properties:
+        - color: The single color forming the frame.
+        - bounding_box: The minimum and maximum row/column defining the extent of the frame.
+        - interior: The area enclosed by the frame, initially containing background pixels.
+    - name: source_pixels
+      description: Non-white pixels located entirely outside the frame's bounding box.
+      properties:
+        - color: The color of the source pixel.
+        - position: Row and column index (r, c).
+        - sort_key: Sum of row and column index (r + c).
+  output_features:
+    - name: filled_frame
+      description: The output grid is a copy of the input grid, but the interior of the frame is filled.
+      properties:
+        - filling_pattern: Concentric layers, starting from the frame's inner boundary and moving inwards.
+        - layer_color_source: A sequence of colors derived from the source_pixels.
+        - layer_color_order: Source pixel colors are sorted based on their sort_key (ascending r + c).
+        - layer_assignment: Pixels in the frame's interior are assigned a layer index based on their minimum distance to the inner boundary of the frame (Manhattan distance to the closest inner edge pixel). Layer 0 is adjacent to the frame, Layer 1 is next, etc.
+        - color_mapping: The color for a layer is determined by the color at the corresponding index in the sorted source color sequence.
+        - innermost_layer_rule: If the calculated layer index for a pixel is greater than or equal to the number of available source colors, the pixel is colored with the *last* color in the sorted sequence.
+
+actions:
+  - step: 1
+    action: Identify Frame
+    description: Find the hollow rectangular frame object and determine its color and bounding box.
+    inputs:
+      - input_grid
+    outputs:
+      - frame_color
+      - frame_bounding_box
+  - step: 2
+    action: Identify Source Pixels
+    description: Find all non-white pixels located outside the frame's bounding box.
+    inputs:
+      - input_grid
+      - frame_bounding_box
+    outputs:
+      - list_of_source_pixels (with color, position, sort_key)
+  - step: 3
+    action: Sort Source Colors
+    description: Create an ordered list of colors from the source pixels, sorted by their position (ascending r + c).
+    inputs:
+      - list_of_source_pixels
+    outputs:
+      - sorted_color_list
+  - step: 4
+    action: Initialize Output
+    description: Create the output grid as a copy of the input grid.
+    inputs:
+      - input_grid
+    outputs:
+      - output_grid
+  - step: 5
+    action: Fill Frame Interior
+    description: Iterate through each pixel (r, c) within the frame's interior bounding box (excluding the frame walls). If the pixel is background (white), calculate its layer index (minimum distance to the inner frame boundary). Determine the color index by clamping the layer index to the bounds of the sorted color list (i.e., `color_index = min(layer_index, len(sorted_color_list) - 1)`). Fill the pixel in the output grid with the color from the sorted_color_list at the determined color index.
+    inputs:
+      - output_grid (to be modified)
+      - frame_bounding_box
+      - sorted_color_list
+      - input_grid (to check original pixel color)
+    outputs:
+      - output_grid (modified with filled interior)

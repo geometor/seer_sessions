@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport copy\nimport numpy as np\nfrom scipy.ndimage import label, find_objects\n\ndef transform(input_grid):\n    \"\"\"\n    Transforms the input grid based on the following rules:\n    1. All Gray (5) pixels in the input change to Yellow (4) in the output.\n    2. Identify connected components of Orange (7) pixels in the input using orthogonal adjacency.\n    3. For each Orange component, check if any of its pixels are orthogonally adjacent to any pixel that was originally Gray (5).\n    4. If an Orange component is adjacent to an original Gray pixel, change all pixels belonging to that component to Gray (5) in the output.\n    5. Orange components not adjacent to any original Gray pixel remain Orange (7).\n    6. All other pixels remain unchanged.\n    The transformation checks neighbors and connectivity based on the *original* input grid.\n    \"\"\"\n\n    # Convert input list of lists to numpy array for easier processing\n    input_np = np.array(input_grid, dtype=int)\n    height, width = input_np.shape\n\n    # Create a deep copy to modify; convert this copy to numpy for modification\n    # Using deepcopy first ensures the original list structure if needed later,\n    # though we'll return a list derived from output_np.\n    output_grid_list = copy.deepcopy(input_grid)\n    output_np = np.array(output_grid_list, dtype=int)\n\n    # --- Step 1 & Identify Original Gray Locations ---\n    # Find coordinates of all original Gray pixels\n    original_gray_coords = set()\n    for r in range(height):\n        for c in range(width):\n            if input_np[r, c] == 5:\n                # Rule 1: Change Gray to Yellow in the output\n                output_np[r, c] = 4\n                # Store the location for adjacency checks later\n                original_gray_coords.add((r, c))\n\n    # --- Step 2: Identify Orange Components ---\n    # Create a mask for Orange pixels\n    orange_mask = (input_np == 7)\n    \n    # Define connectivity structure (orthogonal only)\n    structure = np.array([[0, 1, 0],\n                          [1, 1, 1],\n                          [0, 1, 0]], dtype=bool)\n                          \n    # Label connected components of Orange pixels\n    # labeled_components will have 0 for background, and >0 integer labels for components\n    labeled_components, num_components = label(orange_mask, structure=structure)\n\n    # --- Step 3 & 4: Check Adjacency and Transform Orange Components ---\n    # Get coordinates for each labeled component\n    # find_objects returns slices, but we need actual coordinates per component\n    component_coords = {}\n    for r in range(height):\n        for c in range(width):\n            label_id = labeled_components[r, c]\n            if label_id > 0: # Exclude background label 0\n                if label_id not in component_coords:\n                    component_coords[label_id] = []\n                component_coords[label_id].append((r, c))\n\n    # Iterate through each found Orange component\n    for label_id in range(1, num_components + 1):\n        component_pixels = component_coords.get(label_id, [])\n        is_adjacent_to_original_gray = False\n        \n        # Check adjacency for this component\n        for r, c in component_pixels:\n            # Check orthogonal neighbors (Up, Down, Left, Right)\n            for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n                nr, nc = r + dr, c + dc\n                # Check if neighbor is within bounds and was originally Gray\n                if 0 <= nr < height and 0 <= nc < width:\n                    if (nr, nc) in original_gray_coords:\n                        is_adjacent_to_original_gray = True\n                        break # Found adjacency for this pixel, no need to check other neighbors\n            if is_adjacent_to_original_gray:\n                break # Found adjacency for this component, no need to check other pixels in component\n\n        # If the component is adjacent to an original Gray pixel, transform all its pixels\n        if is_adjacent_to_original_gray:\n            for r, c in component_pixels:\n                output_np[r, c] = 5 # Change Orange to Gray\n\n    # --- Step 5 & 6 ---\n    # Pixels not matching Rule 1 or Rule 4 remain as they were in the initial deep copy.\n    # This includes non-adjacent Orange components and all other colors (like White/0, Yellow/4 etc. from input).\n\n    # Convert the final numpy array back to a list of lists\n    output_grid = output_np.tolist()\n\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 13126,
+    "candidates_token_count": 1122,
+    "total_token_count": 14248,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 93.593775,
+  "retries": null
+}

@@ -1,0 +1,42 @@
+- task_type: region_filling
+- description: Fill an enclosed area based on distance to the boundary.
+- objects:
+    - type: grid
+      properties:
+          - colors_present_input: [white (0), gray (5)]
+          - colors_present_output: [white (0), gray (5), red (2)]
+    - object: frame
+      identified_by: color is gray (5)
+      properties:
+          - forms a closed loop (in examples)
+          - separates interior from exterior white pixels
+    - object: interior_area
+      identified_by: color is white (0) AND not connected to grid border via white path
+      properties:
+          - completely enclosed by the frame
+    - object: exterior_area
+      identified_by: color is white (0) AND connected to grid border via white path
+      properties:
+          - located outside the frame
+          - optional (not present in example 2)
+- actions:
+    - action: identify_regions
+      inputs: input_grid
+      outputs: frame_pixels, interior_pixels, exterior_pixels
+      description: Differentiate pixels belonging to the gray frame, the enclosed white interior, and the outside white exterior. Exterior pixels are identified by connectivity to the grid border through white pixels only.
+    - action: calculate_distances
+      inputs: frame_pixels, interior_pixels
+      outputs: distance_map (for interior pixels only)
+      description: For each interior_pixel, compute the minimum Manhattan distance `d` to the nearest frame_pixel.
+    - action: determine_colors
+      inputs: distance_map
+      outputs: color_map (for interior pixels only)
+      description: Apply a coloring rule based on distance `d` modulo 4.
+          - if d % 4 == 1: color = red (2)
+          - if d % 4 == 2: color = gray (5)
+          - if d % 4 == 3: color = white (0)
+          - if d % 4 == 0: color = gray (5)
+    - action: construct_output
+      inputs: input_grid, frame_pixels, exterior_pixels, color_map
+      outputs: output_grid
+      description: Create the output grid. Keep frame_pixels gray (5). Keep exterior_pixels white (0). Set interior pixel colors according to the color_map.

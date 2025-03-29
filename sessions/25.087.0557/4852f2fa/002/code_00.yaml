@@ -1,0 +1,52 @@
+Color_Mapping:
+  azure: 8
+  yellow: 4
+  white: 0 # Background color for base pattern
+
+Input_Objects:
+  - type: azure_object
+    description: A single contiguous shape composed of azure (8) pixels.
+    properties:
+      - color: 8
+      - contiguity: Assumed based on examples (code doesn't explicitly check, but finds all pixels)
+    actions:
+      - find_pixels: Identify all azure pixel coordinates.
+      - calculate_bounding_box: Determine the minimal bounding box enclosing all azure pixels.
+      - extract_raw_pattern: Extract the subgrid defined by the bounding box from the input grid.
+  - type: yellow_markers
+    description: One or more individual yellow (4) pixels scattered in the input grid.
+    properties:
+      - color: 4
+    actions:
+      - count: Determine the total number (N) of yellow pixels in the input grid.
+
+Transformation_Steps:
+  - step: 1_Define_Base_Pattern
+    action: Create a 3x3 grid initialized with white (0) pixels. Call this `base_pattern`.
+  - step: 2_Populate_Base_Pattern
+    action: Copy pixels from the `raw_pattern` (extracted from the azure object's bounding box) into the `base_pattern`.
+    details:
+      alignment: Bottom-left. The bottom-left pixel of the relevant `raw_pattern` portion maps to the bottom-left pixel of the `base_pattern`.
+      size_handling:
+        - Let `raw_h`, `raw_w` be the height and width of `raw_pattern`.
+        - Determine the source height `src_h = min(raw_h, 3)` and width `src_w = min(raw_w, 3)`.
+        - Select the subgrid from `raw_pattern` covering its bottom `src_h` rows and left `src_w` columns.
+        - Determine the destination top-left corner in `base_pattern`: `dest_row = 3 - src_h`, `dest_col = 0`.
+        - Copy the selected `src_h` x `src_w` subgrid from `raw_pattern` to `base_pattern` starting at `(dest_row, dest_col)`.
+        - Any pixels in `base_pattern` not overwritten remain white (0).
+  - step: 3_Determine_Repetitions
+    action: Use the count (N) of yellow markers found in the input grid.
+  - step: 4_Construct_Output
+    action: Create the final output grid by tiling the 3x3 `base_pattern` horizontally N times.
+    output_dimensions: 3 rows, (3 * N) columns.
+
+Output_Grid:
+  properties:
+    - height: 3
+    - width: 3 * N (where N is the count of yellow pixels in the input)
+    - content: Horizontal repetition of the derived 3x3 `base_pattern`.
+
+Consistency_Checks:
+  - Output height is consistently 3 across all examples.
+  - Output width is consistently 3 times the number of yellow pixels.
+  - The method of populating the base pattern (bottom-left alignment, handling smaller/larger raw patterns relative to 3x3) works for all examples.

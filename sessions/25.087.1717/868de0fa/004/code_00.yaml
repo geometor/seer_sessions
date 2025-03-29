@@ -1,0 +1,43 @@
+task_type: conditional_filling
+components:
+  - object: grid
+    properties:
+      - type: 2D array
+      - cells: pixels with colors (0-9)
+  - object: white_region
+    properties:
+      - color: white (0)
+      - contiguity: connected pixels (8-connectivity)
+      - state: potentially enclosed
+  - object: blue_loop
+    properties:
+      - color: blue (1)
+      - shape: forms a closed loop around a white region
+      - role: boundary
+    relationships:
+      - relation: encloses
+        target: white_region
+      - relation: adjacency
+        target: other_blue_pixels (pixels with color blue(1) not part of this specific loop boundary)
+  - object: filled_region
+    properties:
+      - color: orange (7) or red (2)
+      - location: replaces an enclosed white_region
+actions:
+  - name: find_enclosed_regions
+    inputs: grid
+    outputs: list of enclosed white_regions and their corresponding blue_loop boundaries
+    condition: white_region is contiguous, color is white(0), does not touch grid edge, and all immediate neighbors outside the region are blue(1).
+  - name: determine_fill_color
+    inputs: blue_loop boundary pixels (set B), grid
+    outputs: fill_color (red or orange)
+    condition:
+      - check_neighbors: For each pixel p in B, examine its 8 neighbors n.
+      - check_external_blue: If any neighbor n has color blue(1) AND n is NOT in B:
+          - result: fill_color is red(2)
+      - default: If the above condition is never met for any p in B:
+          - result: fill_color is orange(7)
+  - name: fill_region
+    inputs: grid, enclosed white_region, fill_color
+    outputs: modified_grid
+    action: Change the color of all pixels in the enclosed white_region to fill_color.

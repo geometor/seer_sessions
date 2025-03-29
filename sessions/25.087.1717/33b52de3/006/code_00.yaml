@@ -1,0 +1,46 @@
+task_description: Replace the gray pixels of hollow 3x3 gray squares (templates) arranged in a grid with colors sampled from a corresponding key region defined by an anchor point and the template grid dimensions.
+
+definitions:
+  - object: template
+    description: A 3x3 area where the 8 border pixels are gray (5) and the center pixel is not gray.
+    properties:
+      - pixels: Set of 8 coordinates of the gray border pixels.
+      - top_left: Coordinate (r, c) of the top-left corner of the 3x3 area.
+      - color: gray (5)
+  - object: template_grid
+    description: A logical grid formed by the arrangement of multiple template objects.
+    properties:
+      - dimensions: (height `tr`, width `tc`) determined by the number of unique rows and columns occupied by template top-left corners.
+      - instances: A collection of template objects organized by their logical row/column index in the template grid.
+  - object: key_region_anchor
+    description: The single pixel used to define the top-left corner of the key region.
+    properties:
+      - location: Coordinate (r, c) of the top-leftmost pixel in the input grid that is not background (0), not gray (5), and not part of any template's gray pixels.
+  - object: key_region
+    description: A rectangular subgrid within the input grid containing the source colors for the transformation.
+    properties:
+      - top_left: Same as the key_region_anchor location.
+      - dimensions: (height `tr`, width `tc`), identical to the template_grid dimensions.
+      - content: The colors of the pixels within this subgrid in the original input.
+
+actions:
+  - action: find_templates
+    description: Identify all template objects in the input grid. Record their pixel coordinates and top-left corners.
+    inputs: input_grid
+    outputs: list of template objects
+  - action: determine_template_grid
+    description: Analyze the top-left corners of found templates to determine the template grid dimensions (`tr`, `tc`) and create a mapping from logical grid indices `(r_idx, c_idx)` to specific template objects.
+    inputs: list of template objects
+    outputs: template grid dimensions (tr, tc), template map
+  - action: find_key_anchor
+    description: Find the coordinate of the key_region_anchor pixel.
+    inputs: input_grid, set of all template pixels
+    outputs: anchor coordinate (key_min_r, key_min_c)
+  - action: define_key_region
+    description: Define the key region based on the anchor coordinate and template grid dimensions.
+    inputs: anchor coordinate, template grid dimensions (tr, tc)
+    outputs: key region definition (top_left, height, width)
+  - action: map_colors
+    description: Iterate through the template grid. For each template at logical index `(r_idx, c_idx)`, find the corresponding source pixel `(key_min_r + r_idx, key_min_c + c_idx)` in the key region of the *input* grid. Replace the 8 gray pixels of the template in the *output* grid with the color of the source pixel.
+    inputs: input_grid, output_grid, template map, key region definition
+    outputs: modified output_grid

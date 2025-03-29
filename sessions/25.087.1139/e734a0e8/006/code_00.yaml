@@ -1,0 +1,53 @@
+task_context:
+  grid_structure: Input grid is divided into multiple smaller subgrids (cells) by delimiter lines.
+  delimiter:
+    color: white (0)
+    thickness: 1 pixel (assumed based on examples)
+  cells:
+    size: Uniform height and width, determined by spacing between delimiters.
+    content: Each cell contains a pattern of pixels.
+    patterns: Multiple distinct patterns can exist across cells.
+
+objects:
+  - object: cell
+    properties:
+      - location: (row_start, col_start) coordinates
+      - size: (height, width)
+      - content: A subgrid representing the pattern within the cell.
+      - contains_delimiter_color: boolean (true if any pixel within the cell matches the delimiter color)
+  - object: pattern
+    properties:
+      - structure: The specific 2D array of pixel colors defining the pattern.
+      - frequency: The number of times the pattern appears in the input grid's cells.
+      - uniqueness: Whether the pattern appears exactly once (source) or multiple times.
+      - contains_delimiter_color: boolean (inherited from the cell content)
+
+identified_roles:
+  - role: source_pattern
+    identification: The pattern object with frequency = 1.
+  - role: target_pattern
+    identification: Any pattern object (excluding the source_pattern) where contains_delimiter_color is true.
+  - role: target_cell
+    identification: Any cell object whose content matches a target_pattern.
+  - role: non_target_cell
+    identification: Any cell object whose content does not match a target_pattern (includes cells with the source pattern and cells with patterns where contains_delimiter_color is false).
+
+action:
+  - type: identify_grid_structure
+    inputs: input_grid
+    outputs: cell_size, cell_locations, delimiter_color
+    details: Finds delimiter lines to determine cell dimensions and starting coordinates.
+  - type: extract_patterns
+    inputs: input_grid, cell_size, cell_locations
+    outputs: list of unique patterns, mapping of pattern to cell locations, source_pattern, pattern properties (contains_delimiter_color)
+    details: Iterates through cells, extracts content, groups identical patterns, identifies the unique one, and checks each pattern for the delimiter color.
+  - type: identify_targets
+    inputs: patterns, source_pattern, delimiter_color
+    outputs: list of target_cell locations
+    details: Selects locations of cells whose patterns are not the source pattern AND contain the delimiter color.
+  - type: replace_content
+    inputs: input_grid (as template), source_pattern, target_cell locations, cell_size
+    outputs: output_grid
+    details: Creates a copy of the input grid. For each target_cell location, overwrites the corresponding area in the copied grid with the source_pattern. Non-target cells remain unchanged.
+
+goal: Transform the input grid by selectively replacing the content of specific cells (target_cells) with the content of a uniquely occurring cell (source_pattern).

@@ -1,0 +1,52 @@
+# Color Definitions:
+# 0: white (background)
+# 1: blue
+# 2: red
+# 5: gray (used implicitly in some descriptions but not transformation)
+
+Objects:
+  - type: Red Object
+    color: 2
+    definition: Contiguous block (8-way adjacency) of red pixels.
+    properties:
+      - coords: Set of (row, col) tuples.
+      - bbox: (min_row, min_col, max_row, max_col)
+      - shape_size: (height, width) derived from bbox.
+      - is_isolated: Boolean, true if no pixel in the object is adjacent (8-way) to any blue (1) pixel from the original input grid.
+
+  - type: Blue Object
+    color: 1
+    definition: Contiguous block (8-way adjacency) of blue pixels.
+    properties:
+      - coords: Set of (row, col) tuples. Used primarily for checking isolation of red objects.
+
+Actions:
+  - name: Copy Input
+    description: The output grid initially matches the input grid exactly.
+
+  - name: Find Isolated Red Objects
+    description: Identify all red objects and determine which ones are isolated. Sort them by top-left coordinate (row, then column).
+
+  - name: Process Vertical 1x1 Pair
+    condition: Two isolated red objects exist, both are 1x1 pixels, located at `(r, c)` and `(r+3, c)`.
+    action:
+      - Draw blue 'T' shape below the first pixel (coords `{(r+1, c-1), (r+1, c), (r+1, c+1), (r+2, c)}`).
+      - Draw blue 'T' shape below the second pixel (coords `{(r+4, c-1), (r+4, c), (r+4, c+1), (r+5, c)}`).
+      - Mark the paired red objects as processed.
+
+  - name: Process Horizontal 2x2 Pair
+    condition: Two isolated red objects exist, both are 2x2 squares, with top-left corners at `(r, c1)` and `(r, c2)` where `c2 > c1 + 1`. (Bounding boxes are `(r, c1, r+1, c1+1)` and `(r, c2, r+1, c2+1)`).
+    action:
+      - Draw blue connector rectangle: `(r, c1+2)` to `(r+1, c2-1)`.
+      - Draw blue 2x2 square below connector: Centered horizontally relative to the connector, starting at row `r+2`. Top-left is `(r+2, floor(c1+2 + (c2-1 - (c1+2) + 1)/2 - 1))`.
+      - Draw blue bottom rectangle: `(r+4, c1+2)` to `(r+5, c2+1)`.
+      - Mark the paired red objects as processed.
+
+  - name: Process Single Isolated Object
+    condition: An isolated red object exists that was not processed as part of a pair. Let its bounding box be `(r1, c1, r2, c2)`.
+    action:
+      - If `c1 > 0`, draw a blue rectangle from `(r1, 0)` to `(r2, c1-1)`.
+      - Mark the object as processed.
+
+Output:
+  - The final grid after applying all relevant actions based on the isolated red objects found. Original content is preserved, blue shapes are added.

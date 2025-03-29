@@ -1,0 +1,62 @@
+task_context:
+  problem_description: |-
+    The task involves identifying a main shape, its bounding box, and an 'active' color present both inside and outside the box. Pixels of the active color inside the box are removed. Pixels of the active color outside the box are moved based on their alignment with the box.
+  grid_properties:
+    size: Variable, examples are 12x12.
+    background_color: 0 (white)
+
+objects:
+  - object_type: main_shape
+    description: The largest contiguous block of non-background pixels. Its color varies between examples (red, blue, green).
+    properties:
+      - color: The color of the largest object.
+      - pixels: Set of coordinates forming the object.
+      - bounding_box: The smallest rectangle enclosing the object.
+        attributes: [min_row, max_row, min_col, max_col, width, height]
+  - object_type: active_pixels
+    description: Pixels of a specific color ('active color') that are not part of the main shape and are present both inside and outside the main shape's bounding box.
+    properties:
+      - color: The 'active' color (green, azure, yellow in examples).
+      - location_category:
+          - inside_bbox: Pixels within the main shape's bounding box.
+          - outside_bbox_vertical: Pixels outside the bbox but sharing columns (min_col <= c <= max_col).
+          - outside_bbox_horizontal: Pixels outside the bbox but sharing rows (min_row <= r <= max_row).
+
+actions:
+  - action: identify_main_shape
+    inputs: [input_grid]
+    outputs: [main_shape_object]
+    description: Find the largest connected component of non-background pixels.
+  - action: calculate_bounding_box
+    inputs: [main_shape_object]
+    outputs: [bounding_box]
+  - action: identify_active_color
+    inputs: [input_grid, main_shape_color, bounding_box]
+    outputs: [active_color]
+    description: Find the color (other than background and main shape color) present both inside and outside the bounding box.
+  - action: process_active_pixels
+    inputs: [input_grid, active_color, bounding_box]
+    outputs: [output_grid]
+    description: Create the output grid by applying rules to the active pixels.
+    sub_actions:
+      - rule: remove_inside_pixels
+        target: Active pixels inside the bounding box.
+        effect: Change their color to background (0).
+      - rule: move_outside_vertical_pixels
+        target: Active pixels outside the bounding box and vertically aligned (same column range).
+        effect: Change their original location to background (0) and move them horizontally.
+        details: New column = original_column + floor(bounding_box_width / 2). Row remains the same.
+      - rule: move_outside_horizontal_pixels
+        target: Active pixels outside the bounding box and horizontally aligned (same row range).
+        effect: Change their original location to background (0) and move them vertically.
+        details: New row = bounding_box.min_row. Column remains the same.
+
+relationships:
+  - type: alignment
+    entity1: active_pixel (outside bbox)
+    entity2: bounding_box
+    description: An active pixel outside the bbox can be vertically aligned (within the column span) or horizontally aligned (within the row span).
+  - type: dependency
+    entity1: vertical_shift_distance
+    entity2: bounding_box_width
+    description: The distance to shift vertically aligned pixels depends on the width of the bounding box (`floor(width / 2)`).

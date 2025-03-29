@@ -1,0 +1,46 @@
+task_description: Fill regions based on a separator line and target shapes.
+
+elements:
+  - type: grid
+    properties:
+      - background_color: The most frequent color in the input grid (red in train_1, azure in train_2).
+  - type: line
+    id: separator
+    properties:
+      - orientation: horizontal or vertical
+      - color: color of the line (blue in train_1, red in train_2)
+      - index: row or column index of the line
+      - continuous: Yes
+      - span: Extends across most of the grid dimension perpendicular to its orientation.
+  - type: object_group
+    id: targets
+    properties:
+      - object_type: contiguous shape
+      - color: color of the shapes (azure in train_1, green in train_2)
+      - count: can be one or more
+      - location: defined by bounding box (min_row, max_row, min_col, max_col)
+
+actions:
+  - name: identify_elements
+    inputs: [input_grid]
+    outputs: [background_color, separator, targets]
+  - name: calculate_fill_regions
+    inputs: [separator, targets, grid_dimensions]
+    outputs: [list_of_fill_operations] # Each operation specifies: region_bounds, fill_color
+    logic:
+      - Depends on separator orientation:
+        - If vertical:
+          - For each target: Determine if left/right of separator. Define fill region between target's vertical edge and separator, within target's row span. Fill color is separator's color.
+        - If horizontal:
+          - For each target: Define fill region above separator (rows 0 to sep_row-1, target col span). Fill color is target's color. Define fill region below separator (rows sep_row+1 to target_min_row-1, target col span). Fill color is separator's color.
+  - name: apply_fill
+    inputs: [input_grid, list_of_fill_operations, background_color]
+    outputs: [output_grid]
+    logic:
+      - Create a copy of the input grid.
+      - For each fill operation: Iterate through pixels in the specified region_bounds. If a pixel's color matches the background_color, change it to the specified fill_color.
+
+relationships:
+  - The fill regions are geometrically defined by the positions (bounding boxes) of the target shapes relative to the separator line.
+  - The fill color depends on the separator's color, the target's color, and the position of the fill relative to the separator.
+  - The fill operation only modifies pixels that originally had the background color. Separator, targets, and other pixels remain unchanged.

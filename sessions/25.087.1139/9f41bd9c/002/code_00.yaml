@@ -1,0 +1,52 @@
+task_description: Modify a grid based on the movement of a specific object and its interaction with a fixed area.
+grid_properties:
+  background_color: blue (1)
+  height: variable (16 or 17 in examples)
+  width: variable (16 or 17 in examples)
+objects:
+  - object_type: movable_shape
+    color: gray (5)
+    shape: rectangular bounding box, internal structure can include blue (1) pixels
+    location: variable initial position in the upper part of the grid
+    properties:
+      - bounding_box: defined by min/max row/col of gray pixels
+      - width: bounding_box width
+      - height: bounding_box height
+      - horizontal_center: (min_col + max_col) / 2
+      - content: all pixels within the bounding_box in the input grid
+  - object_type: floor_area
+    color: magenta (6)
+    shape: solid rectangular block, typically spanning the full width
+    location: fixed at the bottom rows of the grid
+    properties:
+      - top_row_index: the minimum row index containing magenta pixels
+actions:
+  - action: calculate_destination
+    actor: system
+    target: movable_shape
+    details:
+      - determine_target_row: floor_area.top_row_index - movable_shape.height
+      - determine_target_col:
+          if movable_shape.horizontal_center > grid.horizontal_center:
+            target_col = 0 (move to left edge)
+          else:
+            target_col = grid.width - movable_shape.width (move to right edge)
+  - action: clear_original_location
+    actor: system
+    target: area defined by movable_shape.bounding_box in the input grid
+    details:
+      - fill the area with the background color (blue 1)
+  - action: move_object
+    actor: system
+    target: movable_shape.content
+    details:
+      - copy the movable_shape.content (all pixels from input bounding box)
+      - paste the copied content into the output grid at the calculated destination (target_row, target_col)
+  - action: modify_floor
+    actor: system
+    target: pixels in the floor_area.top_row_index
+    details:
+      - iterate through each column `c` from 0 to grid.width - 1
+      - if column `c` is *not* covered by the horizontal span of the movable_shape in its *new* position (i.e., `c < target_col` or `c >= target_col + movable_shape.width`):
+          change the color of the pixel at (floor_area.top_row_index, c) to maroon (9)
+      - leave pixels under the moved object unchanged (remain magenta 6)

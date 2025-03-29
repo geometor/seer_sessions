@@ -1,0 +1,68 @@
+task_description: "Generate output patterns around center pixels based on counts of specific partner pixels in the input."
+
+grid_properties:
+  - size: Variable (demonstrated up to 15x15)
+  - background_color: white (0)
+
+objects:
+  - object: center_pixel
+    description: "Core points around which patterns are formed."
+    types:
+      - type: blue_center
+        color: blue (1)
+        partner_color: orange (7)
+      - type: red_center
+        color: red (2)
+        partner_color: green (3)
+    properties:
+      - location: Preserved from input to output.
+
+  - object: partner_pixel
+    description: "Pixels whose count in the input determines the output pattern."
+    types:
+      - type: orange_partner
+        color: orange (7)
+        associated_center: blue_center
+      - type: green_partner
+        color: green (3)
+        associated_center: red_center
+    properties:
+      - count: The total number (N) of these pixels in the input grid (range 1-4 observed).
+      - location_input: Irrelevant for output pattern generation, only count matters.
+      - location_output: Placed in adjacent (cardinal) positions relative to the associated center pixel in the output grid.
+
+actions:
+  - action: count_partner_pixels
+    description: "Count the total number of orange (N_orange) and green (N_green) pixels in the input grid."
+    inputs: [input_grid]
+    outputs: [N_orange, N_green]
+
+  - action: determine_relative_offsets
+    description: "Select a specific subset of relative cardinal offsets based on the partner pixel count (N)."
+    inputs: [N] # where N is N_orange or N_green
+    outputs: [list_of_offsets]
+    logic: |
+      Define base_offsets = [Up(-1,0), Left(0,-1), Right(0,1), Down(1,0)]
+      If N=1, select [Up]
+      If N=2, select [Left, Down]
+      If N=3, select [Up, Right, Down]
+      If N=4, select [Up, Left, Right, Down]
+
+  - action: place_pixels_in_output
+    description: "Create an empty output grid and place center and partner pixels."
+    inputs: [input_grid_shape, blue_centers_in, red_centers_in, N_orange, N_green, offset_map_logic]
+    outputs: [output_grid]
+    steps:
+      - Initialize output_grid with background color (white).
+      - Place blue centers at their original input locations.
+      - Determine orange offsets using N_orange and offset_map_logic.
+      - For each blue center, place orange pixels at calculated offset locations (within bounds).
+      - Place red centers at their original input locations.
+      - Determine green offsets using N_green and offset_map_logic.
+      - For each red center, place green pixels at calculated offset locations (within bounds).
+
+assumptions:
+  - Center pixels (blue/red) do not overlap in the input.
+  - Partner pixels (orange/green) only influence the pattern through their count, not their specific location.
+  - The maximum count of partner pixels influencing the pattern is 4. Counts > 4 might follow the N=4 pattern or be undefined.
+  - Pixel placement overwrites previous values if multiple placements target the same cell (though not observed in examples due to separation). Standard processing order (e.g., blue centers first, then red) applies.

@@ -1,0 +1,40 @@
+task_description: Processes a grid based on a central horizontal axis defined by non-white pixels. Pixels are projected diagonally, and the central axis row receives special processing.
+
+definitions:
+  - name: grid
+    type: 2D array of integers 0-9 (colors)
+  - name: pixel
+    type: tuple (row, column, color) where color != 0 (white)
+  - name: active_rows
+    type: sorted list of unique row indices containing non-white pixels
+  - name: middle_row_index
+    type: integer index = len(active_rows) // 2
+  - name: middle_row
+    type: integer row index = active_rows[middle_row_index]
+  - name: middle_row_pixels
+    type: list of non-white pixels from the input grid whose row index equals middle_row
+
+processing_steps:
+  - step: 1. Initialization
+    action: Create an output grid of the same dimensions as the input grid, initialized with white (0).
+    condition: Always performed.
+  - step: 2. Identify Middle Row
+    action: Find all non-white pixels in the input grid. Determine the set of unique 'active_rows'. Calculate the 'middle_row' as the median row index from the sorted 'active_rows'.
+    condition: Only if non-white pixels exist. If none exist, return the empty white grid.
+  - step: 3. Determine Fill Color
+    action: Identify all 'middle_row_pixels'. Find the pixel among these with the smallest column index (leftmost). The color of this leftmost pixel is the 'fill_color'.
+    condition: Only if 'middle_row_pixels' exist. If the middle row has no pixels (edge case, shouldn't happen if active_rows calculation is correct), default fill is white (0).
+  - step: 4. Fill Middle Row
+    action: Set all pixels in the 'middle_row' of the output grid to the determined 'fill_color'.
+    condition: If 'middle_row' was identified.
+  - step: 5. Overlay Middle Row Pixels
+    action: For each original non-white pixel located on the 'middle_row' in the input grid, set the corresponding pixel in the output grid's 'middle_row' to its original color (overwriting the fill color at that specific column).
+    condition: If 'middle_row' was identified.
+  - step: 6. Project Other Pixels
+    action: Iterate through all non-white pixels in the input grid.
+      - If a pixel's row is *less than* 'middle_row', project its color diagonally up and to the left (`r-1, c-1`) onto the output grid until a grid boundary (row < 0 or col < 0) is reached. Each step of the projection overwrites the existing color in the output grid.
+      - If a pixel's row is *greater than* 'middle_row', project its color diagonally down and to the left (`r+1, c-1`) onto the output grid until a grid boundary (row >= max_rows or col < 0) is reached. Each step of the projection overwrites the existing color in the output grid.
+      - Pixels *on* the 'middle_row' are *not* projected; they were handled in Step 5.
+    condition: If 'middle_row' was identified. Projection overwrites any color previously set (including the middle row fill if diagonals cross it, though this specific interaction needs confirmation - based on examples, it seems projection doesn't overwrite the final middle row state). Revisit: Based on Example 3 results, projections *do* seem to happen independently and might overwrite parts of the initially filled middle row *before* the overlay step, or the overlay takes final precedence. The simplest model consistent with outputs is: fill middle row, overlay middle row originals, then project other pixels onto the grid (potentially overwriting). Let's stick with the description from the code: Fill, Overlay, Project. The projection functions modify the grid directly.
+
+output: The final state of the output grid after all steps are completed.

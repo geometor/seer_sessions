@@ -1,0 +1,41 @@
+task_description: Copy template objects based on trigger pixel locations and colors.
+
+definitions:
+  background_color: The most frequent pixel color in the input grid.
+  object: A contiguous group of one or more non-background pixels.
+    properties:
+      - pixels: List of coordinates and colors [(row, col, color), ...]
+      - size: Number of pixels in the object.
+      - colors: Set of unique colors present in the object.
+      - bounding_box: Top-left and bottom-right coordinates.
+  template_object: An object with size > 1.
+  trigger_pixel: An object with size = 1 (a single pixel).
+    properties:
+      - location: (row, col)
+      - color: pixel color
+
+transformation_rules:
+  - Identify the background_color.
+  - Find all objects (contiguous non-background pixels).
+  - Classify objects into template_objects (size > 1) and trigger_pixels (size = 1).
+  - Initialize the output grid as a copy of the input grid.
+  - For each trigger_pixel:
+      - Get its location (target_row, target_col) and color (trigger_color).
+      - Find candidate template_objects that contain the trigger_color.
+      - Select the 'best' template_object:
+          - If multiple candidates exist, choose the one with the largest size. (If sizes are equal, potentially the one with most colors, or the one appearing first in a top-to-bottom, left-to-right scan). Based on examples, largest size seems sufficient.
+      - If a best template_object is found:
+          - Find the 'source anchor' pixel within the best template_object: This is the pixel with the trigger_color that has the minimum row index, and minimum column index among those with the minimum row index. Let its location be (source_row, source_col).
+          - Calculate the offset: (offset_row, offset_col) = (target_row - source_row, target_col - source_col).
+          - For each pixel (r, c, color) in the best template_object:
+              - Calculate the new position: (new_row, new_col) = (r + offset_row, c + offset_col).
+              - If (new_row, new_col) is within the grid boundaries:
+                  - Update the output grid at (new_row, new_col) with the pixel's color.
+
+relationships:
+  - A trigger_pixel (color C, location L_target) initiates a copy operation.
+  - The operation uses a template_object that contains color C.
+  - The copy is positioned by aligning the first instance of color C within the template (L_source) with the trigger pixel's location (L_target).
+
+output_generation:
+  - The final output grid contains the original objects plus all the copied template objects, potentially overlapping.

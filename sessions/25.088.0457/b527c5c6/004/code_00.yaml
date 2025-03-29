@@ -1,0 +1,41 @@
+task_description: "Project colored objects into adjacent background space based on a directional marker."
+
+definitions:
+  - name: grid
+    type: 2D array of integers (0-9) representing colors.
+  - name: background_pixel
+    type: grid cell with value 0 (white).
+  - name: marker_pixel
+    type: grid cell with value 2 (red).
+  - name: body_pixel
+    type: grid cell with value 3 (green).
+  - name: composite_object
+    type: A connected group of one marker_pixel and its orthogonally adjacent body_pixels. Connectivity includes marker-to-body and body-to-body.
+  - name: expansion_direction
+    type: A vector (dr, dc) indicating Up (-1,0), Down (1,0), Left (0,-1), or Right (0,1). Determined by the single background_pixel orthogonally adjacent to the marker_pixel in the input grid.
+
+input_features:
+  - presence of one or more composite_objects.
+  - each composite_object has exactly one marker_pixel.
+  - each marker_pixel has exactly one orthogonally adjacent background_pixel in the input grid, defining the expansion_direction for its object.
+  - background_pixels define empty space where expansion can occur.
+
+transformations:
+  - step: 1. Initialize the output grid as a copy of the input grid.
+  - step: 2. Identify all marker_pixels in the input grid.
+  - step: 3. For each identified marker_pixel (r_m, c_m):
+      - action: Determine the composite_object connected to this marker_pixel using orthogonal adjacency for marker_pixel and body_pixels.
+      - check: Ensure this object hasn't been processed already (if multiple markers could belong to the same conceptual object, though not seen in examples).
+      - action: Determine the expansion_direction (dr, dc) based on the single background_pixel adjacent to the marker_pixel (r_m, c_m) in the input grid.
+      - action: For every pixel (r_obj, c_obj) belonging to the identified composite_object:
+          - sub_action: Get the original color C = input_grid[r_obj, c_obj].
+          - sub_action: Initialize trace coordinates (r_trace, c_trace) = (r_obj + dr, c_obj + dc).
+          - loop: While the trace coordinates (r_trace, c_trace) are within the grid boundaries AND the pixel at input_grid[r_trace, c_trace] is a background_pixel (0):
+              - update: Set output_grid[r_trace, c_trace] = C.
+              - step: Move trace coordinates: (r_trace, c_trace) = (r_trace + dr, c_trace + dc).
+  - step: 4. Return the final output grid.
+
+output_features:
+  - The output grid contains the original objects plus the colored paths projected from them.
+  - Projected paths fill the originally adjacent background_pixels along the expansion_direction.
+  - Projection stops at grid boundaries or originally non-background_pixels.

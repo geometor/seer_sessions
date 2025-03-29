@@ -1,0 +1,732 @@
+
+Previous Code:
+```python
+import numpy as np
+from collections import deque
+
+"""
+Transformation rule:
+1. Find all red pixels (color 2) in the input grid.
+2. For each red pixel:
+   a. Identify the connected object consisting of the red pixel and all orthogonally adjacent green pixels (color 3).
+   b. Determine the local orientation of the object relative to the red pixel by checking its immediate green neighbors:
+      - If green neighbors are only horizontal (left/right), the orientation is 'horizontal'.
+      - If green neighbors are only vertical (up/down), the orientation is 'vertical'.
+   c. Determine the expansion direction based on the orientation and adjacent white pixels (color 0):
+      - If 'horizontal' orientation: check up/down from the red pixel for a white pixel. If white is above, direction is 'Up'; if white is below, direction is 'Down'.
+      - If 'vertical' orientation: check left/right from the red pixel for a white pixel. If white is left, direction is 'Left'; if white is right, direction is 'Right'.
+   d. Expand the object: For every pixel belonging to the identified object, fill the adjacent white pixels in the determined expansion direction with the original color of that object pixel, continuing until a non-white pixel or the grid boundary is encountered. This expansion happens on a copy of the input grid.
+3. Return the modified grid.
+"""
+
+def find_connected_object(grid, start_r, start_c):
+    """Finds the connected object of red (2) and green (3) pixels starting from (start_r, start_c)."""
+    rows, cols = grid.shape
+    q = deque([(start_r, start_c)])
+    visited = set([(start_r, start_c)])
+    obj_coords = set([(start_r, start_c)])
+    valid_colors = {2, 3} # Red and Green
+
+    while q:
+        r, c = q.popleft()
+
+        for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < rows and 0 <= nc < cols and (nr, nc) not in visited:
+                if grid[nr, nc] in valid_colors:
+                    visited.add((nr, nc))
+                    q.append((nr, nc))
+                    obj_coords.add((nr, nc))
+    return obj_coords
+
+def transform(input_grid):
+    """
+    Applies the transformation rule to the input grid.
+    Finds objects marked by a red pixel, determines their expansion direction based on local structure,
+    and expands each pixel of the object into adjacent white space along that direction.
+    """
+    input_grid_np = np.array(input_grid, dtype=int)
+    output_grid = np.copy(input_grid_np)
+    rows, cols = input_grid_np.shape
+
+    # Find all red pixels
+    red_pixels = np.argwhere(input_grid_np == 2)
+
+    # Store processed object coordinates to avoid reprocessing if multiple red pixels are part of the same logical object (shouldn't happen based on task description, but good practice).
+    processed_coords = set()
+
+    for red_r, red_c in red_pixels:
+        # Skip if this red pixel was part of an already processed object
+        if (red_r, red_c) in processed_coords:
+            continue
+
+        # 1. Identify the connected object
+        object_coords = find_connected_object(input_grid_np, red_r, red_c)
+        processed_coords.update(object_coords) # Mark all coords in this object as processed
+
+        # 2. Determine local orientation and expansion direction
+        has_horizontal_green = False
+        has_vertical_green = False
+        expansion_direction = None
+        direction_vector = (0, 0)
+
+        # Check horizontal neighbors of the red pixel
+        if (red_c > 0 and input_grid_np[red_r, red_c - 1] == 3) or \
+           (red_c < cols - 1 and input_grid_np[red_r, red_c + 1] == 3):
+            has_horizontal_green = True
+
+        # Check vertical neighbors of the red pixel
+        if (red_r > 0 and input_grid_np[red_r - 1, red_c] == 3) or \
+           (red_r < rows - 1 and input_grid_np[red_r + 1, red_c] == 3):
+            has_vertical_green = True
+
+        # Determine expansion direction based on orientation and adjacent white space
+        if has_horizontal_green and not has_vertical_green:
+            # Check Up
+            if red_r > 0 and input_grid_np[red_r - 1, red_c] == 0:
+                expansion_direction = 'Up'
+                direction_vector = (-1, 0)
+            # Check Down
+            elif red_r < rows - 1 and input_grid_np[red_r + 1, red_c] == 0:
+                expansion_direction = 'Down'
+                direction_vector = (1, 0)
+        elif has_vertical_green and not has_horizontal_green:
+            # Check Left
+            if red_c > 0 and input_grid_np[red_r, red_c - 1] == 0:
+                expansion_direction = 'Left'
+                direction_vector = (0, -1)
+            # Check Right
+            elif red_c < cols - 1 and input_grid_np[red_r, red_c + 1] == 0:
+                expansion_direction = 'Right'
+                direction_vector = (0, 1)
+
+        # 3. Expand the object if a direction was determined
+        if expansion_direction:
+            dr, dc = direction_vector
+            # Iterate through each pixel coordinate in the identified object
+            for obj_r, obj_c in object_coords:
+                original_color = input_grid_np[obj_r, obj_c]
+                # Start tracing from the cell adjacent in the expansion direction
+                curr_r, curr_c = obj_r + dr, obj_c + dc
+                # While within bounds and the target cell in the *output* grid is white
+                while 0 <= curr_r < rows and 0 <= curr_c < cols and output_grid[curr_r, curr_c] == 0:
+                    # Fill the white cell with the original color of the object pixel
+                    output_grid[curr_r, curr_c] = original_color
+                    # Move to the next cell in the expansion direction
+                    curr_r += dr
+                    curr_c += dc
+
+    return output_grid.tolist()
+```
+Results for code_00.py:
+
+Train Set Results:
+
+## Example 1:
+Input:
+```
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+3 3 3 3 3 2 3 3 3 3 3 3 3 3 0 0 0 0 0 0
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 0 0 0 0 0 0
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 3 3 3 3 3 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 3 3 3 3 3 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 3 3 3 3 3 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 3 3 3 3 3 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 3 3 3 3 3 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 2 3 3 3 3 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 3 3 3 3 3 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 3 3 3 3 3 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 3 3 3 3 3 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 3 3 3 3 3 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 3 3 3 3 3 0 0 0 0 0
+```
+Expected Output:
+```
+0 0 0 3 3 2 3 3 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 3 3 2 3 3 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 3 3 2 3 3 0 0 0 0 0 0 0 0 0 0 0 0
+3 3 3 3 3 2 3 3 3 3 3 3 3 3 0 0 0 0 0 0
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 0 0 0 0 0 0
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 3 3 3 3 3 0 0 0 0 0
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 0 0 0 0 0
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 0 0 0 0 0
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 0 0 0 0 0
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 0 0 0 0 0
+2 2 2 2 2 2 2 2 2 2 2 3 3 3 3 0 0 0 0 0
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 0 0 0 0 0
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 0 0 0 0 0
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 0 0 0 0 0
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 3 3 3 3 3 0 0 0 0 0
+```
+Transformed Output:
+```
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+3 3 3 3 3 2 3 3 3 3 3 3 3 3 0 0 0 0 0 0
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 0 0 0 0 0 0
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 3 3 3 3 3 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 3 3 3 3 3 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 3 3 3 3 3 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 3 3 3 3 3 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 3 3 3 3 3 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 2 3 3 3 3 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 3 3 3 3 3 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 3 3 3 3 3 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 3 3 3 3 3 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 3 3 3 3 3 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 3 3 3 3 3 0 0 0 0 0
+```
+Match: False
+Pixels Off: 105
+Size Correct: True
+Color Palette Correct: True
+Color Count Correct: False
+Score: 52.5
+
+## Example 2:
+Input:
+```
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 3 3 3 3 3 3 3 3 3 3 3 3 3 2 3 3 3 3 0
+0 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 3 3 3 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 3 3 3 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 3 3 3 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 3 3 3 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 3 3 3 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 3 3 2 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 3 3 3 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 3 3 3 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 3 3 3 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 3 3 3 0 0 0 0 0 0 0 0 0 0
+```
+Expected Output:
+```
+0 0 0 0 0 0 0 0 0 0 0 0 0 3 2 3 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 3 2 3 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 3 2 3 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 3 2 3 0 0 0 0
+0 3 3 3 3 3 3 3 3 3 3 3 3 3 2 3 3 3 3 0
+0 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 3 3 3 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 3 3 3 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 3 3 3 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 3 3 3 3 3 3 3 3 3 3 3 3 3
+0 0 0 0 0 0 0 3 3 3 3 3 3 3 3 3 3 3 3 3
+0 0 0 0 0 0 0 3 3 2 2 2 2 2 2 2 2 2 2 2
+0 0 0 0 0 0 0 3 3 3 3 3 3 3 3 3 3 3 3 3
+0 0 0 0 0 0 0 3 3 3 3 3 3 3 3 3 3 3 3 3
+0 0 0 0 0 0 0 3 3 3 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 3 3 3 0 0 0 0 0 0 0 0 0 0
+```
+Transformed Output:
+```
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 3 3 3 3 3 3 3 3 3 3 3 3 3 2 3 3 3 3 0
+0 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 3 3 3 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 3 3 3 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 3 3 3 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 3 3 3 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 3 3 3 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 3 3 2 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 3 3 3 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 3 3 3 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 3 3 3 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 3 3 3 0 0 0 0 0 0 0 0 0 0
+```
+Match: False
+Pixels Off: 62
+Size Correct: True
+Color Palette Correct: True
+Color Count Correct: False
+Score: 31.0
+
+## Example 3:
+Input:
+```
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 0 0 0 0 0
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 0 0 0 0 0
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 0 0 0 0 0
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 0 0 0 0 0
+3 3 3 3 2 3 3 3 3 3 3 3 3 3 3 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 3 3 3 3 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 3 3 3 3 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 3 3 3 3 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 3 3 3 3 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 3 3 3 3 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 3 3 3 3 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 3 3 3 2 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 3 3 3 3 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 3 3 3 3 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 3 3 3 3 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 3 3 3 3 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+```
+Expected Output:
+```
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 0 0 0 0 0
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 0 0 0 0 0
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 0 0 0 0 0
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 0 0 0 0 0
+3 3 3 3 2 3 3 3 3 3 3 3 3 3 3 0 0 0 0 0
+3 3 3 3 2 3 3 3 3 0 0 0 0 0 0 0 0 0 0 0
+3 3 3 3 2 3 3 3 3 0 0 0 3 3 3 3 0 0 0 0
+3 3 3 3 2 3 3 3 3 0 0 0 3 3 3 3 0 0 0 0
+3 3 3 3 2 3 3 3 3 0 0 0 3 3 3 3 0 0 0 0
+3 3 3 3 2 3 3 3 3 0 0 0 3 3 3 3 3 3 3 3
+3 3 3 3 2 3 3 3 3 0 0 0 3 3 3 3 3 3 3 3
+3 3 3 3 2 3 3 3 3 0 0 0 3 3 3 3 3 3 3 3
+3 3 3 3 2 3 3 3 3 0 0 0 3 3 3 2 2 2 2 2
+3 3 3 3 2 3 3 3 3 0 0 0 3 3 3 3 3 3 3 3
+3 3 3 3 2 3 3 3 3 0 0 0 3 3 3 3 3 3 3 3
+3 3 3 3 2 3 3 3 3 0 0 0 3 3 3 3 3 3 3 3
+3 3 3 3 2 3 3 3 3 0 0 0 3 3 3 3 0 0 0 0
+3 3 3 3 2 3 3 3 3 0 0 0 0 0 0 0 0 0 0 0
+3 3 3 3 2 3 3 3 3 0 0 0 0 0 0 0 0 0 0 0
+3 3 3 3 2 3 3 3 3 0 0 0 0 0 0 0 0 0 0 0
+```
+Transformed Output:
+```
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 0 0 0 0 0
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 0 0 0 0 0
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 0 0 0 0 0
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 0 0 0 0 0
+3 3 3 3 2 3 3 3 3 3 3 3 3 3 3 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 3 3 3 3 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 3 3 3 3 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 3 3 3 3 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 3 3 3 3 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 3 3 3 3 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 3 3 3 3 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 3 3 3 2 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 3 3 3 3 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 3 3 3 3 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 3 3 3 3 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 3 3 3 3 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+```
+Match: False
+Pixels Off: 163
+Size Correct: True
+Color Palette Correct: True
+Color Count Correct: False
+Score: 81.5
+
+## Example 4:
+Input:
+```
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 3 3 0 0 0 0 0
+0 0 0 3 3 0 0 0 0 0
+0 0 0 2 3 0 3 3 3 3
+0 0 0 3 3 0 3 3 2 3
+0 0 0 3 3 0 0 0 0 0
+0 0 0 3 3 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+```
+Expected Output:
+```
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 3 3 0 0 0 0 0
+3 3 3 3 3 0 0 0 0 0
+2 2 2 2 3 0 3 3 3 3
+3 3 3 3 3 0 3 3 2 3
+0 0 0 3 3 0 0 3 2 3
+0 0 0 3 3 0 0 3 2 3
+0 0 0 0 0 0 0 3 2 3
+0 0 0 0 0 0 0 3 2 3
+```
+Transformed Output:
+```
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 3 3 0 0 0 0 0
+0 0 0 3 3 0 0 0 0 0
+0 0 0 2 3 0 3 3 3 3
+0 0 0 3 3 0 3 3 2 3
+0 0 0 3 3 0 0 0 0 0
+0 0 0 3 3 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+```
+Match: False
+Pixels Off: 21
+Size Correct: True
+Color Palette Correct: True
+Color Count Correct: False
+Score: 42.0
+Okay, let's analyze the results and refine the transformation rule.
+
+**General Assessment:**
+
+The previous code failed on all training examples. The core issue appears to be the logic used to determine the *direction* of expansion for the identified objects. The initial hypothesis, based only on the first example, assumed the orientation of green neighbors (exclusively horizontal or vertical) determined the potential expansion axis, and an adjacent white pixel confirmed the specific direction (e.g., horizontal green neighbors + white pixel above -> expand Up).
+
+However, examining the failed examples reveals that the red pixel often has *both* horizontal and vertical green neighbors. The `Transformed Output` in each case shows no expansion occurred, indicating the code failed to determine a valid `expansion_direction`.
+
+The successful `Expected Output` grids suggest a simpler rule: the expansion direction is determined *solely* by the location of the single white (0) pixel directly adjacent (orthogonally) to the red (2) pixel. The green (3) pixels merely define the *shape* of the object to be expanded, along with the red pixel itself. The expansion then proceeds from each pixel of this shape in the determined direction, filling only white pixels until a non-white pixel or grid boundary is encountered.
+
+**Gather Metrics:**
+
+Let's confirm the adjacent white pixel rule for each example:
+
+
+
+*code_execution:*
+```python
+import numpy as np
+
+def analyze_example(input_grid, expected_output_grid):
+    input_np = np.array(input_grid)
+    output_np = np.array(expected_output_grid)
+    rows, cols = input_np.shape
+    red_pixels = np.argwhere(input_np == 2)
+    results = []
+
+    for r, c in red_pixels:
+        analysis = {
+            "red_pixel_location": (r, c),
+            "adjacent_pixels": {},
+            "adjacent_white_locations": [],
+            "expansion_direction_hypothesis": None
+        }
+        # Check neighbors
+        for dr, dc, direction in [(-1, 0, 'Up'), (1, 0, 'Down'), (0, -1, 'Left'), (0, 1, 'Right')]:
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < rows and 0 <= nc < cols:
+                color = input_np[nr, nc]
+                analysis["adjacent_pixels"][direction] = {"location": (nr, nc), "color": color}
+                if color == 0: # White
+                    analysis["adjacent_white_locations"].append(((nr, nc), direction))
+
+        # Determine hypothesized direction
+        if len(analysis["adjacent_white_locations"]) == 1:
+             analysis["expansion_direction_hypothesis"] = analysis["adjacent_white_locations"][0][1]
+
+        results.append(analysis)
+
+    return results
+
+# Example 1 Data
+input1 = [
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [3,3,3,3,3,2,3,3,3,3,3,3,3,3,0,0,0,0,0,0],
+    [3,3,3,3,3,3,3,3,3,3,3,3,3,3,0,0,0,0,0,0],
+    [3,3,3,3,3,3,3,3,3,3,3,3,3,3,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,3,3,3,3,3,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,3,3,3,3,3,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,3,3,3,3,3,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,3,3,3,3,3,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,3,3,3,3,3,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,2,3,3,3,3,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,3,3,3,3,3,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,3,3,3,3,3,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,3,3,3,3,3,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,3,3,3,3,3,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,3,3,3,3,3,0,0,0,0,0]
+]
+output1 = [
+    [0,0,0,3,3,2,3,3,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,3,3,2,3,3,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,3,3,2,3,3,0,0,0,0,0,0,0,0,0,0,0,0],
+    [3,3,3,3,3,2,3,3,3,3,3,3,3,3,0,0,0,0,0,0],
+    [3,3,3,3,3,3,3,3,3,3,3,3,3,3,0,0,0,0,0,0],
+    [3,3,3,3,3,3,3,3,3,3,3,3,3,3,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,3,3,3,3,3,0,0,0,0,0],
+    [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,0,0,0,0,0],
+    [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,0,0,0,0,0],
+    [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,0,0,0,0,0],
+    [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,0,0,0,0,0],
+    [2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,0,0,0,0,0],
+    [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,0,0,0,0,0],
+    [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,0,0,0,0,0],
+    [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,0,0,0,0,0],
+    [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,3,3,3,3,3,0,0,0,0,0]
+]
+
+# Example 2 Data
+input2 = [
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,3,3,3,3,3,3,3,3,3,3,3,3,3,2,3,3,3,3,0],
+    [0,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,3,3,3,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,3,3,3,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,3,3,3,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,3,3,3,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,3,3,3,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,3,3,2,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,3,3,3,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,3,3,3,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,3,3,3,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,3,3,3,0,0,0,0,0,0,0,0,0,0]
+]
+output2 = [
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,3,2,3,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,3,2,3,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,3,2,3,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,3,2,3,0,0,0,0],
+    [0,3,3,3,3,3,3,3,3,3,3,3,3,3,2,3,3,3,3,0],
+    [0,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,3,3,3,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,3,3,3,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,3,3,3,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,3,3,3,3,3,3,3,3,3,3,3,3,3],
+    [0,0,0,0,0,0,0,3,3,3,3,3,3,3,3,3,3,3,3,3],
+    [0,0,0,0,0,0,0,3,3,2,2,2,2,2,2,2,2,2,2,2],
+    [0,0,0,0,0,0,0,3,3,3,3,3,3,3,3,3,3,3,3,3],
+    [0,0,0,0,0,0,0,3,3,3,3,3,3,3,3,3,3,3,3,3],
+    [0,0,0,0,0,0,0,3,3,3,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,3,3,3,0,0,0,0,0,0,0,0,0,0]
+]
+
+# Example 3 Data
+input3 = [
+    [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,0,0,0,0,0],
+    [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,0,0,0,0,0],
+    [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,0,0,0,0,0],
+    [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,0,0,0,0,0],
+    [3,3,3,3,2,3,3,3,3,3,3,3,3,3,3,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,3,3,3,3,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,3,3,3,3,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,3,3,3,3,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,3,3,3,3,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,3,3,3,3,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,3,3,3,3,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,3,3,3,2,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,3,3,3,3,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,3,3,3,3,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,3,3,3,3,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,3,3,3,3,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+]
+output3 = [
+    [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,0,0,0,0,0],
+    [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,0,0,0,0,0],
+    [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,0,0,0,0,0],
+    [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,0,0,0,0,0],
+    [3,3,3,3,2,3,3,3,3,3,3,3,3,3,3,0,0,0,0,0],
+    [3,3,3,3,2,3,3,3,3,0,0,0,0,0,0,0,0,0,0,0],
+    [3,3,3,3,2,3,3,3,3,0,0,0,3,3,3,3,0,0,0,0],
+    [3,3,3,3,2,3,3,3,3,0,0,0,3,3,3,3,0,0,0,0],
+    [3,3,3,3,2,3,3,3,3,0,0,0,3,3,3,3,0,0,0,0],
+    [3,3,3,3,2,3,3,3,3,0,0,0,3,3,3,3,3,3,3,3],
+    [3,3,3,3,2,3,3,3,3,0,0,0,3,3,3,3,3,3,3,3],
+    [3,3,3,3,2,3,3,3,3,0,0,0,3,3,3,3,3,3,3,3],
+    [3,3,3,3,2,3,3,3,3,0,0,0,3,3,3,2,2,2,2,2],
+    [3,3,3,3,2,3,3,3,3,0,0,0,3,3,3,3,3,3,3,3],
+    [3,3,3,3,2,3,3,3,3,0,0,0,3,3,3,3,3,3,3,3],
+    [3,3,3,3,2,3,3,3,3,0,0,0,3,3,3,3,3,3,3,3],
+    [3,3,3,3,2,3,3,3,3,0,0,0,3,3,3,3,0,0,0,0],
+    [3,3,3,3,2,3,3,3,3,0,0,0,0,0,0,0,0,0,0,0],
+    [3,3,3,3,2,3,3,3,3,0,0,0,0,0,0,0,0,0,0,0],
+    [3,3,3,3,2,3,3,3,3,0,0,0,0,0,0,0,0,0,0,0]
+]
+
+# Example 4 Data
+input4 = [
+    [0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,3,3,0,0,0,0,0],
+    [0,0,0,3,3,0,0,0,0,0],
+    [0,0,0,2,3,0,3,3,3,3],
+    [0,0,0,3,3,0,3,3,2,3],
+    [0,0,0,3,3,0,0,0,0,0],
+    [0,0,0,3,3,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0]
+]
+output4 = [
+    [0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,3,3,0,0,0,0,0],
+    [3,3,3,3,3,0,0,0,0,0],
+    [2,2,2,2,3,0,3,3,3,3],
+    [3,3,3,3,3,0,3,3,2,3],
+    [0,0,0,3,3,0,0,3,2,3],
+    [0,0,0,3,3,0,0,3,2,3],
+    [0,0,0,0,0,0,0,3,2,3],
+    [0,0,0,0,0,0,0,3,2,3]
+]
+
+analysis1 = analyze_example(input1, output1)
+analysis2 = analyze_example(input2, output2)
+analysis3 = analyze_example(input3, output3)
+analysis4 = analyze_example(input4, output4)
+
+print(f"Example 1 Analysis:\n{analysis1}\n")
+print(f"Example 2 Analysis:\n{analysis2}\n")
+print(f"Example 3 Analysis:\n{analysis3}\n")
+print(f"Example 4 Analysis:\n{analysis4}\n")
+```
+
+*code_execution_result:*
+outcome: OUTCOME_OK
+```
+Example 1 Analysis:
+[{'red_pixel_location': (np.int64(3), np.int64(5)), 'adjacent_pixels': {'Up': {'location': (np.int64(2), np.int64(5)), 'color': np.int64(0)}, 'Down': {'location': (np.int64(4), np.int64(5)), 'color': np.int64(3)}, 'Left': {'location': (np.int64(3), np.int64(4)), 'color': np.int64(3)}, 'Right': {'location': (np.int64(3), np.int64(6)), 'color': np.int64(3)}}, 'adjacent_white_locations': [((np.int64(2), np.int64(5)), 'Up')], 'expansion_direction_hypothesis': 'Up'}, {'red_pixel_location': (np.int64(14), np.int64(10)), 'adjacent_pixels': {'Up': {'location': (np.int64(13), np.int64(10)), 'color': np.int64(3)}, 'Down': {'location': (np.int64(15), np.int64(10)), 'color': np.int64(3)}, 'Left': {'location': (np.int64(14), np.int64(9)), 'color': np.int64(0)}, 'Right': {'location': (np.int64(14), np.int64(11)), 'color': np.int64(3)}}, 'adjacent_white_locations': [((np.int64(14), np.int64(9)), 'Left')], 'expansion_direction_hypothesis': 'Left'}]
+
+Example 2 Analysis:
+[{'red_pixel_location': (np.int64(4), np.int64(14)), 'adjacent_pixels': {'Up': {'location': (np.int64(3), np.int64(14)), 'color': np.int64(0)}, 'Down': {'location': (np.int64(5), np.int64(14)), 'color': np.int64(3)}, 'Left': {'location': (np.int64(4), np.int64(13)), 'color': np.int64(3)}, 'Right': {'location': (np.int64(4), np.int64(15)), 'color': np.int64(3)}}, 'adjacent_white_locations': [((np.int64(3), np.int64(14)), 'Up')], 'expansion_direction_hypothesis': 'Up'}, {'red_pixel_location': (np.int64(15), np.int64(9)), 'adjacent_pixels': {'Up': {'location': (np.int64(14), np.int64(9)), 'color': np.int64(3)}, 'Down': {'location': (np.int64(16), np.int64(9)), 'color': np.int64(3)}, 'Left': {'location': (np.int64(15), np.int64(8)), 'color': np.int64(3)}, 'Right': {'location': (np.int64(15), np.int64(10)), 'color': np.int64(0)}}, 'adjacent_white_locations': [((np.int64(15), np.int64(10)), 'Right')], 'expansion_direction_hypothesis': 'Right'}]
+
+Example 3 Analysis:
+[{'red_pixel_location': (np.int64(4), np.int64(4)), 'adjacent_pixels': {'Up': {'location': (np.int64(3), np.int64(4)), 'color': np.int64(3)}, 'Down': {'location': (np.int64(5), np.int64(4)), 'color': np.int64(0)}, 'Left': {'location': (np.int64(4), np.int64(3)), 'color': np.int64(3)}, 'Right': {'location': (np.int64(4), np.int64(5)), 'color': np.int64(3)}}, 'adjacent_white_locations': [((np.int64(5), np.int64(4)), 'Down')], 'expansion_direction_hypothesis': 'Down'}, {'red_pixel_location': (np.int64(12), np.int64(15)), 'adjacent_pixels': {'Up': {'location': (np.int64(11), np.int64(15)), 'color': np.int64(3)}, 'Down': {'location': (np.int64(13), np.int64(15)), 'color': np.int64(3)}, 'Left': {'location': (np.int64(12), np.int64(14)), 'color': np.int64(3)}, 'Right': {'location': (np.int64(12), np.int64(16)), 'color': np.int64(0)}}, 'adjacent_white_locations': [((np.int64(12), np.int64(16)), 'Right')], 'expansion_direction_hypothesis': 'Right'}]
+
+Example 4 Analysis:
+[{'red_pixel_location': (np.int64(4), np.int64(3)), 'adjacent_pixels': {'Up': {'location': (np.int64(3), np.int64(3)), 'color': np.int64(3)}, 'Down': {'location': (np.int64(5), np.int64(3)), 'color': np.int64(3)}, 'Left': {'location': (np.int64(4), np.int64(2)), 'color': np.int64(0)}, 'Right': {'location': (np.int64(4), np.int64(4)), 'color': np.int64(3)}}, 'adjacent_white_locations': [((np.int64(4), np.int64(2)), 'Left')], 'expansion_direction_hypothesis': 'Left'}, {'red_pixel_location': (np.int64(5), np.int64(8)), 'adjacent_pixels': {'Up': {'location': (np.int64(4), np.int64(8)), 'color': np.int64(3)}, 'Down': {'location': (np.int64(6), np.int64(8)), 'color': np.int64(0)}, 'Left': {'location': (np.int64(5), np.int64(7)), 'color': np.int64(3)}, 'Right': {'location': (np.int64(5), np.int64(9)), 'color': np.int64(3)}}, 'adjacent_white_locations': [((np.int64(6), np.int64(8)), 'Down')], 'expansion_direction_hypothesis': 'Down'}]
+
+
+```
+The analysis confirms the hypothesis: in every case, the red pixel has exactly one adjacent white pixel, and the direction towards that white pixel matches the direction of the expansion seen in the expected output.
+
+**Facts:**
+
+
+```yaml
+task_description: Expand specific objects into adjacent empty space based on a marker pixel.
+
+components:
+  - object: marker
+    color: red (2)
+    role: Indicates which objects to expand and determines the expansion direction.
+    properties:
+      - Must have exactly one orthogonally adjacent white (0) pixel.
+      - Must be orthogonally adjacent to at least one green (3) pixel.
+  - object: shape_component
+    color: green (3)
+    role: Forms the body of the expandable object along with the marker pixel.
+    properties:
+      - Must be orthogonally connected to the marker pixel or other shape_component pixels that are part of the same object.
+  - object: expandable_object
+    definition: A contiguous group of pixels consisting of one red marker pixel and all orthogonally connected green shape_component pixels.
+  - object: empty_space
+    color: white (0)
+    role: The area into which the expandable_object expands.
+  - object: boundary / obstruction
+    color: Any non-white color (1-9) or grid edge.
+    role: Stops the expansion.
+
+actions:
+  - name: identify_objects
+    inputs: grid
+    steps:
+      - Find all red (2) pixels.
+      - For each red pixel, perform a flood fill (orthogonal neighbors) to find all connected green (3) pixels.
+      - The red pixel plus its connected green pixels form one `expandable_object`.
+  - name: determine_expansion_direction
+    inputs: red_pixel_location, grid
+    steps:
+      - Check the four orthogonal neighbors (up, down, left, right) of the red pixel.
+      - Identify the neighbor cell that contains a white (0) pixel.
+      - The direction from the red pixel to this white pixel is the `expansion_direction`.
+    output: expansion_direction (e.g., 'Up', 'Down', 'Left', 'Right')
+  - name: expand_object
+    inputs: expandable_object_pixels, expansion_direction, grid
+    steps:
+      - Create a copy of the input grid to modify.
+      - For each pixel (r, c) belonging to the `expandable_object`:
+        - Get the original color of this pixel.
+        - Determine the step vector (dr, dc) corresponding to the `expansion_direction`.
+        - Start from the cell adjacent to (r, c) in the expansion direction: (nr, nc) = (r + dr, c + dc).
+        - While the cell (nr, nc) is within the grid boundaries AND the cell at (nr, nc) in the *copied* grid is white (0):
+          - Set the color of the cell (nr, nc) in the copied grid to the original color of the pixel (r, c).
+          - Move to the next cell in the expansion direction: (nr, nc) = (nr + dr, nc + dc).
+    output: modified_grid
+
+workflow:
+  - step: Initialize an output grid as a copy of the input grid.
+  - step: Find all red (2) pixels in the input grid.
+  - step: For each red pixel found:
+      - Identify the full `expandable_object` connected to it (itself + connected green pixels). (Use `identify_objects`)
+      - Determine the `expansion_direction` based on the white neighbor of the red pixel. (Use `determine_expansion_direction`)
+      - If a direction is found:
+          - Expand the object into the output grid. (Use `expand_object` on the output grid, using the coordinates from the `expandable_object` found in the input grid)
+  - step: Return the final output grid.
+
+constraints:
+  - Expansion only fills white (0) pixels.
+  - Expansion stops at grid boundaries or non-white pixels.
+  - Each red pixel initiates one expansion process for its connected object.
+```
+
+
+**Natural Language Program:**
+
+1.  Initialize the output grid as a copy of the input grid.
+2.  Locate all red pixels (color 2) in the input grid.
+3.  For each red pixel found at coordinates (R, C):
+    a.  Identify the connected object consisting of this red pixel and all orthogonally adjacent green pixels (color 3) recursively connected to it. Store the coordinates of all pixels belonging to this object.
+    b.  Find the single orthogonally adjacent white pixel (color 0) next to the *red* pixel at (R, C). Determine the direction (Up, Down, Left, or Right) from the red pixel to this white pixel. This is the expansion direction for the entire object.
+    c.  For every pixel (obj_r, obj_c) belonging to the identified connected object:
+        i.  Retrieve the original color of this pixel from the input grid (it will be either red or green).
+        ii. Determine the directional step (dr, dc) corresponding to the expansion direction (e.g., Up is (-1, 0), Right is (0, 1)).
+        iii. Start tracing a path from the pixel adjacent to (obj_r, obj_c) in the expansion direction. Let the current trace coordinates be (trace_r, trace_c) = (obj_r + dr, obj_c + dc).
+        iv. While the coordinates (trace_r, trace_c) are within the grid boundaries and the pixel at (trace_r, trace_c) in the *output* grid is white (0):
+            1.  Color the pixel at (trace_r, trace_c) in the output grid with the original color retrieved in step 3.c.i.
+            2.  Update the trace coordinates to the next step in the expansion direction: (trace_r, trace_c) = (trace_r + dr, trace_c + dc).
+4.  Return the modified output grid.

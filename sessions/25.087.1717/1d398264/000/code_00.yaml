@@ -1,0 +1,52 @@
+task: Apply differential transformations to vertically arranged objects based on their relative position, involving horizontal line filling and diagonal projections.
+
+objects:
+  - type: grid
+    description: Input and output are 2D grids of pixels (0-9 colors).
+  - type: pixel_group
+    description: Contiguous blocks of non-white pixels form distinct objects in the input.
+    properties:
+      - color: The specific color value (1-9) of the pixels within the object.
+      - position: Coordinates (row, column) of each pixel.
+      - bounding_box: Min/max row and column indices encompassing the object.
+      - vertical_tier: Categorized as 'top', 'middle', or 'bottom' based on relative vertical position compared to other objects.
+
+relationships:
+  - type: vertical_order
+    description: The input objects are consistently ordered vertically. There is one object (or group) identifiable as being in the 'middle' tier relative to the others.
+  - type: dependency
+    description: The transformation applied to an object depends on its vertical tier ('top', 'middle', 'bottom').
+  - type: source_target_mapping
+    description: Each non-white pixel in the input potentially influences multiple pixels in the output (via projection or row filling).
+
+transformations:
+  - name: identify_tiers
+    description: Determine the vertical tier ('top', 'middle', 'bottom') for each input object based on their row indices. Identify the primary row index associated with the 'middle' object.
+  - name: middle_object_transform
+    input: Middle object, middle row index.
+    output: A full horizontal row in the output grid.
+    process:
+      1. Find the rightmost pixel of the middle object. Note its color (`fill_color`).
+      2. Fill the entire row corresponding to the middle object's primary row index with `fill_color`.
+      3. Copy the original pixels of the middle object onto this filled row at their original column positions.
+  - name: top_object_transform
+    input: Pixels of objects in the 'top' tier.
+    output: Diagonal lines in the output grid.
+    process:
+      1. For each pixel `(r, c)` with color `C` in a top object:
+      2. Draw a line of color `C` starting at `(r, c)` and extending diagonally up-left (`(r-1, c-1)`, `(r-2, c-2)`, ...) until the grid boundary (row 0 or column 0) is reached.
+  - name: bottom_object_transform
+    input: Pixels of objects in the 'bottom' tier.
+    output: Diagonal lines in the output grid.
+    process:
+      1. For each pixel `(r, c)` with color `C` in a bottom object:
+      2. Draw a line of color `C` starting at `(r, c)` and extending diagonally down-left (`(r+1, c-1)`, `(r+2, c-2)`, ...) until the grid boundary (last row or column 0) is reached.
+  - name: initialize_output
+    description: Create an output grid of the same dimensions as the input, filled entirely with the background color (white, 0).
+
+execution_flow:
+  1. Initialize the output grid.
+  2. Identify all input objects and their vertical tiers. Determine the middle row index.
+  3. Apply `middle_object_transform`.
+  4. Apply `top_object_transform` for all top-tier objects.
+  5. Apply `bottom_object_transform` for all bottom-tier objects.

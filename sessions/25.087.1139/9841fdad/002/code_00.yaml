@@ -1,0 +1,51 @@
+task_description: Mirror objects from a left panel to a right panel across a vertical divider, preserving the right panel's original background where objects are not placed.
+
+definitions:
+  - grid: A 2D array of integers representing colors.
+  - border: The outermost single-pixel frame of the grid. Often a single color.
+  - divider: A vertical column, typically the same color as the border, separating the grid's interior into a left and right panel. It is located where the background colors of the adjacent columns differ.
+  - left_panel: The region of the grid inside the border and to the left of the divider.
+  - right_panel: The region of the grid inside the border and to the right of the divider.
+  - background_color: The most frequent color within a panel (excluding the border and divider).
+  - object: A contiguous group of pixels within a panel whose color is different from the panel's background color.
+
+example_analysis:
+  - example: 1
+    input_grid: (14, 25)
+    output_grid: (14, 25)
+    border_color: 2 (Red)
+    divider_column_index: 8
+    divider_color: 2 (Red)
+    left_panel_columns: 1-7
+    left_panel_background: 1 (Blue)
+    left_panel_objects:
+      - color: 3 (Green), shape: rectangle
+      - color: 8 (Azure), shape: L-shapes
+    right_panel_columns: 9-23
+    right_panel_background: 4 (Yellow)
+    transformation: Non-blue pixels from columns 1-7 are mirrored horizontally relative to column 8, overwriting the yellow background in columns 9-23.
+  - example: 2
+    input_grid: (11, 22)
+    output_grid: (11, 22)
+    border_color: 4 (Yellow)
+    divider_column_index: 7
+    divider_color: 4 (Yellow)
+    left_panel_columns: 1-6
+    left_panel_background: 1 (Blue)
+    left_panel_objects:
+      - color: 8 (Azure), shape: various small shapes
+    right_panel_columns: 8-20
+    right_panel_background: 2 (Red)
+    transformation: Non-blue pixels from columns 1-6 are mirrored horizontally relative to column 7, overwriting the red background in columns 8-20.
+
+general_transformation_rule:
+  1. Identify the single-pixel outer border color (if one exists and is uniform).
+  2. Identify the vertical divider column. This column typically shares the border color and separates two regions with different background colors. Specifically, find a column `d` such that `grid[:, d]` consists solely of the border color, and the dominant colors of `grid[:, d-1]` and `grid[:, d+1]` are different from each other and from the border color.
+  3. Determine the background color of the left panel (region left of the divider, inside the border).
+  4. Create the output grid by copying the input grid.
+  5. Iterate through each pixel `(r, c)` in the left panel (inside border, left of divider).
+  6. If the pixel's color `input_grid[r, c]` is *not* the left panel background color:
+     a. Calculate the mirrored column index `mc = divider_column_index + (divider_column_index - c)`.
+     b. If `mc` is within the grid bounds and within the right panel (right of divider, inside border):
+        i. Set `output_grid[r, mc]` to `input_grid[r, c]`.
+  7. Ensure all other pixels in the output grid retain their color from the input grid copy (this preserves the original right panel background where not overwritten).

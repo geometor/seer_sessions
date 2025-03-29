@@ -1,0 +1,61 @@
+task_context:
+  description: "Move and reflect objects contained within a frame."
+  grid_properties:
+    - dimensions_preserved: True
+    - background_color: 0 (white)
+  objects:
+    - id: frame
+      color: 2 (red)
+      role: container
+      properties:
+        - shape_varies: True
+        - remains_static: True # The frame itself doesn't change position or color
+        - defines_boundaries: True # Separates 'inside' from 'outside'
+    - id: internal_objects
+      color: 5 (gray)
+      role: content
+      location: initially_inside_frame
+      properties:
+        - shape_varies: True
+        - count_varies: True
+        - contiguous: True # Each object is a connected component
+      actions:
+        - identify_location: relative_to_frame_boundaries
+        - remove_from_inside: replace_with_background_color_in_output
+        - reflect: based_on_nearest_frame_boundary # Horizontal for side boundaries, Vertical for top/bottom
+        - relocate: move_to_outside_frame
+        - reposition: place_adjacent_to_reflection_boundary_with_gap # 1 pixel gap
+  relationships:
+    - type: containment
+      subject: frame
+      object: internal_objects
+      state: input_only # In output, objects are outside
+    - type: proximity
+      subject: internal_objects
+      object: frame_boundaries
+      relevance: determines_reflection_axis_and_placement_location
+  transformation:
+    - step: 1
+      action: identify_frame
+      input: grid
+      output: frame_object, frame_bounding_box
+    - step: 2
+      action: identify_internal_objects
+      input: grid, frame_bounding_box
+      output: list_of_gray_objects_inside_frame
+    - step: 3
+      action: initialize_output_grid
+      based_on: input_grid
+    - step: 4
+      action: clear_internal_area
+      target: output_grid
+      input: list_of_gray_objects_inside_frame
+      effect: pixels_of_internal_objects_set_to_background_color
+    - step: 5
+      action: process_each_internal_object
+      input: gray_object, frame_bounding_box
+      sub_actions:
+        - determine_nearest_boundary # (top, bottom, left, right)
+        - reflect_object # (vertically or horizontally based on boundary)
+        - calculate_new_position # (outside frame, adjacent to boundary, 1 pixel gap)
+        - draw_transformed_object # (onto output_grid)

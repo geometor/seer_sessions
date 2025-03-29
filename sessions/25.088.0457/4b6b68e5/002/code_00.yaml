@@ -1,0 +1,66 @@
+task_type: object_transformation # Fill operation based on internal features
+components:
+  - item: grid
+    attributes:
+      - background_color: white (0)
+      - contains: shapes
+  - item: shape
+    attributes:
+      - type: contiguous block of same non-white color
+      - property: boundary_color (the color of the shape's pixels)
+      - property: pixels (set of coordinates)
+      - property: closed_status (boolean: true if it encloses an interior region, false otherwise)
+      - relationship: may_contain: interior_region
+  - item: interior_region
+    attributes:
+      - definition: set of pixels enclosed by a closed shape, not reachable from grid boundary without crossing the shape
+      - relationship: contains: marker_pixels
+      - relationship: contains: white_pixels (pixels with value 0)
+  - item: marker_pixel
+    attributes:
+      - definition: non-white pixel within an interior_region whose color is different from the boundary_color of the enclosing shape
+      - property: color
+actions:
+  - action: find_shapes
+    inputs:
+      - input_grid
+    outputs:
+      - list_of_shapes (each with pixels and boundary_color)
+  - action: determine_closed_status
+    inputs:
+      - shape
+      - grid_dimensions
+    outputs:
+      - closed_status (boolean)
+    details: Check if a flood fill starting from grid edges (not crossing shape pixels) can reach all non-shape pixels. If any non-shape pixels are unreachable, the shape encloses them and is considered closed.
+  - action: identify_interior_and_markers
+    condition: shape is closed
+    inputs:
+      - closed_shape
+      - input_grid
+    outputs:
+      - interior_region_pixels
+      - list_of_marker_colors
+    details: Find pixels enclosed by the shape. Collect colors of non-white, non-boundary pixels within this region.
+  - action: determine_fill_color
+    condition: list_of_marker_colors is not empty
+    inputs:
+      - list_of_marker_colors
+    outputs:
+      - fill_color
+    details: Count frequency of each marker color. Find the maximum frequency. Select the color(s) with max frequency. If tie, select the color with the highest numerical value.
+  - action: generate_output_grid
+    inputs:
+      - input_grid_dimensions
+      - list_of_closed_shapes
+      - mapping_of_closed_shape_to_interior_pixels
+      - mapping_of_closed_shape_to_fill_color (if markers existed)
+    outputs:
+      - output_grid
+    steps:
+      - Initialize output_grid with white (0).
+      - For each closed_shape:
+        - Copy its boundary pixels (using boundary_color) from input to output_grid.
+        - If a fill_color was determined for this shape:
+          - Fill its corresponding interior_region_pixels in output_grid with the fill_color.
+      - All pixels not explicitly assigned remain white (0).

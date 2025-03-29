@@ -1,0 +1,55 @@
+task_description: |-
+  Identify a unique 'frame' object whose bounding box encloses all other significant objects (non-singletons).
+  Identify the 'nested' objects lying completely within the frame's bounding box.
+  Filter out any objects consisting of a single pixel.
+  Determine the output grid size based on the bounding box of the largest nested object, adding a 1-pixel border on all sides (output_dim = largest_nested_dim + 2).
+  Create the output grid filled with the frame object's color.
+  Sort the nested objects by their bounding box area, smallest first.
+  Render the nested objects onto the output grid, starting with the largest area object and proceeding to the smallest.
+  Objects are rendered centered within the output grid's inner area (excluding the border).
+  The pixel grid of each nested object is copied as-is (no shape transformations like filling L-shapes).
+  If the innermost (smallest area) nested object has both odd height and odd width for its bounding box, place a red (2) pixel at the absolute center of the output grid, potentially overwriting part of the innermost object.
+
+example_1:
+  input: Grid containing several objects.
+  objects:
+    - { color: 8, bbox_h: 6, bbox_w: 6, area: 36, shape: Hollow Square }
+    - { color: 3, bbox_h: 4, bbox_w: 4, area: 16, shape: Hollow Square }
+    - { color: 2, bbox_h: 8, bbox_w: 8, area: 64, role: Frame, enclosing: [Obj1, Obj2, Obj5] }
+    - { color: 8, bbox_h: 2, bbox_w: 2, area: 4, shape: L-Shape? -> Ignored/Noise? } # Revisit if needed
+    - { color: 4, bbox_h: 2, bbox_w: 2, area: 4, shape: Solid Square }
+  frame: Red(2) object.
+  nested_objects_sorted_area_asc: [Yellow(4, 2x2), Green(3, 4x4), Blue(8, 6x6)] # Excluding the small Blue(8) L?
+  largest_nested: Blue(8, 6x6)
+  output_size: 8x8
+  innermost_nested: Yellow(4, 2x2)
+  innermost_dims_odd: [False, False] # H=2, W=2
+  central_pixel_red: False
+  output_actions:
+    - Fill 8x8 grid with Red(2).
+    - Center and draw Blue(8, 6x6) hollow square.
+    - Center and draw Green(3, 4x4) hollow square.
+    - Center and draw Yellow(4, 2x2) solid square.
+
+example_2:
+  input: Grid containing several objects.
+  objects:
+    - { color: 4, bbox_h: 5, bbox_w: 5, area: 25, shape: Hollow Square }
+    - { color: 2, bbox_h: 1, bbox_w: 1, area: 1, role: Singleton -> Filtered }
+    - { color: 1, bbox_h: 3, bbox_w: 3, area: 9, shape: Hollow Square }
+    - { color: 8, bbox_h: 7, bbox_w: 7, area: 49, shape: Hollow Square }
+    - { color: 3, bbox_h: 7, bbox_w: 9, area: 63, role: Frame, enclosing: [Obj1, Obj3, Obj4] }
+    - { color: 8, bbox_h: 4, bbox_w: 2, area: 8, shape: L-Shape? -> Ignored/Noise? } # Revisit if needed
+  frame: Green(3) object.
+  nested_objects_sorted_area_asc: [Blue(1, 3x3), Yellow(4, 5x5), Azure(8, 7x7)] # Excluding singleton and small Blue(8) L?
+  largest_nested: Azure(8, 7x7)
+  output_size: 9x9
+  innermost_nested: Blue(1, 3x3)
+  innermost_dims_odd: [True, True] # H=3, W=3
+  central_pixel_red: True
+  output_actions:
+    - Fill 9x9 grid with Green(3).
+    - Center and draw Azure(8, 7x7) hollow square.
+    - Center and draw Yellow(4, 5x5) hollow square.
+    - Center and draw Blue(1, 3x3) hollow square.
+    - Set center pixel (4, 4) to Red(2).

@@ -1,0 +1,58 @@
+task_description: Create horizontal zones based on the row and color of non-white pixels in the input.
+grid_properties:
+  - dimensions: Input and output grids have the same height and width.
+  - background_color: White (0) is the background color for empty areas between vertical borders.
+input_elements:
+  - object: Non-white pixel
+    properties:
+      - color: The specific color (1-9) of the pixel.
+      - row_index: The row where the pixel is located.
+      - column_index: The column where the pixel is located (Note: column seems irrelevant for the transformation rule).
+    constraints:
+      - There can be multiple non-white pixels.
+      - Pixels can share the same row (though not observed in examples, the logic should handle it, likely using the first encountered per row if sorted by column too, or just using the row index).
+      - If no non-white pixels exist, the output is all white (implicitly handled by initialization).
+transformation:
+  - action: Identify and sort non-white pixels
+    source: Input grid
+    criteria: Pixels with color != 0.
+    sorting: Primarily by row index (ascending). Let the sorted pixels be P_1, P_2, ..., P_n with colors C_1, ..., C_n and rows R_1, ..., R_n.
+  - action: Initialize output grid
+    target: Output grid
+    properties: Same dimensions as input, filled with white (0).
+  - action: Draw top boundary line
+    target: Output grid
+    location: Row 0, full width.
+    color: C_1 (color of the highest pixel P_1).
+  - action: Draw horizontal lines
+    target: Output grid
+    for_each: Sorted pixel P_i (from i=1 to n)
+    location: Row R_i, full width.
+    color: C_i.
+  - action: Draw vertical border segments
+    target: Output grid
+    location: Column 0 and the last column.
+    segments:
+      - segment: Above first pixel line (P_1)
+        rows: From 1 up to (but not including) R_1.
+        color: C_1.
+        condition: Only if R_1 > 1.
+      - segment: Between pixel lines (P_i and P_{i+1})
+        rows: From R_i + 1 up to (but not including) R_{i+1}.
+        color: C_{i+1} (color of the lower horizontal line).
+        condition: Only if R_{i+1} > R_i + 1.
+        iteration: For i from 1 to n-1.
+      - segment: Below last pixel line (P_n)
+        rows: From R_n + 1 up to (but not including) the last row (height - 1).
+        color: C_n.
+        condition: Only if (height - 1) > R_n + 1.
+  - action: Draw bottom boundary line
+    target: Output grid
+    location: Last row (height - 1), full width.
+    color: C_n (color of the lowest pixel P_n).
+output_structure:
+  - The output consists of horizontal colored stripes connected by vertical colored stripes at the left and right edges.
+  - The horizontal stripes are located at the rows corresponding to input non-white pixels, plus the top and bottom boundaries.
+  - The color of a vertical segment between two horizontal stripes is determined by the color of the lower stripe.
+  - The color of the top boundary and the vertical segment just below it matches the highest input pixel's color.
+  - The color of the bottom boundary and the vertical segment just above it matches the lowest input pixel's color.

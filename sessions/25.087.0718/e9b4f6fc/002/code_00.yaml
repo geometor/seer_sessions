@@ -1,0 +1,52 @@
+task_context:
+  problem_description: "Transform the largest connected non-background object found in the input grid based on a characteristic color derived from its border."
+  input_grid_description: "A 2D grid containing colored pixels (0-9), where 0 represents the background. May contain multiple distinct non-background objects."
+  output_grid_description: "A 2D grid representing the transformed target object, cropped to its bounding box."
+
+objects:
+  - object_type: background
+    description: "Pixels with value 0."
+    properties: {}
+  - object_type: non_background_component
+    description: "A connected component of pixels with values 1-9. Connectivity includes diagonals (8 neighbors)."
+    properties:
+      - pixels: "Set of (row, col) coordinates."
+      - size: "Number of pixels in the component."
+      - bounding_box: "Tuple (min_row, min_col, max_row, max_col)."
+      - border_pixels: "Subset of pixels adjacent (8 neighbors) to background (0) or the grid edge."
+      - border_color_counts: "Frequency map of colors appearing in border_pixels."
+  - object_type: target_object
+    description: "The non_background_component with the largest size (pixel count)."
+    properties:
+      - characteristic_color: "The most frequent color among its border_pixels. Ties broken by choosing the lower color index."
+
+actions:
+  - action: FIND_OBJECTS
+    description: "Identify all distinct non_background_component objects in the input grid."
+    inputs: [input_grid]
+    outputs: [list_of_non_background_components]
+  - action: SELECT_TARGET_OBJECT
+    description: "Choose the object from list_of_non_background_components with the maximum size."
+    inputs: [list_of_non_background_components]
+    outputs: [target_object]
+  - action: DETERMINE_CHARACTERISTIC_COLOR
+    description: "Identify the border_pixels of the target_object and find the most frequent color among them."
+    inputs: [target_object, input_grid]
+    outputs: [characteristic_color]
+  - action: TRANSFORM_PIXELS
+    description: "Iterate through each pixel of the target_object. Apply a color transformation based on the pixel's original color and the characteristic_color."
+    inputs: [target_object, characteristic_color]
+    outputs: [transformed_target_object_pixels]
+    transformation_rules:
+      - condition: "characteristic_color == Azure (8)"
+        rules: ["Red(2) <-> Green(3)", "Blue(1) <-> Yellow(4)"]
+      - condition: "characteristic_color == Green (3)"
+        rules: ["Blue(1) -> Red(2)", "Gray(5) -> Yellow(4)", "Azure(8) -> Magenta(6)"]
+      - condition: "characteristic_color == Blue (1)"
+        rules: ["Yellow(4) -> Red(2)", "Azure(8) -> Green(3)"]
+      - condition: "Otherwise"
+        rules: ["Pixel color remains unchanged"]
+  - action: CROP_OUTPUT
+    description: "Create a new grid based on the target_object's bounding_box dimensions. Place the transformed pixels from transformed_target_object_pixels into this new grid, relative to the bounding box origin."
+    inputs: [transformed_target_object_pixels, target_object.bounding_box]
+    outputs: [output_grid]

@@ -1,0 +1,56 @@
+task_description: Identify horizontal or vertical yellow lines and perform a transformation (copy or reflection) based on the line type and the location of non-background, non-yellow pattern pixels relative to the line.
+inputs:
+  - name: grid
+    type: 2D array of integers (0-9)
+outputs:
+  - name: transformed_grid
+    type: 2D array of integers (0-9)
+
+objects:
+  - object: yellow_line
+    properties:
+      - color: yellow (4)
+      - orientation: horizontal or vertical
+      - completeness: spans the entire width or height of the grid
+      - role: acts as an axis or boundary for transformation
+  - object: pattern_pixel
+    properties:
+      - color: any color except white (0) or yellow (4)
+      - location: position (row, col) within the grid
+      - role: defines the source region for the transformation
+  - object: background_pixel
+    properties:
+      - color: white (0)
+      - role: empty space, generally ignored unless part of a transformed region
+
+transformations:
+  - name: reflection
+    conditions:
+      - A vertical yellow line exists.
+      - All pattern pixels are located entirely on one side (left or right) of the vertical line.
+    action:
+      - The entire region (all rows) on the side containing the pattern pixels is reflected horizontally across the vertical yellow line onto the other side.
+      - Source pixels at `(r, c)` map to destination pixels based on the vertical line column `vc`:
+          - If pattern is left (`c < vc`), map to `(r, vc + (vc - c))`.
+          - If pattern is right (`c > vc`), map to `(r, vc - (c - vc))`.
+    priority: Higher than horizontal copy.
+  - name: copy
+    conditions:
+      - No vertical yellow line exists OR the conditions for vertical reflection are not met.
+      - A horizontal yellow line exists.
+      - All pattern pixels are located entirely on one side (above or below) of the horizontal line.
+    action:
+      - The entire region (all columns) on the side containing the pattern pixels is copied vertically (without reflection) across the horizontal yellow line onto the other side, adjacent to the line.
+      - Source pixels at `(r, c)` map to destination pixels based on the horizontal line row `hr`:
+          - If pattern is above (`r < hr`), map to `(hr + 1 + r, c)`.
+          - If pattern is below (`r > hr`), map to `(hr - 1 - (r - (hr + 1)), c) = (hr - (r-hr), c)`.
+    priority: Lower than vertical reflection.
+  - name: no_transformation
+    conditions:
+      - No yellow line exists.
+      - Yellow line(s) exist, but pattern pixels do not meet the location criteria (e.g., pattern pixels are on both sides of the line, or no pattern pixels exist).
+    action:
+      - The output grid is identical to the input grid.
+
+validation_criteria:
+  - The transformed grid must match the expected output grid exactly in dimensions, pixel values, and pixel locations.

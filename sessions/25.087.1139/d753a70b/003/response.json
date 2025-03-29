@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\n\n\"\"\"\nTransformation rule:\n1. Initialize an output grid of the same dimensions as the input grid, filled with the background color (orange - 7).\n2. Identify static, always-moving, and conditionally-moving pixels:\n    - Static: Azure (8), Maroon (9)\n    - Always Moving: Red (2)\n    - Conditionally Moving: Gray (5)\n3. Determine which Gray (5) pixels move: A Gray pixel moves if it is adjacent (including diagonals) to a Red (2) pixel in the input grid. Otherwise, it is treated as static for this step.\n4. Place initial static elements onto the output grid:\n    - Place all Azure (8) and Maroon (9) pixels from the input grid at their original positions.\n    - Place all Gray (5) pixels that were determined *not* to move (not adjacent to Red) at their original positions.\n5. Process moving elements (Red pixels and Gray pixels determined to move):\n    - For each moving pixel at input position `(r, c)` with color `C`:\n        a. Calculate the target position `(tr, tc) = (r - 1, c - 1)`.\n        b. Check if `(tr, tc)` is within the grid boundaries.\n        c. If within bounds, check if the input grid at the target position `(tr, tc)` contains a static color (Azure - 8 or Maroon - 9).\n        d. If the target position is within bounds AND the target position in the *input* grid does *not* contain Azure (8) or Maroon (9), then place the moving pixel's color `C` at `(tr, tc)` in the output grid. This might overwrite background color or non-moving Gray pixels placed in step 4, or even overwrite a previously moved pixel landing on the same spot.\n        e. If the target position is out of bounds or blocked by an original static pixel (8 or 9), the moving pixel effectively disappears.\n\"\"\"\n\ndef is_valid(r, c, height, width):\n    \"\"\"Checks if coordinates are within grid bounds.\"\"\"\n    return 0 <= r < height and 0 <= c < width\n\ndef check_adjacency(input_np, r, c, color_to_check):\n    \"\"\"Checks 8 neighbors for a specific color.\"\"\"\n    height, width = input_np.shape\n    for dr in [-1, 0, 1]:\n        for dc in [-1, 0, 1]:\n            if dr == 0 and dc == 0:\n                continue\n            nr, nc = r + dr, c + dc\n            if is_valid(nr, nc, height, width) and input_np[nr, nc] == color_to_check:\n                return True\n    return False\n\ndef transform(input_grid):\n    \"\"\"\n    Applies the refined transformation rule to the input grid.\n\n    Args:\n        input_grid (list of lists or np.ndarray): The input grid.\n\n    Returns:\n        np.ndarray: The transformed output grid.\n    \"\"\"\n    # Convert input to numpy array for easier manipulation\n    input_np = np.array(input_grid, dtype=int)\n    height, width = input_np.shape\n\n    # Define colors\n    background_color = 7\n    static_colors = {8, 9}  # azure, maroon\n    always_moving_color = 2 # red\n    conditional_moving_color = 5 # gray\n    blocking_colors = static_colors # Colors that block movement if present at the target in input\n\n    # 1. Initialize output grid with background color\n    output_grid = np.full((height, width), background_color, dtype=int)\n\n    # 3. Determine which Gray pixels move\n    moving_gray_coords = set()\n    non_moving_gray_coords = set()\n    red_coords = set()\n    static_coords = {} # Store coords and color for static (8,9)\n\n    for r in range(height):\n        for c in range(width):\n            color = input_np[r, c]\n            if color == conditional_moving_color:\n                if check_adjacency(input_np, r, c, always_moving_color):\n                    moving_gray_coords.add((r, c))\n                else:\n                    non_moving_gray_coords.add((r, c))\n            elif color == always_moving_color:\n                red_coords.add((r, c))\n            elif color in static_colors:\n                 static_coords[(r,c)] = color\n\n\n    # 4. Place initial static elements (Azure, Maroon, non-moving Gray)\n    for r, c in static_coords:\n        output_grid[r,c] = static_coords[(r,c)]\n        \n    for r, c in non_moving_gray_coords:\n        output_grid[r, c] = conditional_moving_color\n\n    # 5. Process and place moving elements (Red and moving Gray)\n    moving_pixels = []\n    # Collect all potential moves\n    for r, c in red_coords:\n        moving_pixels.append({'r': r, 'c': c, 'color': always_moving_color})\n    for r, c in moving_gray_coords:\n        moving_pixels.append({'r': r, 'c': c, 'color': conditional_moving_color})\n\n    # Apply valid moves\n    for move in moving_pixels:\n        r, c, color = move['r'], move['c'], move['color']\n        \n        # a. Calculate target position\n        tr, tc = r - 1, c - 1\n\n        # b. Check bounds\n        if is_valid(tr, tc, height, width):\n            # c. Check for blocking static colors at target in *input* grid\n            if input_np[tr, tc] not in blocking_colors:\n                # d. Place the moving color at the target position\n                output_grid[tr, tc] = color\n        # e. If out of bounds or blocked, do nothing (pixel disappears)\n\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 6859,
+    "candidates_token_count": 1393,
+    "total_token_count": 8252,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 26.43492,
+  "retries": null
+}

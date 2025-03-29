@@ -1,0 +1,60 @@
+task_description: Modify a single pixel's color based on the relative positions of a unique red pixel and the closest magenta pixel.
+
+grid_properties:
+  - height: variable (14x14 in examples)
+  - width: variable (14x14 in examples)
+  - background_colors: Predominantly gray (5), white (0/9), azure (8), maroon (9), orange (7).
+
+objects:
+  - object: red_pixel
+    count: 1
+    color: red (2)
+    properties:
+      - position: (row, col)
+  - object: magenta_pixels
+    count: 1 or more
+    color: magenta (6)
+    properties:
+      - position: (row, col)
+  - object: orange_path_pixels
+    count: variable
+    color: orange (7)
+    properties:
+      - position: (row, col)
+      - forms a path (contiguous or adjacent pixels) often originating near the red pixel.
+  - object: target_pixel
+    count: 1
+    color: any color except orange (7)
+    properties:
+      - position: (row, col)
+      - lies on the extended path defined by the action.
+
+actions:
+  - action: identify_pixels
+    inputs: [grid, red_color_value(2), magenta_color_value(6)]
+    outputs: [red_pixel_position, list_of_magenta_pixel_positions]
+  - action: find_closest_magenta
+    inputs: [red_pixel_position, list_of_magenta_pixel_positions]
+    outputs: closest_magenta_pixel_position
+    method: Calculate Euclidean distance from red pixel to each magenta pixel and find the minimum.
+  - action: determine_opposite_direction
+    inputs: [red_pixel_position, closest_magenta_pixel_position]
+    outputs: opposite_direction_vector (dr, dc) where dr, dc are in {-1, 0, 1}
+    method: Calculate vector (m_row - r_row, m_col - r_col), get signs, negate signs.
+  - action: trace_path
+    inputs: [grid, red_pixel_position, opposite_direction_vector]
+    outputs: target_pixel_position, target_pixel_original_color
+    method:
+      - Start at the pixel adjacent to the red pixel in the opposite direction.
+      - Step along the path defined by the opposite direction vector.
+      - Stop at the first pixel encountered that is *not* orange (7).
+      - Record the position and original color of this pixel.
+  - action: modify_pixel
+    inputs: [grid, target_pixel_position]
+    outputs: modified_grid
+    method: Change the color of the pixel at target_pixel_position to orange (7).
+
+relationships:
+  - The key relationship is the vector from the red pixel to the *closest* magenta pixel.
+  - The transformation occurs along the line extending in the *opposite* direction of this vector, starting from the red pixel.
+  - The transformation stops based on encountering a non-orange pixel color.

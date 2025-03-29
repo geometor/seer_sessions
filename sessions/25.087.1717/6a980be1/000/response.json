@@ -1,0 +1,35 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "*   **Perception:**\n    *   All examples feature an input grid with a single-color border (Azure-8, Yellow-4, Magenta-6) surrounding a primarily white (0) content area.\n    *   The content area contains a central pattern composed mainly of Green (3) and Red (2) pixels.\n    *   The output grid typically has the same dimensions as the input grid (Example 1's output dimension seems anomalous in the prompt, assuming it should be 18x19 like its input based on other examples).\n    *   The output grid removes the original border.\n    *   The core Green/Red pattern from the input's content area is preserved in the output.\n    *   The key transformation involves changing the background pixels (originally white or the border color) based on the content of each row within the pattern's extent, and handling rows outside the pattern's extent distinctly.\n    *   Specifically, for rows within the pattern's vertical span: if the row contains Red (2) pixels in the input, the background in the output row becomes the original border color; otherwise, the background becomes white (0).\n    *   For rows outside the pattern's vertical span (relevant in Example 2 where the pattern doesn't fill the height), the output rows are filled with a repeating horizontal pattern using white (0) and the original border color.\n\n*   **YAML Facts:**\n    "
+          },
+          {
+            "text": "```yaml\n    task_context:\n      grid_properties:\n        - input_output_size_match: true # Assuming example 1 output size was a typo\n        - input_has_border: true\n        - border_width: 1\n        - output_has_border: false\n        - background_color: 0 # white\n      key_colors:\n        - border_color: # Varies per example (8, 4, 6) - identifies the input border\n            role: determines_fill_color_1\n        - pattern_color_1: 3 # green - structural element\n            role: part_of_preserved_pattern\n        - pattern_color_2: 2 # red - conditional trigger\n            role: determines_row_background_fill\n        - background_fill_color_1: # Same as border_color\n            role: fills_background_on_red_presence\n        - background_fill_color_2: 0 # white\n            role: fills_background_on_red_absence_or_outside_pattern\n\n    transformation:\n      - action: identify_border_color\n        input: input_grid[0, 0]\n        output: border_color\n      - action: identify_pattern_vertical_span\n        input: input_grid content area (excluding border)\n        criteria: rows containing any non-white pixels\n        output: min_pattern_row, max_pattern_row\n      - action: initialize_output_grid\n        size: same as input grid\n        initial_value: # determined by row position relative to pattern span\n      - action: preserve_pattern\n        input: input_grid content area\n        output: output_grid\n        filter: copy non-white pixels to the same coordinates\n      - action: fill_row_backgrounds_within_span\n        target: rows from min_pattern_row to max_pattern_row\n        condition: check presence of red (2) in the corresponding input row (content area)\n        logic:\n          - if red present: fill white/border pixels in output row with border_color\n          - if red absent: fill white/border pixels in output row with white (0)\n      - action: fill_row_backgrounds_outside_span # Only if min_pattern_row > 0 or max_pattern_row < height - 1\n        target: rows 0 to min_pattern_row - 1 AND rows max_pattern_row + 1 to height - 1\n        logic: fill row with repeating horizontal pattern [white, border_color, border_color]\n      - action: handle_original_border_rows_if_pattern_is_full_height # if min_pattern_row = 1 and max_pattern_row = height - 2\n        target: rows 0 and height - 1\n        logic: fill row with white (0)\n\n    relationships:\n      - border_color (input) determines fill_color_1 (output)\n      - presence of red (2) in input row triggers use of fill_color_1 for that row's background\n      - absence of red (2) in input row triggers use of fill_color_2 (white) for that row's background\n      - vertical span of the non-white pattern determines which rows use conditional fill vs pattern fill\n    ```"
+          },
+          {
+            "text": "\n\n*   **Natural Language Program:**\n    1.  Identify the border color by looking at a corner pixel (e.g., top-left) of the input grid.\n    2.  Create a new grid (output) of the same dimensions as the input grid.\n    3.  Find the minimum and maximum row indices (`min_r`, `max_r`) that contain any non-background (non-white) pixels within the input grid's content area (i.e., excluding the 1-pixel border).\n    4.  Iterate through each row index `r` from 0 to the height of the grid minus 1.\n    5.  **Case 1: Row `r` is within the pattern's vertical span (`min_r <= r <= max_r`).**\n        *   Check if the input grid's row `r` contains any red (2) pixels within the content columns (between column 1 and width-2).\n        *   If red (2) is present: Set the background fill color for this output row to be the identified border color.\n        *   If red (2) is absent: Set the background fill color for this output row to be white (0).\n        *   Iterate through each column index `c` from 0 to the width of the grid minus 1.\n        *   If the pixel `input[r, c]` is part of the original non-white pattern (i.e., not white and not the border color, typically green or red), copy `input[r, c]` to `output[r, c]`.\n        *   Otherwise (if `input[r, c]` was white or the border color), set `output[r, c]` to the background fill color determined for this row.\n    6.  **Case 2: Row `r` is outside the pattern's vertical span (`r < min_r` or `r > max_r`).**\n        *   Determine if this case applies because the pattern is \"short\" (like Example 2) or because we are processing the original top/bottom border rows of a \"tall\" pattern (like Examples 1 and 3). This can be checked by seeing if `min_r > 1` or `max_r < height - 2`.\n        *   If the pattern is \"short\": Fill the output row `r` by repeating the horizontal pattern `[white, border_color, border_color]` across the columns.\n        *   If the pattern is \"tall\" (meaning `min_r = 1` and `max_r = height - 2`, and we are currently processing row 0 or row height-1): Fill the output row `r` entirely with white (0).\n    7.  Return the completed output grid."
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 4763,
+    "candidates_token_count": 7028,
+    "total_token_count": 11791,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 68.43354,
+  "retries": null
+}

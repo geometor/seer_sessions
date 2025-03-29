@@ -1,0 +1,39 @@
+Input_Features:
+  - Grid: 2D array of integers (colors 0-9).
+  - Objects:
+      - Frame: A rectangular structure composed of contiguous red (2) pixels. Defined by the bounding box of all red pixels.
+      - Content: Contiguous groups of gray (5) pixels. Analyzed using 4-way connectivity.
+      - Background: White (0) pixels.
+  - Frame Properties:
+      - Outer Bounding Box: min_r, max_r, min_c, max_c coordinates.
+      - Inner Space: The rectangular area defined by (min_r+1, max_r-1, min_c+1, max_c-1).
+      - Inner Space Dimensions: height (H) and width (W).
+      - Inner Space Aspect Ratio: Comparison of H and W (H > W, W > H, or H == W).
+
+Output_Features:
+  - Grid: Transformed 2D array.
+  - Frame: Unchanged from the input.
+  - External Content: Gray objects initially outside the frame remain unchanged.
+  - Internal Content: Gray objects initially strictly inside the frame's outer bounding box are moved and potentially reflected.
+  - Erased Content: The original positions of the internal gray objects are set to the background color (0).
+  - Moved Content:
+      - Position: Placed outside the frame with a 1-pixel gap from the outer frame edge.
+      - Reflection Axis: Determined by the inner space aspect ratio (Horizontal if W>=H, Vertical if H>W).
+      - Placement Side: Determined by the object's proximity (bounding box edge distance) to the relevant inner frame boundaries (Left/Right if reflecting horizontally, Top/Bottom if reflecting vertically). The object is placed adjacent to the closer boundary. Tie-breaking: Left > Right, Top > Bottom.
+      - Alignment: If placed Left/Right, aligned vertically with its original position (top row matches original top row). If placed Top/Bottom, aligned horizontally with its original position (left column matches original left column).
+
+Transformation_Steps:
+  1. Identify the red frame and its outer bounding box. Handle cases with no frame.
+  2. Calculate the frame's inner space bounding box and dimensions (Height H, Width W).
+  3. Determine the reflection axis based on aspect ratio: Horizontal if W >= H, Vertical if H > W.
+  4. Identify all gray content objects (using 4-connectivity).
+  5. Filter for content objects located strictly inside the frame's outer bounding box.
+  6. Create a copy of the input grid for the output.
+  7. For each internal content object:
+      a. Erase the object from its original position in the output grid (set to background color 0).
+      b. Calculate the object's bounding box distances to the four inner frame boundaries (Top, Bottom, Left, Right).
+      c. Based on the determined reflection axis (Step 3):
+          i. If Horizontal Reflection (W>=H): Compare distances to Left and Right inner boundaries. Choose the closer side (Left or Right, tie-break L > R) as the placement side. Reflect the object horizontally (flip left-right). Calculate the new top-left position adjacent to the chosen outer frame side (Left or Right) with a 1-pixel gap, maintaining the original top-row alignment.
+          ii. If Vertical Reflection (H>W): Compare distances to Top and Bottom inner boundaries. Choose the closer side (Top or Bottom, tie-break T > B) as the placement side. Reflect the object vertically (flip up-down). Calculate the new top-left position adjacent to the chosen outer frame side (Top or Bottom) with a 1-pixel gap, maintaining the original left-column alignment.
+      d. Draw the (potentially reflected) object at its new calculated position in the output grid, checking boundary conditions.
+  8. Return the modified output grid.

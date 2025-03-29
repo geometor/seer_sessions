@@ -1,0 +1,73 @@
+Task: Reconstruct shapes based on key locations within a frame.
+
+Input_Objects:
+  - Object: Frame
+    Properties:
+      - Color: Blue (1)
+      - Shape: Typically a hollow rectangle, 1 pixel thick.
+      - Role: Defines a spatial boundary and contains Key_Pixels.
+  - Object: Key_Pixel
+    Properties:
+      - Color: Any color except White (0) or Blue (1).
+      - Location: Inside the Frame's inner boundary.
+      - Role: Acts as a positional marker, color-matched to a Target_Shape.
+  - Object: Target_Shape
+    Properties:
+      - Color: Any color except White (0).
+      - Location: Outside the Frame's bounding box.
+      - Shape: A contiguous block of non-White pixels of a single color.
+      - Role: The content to be placed in the output grid.
+
+Derived_Objects:
+  - Object: Inner_Frame_Area
+    Properties:
+      - Boundary: Defined by the pixels adjacent to the inside edge of the Frame.
+      - Role: The area where Key_Pixels' relative positions are determined.
+  - Object: Relative_Key_Grid
+    Properties:
+      - Structure: A conceptual grid based on the unique row and column offsets of Key_Pixels relative to the Inner_Frame_Area's top-left corner.
+      - Role: Defines the layout structure (rows and columns) of the output grid.
+  - Object: Output_Grid
+    Properties:
+      - Background: White (0)
+      - Dimensions: Determined by the sum of maximum shape heights/widths in each row/column of the Relative_Key_Grid, plus spacing.
+      - Content: Composed of Target_Shapes placed according to the Relative_Key_Grid.
+
+Actions:
+  - Action: Identify_Frame
+    Input: Input Grid
+    Output: Pixel coordinates of the Blue Frame.
+  - Action: Identify_Key_Pixels
+    Input: Input Grid, Frame coordinates
+    Output: List of Key_Pixels (color, absolute position).
+    Refinement: Key pixels must be strictly *inside* the hollow frame, not part of the frame itself.
+  - Action: Identify_Target_Shapes
+    Input: Input Grid, Frame bounding box
+    Output: List of Target_Shapes (color, relative shape grid, dimensions).
+    Refinement: Target shapes must be entirely *outside* the Frame's bounding box.
+  - Action: Calculate_Relative_Key_Positions
+    Input: Key_Pixels, Frame coordinates
+    Output: Map of Key_Pixel absolute position to relative (row_offset, col_offset) from the frame's inner top-left corner (e.g., `frame_min_row + 1`, `frame_min_col + 1`).
+  - Action: Determine_Output_Layout
+    Input: Relative_Key_Positions, Matched Target_Shapes' dimensions
+    Output: Output grid dimensions, placement coordinates for each shape.
+    Refinement:
+      - Identify unique relative rows and columns from key positions.
+      - Calculate max height for shapes corresponding to keys in each relative row.
+      - Calculate max width for shapes corresponding to keys in each relative column.
+      - Sum max heights + (num_rows - 1) * spacing for total height.
+      - Sum max widths + (num_cols - 1) * spacing for total width.
+      - Spacing is 1 white pixel.
+  - Action: Match_Keys_To_Targets
+    Input: Key_Pixels, Target_Shapes
+    Output: Mapping between Key_Pixels and Target_Shapes based on matching colors. Assume one-to-one mapping.
+  - Action: Construct_Output_Grid
+    Input: Output grid dimensions, Matched Target_Shapes, Placement coordinates.
+    Output: Final Output Grid.
+    Refinement: Paste shapes accurately at calculated top-left coordinates within the output grid. Ensure no clipping occurs due to miscalculated dimensions or pasting logic.
+
+Observations_From_Failures:
+  - Output grid dimensions calculation needs correction, particularly height.
+  - Relative positioning of keys within the frame's *inner* area is crucial for layout.
+  - Shape integrity must be maintained during extraction and pasting.
+  - Spacing between shapes in the output grid is consistently 1 white pixel.

@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\nTransformation Rule Description:\n1. Initialize an output grid as an exact copy of the input grid.\n2. Identify all contiguous objects in the input grid that are neither white (0) nor blue (1). These are 'pattern objects'.\n3. For each identified pattern object:\n    a. Determine its color (C).\n    b. Determine its bounding box (minimum row `min_r`, minimum column `min_c`, maximum row `max_r`, maximum column `max_c`).\n    c. In the output grid, fill the entire row `min_r` with color C.\n    d. In the output grid, fill the entire row `max_r` with color C.\n    e. In the output grid, fill the entire column `min_c` with color C.\n    f. In the output grid, fill the entire column `max_c` with color C.\n4. If multiple pattern objects exist, the filling operations from later objects (in the order they are found, typically top-to-bottom, left-to-right) will overwrite the fills from earlier objects or the initial copied grid where rows or columns overlap.\n5. Return the modified grid as the final output.\n\"\"\"\n\nimport numpy as np\nfrom collections import deque\n\ndef find_objects(grid, colors_to_exclude={0, 1}):\n    \"\"\"\n    Finds contiguous objects of colors not in colors_to_exclude.\n\n    Args:\n        grid (np.array): The input grid.\n        colors_to_exclude (set): Set of colors to ignore (typically background and boundary markers).\n\n    Returns:\n        list: A list of tuples, where each tuple represents an object\n              (color, min_row, min_col, max_row, max_col).\n              Objects are typically found in top-to-bottom, left-to-right order\n              based on their topmost, leftmost pixel.\n    \"\"\"\n    height, width = grid.shape\n    visited = np.zeros_like(grid, dtype=bool)\n    objects = []\n\n    for r in range(height):\n        for c in range(width):\n            color = grid[r, c]\n            # Check if the pixel is part of a target object and not visited\n            if color not in colors_to_exclude and not visited[r, c]:\n                obj_color = color\n                q = deque([(r, c)]) # Use deque for efficient queue operations\n                visited[r, c] = True\n                min_r, min_c = r, c\n                max_r, max_c = r, c\n                current_object_pixels = set([(r, c)]) # Keep track of pixels in the current object\n\n                # Breadth-First Search (BFS) to find all connected pixels of the same color\n                while q:\n                    row, col = q.popleft()\n\n                    # Update bounding box\n                    min_r = min(min_r, row)\n                    min_c = min(min_c, col)\n                    max_r = max(max_r, row)\n                    max_c = max(max_c, col)\n\n                    # Explore neighbors (4-connectivity: up, down, left, right)\n                    for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n                        nr, nc = row + dr, col + dc\n                        # Check bounds, color match, and if not visited\n                        if 0 <= nr < height and 0 <= nc < width and \\\n                           not visited[nr, nc] and grid[nr, nc] == obj_color:\n                            visited[nr, nc] = True\n                            q.append((nr, nc))\n                            current_object_pixels.add((nr, nc))\n                \n                # Add the found object (color and bounding box) to the list\n                objects.append((obj_color, min_r, min_c, max_r, max_c))\n                    \n    return objects\n\ndef transform(input_grid):\n    \"\"\"\n    Transforms the input grid by drawing lines based on the bounding boxes\n    of non-white, non-blue objects onto a copy of the input grid.\n\n    Args:\n        input_grid (list of lists): The input grid represented as a list of lists.\n\n    Returns:\n        list of lists: The transformed output grid.\n    \"\"\"\n    # Convert input to numpy array for efficient processing\n    input_np = np.array(input_grid, dtype=int)\n    height, width = input_np.shape\n\n    # 1. Initialize output grid as a copy of the input grid\n    output_grid = np.copy(input_np)\n\n    # 2. Identify Pattern Objects (non-white, non-blue)\n    #    Excluding white (0) and blue (1)\n    pattern_objects = find_objects(input_np, colors_to_exclude={0, 1})\n\n    # 3. Iterate through each pattern object and paint rows/columns onto the output grid\n    for obj_color, min_r, min_c, max_r, max_c in pattern_objects:\n        # 3a. Get color (C) and bounding box (already done)\n        C = obj_color\n        \n        # 3c. Fill row min_r with color C\n        # Check bounds just in case, although they should be valid from find_objects\n        if 0 <= min_r < height:\n            output_grid[min_r, :] = C\n        \n        # 3d. Fill row max_r with color C\n        if 0 <= max_r < height:\n            output_grid[max_r, :] = C\n            \n        # 3e. Fill column min_c with color C\n        if 0 <= min_c < width:\n            output_grid[:, min_c] = C\n            \n        # 3f. Fill column max_c with color C\n        if 0 <= max_c < width:\n            output_grid[:, max_c] = C\n            \n    # 4. Overwriting happens naturally due to the order of iteration over the copied grid.\n\n    # 5. Return the final grid as a list of lists\n    return output_grid.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 15396,
+    "candidates_token_count": 1416,
+    "total_token_count": 16812,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 17.405814,
+  "retries": null
+}

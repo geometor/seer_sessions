@@ -1,0 +1,72 @@
+task_description: Move gray objects from inside a red frame to the outside, reflecting them based on proximity to the frame's inner boundary.
+
+definitions:
+  - object: Frame
+    color: 2 (Red)
+    shape: A hollow rectangle, typically 1 pixel thick. Assumed to be the single largest connected component of red pixels forming a rectangular boundary.
+    properties: Defines an inner area and an outer area. Remains unchanged in the output. Its bounding box defines the reference for inside/outside.
+  - object: Content
+    color: 5 (Gray)
+    properties: Can be any shape composed of one or more connected pixels. Multiple distinct content objects can exist.
+    status: If initially located within the inner area defined by the Frame, they are erased from their original position, reflected, and redrawn outside the frame.
+
+transformations:
+  - action: Identify Frame
+    actor: System
+    target: Red Pixels (Color 2)
+    details: Identify the single largest connected component of red pixels. Assume this forms the frame. Calculate its bounding box (frame_min_r, frame_max_r, frame_min_c, frame_max_c).
+    error_handling: If no red frame object is found, return the input unchanged.
+  - action: Identify Content Objects
+    actor: System
+    target: Gray Pixels (Color 5)
+    details: Find all distinct connected components of gray pixels and their individual bounding boxes.
+  - action: Filter Internal Content
+    actor: System
+    input: All Content objects
+    output: List of Internal Content objects
+    condition: An object is internal if ALL its pixels (r, c) satisfy `frame_min_r < r < frame_max_r` AND `frame_min_c < c < frame_max_c`.
+  - action: Erase Internal Content
+    actor: System
+    target: Output grid (initially a copy of input)
+    input: List of Internal Content objects
+    details: For each internal object, set the color of its original pixel coordinates in the output grid to background color 0 (White).
+  - for_each: Internal Content object in the identified list
+    actions:
+      - action: Calculate Closest Inner Boundary
+        actor: System
+        target: Current Internal Content object
+        reference: Frame object's inner boundaries (frame_min_r + 1, frame_max_r - 1, frame_min_c + 1, frame_max_c - 1)
+        details: |
+          Calculate distances from the object's bounding box edges to the frame's inner boundaries:
+          dist_top = obj_bbox['min_r'] - (frame_min_r + 1)
+          dist_bottom = (frame_max_r - 1) - obj_bbox['max_r']
+          dist_left = obj_bbox['min_c'] - (frame_min_c + 1)
+          dist_right = (frame_max_c - 1) - obj_bbox['max_c']
+        output: nearest_boundary ('top', 'bottom', 'left', or 'right') corresponding to the minimum non-negative distance (>=0). Ties are broken by priority: top > bottom > left > right.
+      - action: Reflect Object
+        actor: System
+        target: Current Internal Content object
+        input: nearest_boundary
+        details: |
+          Create a representation of the object relative to its own bounding box.
+          If nearest_boundary is 'left' or 'right', reflect this representation horizontally.
+          If nearest_boundary is 'top' or 'bottom', reflect this representation vertically.
+        output: reflected_object_pixels (relative coordinates within the object's bounding box dimensions)
+      - action: Calculate New Position (Top-Left Anchor)
+        actor: System
+        input: nearest_boundary, object bounding box, frame bounding box, reflected object dimensions (height, width)
+        details: |
+          Calculate the top-left coordinate (new_r, new_c) to draw the reflected object, ensuring a 1-pixel gap from the frame's outer edge:
+          top: new_r = frame_min_r - 1 - reflected_height, new_c = obj_bbox['min_c']
+          bottom: new_r = frame_max_r + 2, new_c = obj_bbox['min_c']
+          left: new_r = obj_bbox['min_r'], new_c = frame_min_c - 1 - reflected_width
+          right: new_r = obj_bbox['min_r'], new_c = frame_max_c + 2
+      - action: Draw Reflected Object
+        actor: System
+        target: Output grid
+        input: reflected_object_pixels, new_r, new_c
+        details: Draw the reflected object onto the output grid using gray (color 5), placing the relative pixel coordinates starting from (new_r, new_c). Ensure drawing occurs within grid boundaries.
+
+grid_properties:
+  background_color: 0 (White)
+  colors_used: 0 (Background), 2 (Frame), 5 (Content)

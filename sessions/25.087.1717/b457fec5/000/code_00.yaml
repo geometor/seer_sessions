@@ -1,0 +1,48 @@
+task_elements:
+  - element: grid
+    description: A 2D array of pixels with integer values 0-9 representing colors.
+  - element: background
+    properties:
+      - color: white (0)
+      - role: Remains unchanged in the output.
+  - element: key_sequence
+    properties:
+      - type: object (horizontal 1D sequence)
+      - composition: Contiguous sequence of non-white (0) and non-gray (5) pixels.
+      - location: Typically near the top of the grid.
+      - uniqueness: Appears to be only one per input grid.
+    role: Provides the color palette/pattern for filling target objects. Remains unchanged in the output.
+  - element: target_object
+    properties:
+      - type: object (contiguous region)
+      - composition: Made entirely of gray pixels (5).
+      - quantity: One or more per input grid.
+      - shape: Variable.
+    role: The object(s) to be transformed.
+transformation:
+  - action: identify_key_sequence
+    inputs: input_grid
+    outputs: key_sequence (list of colors), key_location
+  - action: identify_target_objects
+    inputs: input_grid
+    outputs: list_of_target_objects (each object is a set of pixel coordinates)
+  - action: color_target_objects
+    inputs:
+      - input_grid
+      - key_sequence
+      - list_of_target_objects
+    process:
+      - Create an output grid, initially copying the input grid.
+      - For each distinct target object:
+        - Initialize a color index to 0 (pointing to the start of the key_sequence).
+        - Iterate through the grid pixels in a defined order (e.g., row-major: top-to-bottom, left-to-right).
+        - If a pixel belongs to the current target object:
+          - Get the color from key_sequence at the current color index.
+          - Replace the gray pixel (5) at this location in the output grid with the fetched color.
+          - Increment the color index, wrapping around using the modulo operator based on the length of the key_sequence.
+    outputs: output_grid
+relationships:
+  - The key_sequence dictates the colors used to replace the gray pixels in the target_objects.
+  - The replacement happens cyclically, using the colors from the key_sequence in order.
+  - Each target_object is colored independently using the same key_sequence, starting the cycle anew for each object based on the scan order.
+  - Pixels not part of the key_sequence or target_objects remain unchanged.

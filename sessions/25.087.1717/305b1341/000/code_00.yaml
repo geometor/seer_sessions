@@ -1,0 +1,71 @@
+task_elements:
+  - type: grid
+    role: input
+    attributes:
+      size: 20x20
+      background_color: white (0)
+      components:
+        - type: block
+          location: top-left corner (rows 0-2, columns 0-1)
+          size: 3x2
+          role: key_map
+          content: pairs of colors defining a mapping (color_col0 -> color_col1)
+        - type: scattered_patterns
+          role: pattern_objects
+          location: elsewhere in the grid
+          characteristics:
+            - composed of single, non-white colors
+            - often form vertical dashed lines
+            - represent distinct objects to be transformed
+
+  - type: grid
+    role: output
+    attributes:
+      size: 20x20
+      background_color: white (0)
+      components:
+        - type: filled_rectangles
+          role: transformed_objects
+          characteristics:
+            - correspond spatially to input scattered_patterns
+            - defined by a bounding box
+            - have a border_color
+            - have an interior_fill pattern mixing border_color and the original pattern_color
+
+relationships_and_actions:
+  - action: identify
+    target: key_map
+    result: color mapping (KeyColor -> BorderColor) derived from column 0 to column 1 within the 3x2 block.
+
+  - action: identify
+    target: pattern_objects
+    input_grid: input
+    result: set of Pattern Colors (PCs) and their pixel coordinates (excluding key_map area).
+
+  - action: determine
+    variable: Border Color (BC)
+    using: Pattern Color (PC), key_map
+    rule: Find PC in column 0 of key_map; corresponding BC is the color in column 1 of the same row.
+
+  - action: calculate
+    target: bounding_box
+    for_each: Pattern Color (PC)
+    using: pixel coordinates of PC
+    result: minimal bounding box (min_r, min_c, max_r, max_c).
+
+  - action: determine
+    variable: processing_order
+    for_each: bounding_box
+    using: min_c (minimum column index)
+    rule: Ascending order (left-to-right).
+
+  - action: generate
+    target: output grid
+    steps:
+      - initialize grid with white (0).
+      - process each PC according to processing_order:
+        - get PC, BC, and bounding_box.
+        - iterate through cells (r, c) within the bounding_box:
+          - if (r, c) is on the border: set output pixel to BC.
+          - if (r, c) is interior AND input pixel was PC: set output pixel to PC.
+          - if (r, c) is interior AND input pixel was white (0): set output pixel to BC.

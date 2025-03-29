@@ -1,0 +1,61 @@
+task_description: Replace specific gray patterns (templates) with colors sampled from a corresponding key region elsewhere in the grid.
+
+definitions:
+  - object: template
+    description: A 3x3 hollow square composed entirely of gray (5) pixels.
+    properties:
+      - shape: 3x3 hollow square
+      - color: gray (5)
+      - pixels: 8 gray pixels forming the border of a 3x3 square.
+  - object: template_grid
+    description: The arrangement of multiple template objects forming a logical grid structure.
+    properties:
+      - height: (tr) number of unique rows where templates start.
+      - width: (tc) number of unique columns where templates start.
+      - mapping: Relates template grid index (r_idx, c_idx) to a specific template instance.
+  - object: key_source_pixels
+    description: The set of pixels providing the replacement colors for the templates.
+    properties:
+      - location: Must be outside any template object pixels.
+      - color: Any color except background (0) and gray (5).
+      - distribution: Can be contiguous or non-contiguous.
+  - object: key_source_bounding_box
+    description: The smallest rectangle enclosing all key_source_pixels.
+    properties:
+      - top_left: (key_min_r, key_min_c)
+      - height: (key_h) Must equal template_grid height (tr).
+      - width: (key_w) Must equal template_grid width (tc).
+
+transformation_steps:
+  - action: find_templates
+    input: input_grid
+    output: list_of_template_objects
+    details: Locate all instances of the 3x3 hollow gray square template.
+  - action: determine_template_grid
+    input: list_of_template_objects
+    output: template_grid_properties (tr, tc, mapping)
+    details: Analyze the top-left corners of found templates to define the grid dimensions and instance mapping.
+  - action: identify_key_source_pixels
+    input: input_grid, list_of_template_objects
+    output: set_of_key_source_pixel_coordinates
+    details: Find all pixels that are not background(0), not gray(5), and not part of any template instance.
+  - action: determine_key_source_bounding_box
+    input: set_of_key_source_pixel_coordinates
+    output: key_source_bbox_properties (top_left, height, width)
+    details: Calculate the minimum bounding box containing all key source pixels.
+  - action: validate_dimensions
+    input: template_grid_properties, key_source_bbox_properties
+    output: boolean (is_valid)
+    details: Check if template_grid height (tr) equals key_source_bbox height (key_h) AND template_grid width (tc) equals key_source_bbox width (key_w). If not valid, stop and return original input.
+  - action: apply_color_replacement
+    input: input_grid (for sampling), output_grid (copy of input), template_grid_properties, key_source_bbox_properties
+    output: modified_output_grid
+    details: Iterate through the template grid (r_idx, c_idx). For each corresponding template instance, find the source color in the original input_grid at (key_min_r + r_idx, key_min_c + c_idx) and replace the gray pixels of the template instance in the output_grid with this source color.
+
+edge_cases:
+  - condition: No templates found.
+    action: Return the input grid unchanged.
+  - condition: No key source pixels found.
+    action: Return the input grid unchanged.
+  - condition: Template grid dimensions do not match key source bounding box dimensions.
+    action: Return the input grid unchanged.

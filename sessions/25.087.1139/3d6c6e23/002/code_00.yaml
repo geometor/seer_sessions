@@ -1,0 +1,35 @@
+task_context:
+  description: Transform scattered pixels of the same color into stacked shapes at the bottom of the grid, influenced by their original vertical position and quantity.
+  grid_properties:
+    - size: Variable height and width (up to 30x30).
+    - background: Color 0 (white) is the background and is ignored in processing.
+input_objects:
+  - type: PixelGroup
+    properties:
+      - color: Any color from 1-9.
+      - pixels: Collection of individual pixels of the same color. Assumed to be in a single column per color in the input.
+      - count: Total number of pixels for that color.
+      - original_column: The column index where the pixels appear in the input.
+      - max_row: The highest row index (lowest point) occupied by any pixel of that color in the input.
+actions:
+  - name: Identify Pixel Groups
+    description: Find all unique non-background colors. For each color, determine its pixel count, original column index, and maximum row index (lowest point).
+  - name: Sort Groups (Gravity)
+    description: Order the identified pixel groups based on their `max_row` in descending order. Groups that were lower in the input grid will be processed first and end up at the bottom of the output stack.
+  - name: Determine Output Shape
+    description: For each pixel group, determine the shape based on its pixel count (`N`).
+      - If `N` is a perfect square (1, 4, 9, 16,...), the shape is a symmetric pyramid with layers of width `1, 3, 5, ..., 2*sqrt(N)-1`.
+      - If `N` is not a perfect square, the shape is a single horizontal line of width `N`.
+  - name: Draw Shapes
+    description: Create an empty output grid of the same dimensions as the input. Starting from the bottom row (`height - 1`), draw the shapes for each sorted pixel group.
+    details:
+      - Placement: Each shape is centered horizontally based on its `original_column`.
+      - Stacking: Draw the first shape (lowest `max_row` in input) at the bottom of the output grid. Subsequent shapes are drawn directly on top of the previously drawn shape. The base row for the next shape is the row just above the topmost pixel of the previously drawn shape.
+      - Layer Order (Pyramids): Pyramids (perfect square counts) are drawn layer by layer from bottom (widest) to top (narrowest).
+output_objects:
+  - type: StackedShapes
+    properties:
+      - Composed of shapes derived from the input PixelGroups.
+      - Shapes are stacked vertically, ordered by the `max_row` of their corresponding input groups (descending).
+      - Shapes are horizontally centered based on the `original_column` of their input group.
+      - Shape structure (pyramid or line) depends on the pixel count being a perfect square or not.

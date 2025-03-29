@@ -1,0 +1,63 @@
+task_description: Extract inner colors from framed rectangles and arrange them in an output grid based on their relative spatial layout.
+
+input_features:
+  - type: grid
+    description: A 2D grid containing pixels of different colors (0-9).
+    objects:
+      - type: framed_rectangle
+        description: A rectangular area consisting of a solid block of an inner color completely enclosed by a 1-pixel thick frame of a different, uniform frame color.
+        properties:
+          - inner_color: The color filling the inner rectangle.
+          - frame_color: The color of the 1-pixel thick border. (Must differ from inner_color)
+          - position: Coordinates of the top-left corner of the inner rectangle.
+          - size: Height and width of the inner rectangle.
+      - type: background
+        description: Pixels not part of any framed rectangle, typically white (0).
+
+actions:
+  - action: find_objects
+    description: Identify all instances of 'framed_rectangle' within the input grid.
+    input: input_grid
+    output: list_of_framed_rectangles
+    attributes_extracted:
+      - inner_color
+      - inner_top_left_row
+      - inner_top_left_col
+
+  - action: determine_layout
+    description: Calculate the relative grid layout based on the positions of the identified rectangles.
+    input: list_of_framed_rectangles
+    logic:
+      - Extract unique row coordinates (inner_top_left_row) and sort them.
+      - Extract unique column coordinates (inner_top_left_col) and sort them.
+      - The number of unique rows determines the output grid height.
+      - The number of unique columns determines the output grid width.
+      - Create mappings from original row/column coordinates to output grid indices (0-based).
+    output:
+      - output_grid_height
+      - output_grid_width
+      - row_coordinate_map
+      - column_coordinate_map
+
+  - action: construct_output
+    description: Create the output grid and populate it with the inner colors according to the determined layout.
+    input:
+      - output_grid_height
+      - output_grid_width
+      - row_coordinate_map
+      - column_coordinate_map
+      - list_of_framed_rectangles
+    logic:
+      - Initialize an output grid of the calculated dimensions, potentially filled with a default color (e.g., white 0).
+      - For each identified framed rectangle:
+        - Get its inner_color, inner_top_left_row, inner_top_left_col.
+        - Use the coordinate maps to find the corresponding output grid indices (output_row, output_col).
+        - Place the inner_color at output_grid[output_row, output_col].
+    output: output_grid
+
+output_features:
+  - type: grid
+    description: A 2D grid where each cell's color represents the inner color of a framed rectangle from the input, arranged according to the relative positions of those rectangles.
+    properties:
+      - dimensions: Determined by the unique row/column positions of the input rectangles.
+      - cell_values: Inner colors from the input rectangles.

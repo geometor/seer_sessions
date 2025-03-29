@@ -1,0 +1,58 @@
+task_description: |
+  Transforms an input grid by identifying specific non-white objects, finding their minimal bounding box, and filling that box with a target color derived from a color map defined in the bottom-left corner of the input grid. The original object's pixels are then restored on top of the filled bounding box.
+
+grid_properties:
+  - size: Variable (up to 30x30)
+  - background_color: 0 (white)
+  - object_colors: Non-zero integers (1-9) representing different colors.
+
+components:
+  - type: marker_pairs
+    location: Bottom-left corner, specifically columns 0 and 1.
+    structure: Pairs of non-white pixels `(color_A, color_B)` in `grid[row, 0]` and `grid[row, 1]`.
+    definition: A mapping `color_A -> color_B` is defined by the lowest row containing a non-white pair for `color_A`.
+    purpose: Define the transformation rule for object colors (`object_color -> fill_color`).
+  - type: objects
+    definition: Contiguous areas of the same non-white color in the input grid, excluding the marker pair pixels themselves (implicitly handled by checking map keys).
+    connectivity: Assumed 4-way (horizontal/vertical adjacency).
+    properties:
+      - color: The single color of the object's pixels.
+      - coordinates: A set of (row, col) tuples representing the object's pixels.
+      - bounding_box: The minimal rectangle enclosing all object coordinates.
+
+actions:
+  - name: initialize_output
+    details: Create the output grid as an identical copy of the input grid.
+  - name: find_color_map
+    input: Input grid.
+    output: A dictionary mapping `object_color` to `fill_color`.
+    steps:
+      - Scan columns 0 and 1 from the bottom row upwards.
+      - For each row `r`, let `left_color = grid[r, 0]` and `right_color = grid[r, 1]`.
+      - If `left_color` and `right_color` are non-white (not 0):
+        - If `left_color` is not already a key in the map, add the mapping `map[left_color] = right_color`.
+  - name: find_objects
+    input: Input grid.
+    output: A list of objects, each defined by its color and coordinates.
+    steps:
+      - Iterate through each pixel of the grid.
+      - If a non-white pixel hasn't been visited:
+        - Perform a Breadth-First Search (BFS) using 4-way connectivity starting from this pixel.
+        - Find all connected pixels of the *same* color.
+        - Mark these pixels as visited.
+        - Store the object's color and the set of its coordinates.
+  - name: apply_transformation
+    input: Output grid, list of objects, color map.
+    output: Modified output grid.
+    steps:
+      - For each identified object:
+        - Let `object_color` be the object's color and `object_coords` be its coordinates.
+        - Check if `object_color` exists as a key in the `color_map`.
+        - If it exists:
+          - Get `fill_color = color_map[object_color]`.
+          - Calculate the minimal bounding box (`min_r`, `max_r`, `min_c`, `max_c`) from `object_coords`.
+          - Fill the rectangular region `output_grid[min_r : max_r+1, min_c : max_c+1]` entirely with `fill_color`.
+          - Iterate through each coordinate `(r, c)` in `object_coords`. Set `output_grid[r, c]` back to `object_color`.
+        - If `object_color` is not in the map keys, do nothing for this object.
+
+final_output: The transformed grid after processing all applicable objects.

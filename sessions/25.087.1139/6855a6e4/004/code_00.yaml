@@ -1,0 +1,46 @@
+task_context:
+  description: Relocate gray objects into a central gap defined by static red structures.
+  colors:
+    - red: 2 (static structure)
+    - gray: 5 (mobile objects)
+    - white: 0 (background, gap space)
+  connectivity: 8-way (for finding gray objects)
+
+input_features:
+  - red_pixels: Form one or more static structures.
+  - gray_pixels: Form one or more distinct objects.
+  - gap: An empty rectangular area (containing only white pixels) separating parts of the red structure(s). The gap can be oriented horizontally (vertical separation) or vertically (horizontal separation).
+    - identification: Find the bounding box of all red pixels. A horizontal gap is a contiguous block of all-white rows strictly *within* the red bounding box's vertical span. A vertical gap is a contiguous block of all-white columns strictly *within* the red bounding box's horizontal span.
+    - properties:
+        - horizontal_gap: defined by `gap_min_r`, `gap_max_r` (first and last rows of the gap).
+        - vertical_gap: defined by `gap_min_c`, `gap_max_c` (first and last columns of the gap).
+  - gray_objects: Identified as connected components of gray pixels.
+    - properties:
+        - location: Bounding box (`obj_min_r`, `obj_max_r`, `obj_min_c`, `obj_max_c`).
+        - position_relative_to_gap: Each gray object is located either entirely above/below a horizontal gap, or entirely left/right of a vertical gap.
+
+transformation:
+  - goal: Move each gray object into the gap, placing it adjacent to the inner boundary of the red structure that defines the gap, while preserving the object's shape and relative position if multiple objects are on the same side.
+  - steps:
+      1. Identify red pixels and find the gap (determine type, min/max rows or columns).
+      2. Identify all distinct gray objects from the original input.
+      3. Initialize the output grid with only the static red pixels.
+      4. For each gray object:
+         a. Determine its original position relative to the gap.
+         b. Calculate the necessary shift (delta_r or delta_c) to move it into the gap.
+            - **Vertical Gap (Horizontal Separation):**
+                - Object left of gap (`obj_max_c < gap_min_c`): Target the object's rightmost pixel column to be `gap_min_c`. Calculate `delta_c = gap_min_c - obj_max_c`.
+                - Object right of gap (`obj_min_c > gap_max_c`): Target the object's leftmost pixel column to be `gap_max_c`. Calculate `delta_c = gap_max_c - obj_min_c`.
+            - **Horizontal Gap (Vertical Separation):**
+                - Object above gap (`obj_max_r < gap_min_r`): Target the object's bottommost pixel row to be `gap_min_r`. Calculate `delta_r = gap_min_r - obj_max_r`.
+                - Object below gap (`obj_min_r > gap_max_r`): Target the object's topmost pixel row to be `gap_max_r`. Calculate `delta_r = gap_max_r - obj_min_r`.
+         c. Apply the calculated shift to all pixels of the gray object and place them onto the output grid.
+
+output_features:
+  - grid: Contains the original red static structures and the relocated gray objects within the gap area. The original positions of gray objects are now white.
+
+edge_cases:
+  - No red pixels: The gap cannot be defined. (Behavior: Output grid contains no pixels / is all white).
+  - No gray pixels: No objects to move. (Behavior: Output grid contains only red pixels).
+  - No gap found between red structures: No defined space to move objects into. (Behavior: Output grid contains only red pixels).
+  - Gray objects overlapping gap in input: This scenario is not observed in examples; assume objects are always outside the gap initially.

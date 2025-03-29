@@ -1,0 +1,36 @@
+task_description: Paint azure shapes based on colors from vertical lines.
+input_features:
+  - name: color_lines
+    description: Vertical lines of a single color located in odd-numbered columns (1, 3, 5, ...).
+    properties:
+      - location: Left side of the grid, odd columns.
+      - content: Contain a single non-white, non-azure color.
+      - significance: Define an ordered color palette. The order is determined by the column index (left-to-right). Collection stops if an odd column is all white or contains azure.
+  - name: azure_shapes
+    description: Areas composed of contiguous azure (8) pixels. Can be complex and span multiple horizontal segments.
+    properties:
+      - color: Azure (8).
+      - role: Act as templates or masks to be painted.
+      - significance: The horizontal position where a segment of azure pixels starts in a row determines which color it receives.
+transformation:
+  - action: identify_palette
+    source: color_lines
+    rule: Extract the first non-white, non-azure color from each odd column (1, 3, 5...), sequentially, until an all-white or azure column is encountered. Store these colors in an ordered list (the palette).
+  - action: identify_azure_segments
+    source: azure_shapes
+    rule: For every azure pixel in the input grid, find the starting column index of its horizontally contiguous segment within its row.
+  - action: collect_start_columns
+    source: azure_segments
+    rule: Gather all unique horizontal start column indices found across all azure pixels.
+  - action: sort_start_columns
+    source: collected_start_columns
+    rule: Sort the unique start column indices in ascending order.
+  - action: map_colors
+    source: [sorted_start_columns, identified_palette]
+    rule: Create a mapping where the Nth sorted start column corresponds to the Nth color in the palette.
+  - action: paint_output
+    source: [input_grid, map_colors, identified_azure_segments]
+    rule: Create an output grid initialized to white. For each azure pixel (r, c) in the input grid, find its horizontal start column, look up the corresponding color from the map, and set the output grid pixel output[r, c] to that color.
+output_features:
+  - name: painted_grid
+    description: Grid where original azure pixels are replaced by colors determined by the palette and the horizontal start position of the azure segments. Non-azure pixels remain white.

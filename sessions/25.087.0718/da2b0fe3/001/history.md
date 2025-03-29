@@ -1,0 +1,149 @@
+
+## train_1
+
+**input:**
+```
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 2 2 2 2 0 0 0 0
+0 0 2 0 0 2 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 2 0 0 2 0 0 0 0
+0 0 2 2 2 2 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+```
+
+
+**output:**
+```
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 2 2 2 2 0 0 0 0
+0 0 2 0 0 2 0 0 0 0
+3 3 3 3 3 3 3 3 3 3
+0 0 2 0 0 2 0 0 0 0
+0 0 2 2 2 2 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+```
+
+
+## train_2
+
+**input:**
+```
+0 0 0 0 0 0 0 0 0 0
+0 0 0 1 1 1 0 0 0 0
+0 0 1 1 0 1 1 0 0 0
+0 1 1 0 0 0 1 1 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 1 1 0 1 1 0 0 0
+0 0 0 1 1 1 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+```
+
+
+**output:**
+```
+0 0 0 0 0 0 0 0 0 0
+0 0 0 1 1 1 0 0 0 0
+0 0 1 1 0 1 1 0 0 0
+0 1 1 0 0 0 1 1 0 0
+3 3 3 3 3 3 3 3 3 3
+0 0 1 1 0 1 1 0 0 0
+0 0 0 1 1 1 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+```
+
+
+## train_3
+
+**input:**
+```
+0 0 0 0 0 0 0 0 0 0
+0 5 5 5 0 5 5 0 0 0
+0 5 0 0 0 0 5 0 0 0
+0 5 5 5 0 5 5 0 0 0
+0 5 0 0 0 0 5 0 0 0
+0 5 5 5 0 5 5 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+```
+
+
+**output:**
+```
+0 0 0 0 3 0 0 0 0 0
+0 5 5 5 3 5 5 0 0 0
+0 5 0 0 3 0 5 0 0 0
+0 5 5 5 3 5 5 0 0 0
+0 5 0 0 3 0 5 0 0 0
+0 5 5 5 3 5 5 0 0 0
+0 0 0 0 3 0 0 0 0 0
+0 0 0 0 3 0 0 0 0 0
+0 0 0 0 3 0 0 0 0 0
+0 0 0 0 3 0 0 0 0 0
+```
+
+**Perception**
+
+1.  **Input Structure:** Each input is a 10x10 grid containing a background of white pixels (0) and one or more connected shapes composed of a single non-white color (red, blue, or gray in the examples).
+2.  **Output Structure:** The output grid is identical to the input grid, except for the addition of a single line of green pixels (3).
+3.  **Transformation:** The core transformation is the insertion of a green line. The orientation and position of this line depend on the input grid's structure.
+4.  **Line Placement Logic:**
+    *   The placement seems related to the center of the grid. In all examples, the grid is 10x10.
+    *   The "middle" row can be considered row index 4 (the 5th row from the top).
+    *   The "middle" column can be considered column index 4 (the 5th column from the left).
+    *   In examples 1 and 2, the middle row (row 4) is entirely composed of the background color (0) in the input. The output adds a horizontal green line filling this row.
+    *   In example 3, the middle row (row 4) contains non-background pixels (5). However, the middle column (column 4) is entirely composed of the background color (0) in the input. The output adds a vertical green line filling this column.
+5.  **Rule Hypothesis:** The rule appears to be: Check if the middle row of the input grid is entirely background pixels. If yes, fill that row with green pixels in the output. If not, check if the middle column is entirely background pixels. If yes, fill that column with green pixels in the output. The original pixels from the input are otherwise preserved.
+
+**Facts**
+
+
+```yaml
+Grid Properties:
+  - Size: Fixed at 10x10 in all examples.
+  - Background Color: white (0).
+
+Objects:
+  - Input Shape: A configuration of pixels of a single non-background color (red, blue, gray). These shapes vary between examples.
+  - Added Line: A line of green (3) pixels added in the output.
+
+Relationships & Actions:
+  - Preservation: The input shapes and background pixels are preserved in the output, unless overwritten by the added green line.
+  - Line Insertion Condition: A green line is inserted based on the emptiness (containing only background color 0) of the central row or column.
+  - Central Row Index: Calculated as `height // 2 - 1` (which is 4 for height 10).
+  - Central Column Index: Calculated as `width // 2 - 1` (which is 4 for width 10).
+  - Decision Logic:
+    - If the central row in the input grid consists only of background pixels (0), the output grid will have this entire row filled with green (3).
+    - Otherwise, if the central column in the input grid consists only of background pixels (0), the output grid will have this entire column filled with green (3).
+
+Assumptions based on examples:
+  - Only one line (either horizontal or vertical) is added.
+  - The priority is to check the central row first, then the central column.
+  - At least one of the central row or central column will be empty in the provided examples.
+```
+
+
+**Natural Language Program**
+
+1.  Receive the input grid.
+2.  Determine the height and width of the grid.
+3.  Calculate the index of the middle row: `middle_row_index = height // 2 - 1`.
+4.  Calculate the index of the middle column: `middle_col_index = width // 2 - 1`.
+5.  Check if all pixels in the row specified by `middle_row_index` in the input grid are the background color (0).
+6.  If they are all background color, create the output grid by copying the input grid and then changing all pixels in the row `middle_row_index` to green (3).
+7.  If the middle row is *not* all background color, then check if all pixels in the column specified by `middle_col_index` in the input grid are the background color (0).
+8.  If they are all background color, create the output grid by copying the input grid and then changing all pixels in the column `middle_col_index` to green (3).
+9.  (Implicitly, if neither the middle row nor the middle column is entirely background color, the output grid is identical to the input grid, although this case is not shown in the examples).
+10. Return the modified grid as the output.

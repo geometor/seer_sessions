@@ -1,0 +1,45 @@
+task_description: Fill areas relative to a separator line based on the position and color of target objects.
+
+definitions:
+  background_color: The most frequent color in the input grid.
+  separator: A single, dominant horizontal or vertical line of a color different from the background.
+  target_objects: Contiguous shapes composed of colors that are neither the background nor the separator color. Scattered pixels of these colors might be considered noise or part of the background unless part of a fill operation.
+
+transformations:
+  - type: conditional
+    condition: A vertical separator exists.
+    actions:
+      - action: identify_objects
+        inputs: grid, background_color, separator_color
+        outputs: target_objects_list # List of objects with their properties (color, bounding_box)
+      - action: fill_adjacent_vertical
+        details: |
+          For each target object:
+          Define the rectangular region between the object's vertical edge facing the separator and the separator line itself.
+          The region's vertical extent is defined by the object's min and max rows.
+          Fill pixels within this region IF they match the background_color.
+          The fill color is the separator_color.
+          Apply this for objects on both sides of the separator.
+
+  - type: conditional
+    condition: A horizontal separator exists.
+    actions:
+      - action: identify_objects
+        inputs: grid, background_color, separator_color
+        outputs: target_objects_list # List of objects with their properties (color, bounding_box)
+      - action: fill_projection_horizontal
+        details: |
+          For each target object:
+          Let (min_r, max_r, min_c, max_c) be the object's bounding box and C be its color.
+          IF the object is BELOW the separator (min_r > separator_row):
+            Define the fill region: rows 0 to separator_row-1, columns min_c to max_c.
+            Fill pixels within this region IF they match the background_color OR if they are noise pixels (like isolated Blue 1s in Ex2).
+            The fill color is the object's color (C).
+          IF the object is ABOVE the separator (max_r < separator_row):
+            Define the fill region: rows separator_row+1 to grid_height-1, columns min_c to max_c.
+            Fill pixels within this region IF they match the background_color OR if they are noise pixels.
+            The fill color is the separator_color.
+
+general_rules:
+  - Overwrite Rule: Primarily, only background pixels are changed. However, in the horizontal case, isolated 'noise' pixels (like Blue 1 in Example 2) that fall within a calculated fill area are also overwritten. Target object pixels themselves are generally not overwritten (exception noted in buggy script output for Ex1, but visual inspection contradicts this).
+  - Noise Handling: Isolated pixels or very small groups of non-background, non-separator colors might be ignored during object identification or treated as background during filling, unless they fall into a fill zone in the horizontal case.

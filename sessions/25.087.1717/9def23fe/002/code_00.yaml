@@ -1,0 +1,63 @@
+task_context:
+  description: Draws red lines extending from grid edges towards a central red rectangle, triggered by marker pixels located outside the rectangle. The specific placement of lines depends on the marker's relative position.
+  input_grid_properties:
+    - contains_single_largest_red_rectangle: true # Assumed based on examples
+    - red_rectangle_solid: true # Assumed based on examples
+    - red_rectangle_min_size: 3x3 # Observed in examples
+    - contains_marker_pixels: true
+    - marker_pixels_color: non-white (0), non-red (2)
+    - marker_pixels_location: outside the bounding box of the red rectangle
+    - background_color: white (0)
+  output_grid_properties:
+    - preserves_original_red_rectangle: true
+    - preserves_original_marker_pixels: true
+    - adds_red_lines: true
+    - added_red_lines_overwrite: only background (white 0) pixels
+
+objects:
+  - object_type: shape
+    properties:
+      color: red (2)
+      shape_type: rectangle (solid, connected)
+      role: primary_reference_object
+      identification: largest connected component of red pixels forming a solid rectangle
+      attributes:
+        bounding_box: (min_row, min_col, max_row, max_col)
+        key_internal_rows: (min_row + 1, max_row - 1) # Only if height >= 3
+        # key_internal_columns: (min_col + 1, max_col - 1) # Not directly used for drawing
+
+  - object_type: pixel
+    properties:
+      color: any color except white (0) and red (2)
+      role: marker / trigger
+      identification: individual pixels not matching background or primary object color
+      attributes:
+        location: (row, col)
+        relative_position_to_rectangle: Above, Below, Left, or Right
+
+actions:
+  - action: draw_line
+    parameters:
+      color: red (2)
+      target_pixels: background (white 0) only
+      conditions:
+        - if_marker_position: Above
+          line_type: vertical
+          column: marker_col
+          start_row: 0
+          end_row: rectangle_min_row - 1
+        - if_marker_position: Below
+          line_type: vertical
+          column: marker_col
+          start_row: rectangle_max_row + 1
+          end_row: grid_height - 1
+        - if_marker_position: Left
+          line_type: horizontal
+          rows: rectangle_key_internal_rows # Both rows are drawn for each Left marker
+          start_col: 0
+          end_col: rectangle_min_col - 1
+        - if_marker_position: Right
+          line_type: horizontal
+          rows: rectangle_key_internal_rows # Both rows are drawn for each Right marker
+          start_col: rectangle_max_col + 1
+          end_col: grid_width - 1

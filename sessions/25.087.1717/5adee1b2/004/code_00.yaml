@@ -1,0 +1,40 @@
+task_name: c5c7b716
+description: Fill the bounding box of each identified object with a color determined by a mapping found in the bottom-left corner, then restore the original object pixels.
+
+grid_properties:
+  dimensionality: 2
+  background_color: 0 (white)
+  max_size: 30x30
+
+components:
+  - role: marker_pairs
+    location: bottom-left corner (typically columns 0 and 1, searching bottom-up)
+    structure: horizontal pairs of non-white pixels (color_A, color_B)
+    properties: defines a color mapping rule: color_A maps to color_B. Only the first occurrence of color_A (from bottom) defines the mapping.
+    action: read these pairs to create a dictionary `color_map = {color_A: color_B, ...}`.
+
+  - role: objects
+    identification: contiguous areas of the same non-white color.
+    properties:
+      - color: the specific non-white color of the object's pixels.
+      - shape: the specific arrangement of the object's pixels.
+      - location: the set of coordinates occupied by the object's pixels.
+      - minimal_bounding_box: the smallest rectangle enclosing all pixels of the object.
+    action: identify all distinct objects in the input grid.
+
+transformation:
+  condition: applies only to objects whose color exists as a key in the `color_map` derived from the marker pairs.
+  steps:
+    - Initialize the output grid as a copy of the input grid.
+    - Identify marker pairs and create the `color_map`.
+    - Find all distinct non-white objects.
+    - For each identified object:
+      - Get the object's color (`object_color`).
+      - Check if `object_color` is in `color_map`.
+      - If yes:
+        - Get the target fill color: `fill_color = color_map[object_color]`.
+        - Calculate the object's minimal bounding box (min_row, max_row, min_col, max_col).
+        - Fill the entire rectangular region in the output grid defined by the bounding box coordinates with `fill_color`.
+        - Iterate through all pixels belonging to the original object. For each pixel at (r, c) with `object_color` in the input grid, set the output grid pixel at (r, c) back to `object_color`.
+      - If no: leave the object and its surrounding area unchanged from the initial copy.
+  output: the modified grid after processing all applicable objects.

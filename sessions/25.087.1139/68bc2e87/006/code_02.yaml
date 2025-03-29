@@ -1,0 +1,100 @@
+# YAML Facts Extraction
+# Focus: Objects, Properties, Actions
+
+# Example 1:
+Input:
+  Objects:
+    - Type: Background Layer
+      Color: Azure (8)
+      Property: Connected to border, Surrounds other layers
+    - Type: Layer 1
+      Color: Yellow (4)
+      Property: Contiguous, Adjacent to Background (8)
+    - Type: Layer 2
+      Color: Green (3)
+      Property: Contiguous, Adjacent to Layer 1 (4)
+    - Type: Layer 3
+      Color: Red (2)
+      Property: Contiguous, Adjacent to Layer 2 (3), Innermost
+Output:
+  Objects:
+    - Type: Grid
+      Content: Red (2) pixel
+      Size: 1x1
+Action: Identify nested layers inward from Azure border. Check if Red (2) is a layer color.
+
+# Example 2:
+Input:
+  Objects:
+    - Type: Background Layer
+      Color: Azure (8)
+      Property: Connected to border, Surrounds other layers
+    - Type: Layer 1
+      Color: Green (3)
+      Property: Contiguous, Adjacent to Background (8)
+    - Type: Layer 2
+      Color: Yellow (4)
+      Property: Contiguous, Adjacent to Layer 1 (3)
+    - Type: Layer 3
+      Color: Green (3)
+      Property: Contiguous, Adjacent to Layer 2 (4), Innermost
+Output:
+  Objects:
+    - Type: Grid
+      Content: Empty
+      Size: 0x0 (represented as [])
+Action: Identify nested layers inward from Azure border. Check if Red (2) is a layer color.
+
+# Example 3:
+Input:
+  Objects:
+    - Type: Background Layer
+      Color: Azure (8)
+      Property: Connected to border, Surrounds other layers
+    - Type: Layer 1
+      Color: Yellow (4)
+      Property: Contiguous, Adjacent to Background (8)
+    - Type: Layer 2
+      Color: Green (3)
+      Property: Contiguous, Adjacent to Layer 1 (4)
+    - Type: Inner Region (multi-color)
+      Colors: [Yellow (4), Red (2)]
+      Property: Adjacent to Layer 2 (3)
+Output:
+  Objects:
+    - Type: Grid
+      Content: Empty
+      Size: 0x0 (represented as [])
+Action: Identify nested layers inward from Azure border. Stop when adjacent region has multiple colors. Check if Red (2) was a layer color *before stopping*.
+
+# Example 4:
+Input:
+  Objects:
+    - Type: Background Layer
+      Color: Azure (8)
+      Property: Connected to border, Surrounds other layers
+    - Type: Layer 1
+      Color: Green (3)
+      Property: Contiguous, Adjacent to Background (8), Innermost
+Output:
+  Objects:
+    - Type: Grid
+      Content: Empty
+      Size: 0x0 (represented as [])
+Action: Identify nested layers inward from Azure border. Check if Red (2) is a layer color.
+
+# General Observations:
+Input Structure:
+  - Always an Azure (8) background connected to the grid border.
+  - Inside the background, there are one or more nested, contiguous regions (layers) of single colors.
+  - Layers are identified iteratively, moving inwards from the background.
+Transformation:
+  - Find the Azure (8) region connected to the border.
+  - Iteratively find the unique color of the region(s) immediately adjacent to the currently known region(s).
+  - If exactly one adjacent color is found, identify the full contiguous region of that color. Add this color to a sequence. Repeat using this new region as the current region.
+  - If zero adjacent unvisited regions are found, stop.
+  - If more than one color is found in the adjacent regions, stop.
+Output Determination:
+  - After stopping, check if the color Red (2) exists in the sequence of layer colors identified.
+  - If Red (2) is in the sequence, output a 1x1 grid containing Red ([[2]]).
+  - Otherwise (Red (2) not in sequence, or no Azure background found), output an empty grid ([]).
