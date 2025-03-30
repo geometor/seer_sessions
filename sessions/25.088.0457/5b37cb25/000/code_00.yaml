@@ -1,0 +1,52 @@
+task_description: "Propagate border colors inward, stopping at obstacle shapes."
+elements:
+  - object: border
+    type: frame
+    properties:
+      - thickness: 1 pixel
+      - composition: four segments (top, right, bottom, left) with distinct colors
+      - role: source_of_propagation
+      - static: remains unchanged in output
+  - object: inner_area
+    type: region
+    properties:
+      - location: enclosed by the border
+      - composition: contains background pixels and obstacle objects
+      - role: target_of_transformation
+  - object: background_pixel
+    type: pixel_type
+    properties:
+      - color: varies per example (blue=1 in train_1, yellow=4 in train_2)
+      - location: fills most of the inner_area
+      - role: medium_for_propagation
+  - object: obstacle_shape
+    type: object_group
+    properties:
+      - color: varies per example (magenta=6 in train_1, red=2 in train_2)
+      - shape: multiple contiguous regions of obstacle color
+      - location: scattered within the inner_area
+      - role: barrier_to_propagation
+
+actions:
+  - action: propagation
+    source: border segments
+    target: inner_area pixels (background and obstacle)
+    rule: Color spreads inwards from each border segment.
+    effect: Changes the color of affected pixels to the color of the originating border segment.
+  - action: stopping
+    trigger: Propagation wave encounters an obstacle_shape pixel.
+    effect: The wave colors the encountered obstacle pixel but does not continue past it along that path.
+  - action: collision_resolution
+    trigger: Propagation waves from different borders attempt to color the same pixel.
+    effect: The pixel takes the color of the first wave to reach it (implicit in simultaneous, step-by-step propagation).
+
+relationships:
+  - relation: adjacency
+    between: border segments and inner_area pixels
+    relevance: Defines the starting points for propagation.
+  - relation: containment
+    between: inner_area and (background_pixels, obstacle_shapes)
+    relevance: Defines the area where transformation occurs.
+  - relation: blocking
+    between: obstacle_shapes and propagation waves
+    relevance: Obstacles halt the spread of color.

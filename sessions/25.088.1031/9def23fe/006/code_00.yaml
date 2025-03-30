@@ -1,0 +1,44 @@
+task_description: Project the color of the largest object along its original rows and columns, stopping the projection at rows/columns containing marker pixels.
+
+definitions:
+  - object: pattern_object
+    description: The largest contiguous block of a single non-white color in the input grid.
+    properties:
+      - color: C (e.g., red=2, red=2, red=2 in examples)
+      - coordinates: P (set of (row, col) tuples)
+      - pattern_rows: Set of row indices occupied by P.
+      - pattern_cols: Set of column indices occupied by P.
+  - object: marker_pixel
+    description: Any non-white pixel that is not part of the pattern_object.
+    properties:
+      - color: M (e.g., azure=8, green=3, yellow=4 in examples)
+      - coordinates: K (set of (row, col) tuples for all markers)
+      - inhibited_rows: Set of row indices occupied by any marker pixel.
+      - inhibited_cols: Set of column indices occupied by any marker pixel.
+
+actions:
+  - identify_objects:
+      input: input_grid
+      output: pattern_object, marker_pixels
+      steps:
+        - Find all contiguous non-white objects.
+        - Identify the object with the most pixels as pattern_object.
+        - All other non-white pixels are marker_pixels.
+  - determine_coordinates:
+      input: pattern_object, marker_pixels
+      output: pattern_rows, pattern_cols, inhibited_rows, inhibited_cols
+      steps:
+        - Extract row and column indices from pattern_object coordinates -> pattern_rows, pattern_cols.
+        - Extract row and column indices from marker_pixel coordinates -> inhibited_rows, inhibited_cols.
+  - generate_output:
+      input: input_grid dimensions, pattern_color (C), pattern_rows, pattern_cols, inhibited_rows, inhibited_cols, original_pattern_coords (P), marker_pixels (K)
+      output: output_grid
+      steps:
+        - Initialize output_grid with background color (white=0).
+        - For each cell (r, c) in the grid:
+            - If (r is in pattern_rows OR c is in pattern_cols) AND (r is NOT in inhibited_rows AND c is NOT in inhibited_cols):
+                - Set output_grid[r, c] = pattern_color (C).
+        - For each coordinate (r, c) in original_pattern_coords (P):
+            - Set output_grid[r, c] = pattern_color (C).
+        - For each marker pixel m in marker_pixels (K):
+            - Set output_grid[m.r, m.c] = m.color (M).

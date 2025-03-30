@@ -1,0 +1,37 @@
+task_description: Fill in gaps (holes) in a grid based on a repeating horizontal pattern, preserving existing non-hole pixels.
+
+definitions:
+  background_pixel:
+    color: blue
+    value: 1
+    description: Pixels forming solid horizontal lines, separating pattern areas or framing the grid. Assumed not part of the repeating pattern itself.
+  hole_pixel:
+    color: white
+    value: 0
+    description: Pixels that need to be filled in with the correct pattern color.
+  pattern_pixel:
+    color: any color except white (0) and potentially blue (1)
+    value: non-0 (and potentially non-1)
+    description: Pixels that constitute the repeating horizontal pattern.
+  pattern_row:
+    description: A row in the grid that contains pattern pixels and potentially hole pixels. It is not composed entirely of background pixels.
+  reference_pattern:
+    description: A sequence of colors representing one full repetition of the horizontal pattern. Its length corresponds to the width of the grid.
+    derivation: Must be determined from the non-hole, non-background pixels within the pattern rows. A robust method aggregates color information column-wise across all pattern rows.
+
+transformation:
+  action: inpaint
+  input: grid with pattern rows containing hole pixels (white=0) and potentially background rows (blue=1).
+  output: grid where hole pixels in pattern rows are replaced by the corresponding color from the reference pattern based on their column index. Background rows and existing pattern pixels remain unchanged.
+  steps:
+    1. Identify the background color (assumed blue=1) and hole color (assumed white=0).
+    2. Identify all 'pattern rows' (rows not consisting entirely of the background color).
+    3. Determine the 'reference pattern' sequence (length = grid width):
+       For each column index `c`:
+         a. Collect colors at `(r, c)` for all pattern rows `r`.
+         b. Filter out background and hole colors.
+         c. Determine the most frequent color among the remaining ones. This is the reference color for column `c`. (Handle ties or lack of pattern pixels if necessary, e.g., default to background).
+    4. Create the output grid by copying the input grid.
+    5. Iterate through the input grid:
+       If a pixel `(r, c)` is a hole pixel (white=0) AND its row `r` is a pattern row:
+         Replace the pixel at `(r, c)` in the output grid with the reference pattern color for column `c`.

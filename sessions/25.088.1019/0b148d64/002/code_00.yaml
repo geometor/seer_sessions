@@ -1,0 +1,50 @@
+task_description: |-
+  Extract a subgrid representing the bounding box of specific color(s) found only in the bottom-most horizontal region of the input grid, where regions are separated by rows of the background color (white, 0). The specific color(s) to extract are those present in the bottom region but not in the region immediately above it.
+
+definitions:
+  - background_color: 0 (white)
+  - separator_row: A horizontal grid row consisting entirely of the background_color.
+  - bottom_block: The contiguous set of rows from the row immediately following the last separator_row down to the last row containing any non-background color. If no separator_row exists, the bottom_block starts from the first row (index 0).
+  - top_block: The contiguous set of rows from the first row (index 0) down to the last separator_row. If no separator_row exists, the top_block is considered empty.
+
+grid_properties:
+  - structure: Composed of potentially multiple horizontal blocks of non-background pixels separated by one or more separator_rows.
+  - background: White (0) pixels separate distinct blocks vertically and can exist within blocks.
+
+objects:
+  - type: Color Region
+    definition: A collection of pixels within a block sharing the same non-background color.
+    properties:
+      - color: The specific non-background color (1-9).
+      - location: Resides within either the top_block or the bottom_block.
+  - type: Target Color Region
+    definition: A Color Region within the bottom_block whose color is not present in any Color Region within the top_block.
+    properties:
+      - color: The specific non-background color unique to the bottom_block relative to the top_block.
+      - bounding_box: The minimum rectangle (defined by min/max row/col) enclosing all pixels of this color within the bottom_block's row range.
+
+actions:
+  - name: Identify Separator
+    input: Input grid
+    output: Index of the last row composed entirely of background_color that occurs *before* the last row containing any non-background color. Returns null/None/-1 if no such row exists.
+  - name: Identify Blocks
+    input: Input grid, Separator index
+    output: Row ranges for top_block and bottom_block.
+  - name: Identify Colors
+    input: Input grid, Top block row range, Bottom block row range
+    output: Set of unique non-background colors in top_block, Set of unique non-background colors in bottom_block.
+  - name: Determine Target Colors
+    input: Set of top_block colors, Set of bottom_block colors
+    output: Set of colors present in bottom_block but not in top_block.
+  - name: Find Target Bounding Box
+    input: Input grid, Bottom block row range, Target color set
+    output: Minimum and maximum row and column indices enclosing all pixels matching target colors within the bottom block's row range.
+  - name: Extract Subgrid
+    input: Input grid, Target bounding box (rows and columns)
+    output: The portion of the input grid corresponding to the target bounding box.
+
+constraints:
+  - The output grid contains only pixels from the original input grid.
+  - The output grid's rows correspond to the full vertical extent of the bottom_block.
+  - The output grid's columns correspond to the minimal horizontal extent required to contain all pixels of the target color(s) within the bottom_block.
+  - Assumes there will be at least one color unique to the bottom block compared to the top block in valid test cases matching the training pattern.

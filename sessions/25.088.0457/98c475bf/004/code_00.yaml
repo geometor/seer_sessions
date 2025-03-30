@@ -1,0 +1,88 @@
+task_description: "Identify border and anchor pixels in the input, then draw a border, a horizontal line, and a specific H-shape in the output based on the anchor pixel properties."
+input_features:
+  - object: grid
+    properties:
+      - dimensions: [20, 20] (consistent across examples)
+      - background_color: 0 (white)
+  - object: border
+    properties:
+      - location: single-pixel frame (rows 0 & H-1, cols 0 & W-1)
+      - color: variable (B), identified from the frame (e.g., input[0,0])
+      - role: defines boundary, color copied to output border
+  - object: anchor_pixels
+    properties:
+      - count: 2
+      - location: fixed columns (1 and 18), same row (R)
+      - criteria: identical color (C), C != background_color, C != border_color
+      - role: determine output shape color, vertical reference (R), and specific shape pattern/location
+  - object: input_shapes (optional/distractor)
+    properties:
+      - location: variable (often near top-left or bottom-left in examples)
+      - color: variable
+      - role: irrelevant to the output transformation
+
+output_features:
+  - object: grid
+    properties:
+      - dimensions: same as input
+      - background_color: 0 (white)
+  - object: border
+    properties:
+      - location: single-pixel frame
+      - color: B (copied from input border)
+  - object: horizontal_line
+    properties:
+      - location: row R (anchor row), columns 1 to 18 (inclusive)
+      - color: C (anchor color)
+  - object: H_shape
+    properties:
+      - color: C (anchor color)
+      - pattern: specific 2D structure determined by C
+      - location: top-left corner at (R - CRO, Col), where CRO and Col are determined by C
+
+transformations:
+  - action: identify_border_color
+    input: input grid frame
+    output: color B
+  - action: identify_anchor_pixels
+    input: input grid (excluding border)
+    output: color C, row R
+    constraints: pixels at (R, 1) and (R, 18) must match, not be background, not be border color
+  - action: create_output_grid
+    properties: same dimensions as input, filled with background_color
+  - action: draw_border
+    target: output grid frame
+    color: B
+  - action: draw_horizontal_line
+    target: output grid
+    location: row R, columns 1-18
+    color: C
+  - action: select_shape_parameters
+    input: color C
+    output: H-shape pattern, center row offset (CRO), start column (Col)
+  - action: calculate_shape_start_row
+    input: row R, offset CRO
+    output: start_row = R - CRO
+  - action: draw_H_shape
+    target: output grid
+    location: top-left at (start_row, Col)
+    pattern: selected H-shape pattern
+    color: C (for non-background pixels in pattern)
+
+shape_definitions:
+  - color: 7 # Orange
+    H_shape: [[1,0,1],[1,0,1],[1,1,1],[1,0,1],[1,0,1]]
+    center_row_offset: 2
+    start_column: 13
+  - color: 6 # Magenta
+    H_shape: [[1,1,1],[1,0,1],[1,1,1],[1,0,1],[1,0,1],[1,1,1]]
+    center_row_offset: 2
+    start_column: 2
+  - color: 2 # Red
+    H_shape: [[1,0,1],[0,1,0],[1,1,1],[0,1,0],[1,0,1]]
+    center_row_offset: 2
+    start_column: 6
+  - color: 1 # Blue
+    H_shape: [[1,0,1],[1,1,1],[1,0,1]]
+    center_row_offset: 1
+    start_column: 14

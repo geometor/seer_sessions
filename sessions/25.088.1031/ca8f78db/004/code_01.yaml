@@ -1,0 +1,45 @@
+task_description: Restore a repeating horizontal pattern in a grid by filling in specific 'hole' pixels, while preserving 'background' areas and existing pattern elements.
+
+definitions:
+  grid: A 2D array of pixels with integer values 0-9 representing colors.
+  background_pixel:
+    color: blue
+    value: 1
+    role: Typically forms solid horizontal rows, separating or framing pattern areas. Not part of the repeating pattern to be restored. Assumed unchanged by the transformation.
+  hole_pixel:
+    color: white
+    value: 0
+    role: Represents missing parts of the pattern that need to be filled. Identified as the pixels to be replaced.
+  pattern_pixel:
+    color: any non-white (non-0) and non-blue (non-1) color.
+    value: 2-9
+    role: Constitutes the actual repeating pattern. Existing pattern pixels are preserved.
+  background_row:
+    property: A row composed entirely of background_pixels (blue=1).
+    role: Separator or frame, unchanged by the transformation.
+  pattern_row:
+    property: Any row that is not a background_row. Contains pattern_pixels and potentially hole_pixels.
+    role: The area where the pattern exists and where restoration (hole-filling) occurs.
+  reference_pattern:
+    property: A 1D sequence of colors representing one horizontal repetition of the pattern. Its length equals the grid width.
+    derivation: Determined by analyzing the colors column-wise across all pattern_rows.
+
+transformation:
+  goal: Fill hole_pixels within pattern_rows using the reference_pattern.
+  input: A grid possibly containing background_rows, pattern_rows, pattern_pixels, and hole_pixels.
+  output: A grid where hole_pixels in pattern_rows have been replaced by the corresponding reference_pattern color based on their column index. Other pixels remain unchanged.
+  process:
+    - identify_elements: Classify rows as either background_rows or pattern_rows. Confirm background color (1) and hole color (0).
+    - synthesize_pattern: Construct the reference_pattern sequence (length = grid_width).
+        For each column `c`:
+          1. Collect all pixel colors at `(r, c)` for every pattern_row `r`.
+          2. Filter out background (1) and hole (0) colors from the collected set.
+          3. Find the most frequent color among the remaining valid pattern colors. This is the reference color for column `c`.
+          4. Handle edge cases: If no valid pattern colors are found for column `c`, or if there's a tie in frequency, apply a consistent rule (e.g., default to background color, or choose the lowest numerical color value).
+    - apply_pattern: Create the output grid.
+        For each pixel `(r, c)` in the input grid:
+          1. If row `r` is a pattern_row AND the pixel `(r, c)` is a hole_pixel (0):
+             Set the output pixel `(r, c)` to the reference_pattern color at index `c`.
+          2. Otherwise:
+             Copy the input pixel `(r, c)` to the output grid.
+    - return: The completed output grid.

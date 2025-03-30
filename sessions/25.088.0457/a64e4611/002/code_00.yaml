@@ -1,0 +1,49 @@
+task_description: Fill a specific vertical block based on row content.
+
+definitions:
+  - object: grid
+    property: pixels (color 0-9)
+    property: height
+    property: width
+  - object: vertical_block
+    property: column_indices (start_col, end_col)
+    property: width (end_col - start_col + 1)
+    property: location (defined by start_col)
+  - object: white_column
+    property: all pixels are white (0)
+
+input_grid:
+  - contains: pixels
+  - contains: potential vertical_blocks composed of white_columns
+
+actions:
+  - action: find_white_columns
+    input: input_grid
+    output: list of column indices containing only white pixels
+  - action: find_contiguous_blocks
+    input: list of white_column indices
+    output: list of vertical_blocks (start_col, end_col, width)
+  - action: select_target_block
+    input: list of contiguous white vertical_blocks
+    criteria:
+      - primary: maximize width
+      - secondary (tie-breaker): minimize start_col (leftmost)
+    output: the target vertical_block (target_start_col, target_end_col)
+    notes: If no white columns exist, no target block is selected.
+  - action: process_rows
+    input:
+      - input_grid
+      - target_block (target_start_col, target_end_col)
+    output: output_grid (initialized as copy of input_grid)
+    steps:
+      - for each row 'r' from 0 to height-1:
+        - check condition: does input_grid[r, :] contain any non-white pixel?
+        - if condition is true AND a target_block exists:
+          - modify output_grid: set output_grid[r, target_start_col : target_end_col + 1] = green (3)
+        - else (condition is false OR no target_block):
+          - no modification needed for this row within the block (it remains white if it was part of the white block, or unchanged from input otherwise)
+    notes: Pixels outside the target_block columns are always copied directly from input to output.
+
+output_grid:
+  - derived_from: input_grid
+  - modification: A specific vertical block (widest, leftmost contiguous white columns from input) has rows filled with green based on whether the corresponding input row contained any non-white pixels.

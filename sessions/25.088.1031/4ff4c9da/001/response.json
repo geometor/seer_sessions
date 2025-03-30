@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom collections import deque\n\n\"\"\"\nFinds all contiguous blocks of azure (8) pixels in the input grid to identify \nsource pattern shapes. Then, searches the input grid for blocks of any single \ncolor (other than white (0) or azure (8)) that exactly match the shape and \nbounding box size of any identified source pattern. Finally, recolors these \nmatching target blocks to azure (8) in the output grid.\n\"\"\"\n\ndef find_contiguous_blocks(grid, color):\n    \"\"\"\n    Finds all contiguous blocks of a specified color in the grid.\n\n    Args:\n        grid (np.array): The input grid.\n        color (int): The color of the blocks to find.\n\n    Returns:\n        list: A list of blocks, where each block is a list of (row, col) tuples.\n    \"\"\"\n    rows, cols = grid.shape\n    visited = np.zeros((rows, cols), dtype=bool)\n    blocks = []\n\n    for r in range(rows):\n        for c in range(cols):\n            if grid[r, c] == color and not visited[r, c]:\n                # Start BFS to find the whole block\n                current_block = []\n                q = deque([(r, c)])\n                visited[r, c] = True\n                \n                while q:\n                    row, col = q.popleft()\n                    current_block.append((row, col))\n                    \n                    # Check 4 neighbors (up, down, left, right)\n                    for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n                        nr, nc = row + dr, col + dc\n                        \n                        if 0 <= nr < rows and 0 <= nc < cols and \\\n                           not visited[nr, nc] and grid[nr, nc] == color:\n                            visited[nr, nc] = True\n                            q.append((nr, nc))\n                            \n                if current_block:\n                    blocks.append(current_block)\n    return blocks\n\ndef get_shape_and_bbox(block):\n    \"\"\"\n    Calculates the normalized shape, bounding box, and top-left corner of a block.\n\n    Args:\n        block (list): A list of (row, col) tuples representing the block.\n\n    Returns:\n        tuple: (shape_frozenset, bbox_height, bbox_width, min_r, min_c)\n               shape_frozenset: A frozenset of relative (dr, dc) coordinates.\n               bbox_height: Height of the bounding box.\n               bbox_width: Width of the bounding box.\n               min_r: Top-most row index of the block.\n               min_c: Left-most column index of the block.\n    \"\"\"\n    if not block:\n        return frozenset(), 0, 0, 0, 0\n\n    rows, cols = zip(*block)\n    min_r, max_r = min(rows), max(rows)\n    min_c, max_c = min(cols), max(cols)\n    \n    bbox_height = max_r - min_r + 1\n    bbox_width = max_c - min_c + 1\n    \n    # Normalize coordinates relative to the top-left corner\n    relative_coords = frozenset((r - min_r, c - min_c) for r, c in block)\n    \n    return relative_coords, bbox_height, bbox_width, min_r, min_c\n\ndef transform(input_grid):\n    \"\"\"\n    Transforms the input grid based on pattern matching and recoloring.\n    \n    1. Finds all source patterns (contiguous blocks of azure/8).\n    2. Stores the unique shapes and bounding boxes of these source patterns.\n    3. Finds all potential target patterns (contiguous blocks of other colors, excluding 0 and 8).\n    4. Compares the shape and bounding box of each potential target pattern to the source patterns.\n    5. If a match is found, recolors the target pattern pixels to azure/8 in the output grid.\n    \"\"\"\n    output_grid = np.copy(input_grid)\n    rows, cols = input_grid.shape\n    \n    # --- Step 1 & 2: Identify unique source patterns (Azure=8) ---\n    source_patterns = set()\n    azure_blocks = find_contiguous_blocks(input_grid, 8)\n    for block in azure_blocks:\n        shape, bbox_h, bbox_w, _, _ = get_shape_and_bbox(block)\n        if shape: # Ignore empty blocks if any somehow occur\n             source_patterns.add((shape, bbox_h, bbox_w))\n\n    # --- Step 3 & 4: Find potential target patterns and check against source patterns ---\n    # Iterate through colors 1-7 and 9 (potential target colors)\n    for target_color in list(range(1, 8)) + [9]:\n        potential_target_blocks = find_contiguous_blocks(input_grid, target_color)\n        \n        for block in potential_target_blocks:\n            shape, bbox_h, bbox_w, min_r, min_c = get_shape_and_bbox(block)\n            \n            # Check if this block's shape matches any source pattern shape\n            if shape and (shape, bbox_h, bbox_w) in source_patterns:\n                # --- Step 5: Recolor matched target patterns in the output grid ---\n                for dr, dc in shape:\n                    r, c = min_r + dr, min_c + dc\n                    # Check bounds just in case, though should be within grid\n                    if 0 <= r < rows and 0 <= c < cols:\n                         output_grid[r, c] = 8 # Recolor to Azure\n            \n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 7203,
+    "candidates_token_count": 1347,
+    "total_token_count": 8550,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 23.733606,
+  "retries": null
+}

@@ -1,0 +1,54 @@
+task_description: Fill the white interior of a blue rectangular frame with concentric colored layers, where the layer colors are determined by pixels on the main diagonal outside the frame.
+
+definitions:
+  - object: grid
+    description: A 2D array of pixels with integer values 0-9 representing colors.
+  - object: frame
+    description: A hollow rectangle made of blue (1) pixels. It encloses the area to be filled.
+    properties:
+      - color: Blue (1)
+      - shape: Rectangular (hollow)
+      - location: Defined by minimum and maximum row/column indices (r_min, c_min, r_max, c_max).
+  - object: interior_area
+    description: The set of pixels strictly inside the frame boundary (r_min < r < r_max, c_min < c < c_max).
+  - object: fillable_pixels
+    description: Pixels within the interior_area that have the color white (0) in the input grid. These are the only pixels modified.
+  - object: key_pixels
+    description: A sequence of pixels located on the main diagonal, starting from (0, 0).
+    properties:
+      - location: (d, d) for d = 0, 1, 2, ...
+      - sequence_termination: The sequence stops if the pixel at (d, d) is white (0) or blue (1), or if (d, d) is outside the grid bounds.
+      - content: The colors of these pixels form the `key_colors` list.
+  - object: concentric_layers
+    description: Layers filling the fillable_pixels inside the frame.
+    properties:
+      - definition: Each layer consists of pixels having the same minimum distance to the frame boundary.
+      - layer_distance: For a pixel (r, c), the distance `dist = min(r - r_min, r_max - r, c - c_min, c_max - c)`. Distance `d` corresponds to layer `d`.
+      - layer_color_mapping: Layer `d` (pixels with distance `d`) is filled with the color from the `key_colors` list at index `d-1`.
+
+actions:
+  - action: find_frame_boundaries
+    input: grid
+    output: frame_coordinates (r_min, c_min, r_max, c_max) or failure indication.
+    description: Identify the minimum and maximum row and column indices of the contiguous blue (1) pixels forming the frame.
+  - action: extract_key_colors
+    input: grid
+    output: ordered list `key_colors`
+    description: Read colors from pixels (d, d) starting d=0, append to list unless color is white (0) or blue (1), stop if boundary reached or termination color found.
+  - action: fill_layers
+    input: grid, frame_coordinates, key_colors
+    output: output_grid
+    description: >
+      Create a copy of the input grid.
+      Iterate through each pixel (r, c) where r_min < r < r_max and c_min < c < c_max.
+      If input_grid[r, c] is white (0):
+        Calculate distance `dist = min(r - r_min, r_max - r, c - c_min, c_max - c)`.
+        Calculate color index `key_index = dist - 1`.
+        If `0 <= key_index < len(key_colors)`:
+          Set output_grid[r, c] = key_colors[key_index].
+      Return the modified output_grid.
+
+output_constraints:
+  - Only white pixels strictly inside the blue frame are potentially changed.
+  - All other pixels (frame, outside pixels, non-white interior pixels) remain unchanged.
+  - The number of layers filled depends on the number of key colors found and the dimensions of the interior space.

@@ -1,0 +1,52 @@
+task_description: "For each connected yellow object in the input grid, identify the non-white, non-yellow 'internal color' pixel(s) contained within its bounding box. Count these internal pixels to determine a frame thickness. Draw a solid frame of this thickness around the yellow object's bounding box using the internal color. The frame overwrites existing pixels. The area inside the original bounding box remains unchanged from the input."
+
+grid_properties:
+  size: Variable height and width (up to 30x30).
+  colors: 0-9 mapped to specific colors. White (0) is background. Yellow (4) marks target objects.
+
+objects:
+  - type: Primary Target Object
+    color: Yellow (4)
+    shape: Contiguous block of yellow pixels (connectivity includes diagonals).
+    properties:
+      - bounding_box: The smallest rectangle enclosing the object.
+      - internal_pixels: Pixels within the bounding box that are not Yellow (4) and not White (0).
+      - internal_color: The color of the internal_pixels (Assumed to be uniform for a single object).
+      - internal_count: The number of internal_pixels. Determines frame thickness.
+
+actions:
+  - name: Identify Yellow Objects
+    input: grid
+    output: List of yellow objects (sets of coordinates).
+  - name: Determine Bounding Box
+    input: Yellow object coordinates
+    output: Bounding box (min_r, min_c, max_r, max_c).
+  - name: Find Internal Color and Count
+    input: grid, bounding_box
+    output: internal_color, internal_count
+    details: Scans within the bounding box for non-white, non-yellow pixels. Assumes only one such color exists per object. Counts occurrences of this color.
+  - name: Calculate Expanded Bounding Box
+    input: bounding_box, internal_count (thickness)
+    output: Expanded bounding box (exp_min_r, exp_min_c, exp_max_r, exp_max_c).
+    details: Expands original bbox outwards by 'internal_count' pixels in all directions. Clamped to grid boundaries.
+  - name: Draw Frame
+    input: output_grid, expanded_bounding_box, original_bounding_box, internal_color
+    output: Modified output_grid.
+    details: Iterates through all pixels within the expanded_bounding_box. If a pixel is *outside* the original_bounding_box, its color is set to internal_color in the output_grid.
+
+process_flow:
+  1. Initialize output_grid as a copy of input_grid.
+  2. Find all distinct Yellow Objects in input_grid.
+  3. For each Yellow Object:
+     a. Get its bounding_box.
+     b. Find its internal_color and internal_count from input_grid within the bounding_box.
+     c. If internal_color exists:
+        i. Calculate the expanded_bounding_box using internal_count as thickness.
+        ii. Draw the frame by coloring pixels in the expanded_bounding_box but outside the original_bounding_box with the internal_color onto the output_grid.
+  4. Return the final output_grid.
+
+assumptions:
+  - Each yellow object contains internal pixels of only one color type (other than white or yellow).
+  - The number of these internal pixels directly dictates the thickness of the frame drawn around the object.
+  - Diagonal connectivity is used for defining yellow objects.
+  - The frame should be solid, filling the area between the original and expanded bounding boxes.

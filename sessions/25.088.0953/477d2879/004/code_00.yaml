@@ -1,0 +1,36 @@
+task_description: Fill the grid based on proximity to 'seed' pixels using Manhattan distance, simulating a Voronoi diagram. Ties are broken by lower color index.
+grid_properties:
+  - type: input_grid
+    description: Contains background (0), potential empty space (1), and seed pixels (>1).
+  - type: output_grid
+    description: Same dimensions as input, entirely filled with colors from seed pixels based on the expansion rule.
+objects:
+  - type: pixel
+    properties:
+      - location: (row, column)
+      - color: integer (0-9)
+      - role: derived from input color
+          - background: color 0 (white). Treated as empty space for expansion.
+          - empty_space: color 1 (blue). Treated as empty space for expansion.
+          - seed: color > 1. The source of color expansion.
+rules:
+  - rule: seed_identification
+    description: Pixels with color values 2 through 9 in the input grid are identified as seeds.
+  - rule: expansion_medium
+    description: All pixels in the grid, regardless of their initial color (0 or 1), are potential destinations for color expansion from seeds.
+  - rule: distance_metric
+    description: Manhattan distance (|row1 - row2| + |col1 - col2|) is used to measure distance from a seed to any other pixel.
+  - rule: closest_seed_wins
+    description: Each pixel in the output grid takes the color of the nearest seed pixel based on Manhattan distance.
+  - rule: tie_breaking
+    description: If a pixel is equidistant from two or more seeds, it takes the color of the seed with the smallest numerical color value (index).
+process:
+  - step: initialize
+    description: Identify all seed pixel locations and their colors. Create a distance grid initialized to infinity and an output color grid. Set the distance to 0 and assign the seed's color for all seed locations. Add all seeds to a BFS queue.
+  - step: bfs_expansion
+    description: While the queue is not empty, dequeue a location (r, c). For each valid neighbor (nr, nc):
+      - Calculate the new distance (distance[r, c] + 1).
+      - If new_dist < distance[nr, nc]: Update distance[nr, nc] = new_dist, set output_color[nr, nc] to the color of the seed associated with the path from (r,c), and enqueue (nr, nc).
+      - If new_dist == distance[nr, nc]: Check if the color of the seed associated with the current path is less than the currently assigned output_color[nr, nc]. If yes, update output_color[nr, nc]. Do not re-enqueue.
+  - step: finalize
+    description: The final output color grid represents the transformed output. All cells should be colored by the expansion.

@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom collections import deque\n\n\"\"\"\nIdentifies the largest contiguous object (pattern) and all single-pixel objects (targets) in the input grid.\nFor each target pixel, copies the pattern object, colors it with the target's color, and places the colored copy onto the grid such that the top-left pixel of the pattern aligns with the target pixel's location.\nThe original objects remain in the output grid.\n\"\"\"\n\ndef find_objects(grid):\n    \"\"\"\n    Finds all contiguous objects of the same non-background color.\n\n    Args:\n        grid (np.ndarray): The input grid.\n\n    Returns:\n        list: A list of objects. Each object is a dictionary containing:\n              'color': The color of the object.\n              'coords': A set of (row, col) tuples representing the object's pixels.\n              'min_r': The minimum row index.\n              'min_c': The minimum column index.\n    \"\"\"\n    rows, cols = grid.shape\n    visited = np.zeros_like(grid, dtype=bool)\n    objects = []\n\n    for r in range(rows):\n        for c in range(cols):\n            if grid[r, c] != 0 and not visited[r, c]:\n                color = grid[r, c]\n                coords = set()\n                q = deque([(r, c)])\n                visited[r, c] = True\n                min_r, min_c = r, c\n\n                while q:\n                    curr_r, curr_c = q.popleft()\n                    coords.add((curr_r, curr_c))\n                    min_r = min(min_r, curr_r)\n                    min_c = min(min_c, curr_c)\n\n                    # Check 4 neighbors (up, down, left, right)\n                    for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n                        nr, nc = curr_r + dr, curr_c + dc\n                        if 0 <= nr < rows and 0 <= nc < cols and \\\n                           not visited[nr, nc] and grid[nr, nc] == color:\n                            visited[nr, nc] = True\n                            q.append((nr, nc))\n                \n                objects.append({\n                    'color': color,\n                    'coords': coords,\n                    'min_r': min_r,\n                    'min_c': min_c\n                })\n    return objects\n\ndef transform(input_grid):\n    \"\"\"\n    Transforms the input grid based on identifying a pattern object and target pixels.\n\n    Args:\n        input_grid (np.ndarray): A 2D numpy array representing the input grid.\n\n    Returns:\n        np.ndarray: A 2D numpy array representing the transformed output grid.\n    \"\"\"\n    # Convert input list of lists to numpy array for easier handling\n    grid = np.array(input_grid)\n    rows, cols = grid.shape\n    \n    # Initialize output grid as a copy of the input\n    output_grid = grid.copy()\n\n    # Find all non-background objects\n    objects = find_objects(grid)\n\n    if not objects:\n        return output_grid # No objects, return copy of input\n\n    # Find the largest object (pattern) and single-pixel objects (targets)\n    pattern_object = None\n    target_pixels = []\n    max_size = 0\n\n    for obj in objects:\n        size = len(obj['coords'])\n        if size == 1:\n            # It's a target pixel\n            # Get the single coordinate from the set\n            target_coord = next(iter(obj['coords'])) \n            target_pixels.append({\n                'color': obj['color'],\n                'loc': target_coord # (row, col)\n            })\n        if size > max_size:\n            max_size = size\n            pattern_object = obj\n\n    # If no multi-pixel object found, or no targets, return the original grid (or potentially just targets?)\n    # Based on examples, if there's no pattern, nothing happens. If no targets, nothing happens.\n    if pattern_object is None or not target_pixels:\n         # Check if any single pixel object was misidentified as pattern\n        if max_size == 1 and len(objects) > 0:\n             # Handle edge case where the 'largest' object is size 1\n             # In this specific task's logic, a size 1 pattern wouldn't replicate\n             # Or perhaps the first object found of size 1 becomes the pattern?\n             # Let's stick to largest > 1 rule based on examples.\n             pass # No pattern > 1 pixel found\n        else:\n            return output_grid\n\n\n    # Calculate relative coordinates of the pattern object\n    pattern_min_r = pattern_object['min_r']\n    pattern_min_c = pattern_object['min_c']\n    relative_pattern_coords = set()\n    for r, c in pattern_object['coords']:\n        relative_pattern_coords.add((r - pattern_min_r, c - pattern_min_c))\n\n    # For each target pixel, copy the pattern\n    for target in target_pixels:\n        target_color = target['color']\n        target_r, target_c = target['loc']\n\n        # Place the colored pattern copy onto the output grid\n        for rel_r, rel_c in relative_pattern_coords:\n            output_r = target_r + rel_r\n            output_c = target_c + rel_c\n\n            # Check bounds before writing\n            if 0 <= output_r < rows and 0 <= output_c < cols:\n                output_grid[output_r, output_c] = target_color\n\n    return output_grid.tolist() # Convert back to list of lists if necessary for testing framework\n\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 3446,
+    "candidates_token_count": 1348,
+    "total_token_count": 4794,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 103.707638,
+  "retries": null
+}

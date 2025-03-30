@@ -1,0 +1,67 @@
+task_description: Place a specific pattern centered on each green pixel found in the input grid. Where patterns overlap, the later drawn pattern overwrites the earlier one. The bottom row of the pattern has a special extension rule.
+grid_properties:
+  background_color: 0 (white)
+  output_size: Same as input size.
+objects:
+  - type: trigger_pixel
+    color: 3 (green)
+    description: The location of each green pixel determines the center for placing a pattern.
+  - type: pattern
+    description: A fixed 5-row high pattern placed relative to each green pixel.
+    colors_used: [2 (red), 3 (green), 5 (gray), 8 (azure)]
+    relative_definition: # (dr, dc): color; dr=row_offset, dc=col_offset from green pixel
+      # Row dr = -2
+      (-2, -2): 5
+      (-2, -1): 5
+      (-2, 0): 5
+      (-2, 1): 5
+      (-2, 2): 5
+      # Row dr = -1
+      (-1, -2): 2
+      (-1, 0): 5
+      (-1, 2): 2
+      # Row dr = 0 (center)
+      (0, -2): 2
+      (0, 0): 3 # Overwrites the original green pixel
+      (0, 2): 2
+      # Row dr = +1
+      (1, -2): 2
+      (1, 2): 2
+      # Row dr = +2 (Special Rule Row)
+      (2, -4): 2
+      (2, -3): 2
+      (2, -2): 8
+      (2, -1): 8
+      (2, 0): 8
+      (2, 1): 8
+      (2, 2): 8
+      (2, 3): 2
+      (2, 4): 2
+      (2, 5): 2
+actions:
+  - action: initialize_output
+    target: output_grid
+    value: Create a grid of the same dimensions as the input, filled with white (0).
+  - action: find_triggers
+    source: input_grid
+    object_type: trigger_pixel
+    color: 3 (green)
+    result: List of coordinates [(r1, c1), (r2, c2), ...].
+  - action: apply_pattern
+    trigger: Each green pixel coordinate (r_center, c_center).
+    target: output_grid
+    pattern: Use the relative_definition above.
+    special_rule:
+      condition: When drawing the row corresponding to dr = +2 (absolute row r_center + 2).
+      steps:
+        1. Determine the target row index: `target_r = r_center + 2`.
+        2. If `target_r` is within the grid height:
+           a. Fill the entire `target_r` row of the output grid with Red (2).
+           b. Apply the specific pattern elements for `dr=+2` (from `dc=-4` to `dc=+5`) by drawing the sequence `Red Red Azure Azure Azure Azure Azure Red Red Red` at the corresponding columns `c_center + dc`, overwriting the Red pixels placed in step 2a. Ensure column indices are within grid bounds.
+    standard_rule:
+      condition: For all other rows of the pattern (dr = -2, -1, 0, +1).
+      steps:
+        1. For each relative coordinate (dr, dc) and color in the pattern definition for that row:
+           a. Calculate the absolute target coordinate (target_r, target_c) = (r_center + dr, c_center + dc).
+           b. If the target coordinate is within the grid bounds, set the color at output_grid[target_r, target_c].
+    overlap_rule: If multiple patterns write to the same pixel, the last write determines the final color. (The order of processing green pixels might matter if not handled carefully, though simple overwrite often makes the final state order-independent if the full pattern is applied for each center).

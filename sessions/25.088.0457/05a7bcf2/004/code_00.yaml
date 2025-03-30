@@ -1,0 +1,73 @@
+task_description: Paint propagation from colored pixels towards a central dividing line.
+
+objects:
+  - object: grid
+    description: A 2D array of pixels with integer values 0-9 representing colors.
+    properties:
+      - height: integer
+      - width: integer
+  - object: divider
+    description: A single, complete line (row or column) separating the grid into two regions.
+    properties:
+      - color: azure (8)
+      - orientation: horizontal or vertical
+      - location: row index or column index
+  - object: pixel
+    description: An individual cell in the grid.
+    properties:
+      - color: white(0), blue(1), red(2), green(3), yellow(4), gray(5), magenta(6), orange(7), azure(8), maroon(9)
+      - location: (row, column)
+  - object: region
+    description: The set of pixels on one side of the divider.
+
+actions:
+  - action: identify_divider
+    description: Find the row or column composed entirely of azure (8) pixels.
+    inputs:
+      - input_grid
+    outputs:
+      - orientation (horizontal/vertical)
+      - index (row/column number)
+  - action: copy_grid
+    description: Create an initial output grid identical to the input grid.
+    inputs:
+      - input_grid
+    outputs:
+      - output_grid
+  - action: process_regions
+    description: Apply color changes and filling rules independently to the two regions defined by the divider.
+    inputs:
+      - input_grid
+      - output_grid
+      - divider_orientation
+      - divider_index
+    outputs:
+      - modified_output_grid
+    sub_actions:
+      - action: process_one_region # Apply this logic to both regions
+        description: Modify colors within a single region based on the original pixel colors in that region.
+        inputs:
+          - region_slice (from input_grid)
+          - region_slice_output (from output_grid)
+          - divider_orientation
+          - divider_index
+        steps:
+          # Color Transformation (based on input region colors)
+          - if region_slice contains yellow (4):
+              for each pixel in region_slice:
+                if pixel color is yellow (4) in input:
+                  change corresponding pixel color to green (3) in output.
+          - if region_slice contains red (2):
+              # Red pixels are already copied, so no change needed here unless overwritten by fill.
+              pass # Implicitly handled by copy_grid
+          # Filling Logic (applied per line orthogonal to divider)
+          - if region_slice contains yellow (4): # Fill rule associated with original yellow presence
+              for each line (column if horizontal divider, row if vertical) in the region:
+                find original yellow pixel closest to the divider on this line in input_grid.
+                if found and space exists between it and divider:
+                  fill the space in output_grid with yellow (4).
+          - if region_slice contains red (2): # Fill rule associated with original red presence
+              for each line (column if horizontal divider, row if vertical) in the region:
+                find original red pixel closest to the divider on this line in input_grid.
+                if found and space exists between it and divider:
+                  fill the space in output_grid with azure (8).

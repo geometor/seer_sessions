@@ -1,0 +1,55 @@
+task_description: Overlay a pattern derived from azure pixels onto the largest solid colored rectangle.
+
+definitions:
+  - &canvas
+    name: Canvas
+    description: The largest contiguous rectangular area composed of a single non-white color in the input grid.
+    properties: [top_left_corner (r, c), height (h), width (w), color (canvas_color)]
+    determines: Output grid dimensions (h, w) and initial background color (canvas_color).
+  - &azure_pixels
+    name: Azure Pixels
+    description: All pixels with color value 8 in the input grid.
+  - &stamp_area
+    name: Stamp Area
+    description: The minimal bounding box enclosing all Azure Pixels (*azure_pixels) in the input grid.
+    properties: [top_left_corner (stamp_r, stamp_c), height (stamp_h), width (stamp_w)]
+  - &azure_pattern
+    name: Azure Pattern
+    description: A grid representing the spatial arrangement of Azure Pixels within the Stamp Area.
+    properties: [height (stamp_h), width (stamp_w)]
+    content: Contains azure (8) where an Azure Pixel exists relative to the Stamp Area's top-left corner, and a neutral color (e.g., white 0) otherwise.
+
+actions:
+  - name: Find Canvas
+    input: Input Grid
+    output: *canvas
+    notes: The previous implementation (`find_largest_monochromatic_rect`) was flawed and produced incorrect dimensions. Needs robust implementation.
+  - name: Find Stamp Area Bounding Box
+    input: Input Grid, *azure_pixels
+    output: *stamp_area
+  - name: Extract Azure Pattern
+    input: Input Grid, *stamp_area, *azure_pixels
+    output: *azure_pattern
+    steps:
+      1. Create an empty grid (`pattern`) with dimensions of *stamp_area (stamp_h x stamp_w).
+      2. For each Azure Pixel (r, c) in the input grid:
+         a. Calculate its relative position within the Stamp Area: `rel_r = r - stamp_r`, `rel_c = c - stamp_c`.
+         b. Set `pattern[rel_r, rel_c] = 8`.
+  - name: Create Output Grid
+    input: *canvas
+    output: Output Grid (initially filled with canvas_color)
+    steps:
+      1. Create grid with dimensions canvas.h x canvas.w.
+      2. Fill with canvas.canvas_color.
+  - name: Overlay Azure Pattern
+    input: Output Grid (initial), *azure_pattern
+    output: Final Output Grid
+    steps:
+      1. Iterate through each cell `(rel_r, rel_c)` of the *azure_pattern.
+      2. If `azure_pattern[rel_r, rel_c] == 8`:
+         a. Check if the coordinates `(rel_r, rel_c)` are within the bounds of the Output Grid.
+         b. If within bounds, set `Output Grid[rel_r, rel_c] = 8`.
+
+uncertainties:
+  - The exact method for finding the "Canvas" needs to be reliable. The previous dynamic programming approach had issues, possibly with handling boundaries or single-color blocks adjacent to other colors/background.
+  - The definition of the "Stamp Area" as strictly the bounding box of *all* azure pixels might be too simple if some azure pixels are irrelevant decoys. However, Hypothesis 7 using this definition seems the closest so far.

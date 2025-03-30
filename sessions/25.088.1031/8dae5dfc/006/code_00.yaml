@@ -1,0 +1,38 @@
+task_context:
+  description: "The task involves transforming the colors within distinct objects in a grid while preserving the object shapes and positions."
+  background_color: 0 # white
+
+objects:
+  definition: "Contiguous areas of non-background pixels (colors 1-9), connected using 4-way adjacency."
+  count_preservation: True # The number of objects remains the same between input and output.
+  shape_preservation: True # The exact set of pixels constituting each object remains the same.
+
+properties:
+  - name: layers
+    definition: "Concentric layers within each object based on distance."
+    calculation: "A layer L_k consists of all pixels within the object whose shortest distance (4-way adjacency) to the nearest pixel *outside* the object is exactly k."
+    structure: "Layers are ordered from k=1 (outermost) to k=N (innermost)."
+    pixel_assignment: "Each non-background pixel belongs to exactly one layer within its object."
+  - name: layer_colors
+    definition: "The sequence of colors associated with the layers of an object."
+    extraction: "For an object with N layers, the sequence is [Color(L1), Color(L2), ..., Color(LN)], assuming each layer primarily consists of a single color (as observed in examples)."
+    ambiguity_note: "The examples show layers with uniform color. If a layer had mixed colors, the rule for selecting the representative color would need clarification, but based on examples, we take the color present in that layer."
+
+actions:
+  - name: color_reversal
+    input: layer_colors # [C1, C2, ..., CN]
+    output: reversed_layer_colors # [CN, ..., C2, C1]
+    description: "The sequence of original layer colors is reversed."
+  - name: recolor_object
+    target: each object
+    process: "Iterate through the layers L1 to LN. Assign the first color from reversed_layer_colors to all pixels in L1, the second color to all pixels in L2, ..., the Nth color to all pixels in LN."
+    result: "The object retains its shape but its layer colors are symmetrically swapped from outside-in."
+
+workflow:
+  - step: Identify all distinct non-background objects in the input grid.
+  - step: For each object:
+      - Determine the layers L1, L2, ..., LN based on pixel distance to the exterior.
+      - Extract the original color sequence C1, C2, ..., CN from these layers.
+      - Reverse the color sequence to get CN, ..., C2, C1.
+      - Create a mapping: Layer Lk maps to new color C(N-k+1).
+  - step: Construct the output grid by applying the new color mapping to the pixels of each object's layers. Keep background pixels unchanged.

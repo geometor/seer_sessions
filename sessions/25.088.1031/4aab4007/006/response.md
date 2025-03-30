@@ -1,0 +1,77 @@
+## General Assessment
+
+The provided code attempts to fill white (0) pixels within the inner area of the grid (excluding the outermost border) based on colors found along the same diagonal (`r+c = constant`). However, the code failed on all training examples, producing outputs that differ significantly from the expected outputs. The number of incorrect pixels suggests a fundamental misunderstanding or misimplementation of the rule for finding the fill color.
+
+The key errors in the previous code seem to be:
+1.  **Search Area:** The `find_color_on_diagonal` function restricted its search for the source color to the *fillable area* (rows 1 to H-2, cols 1 to W-2). Analysis of the expected outputs suggests the search for the source color should encompass the *entire* grid.
+2.  **Search Order:** The function searched by iterating through columns first (`c_s` loop). Analysis indicates that iterating through rows first (`r_s` loop) yields the correct source color according to the expected outputs.
+
+The strategy is to correct the `find_color_on_diagonal` function to search the entire grid and iterate through rows first when checking pixels along the target diagonal. The main transformation loop, which iterates through the fillable area (`r=1..H-2, c=1..W-2`) and only modifies white pixels, appears correct and should be retained.
+
+## Metrics
+
+| Example | Input Dim (HxW) | Output Dim (HxW) | Input Colors (excluding 0) | Output Colors (excluding 0) | Pixels Off (Previous Code) | Notes                                                                 |
+| :------ | :-------------- | :--------------- | :------------------------- | :-------------------------- | :------------------------- | :-------------------------------------------------------------------- |
+| 1       | 28x28           | 28x28            | 1, 2, 3, 4, 5, 6, 7        | 1, 2, 3, 4, 5, 6, 7         | 57                         | White pixels in the inner area are filled. Borders remain unchanged.  |
+| 2       | 28x28           | 28x28            | 1, 2, 3, 4, 5, 7           | 1, 2, 3, 4, 5, 7            | 46                         | White pixels in the inner area are filled. Borders remain unchanged.  |
+| 3       | 28x28           | 28x28            | 1, 2, 3, 4, 5, 6, 7, 8, 9  | 1, 2, 3, 4, 5, 6, 7, 8, 9   | 78                         | White pixels in the inner area are filled. Some white pixels exist outside the fillable area (e.g., row 7, col 1) and are not changed. |
+
+**Observations:**
+
+*   The grid dimensions remain constant.
+*   The set of non-white colors present generally remains the same, but their counts change as white pixels are replaced.
+*   The transformation only affects pixels within the rows `1` to `H-2` and columns `1` to `W-2`. Pixels on the absolute border (row 0, row H-1, col 0, col W-1) are never modified.
+*   Only pixels that are initially white (0) within this inner area are candidates for modification. Non-white pixels in the inner area retain their original color.
+*   The fill color for a white pixel at `(r, c)` is determined by a color found on the same diagonal (`row + col = r + c`) in the *input* grid.
+
+## YAML Facts
+
+
+```yaml
+Context:
+  - Grid dimensions: Height (H) and Width (W) between 1x1 and 30x30.
+  - Pixels: Represented by integers 0-9 (colors). 0 is white.
+  - Transformation Area: The transformation targets the inner part of the grid, specifically pixels (r, c) where 1 <= r <= H-2 and 1 <= c <= W-2.
+  - Border: The outermost border (row 0, row H-1, col 0, col W-1) is never modified.
+
+Objects:
+  - Input Grid: The initial state.
+  - Output Grid: The transformed state.
+  - Border Pixels: Pixels at row 0, row H-1, col 0, or col W-1. Remain unchanged.
+  - Inner Pixels: Pixels at (r, c) where 1 <= r <= H-2 and 1 <= c <= W-2.
+    - Inner White Pixels: Inner pixels with value 0. These are modified.
+    - Inner Non-White Pixels: Inner pixels with values 1-9. Remain unchanged.
+  - Diagonals: Sets of pixels (r, c) where r + c is constant.
+
+Actions:
+  - Identify Target Pixels: Select pixels (r, c) within the Inner Pixels area that are white (0) in the Input Grid.
+  - Determine Fill Color: For each Target Pixel at (r, c):
+    - Identify the target diagonal constant k = r + c.
+    - Search the *entire* Input Grid for pixels (r_s, c_s) such that r_s + c_s = k.
+    - Iterate through potential source pixels by increasing row index `r_s` (from 0 to H-1).
+    - Calculate the corresponding column index `c_s = k - r_s`.
+    - Check if `c_s` is within the grid bounds (0 <= c_s <= W-1).
+    - The Fill Color is the value of the *first* pixel (r_s, c_s) encountered during this row-first search that is *not* white (value > 0).
+  - Update Output Grid: For each Target Pixel, change its value from 0 to the determined Fill Color in the Output Grid. Copy all other pixels (Border Pixels and Inner Non-White Pixels) directly from the Input Grid to the Output Grid.
+```
+
+
+## Natural Language Program
+
+1.  Initialize the Output Grid as a copy of the Input Grid.
+2.  Get the dimensions of the grid: Height H and Width W.
+3.  If the grid is too small to have an inner area (H <= 2 or W <= 2), return the original grid.
+4.  Define the inner area boundaries: minimum row `r_min = 1`, maximum row `r_max = H-2`, minimum column `c_min = 1`, maximum column `c_max = W-2`.
+5.  Iterate through each pixel `(r, c)` within the inner area (from `r = r_min` to `r_max`, and `c = c_min` to `c_max`).
+6.  Check if the pixel at `(r, c)` in the *Input Grid* is white (0).
+7.  If it is white:
+    a.  Calculate the diagonal constant `k = r + c`.
+    b.  Initialize `fill_color` to 0 (white, as a default failsafe, though based on examples a non-white color should always be found).
+    c.  Search for the first non-white color source along the diagonal `k` in the *Input Grid*:
+        i.  Iterate through row indices `r_s` from 0 up to `H-1`.
+        ii. Calculate the corresponding column index `c_s = k - r_s`.
+        iii. Check if `c_s` is a valid column index (i.e., `0 <= c_s < W`).
+        iv. If `c_s` is valid, get the color `source_color` at `Input Grid[r_s][c_s]`.
+        v.  If `source_color` is not white (i.e., `source_color > 0`), set `fill_color = source_color` and break out of this search loop (step 7c).
+    d.  Update the pixel at `(r, c)` in the *Output Grid* with the found `fill_color`.
+8.  After iterating through all inner pixels, return the modified Output Grid.

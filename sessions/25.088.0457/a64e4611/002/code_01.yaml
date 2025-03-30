@@ -1,0 +1,56 @@
+task_description: Fill rows within a specific vertical block based on the content of the corresponding rows in the input grid.
+
+definitions:
+  - object: grid
+    properties:
+      - pixels: 2D array of integers (colors 0-9)
+      - height: integer
+      - width: integer
+  - object: vertical_strip
+    properties:
+      - columns: a contiguous range of column indices (start_col, end_col)
+      - width: integer (end_col - start_col + 1)
+  - object: white_column
+    properties:
+      - column_index: integer
+      - condition: all pixels in this column in the input grid are white (0)
+  - object: target_block
+    properties:
+      - type: vertical_strip
+      - derivation: selected based on criteria applied to white_columns in the input grid.
+
+input_grid_properties:
+  - contains: pixels of various colors (0-9)
+  - contains: columns that may be entirely white (0)
+
+actions_on_input:
+  - action: identify_white_columns
+    description: Find all columns in the input grid where every pixel is white (0).
+  - action: identify_contiguous_white_strips
+    input: indices of white_columns
+    output: list of vertical_strips representing contiguous blocks of white columns.
+    properties_recorded: start_col, end_col, width for each strip.
+  - action: select_target_block
+    input: list of contiguous white vertical_strips
+    output: the single target_block (vertical_strip)
+    selection_criteria:
+      - rule_1: Choose the strip(s) with the maximum width.
+      - rule_2 (tie-breaker): Among those with maximum width, choose the one with the minimum start_col (leftmost).
+    fallback: If no white columns exist, no target_block is selected.
+
+transformation:
+  - step: initialize_output
+    description: Create the output grid as an identical copy of the input grid.
+  - step: check_target_block
+    condition: Was a target_block selected?
+    if_false: Return the initialized output grid.
+  - step: process_rows
+    condition: A target_block was selected (cols target_start_col to target_end_col).
+    iteration: For each row_index 'r' from 0 to height-1:
+      - check: Does input_grid[r, :] (the entire input row r) contain any pixel with color > 0?
+      - if_true:
+        - modify: Set output_grid[r, target_start_col : target_end_col + 1] = green (3)
+      - if_false:
+        - no_change: The segment output_grid[r, target_start_col : target_end_col + 1] remains white (0), as it was part of the identified white block.
+  - step: finalize
+    description: Return the modified output grid. Pixels outside the target_block columns were unchanged from the initial copy.

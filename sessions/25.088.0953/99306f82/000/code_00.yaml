@@ -1,0 +1,60 @@
+task_description: Fill the white area inside a blue rectangular frame with concentric colored layers, where the colors and order are determined by key pixels located outside the frame along the main diagonal starting from the top-left corner.
+
+elements:
+  - object: frame
+    type: rectangle
+    color: blue (1)
+    location: variable, defines an inner region
+  - object: inner_area
+    type: region
+    color: white (0) initially
+    location: enclosed by the blue frame
+    transformation: filled with concentric colored layers
+  - object: key_pixels
+    type: isolated pixels
+    color: various (non-white, non-blue)
+    location: outside the frame, specifically at coordinates (d, d) for d >= 0
+    role: determine the fill colors for the inner_area layers
+
+relationships:
+  - type: spatial
+    description: The inner_area is completely enclosed by the frame.
+  - type: dependency
+    description: The color of each concentric layer within the inner_area depends on a specific key_pixel.
+  - type: mapping
+    description: The key_pixel at input coordinates (d, d) determines the color for the layer inside the frame at minimum distance (d+1) from the frame boundary.
+
+properties:
+  - property: concentric_layers
+    applies_to: inner_area in output
+    description: Layers are defined by the minimum distance of a pixel to the surrounding frame boundary.
+  - property: distance_metric
+    value: min(row - top_frame_row, bottom_frame_row - row, col - left_frame_col, right_frame_col - col)
+    description: Defines the layer index for pixels within the inner_area.
+
+actions:
+  - action: identify_frame
+    input: grid
+    output: coordinates of the blue rectangle boundary
+  - action: identify_key_pixels
+    input: grid
+    output: list of colors and their (d, d) coordinates outside the frame
+  - action: calculate_distance
+    input: pixel coordinates (r, c) within the inner_area, frame coordinates
+    output: minimum distance `dist` to the frame boundary
+  - action: determine_fill_color
+    input: distance `dist`, key_pixels list
+    output: color corresponding to the key pixel at index (dist-1, dist-1)
+  - action: fill_pixel
+    input: pixel coordinates (r, c), fill_color
+    output: modified grid with the pixel at (r, c) changed to fill_color
+
+sequence:
+  1. Locate the blue frame boundaries.
+  2. Identify all key pixels at coordinates (d, d) outside the frame and store their colors.
+  3. Iterate through each pixel (r, c) within the bounds defined by the frame (excluding the frame itself).
+  4. If the pixel (r, c) is white:
+     a. Calculate its minimum distance `dist` to the frame boundary.
+     b. Retrieve the color from the key pixel located at `(dist-1, dist-1)`.
+     c. Change the color of the pixel (r, c) in the output grid to this retrieved color.
+  5. Keep all other pixels (frame, key pixels, external white pixels) unchanged from the input.

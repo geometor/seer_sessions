@@ -1,0 +1,64 @@
+task_description: Replicates a template shape vertically, using colors derived from the template itself and a separate palette structure.
+
+definitions:
+  - name: background
+    type: color
+    value: 0 (white)
+  - name: template_object
+    type: object
+    description: The largest contiguous monochromatic object in the input grid by pixel count.
+    properties: [color, shape_signature, bounding_box, pixel_set]
+  - name: template_color
+    type: color
+    description: The color of the template_object.
+  - name: template_shape
+    type: shape
+    description: The relative pixel coordinates of the template_object within its bounding_box.
+  - name: template_bbox
+    type: geometry
+    description: The bounding box (min_r, min_c, max_r, max_c) of the template_object.
+  - name: palette_pixels
+    type: set of pixels
+    description: All non-background pixels in the input grid that do not belong to the template_object. Assumed to be single pixels for each color.
+  - name: palette_colors
+    type: set of colors
+    description: The unique colors present in the palette_pixels.
+  - name: palette_sequence
+    type: ordered list of colors
+    description: The palette_colors sorted vertically (top-to-bottom) based on their row position in the input grid.
+  - name: output_color_sequence
+    type: ordered list of colors
+    description: The sequence of colors for the output shapes, formed by prepending the template_color to the palette_sequence.
+  - name: vertical_offset
+    type: integer
+    description: The vertical distance (in rows) between the start (min_row) of consecutive shapes in the output. Equal to the height of the template_object's bounding_box.
+
+actions:
+  - name: identify_template_and_palette
+    description: >
+      Find all monochromatic objects. Identify the largest as the template_object.
+      Identify all remaining non-background pixels as palette_pixels. Determine the template_color,
+      template_shape, template_bbox, and palette_sequence.
+  - name: determine_output_grid_dimensions
+    description: >
+      Output width is same as input width.
+      Output height is calculated based on the template_object's starting row,
+      its height, and the total number of shapes to draw (length of output_color_sequence).
+      Height = template_bbox.min_r + (len(output_color_sequence) * (template_bbox.max_r - template_bbox.min_r + 1)).
+  - name: generate_output_grid
+    description: >
+      Create a new grid filled with the background color, using the calculated dimensions.
+  - name: draw_shapes
+    description: >
+      Iterate through the output_color_sequence. For each color `c` at index `i`:
+      1. Calculate the top-left position: `(template_bbox.min_r + i * vertical_offset, template_bbox.min_c)`.
+      2. Draw the template_shape with color `c` at the calculated position on the output grid.
+
+input_output_relationship:
+  - The output grid contains multiple copies of the input template_shape.
+  - The palette_pixels are removed in the output.
+  - The number of shapes in the output equals 1 (for the template color) + the number of colors in the input palette.
+  - The color of each output shape is determined by the output_color_sequence.
+  - The shapes are stacked vertically below the original template position, ordered according to the output_color_sequence.
+  - The vertical spacing between the top rows of consecutive shapes is equal to the height of the template_object's bounding box.
+  - The output grid height may be larger than the input grid height to accommodate all shapes.

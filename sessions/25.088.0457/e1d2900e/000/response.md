@@ -1,0 +1,56 @@
+Okay, let's break down this task.
+
+**Perception**
+
+1.  **Input Grid Composition:** The input grids consist primarily of a white (0) background. Scattered across this background are individual blue (1) pixels and small, usually 2x2, red (2) squares.
+2.  **Output Grid Composition:** The output grids are very similar to the input grids. The positions and colors of the original red squares and most blue pixels remain unchanged. The key difference is the appearance of *new* blue pixels in the output.
+3.  **Location of New Blue Pixels:** These new blue pixels appear exclusively in positions that were originally white (0) in the input grid.
+4.  **Relationship to Existing Pixels:** The newly added blue pixels always appear directly adjacent (horizontally or vertically, not diagonally) to at least one red (2) pixel from the input grid. Furthermore, these specific white locations must *also* be directly adjacent (horizontally or vertically) to at least one blue (1) pixel from the *original* input grid.
+5.  **Transformation Condition:** It seems a white pixel transforms into a blue pixel *if and only if* it shares an edge (is orthogonally adjacent) with both a red pixel *and* a blue pixel present in the input grid.
+6.  **No Other Changes:** No other colors change, and no pixels are removed. The red objects and original blue pixels act as static references or catalysts for the transformation of adjacent white pixels.
+
+**Facts**
+
+
+```yaml
+elements:
+  - type: grid
+    description: A 2D array of pixels with integer values 0-9 representing colors. White (0) is the background.
+  - type: object
+    color: blue (1)
+    description: Single, isolated pixels. They remain unchanged in the output. They act as a condition for transformation.
+  - type: object
+    color: red (2)
+    description: Typically small (e.g., 2x2) contiguous blocks of red pixels. They remain unchanged in the output. They act as a condition for transformation.
+  - type: pixel
+    color: white (0)
+    description: Background pixels. Some transform into blue pixels in the output.
+
+actions:
+  - type: color_change
+    input_color: white (0)
+    output_color: blue (1)
+    condition: >
+      The white pixel must be orthogonally adjacent (sharing an edge)
+      to at least one red (2) pixel AND orthogonally adjacent
+      to at least one blue (1) pixel in the input grid.
+
+relationships:
+  - type: adjacency
+    direction: orthogonal (up, down, left, right)
+    description: Determines which pixels influence the transformation of a white pixel.
+```
+
+
+**Natural Language Program**
+
+1.  Initialize the output grid as a copy of the input grid.
+2.  Iterate through each pixel (cell) of the input grid using its row and column index.
+3.  For each pixel, check if its color in the input grid is white (0).
+4.  If the current pixel is white, examine its orthogonal neighbors (pixels directly above, below, left, and right, staying within the grid boundaries).
+5.  During the neighbor examination, keep track of two conditions:
+    *   `found_red_neighbor`: Set to true if at least one neighbor is red (2).
+    *   `found_blue_neighbor`: Set to true if at least one neighbor is blue (1).
+6.  If *both* `found_red_neighbor` and `found_blue_neighbor` are true after checking all orthogonal neighbors, change the color of the corresponding pixel in the *output* grid to blue (1).
+7.  If the current pixel was not white, or if the adjacency conditions (step 6) were not met, the corresponding pixel in the output grid retains its original color copied in step 1.
+8.  After iterating through all pixels, the output grid contains the final transformed result.

@@ -1,0 +1,50 @@
+task_description: "Perform a conditional flood fill based on color properties and adjacency."
+grid_properties:
+  - dimensions: varying (e.g., 5x5, 5x7, 7x8, 7x7)
+  - distinct_colors: typically 3 significant colors per example.
+objects:
+  - type: background_area
+    properties:
+      - color: the most frequent color in the input grid.
+      - role: area to be potentially filled.
+  - type: fill_source
+    properties:
+      - color: the non-background color with the minimum count.
+      - role: defines the color that will spread; acts as the starting points for the fill if adjacent to background.
+  - type: barrier
+    properties:
+      - color: the remaining non-background color (not the minimum count one).
+      - role: blocks the spread of the fill color.
+actions:
+  - name: identify_colors
+    inputs: input_grid
+    outputs: [background_color, fill_color, barrier_color]
+    logic:
+      - Find the color with the maximum count (background_color).
+      - Among the other colors, find the one with the minimum count (fill_color).
+      - The remaining color is the barrier_color.
+  - name: check_adjacency
+    inputs: [input_grid, fill_color, background_color]
+    outputs: boolean (is_adjacent)
+    logic:
+      - Iterate through all pixels. If any pixel with fill_color is cardinally adjacent to a pixel with background_color, return true. Otherwise, return false.
+  - name: conditional_flood_fill
+    inputs: [input_grid, background_color, fill_color, barrier_color, is_adjacent]
+    outputs: output_grid
+    logic:
+      - If is_adjacent is false, output_grid is a copy of input_grid.
+      - If is_adjacent is true:
+        - Initialize output_grid as a copy of input_grid.
+        - Create a queue and add coordinates of all pixels initially having fill_color.
+        - Create a visited set and add coordinates of all pixels initially having fill_color.
+        - While the queue is not empty:
+          - Dequeue a coordinate (r, c).
+          - For each cardinal neighbor (nr, nc):
+            - If the neighbor is within grid bounds AND the neighbor's color in the *input* grid is background_color AND the neighbor has not been visited:
+              - Set the neighbor's color in the output_grid to fill_color.
+              - Add the neighbor to the visited set.
+              - Enqueue the neighbor coordinate.
+        - Return the modified output_grid.
+edge_cases:
+  - If fewer than 3 colors exist, the rules may not apply (return input). Example 1 shows 3 colors but no fill occurs because the min-count color isn't adjacent to background.
+  - Ties in counts (background, fill) are not observed in provided examples but should be considered for robustness (e.g., choose lowest color value).

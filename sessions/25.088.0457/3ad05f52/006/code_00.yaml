@@ -1,0 +1,50 @@
+task_description: Flood fill internal regions based on the presence of a non-background, non-boundary color.
+
+grid_properties:
+  height: variable (1-30)
+  width: variable (1-30)
+  colors: 0-9 integer values
+
+color_roles:
+  - color_value: 0
+    color_name: White
+    role: Background, fillable area
+  - color_value: 8
+    color_name: Azure
+    role: Impassable boundary
+  - color_value: variable (e.g., 6 Magenta, 4 Yellow, 3 Green)
+    color_name: variable
+    role: Fill Color Seed, determines the color to fill with
+  - color_value: other (any color not 0 or 8 or the seed color)
+    color_name: other
+    role: Not observed in these examples, but potentially part of internal regions (treated like fill seeds?) - Assume only one non-0, non-8 color per grid for now.
+
+objects:
+  - name: Grid
+    type: 2D array of pixels
+  - name: Boundary Wall
+    type: Contiguous regions of Azure (8) pixels. Can be closed loops or run to the edge.
+  - name: External Region
+    type: Contiguous region of White (0) pixels connected to the grid border.
+  - name: Internal Region
+    type: Contiguous region of non-Azure (8) pixels completely enclosed by Boundary Walls and/or the grid border, and not part of the External Region. Can contain White (0) pixels and potentially one other color (the Fill Color Seed).
+
+actions:
+  - name: Identify External White Pixels
+    input: Input Grid
+    output: Set of coordinates for external White (0) pixels
+    description: Perform a BFS/flood fill starting from all White (0) pixels on the grid edges.
+  - name: Identify Internal Regions
+    input: Input Grid, Set of external White pixels
+    output: List of Sets of coordinates, where each set represents one internal region.
+    description: Find connected components of pixels that are NOT Azure (8) and NOT in the external set. Use BFS/DFS or a labeling algorithm.
+  - name: Determine Region Fill Color
+    input: An Internal Region (set of coordinates), Input Grid
+    output: Fill color (integer) or None
+    description: Check pixels within the region. If any pixel has a color other than White (0) (and is not Azure 8), return that color. Assume only one such color exists per region. If only White (0) exists, return None.
+  - name: Fill Region
+    input: An Internal Region (set of coordinates), Fill Color, Output Grid
+    output: Modified Output Grid
+    description: Iterate through all coordinates in the region. If the pixel at a coordinate in the Output Grid is White (0), change it to the Fill Color.
+
+transformation_goal: To fill all White (0) pixels within each distinct internal region, using the color of the non-White (0), non-Azure (8) pixel found within that same region as the fill color. If an internal region contains only White (0), it remains unchanged.

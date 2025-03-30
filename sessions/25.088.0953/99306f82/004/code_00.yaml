@@ -1,0 +1,48 @@
+Task: Fill a frame interior with concentric layers based on diagonal colors.
+
+Input_Features:
+  - Grid: A 2D array of pixels (colors 0-9).
+  - Objects:
+      - Frame:
+          - Type: Hollow rectangle.
+          - Color: Blue (1).
+          - Property: Defines the boundary for the fill operation.
+          - Location: Variable, but always present in training examples.
+      - Key_Colors_Source:
+          - Type: Sequence of pixels.
+          - Location: Main diagonal (r=c), starting from (0,0).
+          - Termination: Sequence stops at White(0), Blue(1), or grid edge.
+          - Property: Determines the colors used for filling.
+      - Fillable_Area:
+          - Type: Pixels within the frame.
+          - Color: Initially White (0).
+          - Property: Target area for the transformation.
+      - Other_Pixels:
+          - Type: Pixels outside the frame, the frame itself, or non-white pixels inside the frame.
+          - Property: Remain unchanged in the output.
+
+Output_Features:
+  - Grid: A 2D array, modified from the input.
+  - Objects:
+      - Frame: Unchanged.
+      - Other_Pixels: Unchanged.
+      - Filled_Area:
+          - Type: Pixels that were white inside the frame.
+          - Color: Replaced with concentric layers of colors.
+          - Pattern: Layers correspond to the distance from the frame boundary.
+
+Actions:
+  1. Identify_Frame: Locate the minimum and maximum row and column indices (r_min, c_min, r_max, c_max) of the Blue(1) pixels forming the frame.
+  2. Extract_Key_Colors: Read colors from the main diagonal `grid[d, d]` starting `d=0`, stopping if the color is White(0) or Blue(1) or `d` is out of bounds. Store these colors in an ordered list `key_colors`.
+  3. Iterate_Internal_Pixels: Loop through each pixel `(r, c)` such that `r_min < r < r_max` and `c_min < c < c_max`.
+  4. Check_Fillability: If `input_grid[r, c]` is White(0):
+      a. Calculate_Distance: Compute the minimum distance `dist` from `(r, c)` to the four sides of the frame: `dist = min(r - r_min, r_max - r, c - c_min, c_max - c)`. This is the Chebyshev distance to the boundary.
+      b. Determine_Color_Index: Calculate the potential index `key_index = dist - 1`.
+      c. Clamp_Index: If `key_index` is greater than or equal to `len(key_colors)`, set `key_index = len(key_colors) - 1`.
+      d. Assign_Color: If `len(key_colors) > 0` and `key_index >= 0`, set `output_grid[r, c] = key_colors[key_index]`. Otherwise (no key colors found), the pixel remains White(0).
+  5. Preserve_Pixels: If `input_grid[r, c]` is not White(0), or if the pixel is outside the inner frame area (i.e., on the frame or outside it), keep its original color in the output grid.
+
+Edge_Cases:
+  - No blue frame found: Return the input grid unchanged (though not observed in examples).
+  - No key colors found (diagonal starts with White/Blue or is empty): Fillable area remains White(0).
+  - Distance calculation results in an index beyond the available key colors: Use the last available key color for filling.

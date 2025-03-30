@@ -1,0 +1,50 @@
+task_context:
+  problem_description: "The task involves identifying a template shape and a sequence of colors from an input grid, then drawing multiple copies of the template shape stacked vertically in the output grid, colored according to the sequence."
+  input_grid_properties:
+    - Contains multiple distinct colored objects (contiguous pixels of the same color).
+    - One object acts as a 'template'.
+    - Other non-background pixels form a 'palette'.
+  output_grid_properties:
+    - Contains vertically stacked copies of the template shape.
+    - Each copy is colored according to the palette sequence.
+    - The background is preserved where no shapes are drawn.
+    - The grid dimensions may change (primarily height) to accommodate the stacked shapes.
+
+object_identification:
+  template_object:
+    criteria: "The contiguous object with the largest area (pixel count). Ties are broken by the object whose bounding box has the minimum row index, then the minimum column index."
+    properties:
+      - shape: The relative coordinates of its pixels.
+      - bounding_box: (min_row, min_col, max_row, max_col).
+      - height: (max_row - min_row + 1).
+      - min_col: The leftmost column index of the bounding box.
+      - min_row: The topmost row index of the bounding box.
+  palette_pixels:
+    criteria: "All non-background pixels that do not belong to the template object."
+    properties:
+      - color_sequence: The unique colors of the palette pixels, ordered first by row (top-to-bottom) and then by column (left-to-right).
+
+actions:
+  - name: "Identify Template"
+    inputs: Input grid
+    outputs: template_object (shape, bbox, height, min_row, min_col)
+  - name: "Identify Palette"
+    inputs: Input grid, template_object pixels
+    outputs: palette_color_sequence
+  - name: "Calculate Start Position"
+    inputs: template_object (min_row, min_col, height)
+    outputs: start_row, start_col
+    calculation:
+      start_col: template_min_col
+      start_row: template_min_row - template_height # Corrected Rule
+  - name: "Calculate Output Grid Size"
+    inputs: Input grid dimensions, start_row, len(palette_color_sequence), template_height
+    outputs: output_rows, output_cols
+  - name: "Draw Stacked Shapes"
+    inputs: output_grid, template_shape, palette_color_sequence, start_row, start_col, template_height
+    process: Iterate through the palette_color_sequence. For each color at index 'i', calculate the current shape's top-left position as (start_row + i * template_height, start_col). Draw the template_shape at this position using the current color.
+
+derived_rules:
+  - The vertical stacking starts such that the top row of the first shape instance is positioned at `template_min_row - template_height`.
+  - The horizontal position (leftmost column) of all stacked shapes aligns with the leftmost column of the template object's original bounding box (`template_min_col`).
+  - The vertical distance between the start of consecutive stacked shapes is equal to the height of the template object's bounding box.

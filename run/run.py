@@ -22,7 +22,7 @@ def run():
 
     seer = Seer(config)
 
-    seer.run(tasks[800:900])
+    seer.run(tasks[600:700], "ARCv2 sorted 600:700")
     #  seer.run(tasks)
 
 

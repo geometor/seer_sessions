@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom scipy.ndimage import label, find_objects\nfrom collections import defaultdict\n\n\"\"\"\nIdentifies pairs of distinct objects that are vertically aligned, sharing the same leftmost column coordinate. For each pair, shifts the higher object (smaller top row index) one column left, and shifts the lower object (larger top row index) one column right. Objects not part of such a pair remain stationary.\n\"\"\"\n\ndef get_background_color(grid):\n    \"\"\"Finds the most frequent color in the grid, assumed to be the background.\"\"\"\n    unique, counts = np.unique(grid, return_counts=True)\n    if not unique.size: # Handle empty grid case\n        return 0 # Default to white if grid is empty\n    return unique[np.argmax(counts)]\n\ndef find_all_objects(grid, background_color):\n    \"\"\"\n    Finds all distinct objects (contiguous non-background pixels) in the grid.\n    Returns a list of dictionaries, each representing an object with its\n    id, color, pixels (set of (row, col) tuples), top_row, and leftmost_col.\n    \"\"\"\n    objects = []\n    object_id_counter = 0\n    labeled_grid, num_labels = label(grid != background_color) # Label all non-background components\n\n    # Find the location (slices) of each labeled object\n    object_slices = find_objects(labeled_grid)\n\n    for i in range(num_labels):\n        obj_label = i + 1\n        slices = object_slices[i]\n        \n        # Extract the mask for this specific object within its bounding box\n        mask_part = (labeled_grid[slices] == obj_label)\n        \n        # Get the color (assuming an object has a single color)\n        # Find the first pixel coordinates within the slice that belong to the object\n        obj_coords_in_slice = np.argwhere(mask_part)\n        if obj_coords_in_slice.size == 0:\n            continue # Skip if somehow the object is empty within its slice\n            \n        first_pixel_r, first_pixel_c = obj_coords_in_slice[0]\n        obj_color = grid[slices[0].start + first_pixel_r, slices[1].start + first_pixel_c]\n\n        pixels = set()\n        min_row, min_col = float('inf'), float('inf')\n\n        # Find absolute coordinates and object properties\n        rows, cols = np.where(mask_part)\n        for r, c in zip(rows, cols):\n            abs_r, abs_c = r + slices[0].start, c + slices[1].start\n            pixels.add((abs_r, abs_c))\n            min_row = min(min_row, abs_r)\n            min_col = min(min_col, abs_c)\n\n        if pixels: # Ensure the object is not empty\n             objects.append({\n                'id': object_id_counter,\n                'color': obj_color,\n                'pixels': pixels,\n                'top_row': min_row,\n                'leftmost_col': min_col,\n             })\n             object_id_counter += 1\n\n    return objects\n\ndef transform(input_grid):\n    \"\"\"\n    Applies the transformation rule to the input grid.\n    \"\"\"\n    input_grid_np = np.array(input_grid)\n    height, width = input_grid_np.shape\n    if height == 0 or width == 0:\n        return [] # Handle empty input grid\n\n    # 1. Initialization: Determine background and create output grid\n    background_color = get_background_color(input_grid_np)\n    output_grid = np.full((height, width), background_color, dtype=int)\n\n    # 2. Object Identification: Find all distinct objects\n    objects = find_all_objects(input_grid_np, background_color)\n    if not objects:\n        return output_grid.tolist() # Return background if no objects\n\n    # 3. Pair Identification: Group objects by leftmost column\n    grouped_by_leftmost_col = defaultdict(list)\n    for obj in objects:\n        grouped_by_leftmost_col[obj['leftmost_col']].append(obj)\n\n    # 4. Shift Calculation: Determine shifts for paired objects\n    object_shifts = {obj['id']: 0 for obj in objects} # Initialize all shifts to 0\n\n    for col, group in grouped_by_leftmost_col.items():\n        if len(group) == 2: # Process groups with exactly two objects\n            obj_a, obj_b = group[0], group[1]\n\n            # Determine upper and lower objects based on top_row\n            if obj_a['top_row'] < obj_b['top_row']:\n                obj_upper, obj_lower = obj_a, obj_b\n            else:\n                obj_upper, obj_lower = obj_b, obj_a\n\n            # Assign shifts: -1 for upper, +1 for lower\n            object_shifts[obj_upper['id']] = -1\n            object_shifts[obj_lower['id']] = +1\n\n    # 5. Apply Transformation: Draw objects (shifted or stationary) onto output grid\n    for obj in objects:\n        shift = object_shifts[obj['id']]\n        color = obj['color']\n\n        for r, c in obj['pixels']:\n            new_c = c + shift\n            # Check grid boundaries before drawing\n            if 0 <= new_c < width:\n                # Ensure row is also within bounds (should always be true unless input grid dims were weird)\n                if 0 <= r < height:\n                     output_grid[r, new_c] = color\n\n    # 6. Output: Return the final grid\n    return output_grid.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 8343,
+    "candidates_token_count": 1346,
+    "total_token_count": 9689,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 13.570792,
+  "retries": null
+}

@@ -1,0 +1,48 @@
+task_description: Color specific white pixels adjacent to shapes based on proximity to seeds.
+
+definitions:
+  - object: seed
+    description: A single pixel of a non-white color (1-9).
+    properties:
+      - location: (row, column)
+      - color: integer (1-9)
+  - object: shape
+    description: A connected component of 2 or more pixels of the same non-white color (1-9). Connectivity is 4-way (von Neumann neighbors).
+    properties:
+      - pixels: set of (row, column) coordinates
+      - color: integer (1-9)
+  - object: background
+    description: Pixels with color 0 (white).
+    properties:
+      - location: (row, column)
+      - color: 0
+
+relationships:
+  - type: adjacency
+    description: Two pixels are adjacent if they share an edge or a corner (8-way/Moore neighborhood).
+  - type: connectivity
+    description: Two white pixels are connected if there is a path between them consisting only of white pixels, using 8-way adjacency.
+  - type: shortest_path_distance
+    description: The minimum number of steps required to travel between a seed pixel and any pixel of a shape, moving only through adjacent (8-way) white pixels.
+  - type: closest_seed
+    description: For a given shape, the seed that has the minimum shortest_path_distance to it.
+
+transformations:
+  - action: identify_objects
+    inputs: [input_grid]
+    outputs: [seeds, shapes]
+    description: Find all seeds and shapes in the input grid.
+  - action: calculate_distances
+    inputs: [input_grid, seeds, shapes]
+    outputs: [shape_to_closest_seed_map]
+    description: For each shape, calculate the shortest_path_distance to every seed and determine the closest_seed. Store this mapping (e.g., {shape_index: (seed_index, min_distance)}).
+  - action: color_pixels
+    inputs: [input_grid, shape_to_closest_seed_map, seeds, shapes]
+    outputs: [output_grid]
+    description: Create the output grid by coloring specific white pixels.
+    details:
+      - Initialize output_grid as a copy of input_grid.
+      - For each shape `H` and its corresponding closest seed `S` (with color `C`) from the map:
+        - Perform a BFS starting from `S`, exploring only adjacent (8-way) white pixels. Record all visited white pixels `W_visited`.
+        - Identify a subset of pixels `P_fill` from `W_visited` such that each pixel in `P_fill` is adjacent (8-way) to at least one pixel belonging to shape `H`.
+        - For every pixel coordinate `(r, c)` in `P_fill`, set `output_grid[r, c] = C`.

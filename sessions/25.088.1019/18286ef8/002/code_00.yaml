@@ -1,0 +1,52 @@
+task_description: |
+  The transformation involves identifying unique Magenta (6) and Maroon (9) pixels. The Magenta pixel's location always becomes Maroon. A specific Gray (5) pixel, located one step from the original Maroon pixel in the general direction of the Magenta pixel, also becomes Maroon. The final color of the original Maroon pixel's location depends on the distance between the affected Gray pixel and the original Magenta pixel.
+
+objects:
+  - object: magenta_pixel
+    description: A single pixel with color Magenta (6).
+    properties:
+      - unique: True
+      - role: source_locator_1
+      - final_state: color changes to Maroon (9)
+  - object: maroon_pixel
+    description: A single pixel with color Maroon (9).
+    properties:
+      - unique: True
+      - role: source_locator_2
+      - final_state: color changes to Gray (5) OR remains Maroon (9) based on a distance condition.
+  - object: target_gray_pixel
+    description: A single Gray (5) pixel adjacent (including diagonal) to the maroon_pixel.
+    properties:
+      - role: target_locator
+      - selection_criteria: Located at maroon_pixel coordinates + sign_vector(magenta_pixel coordinates - maroon_pixel coordinates).
+      - final_state: color changes to Maroon (9)
+
+actions:
+  - action: locate_pixels
+    inputs: [input_grid, Magenta(6), Maroon(9)]
+    outputs: [magenta_coord, maroon_coord]
+    description: Find the coordinates of the unique Magenta and Maroon pixels.
+  - action: calculate_direction_vector
+    inputs: [magenta_coord, maroon_coord]
+    outputs: [direction_vector (dr, dc)]
+    description: Calculate the sign of the difference in row and column coordinates (magenta - maroon).
+  - action: identify_target_gray
+    inputs: [maroon_coord, direction_vector]
+    outputs: [target_gray_coord]
+    description: Calculate the coordinates of the Gray pixel adjacent to the Maroon pixel in the calculated direction.
+  - action: calculate_distance
+    inputs: [target_gray_coord, magenta_coord]
+    outputs: [manhattan_distance]
+    description: Calculate the Manhattan distance between the target Gray pixel and the Magenta pixel.
+  - action: transform_pixels
+    inputs: [input_grid, magenta_coord, maroon_coord, target_gray_coord, manhattan_distance]
+    outputs: [output_grid]
+    description: |
+      1. Initialize output_grid as a copy of input_grid.
+      2. Set output_grid[magenta_coord] to Maroon (9).
+      3. If target_gray_coord is valid and input_grid[target_gray_coord] is Gray (5):
+         a. Set output_grid[target_gray_coord] to Maroon (9).
+         b. If manhattan_distance > 3:
+            Set output_grid[maroon_coord] to Gray (5).
+         c. Else (manhattan_distance <= 3):
+            Leave output_grid[maroon_coord] as Maroon (9) (it was already 9 in the input/copy).

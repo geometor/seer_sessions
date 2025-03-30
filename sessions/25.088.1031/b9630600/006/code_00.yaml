@@ -1,0 +1,54 @@
+task_context:
+  description: "Identify contiguous regions of white pixels (0) within the input grid. Fill the regions that are completely enclosed by other colors and do not touch the absolute border of the grid."
+  grid_properties:
+    - type: 2D array
+    - cell_values: integers 0-9 representing colors
+    - size: variable (up to 30x30)
+    - white_color_code: 0
+    - fill_color_code: 3 (green)
+
+objects:
+  - object: grid
+    description: The input and output 2D arrays of pixels.
+  - object: pixel
+    properties:
+      - color: integer value 0-9
+      - location: (row, column) coordinates
+      - boundary_status: is the pixel on the outermost row/column?
+  - object: white_region
+    description: A contiguous area of one or more white pixels (0). Adjacency is defined cardinally (up, down, left, right).
+    properties:
+      - pixels: list of coordinates belonging to the region
+      - touches_boundary: boolean, true if any pixel in the region is on the grid's absolute border (row 0, last row, col 0, last col).
+      - enclosed_status: boolean, true if `touches_boundary` is false.
+
+actions:
+  - action: identify_boundary_connected_white_pixels
+    description: Find all white pixels that are part of a white_region which touches the grid boundary.
+    input: input_grid
+    output: set of coordinates of boundary-connected white pixels
+    method: Typically BFS or DFS starting from all white pixels on the boundary.
+  - action: identify_enclosed_white_pixels
+    description: Find all white pixels that are NOT part of a boundary-connected white region.
+    input: input_grid, set of boundary-connected white pixel coordinates
+    output: set of coordinates of enclosed white pixels
+  - action: fill_enclosed_regions
+    description: Create the output grid by copying the input grid, then changing the color of all identified enclosed white pixels to green (3).
+    input: input_grid, set of enclosed white pixel coordinates
+    output: output_grid
+
+transformation:
+  input: input_grid
+  steps:
+    - Perform identify_boundary_connected_white_pixels.
+    - Perform identify_enclosed_white_pixels using the result of the previous step.
+    - Perform fill_enclosed_regions using the result of the previous step.
+  output: output_grid
+
+constraints_and_observations:
+  - Only white pixels (0) can change color.
+  - White pixels change only to green (3).
+  - All other pixels retain their original color.
+  - A white region is considered "connected to the boundary" if any single pixel within that region lies on the first/last row or first/last column.
+  - All white pixels not connected to the boundary (directly or indirectly through other white pixels) are considered "enclosed" and are filled with green.
+  - The timeout suggests the implementation needs to efficiently handle potentially large regions.

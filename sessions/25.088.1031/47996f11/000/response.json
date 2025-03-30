@@ -1,0 +1,35 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "*   **Perception:**\n    *   The input and output grids have the same dimensions (30x30 in all examples).\n    *   The transformation focuses specifically on pixels with the color magenta (`6`). All other pixels retain their original colors and positions in the output grid.\n    *   Regions of magenta pixels in the input are replaced by other colors in the output.\n    *   The replacement colors appear to be sourced from the non-magenta pixels that are spatially closest to the magenta pixels being replaced.\n    *   Observing the different examples, the pattern of replacement seems consistent: each magenta pixel adopts the color of its nearest non-magenta neighbor in the input grid. If there are multiple non-magenta neighbors at the same minimum distance, a tie-breaking rule seems to apply (likely based on direction: Up, then Left, then Down, then Right).\n\n*   **YAML:**\n    "
+          },
+          {
+            "text": "```yaml\n    task_elements:\n      - element: grid\n        properties:\n          - dimensions: height and width (constant between input and output)\n          - pixels: cells with colors 0-9\n      - element: target_pixels\n        properties:\n          - color: magenta (6)\n          - location: (row, column) coordinates\n      - element: source_pixels\n        properties:\n          - color: non-magenta (0-5, 7-9)\n          - location: (row, column) coordinates\n    transformation:\n      - action: identify_pixels\n        target: grid\n        criteria:\n          - color: magenta (6)\n        result: list of magenta pixel coordinates\n      - action: identify_pixels\n        target: grid\n        criteria:\n          - color: non-magenta\n        result: list of non-magenta pixel coordinates\n      - action: for_each\n        target: magenta pixel (r_m, c_m) identified\n        sub_actions:\n          - action: find_nearest\n            target: non-magenta pixels\n            criteria:\n              - distance_metric: Manhattan distance from (r_m, c_m)\n              - minimum_distance: Find the smallest distance\n            result: set of nearest non-magenta pixels (r_n, c_n) and their colors\n          - action: select_color\n            target: set of nearest non-magenta pixels\n            criteria:\n              - tie_breaking: Prioritize based on relative direction (Up, Left, Down, Right) if multiple pixels are equidistant.\n            result: selected color (color_selected)\n          - action: replace_color\n            target: output grid cell at (r_m, c_m)\n            value: color_selected\n      - action: copy_pixels\n        target: grid\n        criteria:\n          - color: non-magenta\n        result: non-magenta pixels retain their original color and position in the output grid\n    relationships:\n      - type: spatial\n        elements: [target_pixels, source_pixels]\n        property: nearest_neighbor (based on Manhattan distance)\n        tie_breaking: Up -> Left -> Down -> Right\n    ```"
+          },
+          {
+            "text": "\n\n*   **Natural Language Program:**\n    1.  Initialize the output grid as a copy of the input grid.\n    2.  Iterate through each cell `(r, c)` of the input grid.\n    3.  Check if the color of the input cell `input[r, c]` is magenta (`6`).\n    4.  If the cell is magenta:\n        a.  Find the set of all non-magenta pixels in the input grid.\n        b.  Calculate the Manhattan distance from the current magenta cell `(r, c)` to every non-magenta cell `(nr, nc)`. The distance is `|r - nr| + |c - nc|`.\n        c.  Determine the minimum distance found.\n        d.  Identify all non-magenta cells that are at this minimum distance.\n        e.  From these equidistant nearest non-magenta cells, select one based on a directional priority:\n            i.  Prefer the cell directly above (`nr < r, nc == c`).\n            ii. If none above, prefer the cell directly to the left (`nr == r, nc < c`).\n            iii. If none above or left, prefer the cell directly below (`nr > r, nc == c`).\n            iv. If none above, left, or below, prefer the cell directly to the right (`nr == r, nc > c`).\n            v.  If cardinal directions tie or don't exist at the minimum distance, check relative positions: prioritize minimum `nr` first, then minimum `nc` among those with minimum `nr`. (More robust tie-break: check relative position in order: `(r-d, c)`, `(r, c-d)`, `(r+d, c)`, `(r, c+d)`, then check intermediate positions for that distance `d`). A simpler, likely intended tie-break: evaluate neighbors in the order Up, Left, Down, Right. The first one encountered at the minimum distance determines the color.\n        f.  Update the output grid cell `output[r, c]` with the color of the selected nearest non-magenta neighbor.\n    5.  If the input cell `input[r, c]` is not magenta, its color in the output grid `output[r, c]` remains unchanged from the input.\n    6.  After iterating through all cells, return the final output grid."
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 15671,
+    "candidates_token_count": 6117,
+    "total_token_count": 21788,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 138.705246,
+  "retries": null
+}

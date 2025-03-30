@@ -1,0 +1,44 @@
+task_description: Extract specific colored shapes from an input grid, sort them based on position (with a conditional reversal), and stack their bounding boxes vertically in the output grid.
+
+elements:
+  - type: grid
+    properties:
+      - background_color: The most frequent color in the input grid.
+      - objects: Contiguous blocks of pixels with uniform color, different from the background.
+      - ignored_colors: [Gray(5), Orange(7), Maroon(9)]
+      - conditionally_ignored_color: Red(2) is ignored if background_color is Azure(8).
+      - relevant_colors: Colors of objects that are not ignored.
+
+actions:
+  - action: identify_background
+    input: input_grid
+    output: background_color
+  - action: find_objects
+    input: input_grid, background_color
+    output: list_of_all_objects (color, pixels, bounding_box, top_left_coord)
+  - action: filter_objects
+    input: list_of_all_objects, background_color
+    output: list_of_relevant_objects
+    criteria:
+      - object_color is not in [Gray(5), Orange(7), Maroon(9)]
+      - if background_color is Azure(8), object_color is not Red(2)
+  - action: sort_objects
+    input: list_of_relevant_objects
+    output: sorted_list_of_objects
+    criteria:
+      - primary_key: top_left_coord.row
+      - secondary_key: top_left_coord.col
+  - action: conditional_reverse
+    input: sorted_list_of_objects, background_color
+    output: final_ordered_list_of_objects
+    condition: if background_color is Yellow(4), reverse the sorted_list_of_objects.
+  - action: construct_output
+    input: final_ordered_list_of_objects, background_color
+    output: output_grid
+    process: Vertically stack the bounding boxes. For each bounding box, fill with background_color and overlay the object's pixels.
+
+relationships:
+  - The sorting order depends on the object's top-left position.
+  - The final sorting order depends on the background color (Yellow(4) triggers reversal).
+  - Object relevance depends on its color and potentially the background color (Red(2) vs Azure(8) background).
+  - Output grid dimensions depend on the dimensions of the relevant objects' bounding boxes.

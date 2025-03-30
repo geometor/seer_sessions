@@ -1,0 +1,83 @@
+task_description: |
+  Identify the single non-white contiguous block of pixels (object) whose bounding box has the largest area. If multiple objects' bounding boxes share the same maximum area, select the object among them that has the smallest color index. The output is a 3x3 grid filled entirely with the selected object's color. If no non-white objects are present, the output is a 3x3 white grid.
+
+input_features:
+  - name: input_grid
+    description: A 2D grid of pixels with integer values 0-9 representing colors.
+    dtype: grid
+
+output_features:
+  - name: output_grid
+    description: A 3x3 grid filled with a single color.
+    dtype: grid
+    shape: [3, 3]
+
+objects:
+  - name: contiguous_block
+    type: implicit
+    description: A region of connected pixels sharing the same non-white color.
+    properties:
+      - name: color
+        description: The color index (1-9) of the pixels in the block.
+        dtype: int
+      - name: coordinates
+        description: A set of (row, column) tuples representing the pixels in the block.
+        dtype: set
+      - name: pixel_count
+        description: The total number of pixels in the block.
+        dtype: int
+      - name: bounding_box
+        description: The minimum bounding rectangle containing all pixels of the block.
+        properties:
+          - name: min_row
+            dtype: int
+          - name: min_col
+            dtype: int
+          - name: max_row
+            dtype: int
+          - name: max_col
+            dtype: int
+          - name: height
+            dtype: int
+          - name: width
+            dtype: int
+          - name: area
+            description: height * width
+            dtype: int
+
+actions:
+  - name: find_contiguous_blocks
+    description: Identify all contiguous blocks of non-white pixels in the input grid.
+    inputs:
+      - input_grid
+    outputs:
+      - list_of_contiguous_blocks
+
+  - name: calculate_bounding_box
+    description: For each contiguous block, determine its bounding box dimensions and area.
+    inputs:
+      - contiguous_block
+    outputs:
+      - bounding_box properties (height, width, area) associated with the block.
+
+  - name: find_max_area_blocks
+    description: Find the maximum bounding box area among all blocks. Identify all blocks that have this maximum area.
+    inputs:
+      - list_of_contiguous_blocks_with_areas
+    outputs:
+      - list_of_max_area_blocks
+      - maximum_area_value
+
+  - name: select_winning_block
+    description: From the list of blocks with the maximum bounding box area, select the one with the minimum color index. If no non-white blocks exist, select white (0).
+    inputs:
+      - list_of_max_area_blocks
+    outputs:
+      - winning_color
+
+  - name: create_output_grid
+    description: Generate a 3x3 grid filled entirely with the winning_color.
+    inputs:
+      - winning_color
+    outputs:
+      - output_grid

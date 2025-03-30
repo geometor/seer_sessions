@@ -1,0 +1,64 @@
+task_description: Reflect pixels across a mirror object.
+
+input_features:
+  - name: grid
+    type: 2D array of integers (colors)
+    properties:
+      - Contains pixels of various colors (0-9).
+      - May contain one or more contiguous components of maroon (9) pixels.
+      - May contain gray (5) pixels.
+
+output_features:
+  - name: grid
+    type: 2D array of integers (colors)
+    properties:
+      - Same dimensions as the input grid.
+      - Most pixels retain their color from the input grid.
+      - Some pixels, typically those that were gray (5) in the input, change color.
+
+objects:
+  - name: mirror
+    identified_by: Contiguous component(s) of maroon (9) pixels.
+    properties:
+      - location: Coordinates of pixels in the component.
+      - size: Number of pixels in the component.
+    uncertainty: Initial hypothesis assumed the *single largest* component is the mirror. This needs verification across all examples. The mirror might be defined differently (e.g., all maroon pixels, specific shapes).
+  - name: reflected_pixel
+    identified_by: Pixels that change color from input to output.
+    properties:
+      - initial_color: Typically gray (5) (needs verification).
+      - final_color: Color copied from another location in the *input* grid.
+      - location: Coordinates (r, c).
+      - relationship_to_mirror: Typically adjacent (8-way connectivity assumed, needs verification) to a pixel belonging to the 'mirror' object.
+
+actions:
+  - name: identify_mirror
+    actor: system
+    inputs: input_grid
+    outputs: mirror object(s)
+    description: Find the relevant maroon structure(s) that act as the mirror surface. (Precise definition TBD).
+  - name: identify_candidates
+    actor: system
+    inputs: input_grid, mirror object(s)
+    outputs: set of candidate pixel coordinates
+    description: Find pixels (hypothesized to be gray) that are adjacent to the identified mirror object(s). (Adjacency type TBD).
+  - name: reflect
+    actor: system
+    inputs: candidate pixel coordinate (r_gray, c_gray), adjacent mirror pixel coordinate (r_mirror, c_mirror), input_grid
+    outputs: new color for the candidate pixel
+    description:
+      1. Calculate the reflected coordinate: `r_refl = 2 * r_mirror - r_gray`, `c_refl = 2 * c_mirror - c_gray`.
+      2. Check if (r_refl, c_refl) is within grid bounds.
+      3. If within bounds, the new color is `input_grid[r_refl, c_refl]`.
+      4. If out of bounds, the pixel retains its original color (or another default behavior TBD).
+    uncertainty: Needs verification if this point reflection formula is always correct. Needs clarification on which adjacent mirror pixel to use if multiple exist.
+  - name: update_grid
+    actor: system
+    inputs: input_grid, candidate pixels, reflection results
+    outputs: output_grid
+    description: Create the output grid by copying the input grid and updating the color of reflected candidate pixels.
+
+constraints_and_issues:
+  - Timeout Error: Previous implementation exceeded time limits, suggesting inefficiency or complexity issues, possibly related to large grids or numerous candidates/components.
+  - Ambiguity: Rule for selecting the mirror pixel for reflection when multiple are adjacent is unclear.
+  - Definition Accuracy: Precise definitions of 'mirror' and 'candidate pixels' require confirmation across all examples.

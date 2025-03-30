@@ -1,0 +1,64 @@
+task_name: 00a1ae88
+description: Extracts distinct multi-pixel shapes from the input, filters them based on color rules, sorts them, and stacks them vertically in a new grid, centered horizontally. The output shape dimensions depend on the sum of heights and max width of the selected shapes. Each shape in the output uses a single "representative" color derived from its top-left-most pixel.
+
+definitions:
+  background_color: The most frequent color in the input grid.
+  always_ignored_colors: {5, 7, 9} # Gray, Orange, Maroon
+  conditional_ignored_colors:
+    - condition: background_color == 8 # Azure
+      color: 2 # Red
+  relevant_pixel: A pixel whose color is not the background_color and not an ignored color (always or conditional).
+  conceptual_shape: A connected component of relevant_pixels (using 4-connectivity, treating all relevant colors as connectable).
+    properties:
+      - pixels: Set of (row, col) coordinates belonging to the shape.
+      - bbox: (min_r, min_c, max_r, max_c) bounding box enclosing the pixels.
+      - height: max_r - min_r + 1
+      - width: max_c - min_c + 1
+      - top_left: (min_r, min_c)
+      - representative_color: The original color of the pixel within the shape that has the minimum row, and among those, the minimum column.
+
+transformations:
+  - step: identify_background
+    input: input_grid
+    output: background_color
+  - step: identify_relevant_pixels
+    input: input_grid, background_color
+    output: set of (row, col) coordinates of relevant_pixels
+  - step: find_conceptual_shapes
+    input: relevant_pixels coordinates, input_grid (for original colors)
+    output: list of conceptual_shape objects (each with pixels, bbox, height, width, top_left, representative_color)
+  - step: filter_shapes (optional redundancy check)
+    input: list of conceptual_shapes
+    output: filtered list (ensuring representative_color is not ignored - likely already handled by relevant_pixel definition)
+  - step: sort_shapes
+    input: filtered list of conceptual_shapes
+    criteria:
+      - primary_key: top_left row (ascending)
+      - secondary_key: top_left column (ascending)
+    condition: If background_color == 4 (Yellow), reverse the final order.
+    output: sorted list of conceptual_shapes
+  - step: determine_output_dimensions
+    input: sorted list of conceptual_shapes
+    output_height: SUM(shape.height for shape in sorted_shapes)
+    output_width: MAX(shape.width for shape in sorted_shapes)
+  - step: construct_output_grid
+    input: output_height, output_width, background_color, sorted list of conceptual_shapes
+    process:
+      - Initialize output grid (output_height x output_width) with background_color.
+      - current_row = 0
+      - For each shape in sorted list:
+        - Get shape properties: pixels, bbox(min_r, min_c), width, height, representative_color.
+        - Calculate horizontal centering offset: start_col = (output_width - shape.width) // 2
+        - For each pixel (r, c) in shape.pixels:
+          - rel_r = r - min_r
+          - rel_c = c - min_c
+          - target_r = current_row + rel_r
+          - target_c = start_col + rel_c
+          - If 0 <= target_r < output_height and 0 <= target_c < output_width:
+            - output_grid[target_r, target_c] = shape.representative_color
+        - current_row += shape.height
+    output: final output_grid
+
+edge_cases:
+  - If no relevant shapes are found after filtering, output an empty grid [[]].
+  - Ensure output dimensions are at least 1x1 if relevant shapes exist. If calculated height or width is 0, handle appropriately (perhaps return empty grid).

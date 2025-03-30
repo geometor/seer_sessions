@@ -1,0 +1,45 @@
+task_description: Fill enclosed white areas with azure, then flood-fill all connected exterior white areas starting from points adjacent to the initial fill.
+
+definitions:
+  grid: 2D array of integers 0-9 representing colors.
+  white: Pixel value 0.
+  blue: Pixel value 1 (acts as a boundary/wall).
+  azure: Pixel value 8 (the fill color).
+  exterior_white: White pixels connected to the grid border via a path of white pixels.
+  interior_white: White pixels not connected to the grid border (enclosed by non-white pixels).
+  initial_fill_area: The set of interior_white pixels.
+  leak_point: An exterior_white pixel that is orthogonally adjacent to any pixel in the initial_fill_area.
+
+input_objects:
+  - type: grid
+    properties:
+      - contains pixels of different colors (white, blue, potentially others).
+      - blue pixels often form closed or partially closed shapes.
+      - contains areas of white pixels.
+
+actions:
+  - action: identify_exterior_white
+    tool: Flood fill (BFS)
+    input: grid, border white pixels
+    output: set of coordinates of exterior white pixels.
+  - action: identify_and_fill_interior_white
+    input: grid, set of exterior white pixels
+    output: modified grid where interior white pixels are changed to azure, set of coordinates of initially filled azure pixels.
+    logic: Iterate through the grid. If a pixel is white and NOT in the exterior set, change it to azure.
+  - action: identify_leak_points
+    input: grid (after initial fill), set of exterior white pixels, set of initially filled azure coordinates.
+    output: set of coordinates of leak points.
+    logic: For each initially filled azure pixel, check orthogonal neighbors. If a neighbor is an exterior white pixel, add its coordinates to the set of leak points.
+  - action: flood_fill_exterior_from_leaks
+    tool: Flood fill (BFS)
+    input: grid (after initial fill), set of leak points
+    output: final grid
+    logic: Initialize a queue with all leak points. Perform a BFS: For each pixel dequeued, change its color to azure. Enqueue its white neighbors that haven't been visited or queued yet. Stop expansion when hitting non-white pixels or grid boundaries.
+
+output_grid:
+  properties:
+    - Same dimensions as the input grid.
+    - Contains original non-white pixels.
+    - Interior white areas are filled with azure.
+    - Exterior white areas connected to the initial fill (via leak points) are also filled with azure.
+    - White pixels remain only if they are exterior AND not reachable by the flood fill starting from leak points.

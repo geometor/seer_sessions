@@ -1,0 +1,91 @@
+task_description: "Perform a flood fill originating from initial blue pixels into adjacent white areas, bounded by gray and azure barriers."
+
+grid_properties:
+  height: variable (1-30)
+  width: variable (1-30)
+  colors: [0, 1, 5, 8] # Colors observed in examples relevant to the transformation logic
+  color_map:
+    white: 0
+    blue: 1
+    gray: 5
+    azure: 8
+
+objects:
+  - type: Pixel
+    properties:
+      color: Integer (0, 1, 5, 8)
+      location: (row, column)
+  - type: Region
+    definition: "A connected area of pixels of the same color."
+    properties:
+      color: Integer (0, 1, 5, 8)
+      connectivity: Orthogonal adjacency
+
+input_objects:
+  - type: Pixel
+    color: blue (1)
+    description: "Source pixels initiating the fill process."
+  - type: Region
+    color: white (0)
+    description: "Fillable areas adjacent to blue sources."
+  - type: Pixel
+    color: gray (5)
+    description: "Barrier pixels that block the fill and remain unchanged."
+  - type: Pixel
+    color: azure (8)
+    description: "Barrier pixels that block the fill and remain unchanged."
+  - type: Boundary
+    description: "The edges of the grid also act as barriers."
+
+output_objects:
+  - type: Region
+    color: white (0)
+    description: "Initial white regions not reached by the flood fill."
+  - type: Region
+    color: blue (1)
+    description: "Includes initial blue pixels plus white regions filled by the flood fill."
+  - type: Pixel
+    color: gray (5)
+    description: "Unchanged from input."
+  - type: Pixel
+    color: azure (8)
+    description: "Unchanged from input."
+
+actions:
+  - name: Initialize Output
+    inputs: [input_grid]
+    outputs: [output_grid]
+    description: "Create a mutable copy of the input grid."
+  - name: Identify Fill Seeds
+    inputs: [input_grid]
+    outputs: [seed_pixels_queue]
+    description: >
+      Find all white (0) pixels that are orthogonally adjacent to any initial blue (1) pixel.
+      These are the starting points (seeds) for the flood fill. Add their coordinates to a queue.
+  - name: Mark Initial Seeds
+    inputs: [seed_pixels_queue, output_grid]
+    outputs: [output_grid]
+    description: "Change the color of the identified seed pixels from white (0) to blue (1) in the output grid to mark them as visited and part of the fill."
+  - name: Propagate Fill (Flood Fill using BFS)
+    inputs: [seed_pixels_queue, input_grid, output_grid]
+    outputs: [output_grid]
+    description: >
+      While the queue is not empty:
+      1. Dequeue a pixel coordinate (r, c).
+      2. Examine its orthogonal neighbors (nr, nc).
+      3. For each neighbor:
+         - If the neighbor is within grid bounds, AND
+         - If the neighbor was white (0) in the *input* grid, AND
+         - If the neighbor is still white (0) in the *output* grid (not yet visited/filled):
+           - Change the neighbor's color to blue (1) in the output grid.
+           - Enqueue the neighbor's coordinate (nr, nc).
+  - name: Finalize
+    inputs: [output_grid]
+    outputs: [final_grid]
+    description: "Return the modified output grid after the flood fill process is complete."
+
+constraints:
+  - The flood fill only spreads into pixels that were initially white (0).
+  - The flood fill cannot spread into or past pixels that were initially gray (5) or azure (8).
+  - The flood fill is contained by the grid boundaries.
+  - Pixels that were initially blue (1), gray (5), or azure (8) retain their original color.

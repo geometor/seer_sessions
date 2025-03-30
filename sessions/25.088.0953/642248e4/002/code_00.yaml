@@ -1,0 +1,51 @@
+task_type: object_transformation
+
+grid_properties:
+  - dimensionality: 2D
+  - value_range: 0-9 (colors)
+  - size_constraints: 1x1 to 30x30
+
+input_features:
+  - border:
+      property: potential_presence
+      type: single_pixel_thick
+      location: top/bottom (horizontal) OR left/right (vertical)
+      color: uniform, non-white, distinct_pair (e.g., top color != bottom color)
+  - inner_grid:
+      definition: area excluding the identified borders
+      contains:
+        - background_pixels: color white (0)
+        - trigger_pixels: color blue (1)
+
+output_features:
+  - borders: unchanged from input
+  - trigger_pixels: unchanged from input (blue pixels remain blue)
+  - background_pixels: some white pixels within the inner grid are repainted
+  - painted_pixels:
+      origin: white pixels from the inner grid
+      condition: must be orthogonally adjacent to a blue trigger pixel
+      color_source: determined by the closest border to the adjacent blue pixel
+      location_constraint: must remain within the inner grid boundaries
+
+transformation_rule:
+  - name: border_proximity_painting
+  - steps:
+      1. Identify border type (horizontal or vertical) and the two distinct border colors (C1, C2). If no valid borders, return input.
+      2. Define the inner grid area (excluding borders).
+      3. Iterate through each cell (r, c) within the inner grid.
+      4. If cell (r, c) contains a blue pixel (1):
+          a. Determine the closest border:
+             - Horizontal borders (height H): If r < (H-1)-r, closest is top. If r > (H-1)-r, closest is bottom.
+             - Vertical borders (width W): If c < (W-1)-c, closest is left. If c > (W-1)-c, closest is right.
+          b. Check the adjacent white pixel *in the direction of the closest border*:
+             - If closest is top: Check cell (r-1, c).
+             - If closest is bottom: Check cell (r+1, c).
+             - If closest is left: Check cell (r, c-1).
+             - If closest is right: Check cell (r, c+1).
+          c. If the checked adjacent cell exists, is within the inner grid boundaries, and is white (0):
+             - Paint this adjacent cell with the color of the closest border.
+
+edge_cases:
+  - No valid borders found: return input grid unchanged.
+  - Blue pixel on the edge of the inner grid: painting only occurs if the adjacent white pixel towards the closest border is also within the inner grid.
+  - Blue pixel exactly equidistant from borders: Not observed in training examples. Behavior undefined by examples, but logical assumption might be to paint neither or both (less likely given observed pattern).

@@ -1,0 +1,56 @@
+task_description: "Extend green shapes based on associated magenta markers by expanding their bounding boxes and filling the expanded area."
+
+objects:
+  - type: grid
+    properties:
+      - contains pixels of different colors (0-9, specifically 0=white, 3=green, 6=magenta).
+  - type: shape
+    color: green (3)
+    definition: contiguous block of green pixels.
+    properties:
+      - bounding_box: (min_row, max_row, min_col, max_col) defines the minimum rectangle enclosing the shape.
+      - can have multiple disconnected shapes in one grid. # Note: All examples show only one green shape.
+  - type: marker
+    color: magenta (6)
+    definition: single pixel of magenta color.
+    properties:
+      - position: (row, col)
+      - acts as a directional guide for extending shapes.
+
+relationships:
+  - type: association (marker to shape)
+    conditions:
+      - horizontal: marker's row is within the shape's initial bounding box row range AND marker's column is outside the shape's initial bounding box column range.
+      - vertical: marker's column is within the shape's initial bounding box column range AND marker's row is outside the shape's initial bounding box row range.
+    direction: Determined by relative position (left, right, above, below).
+
+actions:
+  - action: find_shapes
+    input: grid, color=green(3)
+    output: list of green shapes with their bounding boxes.
+  - action: find_markers
+    input: grid, color=magenta(6)
+    output: list of magenta marker coordinates.
+  - action: calculate_extended_bounding_box
+    input: green_shape, list_of_markers
+    process:
+      - Initialize extended_bbox = shape.initial_bbox.
+      - For each marker:
+        - If marker is associated horizontally (left/right) with the shape's *initial* bbox:
+          - Adjust extended_bbox's corresponding column edge (min_c or max_c) towards the marker, stopping one pixel short (min_c = marker_col + 1 or max_c = marker_col - 1). Update using min/max to handle multiple markers in the same direction.
+        - If marker is associated vertically (above/below) with the shape's *initial* bbox:
+          - Adjust extended_bbox's corresponding row edge (min_r or max_r) towards the marker, stopping one pixel short (min_r = marker_row + 1 or max_r = marker_row - 1). Update using min/max.
+    output: final_extended_bbox for the shape.
+  - action: fill_grid
+    input: input_grid, list_of_final_extended_bboxes
+    process:
+      - Initialize output_grid = copy(input_grid).
+      - For each final_extended_bbox:
+        - Iterate through all pixels (r, c) within this bbox (from min_r to max_r, min_c to max_c inclusive).
+        - If input_grid[r, c] is NOT magenta (6):
+          - Set output_grid[r, c] = green (3). # Overwrites background and original green shape parts within the extended box.
+    output: transformed_grid.
+
+constraints:
+  - Magenta markers are never overwritten; they persist in the output grid at their original locations.
+  - The filling process uses the *final extended* bounding box, potentially overwriting parts of the original green shape that fall within this extended area.

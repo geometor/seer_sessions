@@ -1,0 +1,74 @@
+task_description: Place an orange pixel relative to a blue pixel based on the position of the closest magenta pixel, then remove the magenta pixel.
+
+grid_properties:
+  background_color: 8 # Azure
+  dimensionality: 2
+
+objects:
+  - type: pixel
+    color: 6 # Magenta
+    role: trigger / source
+    persistence: removed in output
+  - type: pixel
+    color: 1 # Blue
+    role: anchor / target_reference
+    persistence: remains in output
+  - type: pixel
+    color: 7 # Orange
+    role: result / output_marker
+    persistence: created in output
+  - type: pixel
+    color: 8 # Azure
+    role: background
+    persistence: remains unless overwritten by Orange
+
+relationships:
+  - type: spatial_proximity
+    from_object: Magenta pixel
+    to_object: Blue pixel
+    metric: Manhattan distance
+    condition: Minimum distance determines the target Blue for each Magenta.
+  - type: relative_position
+    name: vector_M_to_B
+    from_object: Magenta pixel (M)
+    to_object: Target Blue pixel (B)
+    calculation: V = (B_row - M_row, B_col - M_col)
+  - type: relative_position
+    name: vector_B_to_O
+    from_object: Target Blue pixel (B)
+    to_object: Resulting Orange pixel (O)
+    calculation: V' = Rotate(V) based on V's orientation
+    details:
+      - if V is horizontal (dy=0): Rotate 90 degrees counter-clockwise (V' = (0, dx))
+      - if V is vertical (dx=0): Rotate 90 degrees clockwise (V' = (dy, 0))
+
+actions:
+  - action: identify_pixels
+    color: [1, 6] # Blue, Magenta
+    target: input_grid
+    result: lists of coordinates for each color
+  - action: find_closest_pair
+    for_each: Magenta pixel (M)
+    find: Blue pixel (B)
+    condition: Minimum Manhattan distance between M and B
+    result: a pairing (M, B) for each M
+  - action: calculate_vectors
+    for_each: pair (M, B)
+    calculate: V = B - M
+    calculate: V' = Rotate(V) based on orientation rule (horizontal->CCW, vertical->CW)
+    calculate: O_coords = B + V'
+    result: list of potential Orange coordinates O_coords
+  - action: filter_coordinates
+    input: list of potential Orange coordinates O_coords
+    condition: Check if O_coords is within grid boundaries
+    result: list of valid Orange coordinates
+  - action: generate_output_grid
+    steps:
+      - Copy input grid to output grid.
+      - For each original Magenta pixel location M: Change color at M in output grid to Azure (8).
+      - For each valid Orange coordinate O: Change color at O in output grid to Orange (7).
+
+assumptions:
+  - No ties in minimum Manhattan distance, or ties are handled consistently (though examples don't show ties).
+  - Vectors between closest M and B are always strictly horizontal or strictly vertical (never diagonal).
+  - Orange pixels can overwrite any existing pixel color at their target location (though examples only show overwriting Azure).

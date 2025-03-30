@@ -1,0 +1,69 @@
+Context:
+  Task: Transform an input grid to an output grid based on color patterns.
+  Input: 2D grid of pixels (integers 0-9 representing colors).
+  Output: 2D grid of pixels (integers 0-9 representing colors).
+  Core_Mechanism: Reflection based on a specific object.
+
+Objects:
+  - name: Input Grid
+    type: 2D Array (int 0-9)
+    properties: [height, width, pixel_colors]
+  - name: Output Grid
+    type: 2D Array (int 0-9)
+    properties: [height, width, pixel_colors]
+    relation_to_input: Derived from input grid via transformation; usually same dimensions.
+  - name: Maroon Pixels
+    type: Pixel
+    properties: [color: 9 (maroon), position: (row, col)]
+  - name: Gray Pixels
+    type: Pixel
+    properties: [color: 5 (gray), position: (row, col)]
+  - name: Mirror Component
+    type: Object (Connected Component)
+    definition: The largest contiguous block of maroon pixels (using 8-way adjacency).
+    properties: [pixels, size, position]
+    role: Acts as the surface for reflection.
+  - name: Adjacent Gray Pixels
+    type: Set of Gray Pixels
+    definition: Gray pixels that share at least one vertex or edge (8-way adjacent) with any pixel in the Mirror Component.
+    role: These are the pixels whose color might change.
+  - name: Reflected Position
+    type: Coordinate (row, col)
+    definition: Calculated based on a Gray Pixel's position and the position of an adjacent Mirror Pixel.
+    formula: (refl_r, refl_c) = (2 * mirror_r - gray_r, 2 * mirror_c - gray_c)
+  - name: Reflected Color Source Pixel
+    type: Pixel
+    definition: The pixel in the *input grid* located at the Reflected Position.
+    role: Its color determines the new color of the Adjacent Gray Pixel in the output grid.
+
+Actions:
+  - action: Identify_Largest_Maroon_Component
+    input: Input Grid
+    output: Mirror Component (or None if no maroon pixels)
+    constraints: Uses 8-way connectivity.
+  - action: Identify_Adjacent_Gray_Pixels
+    input: Input Grid, Mirror Component
+    output: Set of coordinates of Adjacent Gray Pixels
+    constraints: Uses 8-way adjacency relative to Mirror Component pixels.
+  - action: Calculate_Reflection
+    input: Adjacent Gray Pixel position (gray_r, gray_c), Adjacent Mirror Pixel position (mirror_r, mirror_c)
+    output: Reflected Position (refl_r, refl_c)
+  - action: Determine_Output_Color
+    input: Adjacent Gray Pixel position, Reflected Position, Input Grid, Output Grid (initialized)
+    output: Updates the color of the pixel at the Adjacent Gray Pixel position in the Output Grid.
+    logic:
+      1. Check if Reflected Position is within grid bounds.
+      2. If yes, get color from Input Grid at Reflected Position.
+      3. Assign this color to the Output Grid at the Adjacent Gray Pixel's position.
+      4. If no (out of bounds), the pixel retains its original color (from the input copy).
+  - action: Copy_Unchanged_Pixels
+    input: Input Grid
+    output: Initializes Output Grid as a copy of Input Grid.
+    logic: Ensures pixels not involved in the reflection process remain the same.
+
+Rules:
+  - rule: Only gray pixels adjacent (8-way) to the largest maroon component ('mirror') are potentially modified.
+  - rule: The new color for a modified gray pixel is determined by reflecting its position across an adjacent mirror pixel and sampling the color from the *input* grid at that reflected location.
+  - rule: If the reflected position falls outside the grid, the gray pixel's color does not change.
+  - rule: If multiple mirror pixels are adjacent to a single gray pixel, any one of them can serve as the point of reflection (the prior code implies the first one encountered determines the reflection).
+  - rule: If there are no maroon pixels, or no gray pixels adjacent to the mirror, the output grid is identical to the input grid.

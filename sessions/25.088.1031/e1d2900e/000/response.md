@@ -1,0 +1,55 @@
+Okay, let's analyze the task based on the provided examples.
+
+**Perception of Task Elements:**
+
+1.  **Input/Output:** Both inputs and outputs are 2D grids of pixels with values 0 (white), 1 (blue), and 2 (red).
+2.  **Objects:**
+    *   The grids contain scattered single blue pixels (color 1).
+    *   The grids also contain red objects (color 2), which appear as 2x2 blocks in the first two examples and 1x2 or 2x1 blocks in the third example.
+    *   The background is white (color 0).
+3.  **Transformation:** The primary change between the input and output grids involves the placement of blue pixels. In the output grids, additional blue pixels appear specifically adjacent (horizontally or vertically, not diagonally) to the red objects.
+4.  **Consistency:** The original blue pixels and the red objects remain unchanged in their positions and colors from input to output. The transformation only adds new blue pixels.
+5.  **Rule:** It seems the rule is to identify all white pixels (color 0) that are directly adjacent (sharing an edge) to any red pixel (color 2) and change those white pixels to blue (color 1).
+
+**YAML Facts:**
+
+
+```yaml
+task_context:
+  grid_representation: 2D array of integers (0-9) representing colors.
+  colors_present:
+    - white (0)
+    - blue (1)
+    - red (2)
+  objects:
+    - type: pixel
+      color: blue (1)
+      shape: single cell
+      quantity: multiple, scattered
+    - type: block
+      color: red (2)
+      shape: varies (e.g., 2x2, 1x2, 2x1)
+      quantity: multiple, scattered
+  background_color: white (0)
+transformation:
+  action: coloring / filling
+  target_cells: white pixels (0)
+  condition: must be adjacent (horizontally or vertically) to at least one red pixel (2)
+  result_color: blue (1)
+  unchanged_elements:
+    - original blue pixels (1)
+    - all red pixels (2)
+    - white pixels not adjacent to red pixels
+```
+
+
+**Natural Language Program:**
+
+1.  Initialize the output grid as a copy of the input grid.
+2.  Iterate through each cell (pixel) of the input grid.
+3.  For each cell containing a white pixel (value 0):
+    *   Check its four adjacent neighbors (up, down, left, right).
+    *   If any of these neighbors in the *input* grid contains a red pixel (value 2):
+        *   Change the color of the current cell in the *output* grid to blue (value 1).
+4.  Leave all other cells in the output grid unchanged from their original input values (i.e., original red and blue pixels remain as they were).
+5.  Return the modified output grid.

@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom collections import deque\n\n\"\"\"\nSimulate gravity on blue objects within a grid.\n\nThe grid contains white (0) background, blue (1) objects, and red (2) static barriers.\nBlue objects are defined as contiguous groups of blue pixels (including diagonals, based on the examples, although typically connectivity is orthogonal - let's assume orthogonal for now and adjust if needed. A check on examples reveals it's orthogonal connectivity).\nThe transformation involves moving blue objects downwards until they encounter:\n1. A red pixel directly below any part of the object.\n2. Another blue pixel directly below any part of the object (which belongs to a different object or has already settled).\n3. The bottom edge of the grid.\n\nRed pixels remain fixed.\nBlue objects maintain their shape during the fall.\nThe process repeats until no blue object can move further down.\n\"\"\"\n\ndef find_connected_components(grid, color):\n    \"\"\"\n    Finds all connected components of a given color in the grid using BFS.\n    Connectivity is orthogonal (up, down, left, right).\n    \"\"\"\n    rows, cols = grid.shape\n    visited = np.zeros_like(grid, dtype=bool)\n    objects = []\n\n    for r in range(rows):\n        for c in range(cols):\n            if grid[r, c] == color and not visited[r, c]:\n                # Start BFS for a new component\n                component = []\n                q = deque([(r, c)])\n                visited[r, c] = True\n                \n                while q:\n                    row, col = q.popleft()\n                    component.append((row, col))\n                    \n                    # Check neighbors (orthogonal)\n                    for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n                        nr, nc = row + dr, col + dc\n                        \n                        if 0 <= nr < rows and 0 <= nc < cols and \\\n                           grid[nr, nc] == color and not visited[nr, nc]:\n                            visited[nr, nc] = True\n                            q.append((nr, nc))\n                            \n                if component:\n                    objects.append(component)\n                    \n    return objects\n\ndef can_object_move_down(grid, obj_coords):\n    \"\"\"\n    Checks if an entire object can move down by one step.\n    \"\"\"\n    rows, cols = grid.shape\n    \n    for r, c in obj_coords:\n        below_r = r + 1\n        # Check boundary\n        if below_r >= rows:\n            return False # Reached bottom\n        # Check cell below\n        # If the cell below is part of the *same* object, it's fine (internal).\n        # If it's outside the object and not white (0), it's blocked.\n        if (below_r, c) not in obj_coords and grid[below_r, c] != 0:\n             return False # Blocked by red or another blue object\n            \n    return True # Can move\n\ndef transform(input_grid):\n    \"\"\"\n    Applies gravity to blue objects (color 1) in the grid, stopping at red objects (color 2) \n    or the grid bottom.\n    \"\"\"\n    # Convert input to numpy array for easier manipulation\n    grid = np.array(input_grid, dtype=int)\n    rows, cols = grid.shape\n    \n    blue_color = 1\n    background_color = 0\n\n    while True:\n        moved_in_iteration = False\n        \n        # Find all current blue objects\n        blue_objects = find_connected_components(grid, blue_color)\n        \n        # Sort objects by their lowest point (max row index) in descending order.\n        # This helps ensure lower objects settle before objects above them try to move.\n        blue_objects.sort(key=lambda obj: max(r for r, c in obj), reverse=True)\n\n        # Create a temporary grid or manage updates carefully to avoid conflicts\n        # where one object moves into the space just vacated by another in the same step.\n        # A simple way is to process moves object by object.\n        \n        current_grid_state = grid.copy() # Use a snapshot for checks within this iteration\n\n        for obj_coords in blue_objects:\n             # Check using the state *before* any moves in this iteration\n             # to decide if the object *should* move.\n             # However, the actual move needs to be checked against the *updated* grid state\n             # to handle cases where an object settles above another one that just moved.\n             # Let's rethink: The simplest stable approach is one move per object per iteration.\n             \n             # Check if this object *can* move based on the current grid state\n            if can_object_move_down(grid, obj_coords):\n                moved_in_iteration = True\n                \n                # Erase object from current position\n                for r, c in obj_coords:\n                    grid[r, c] = background_color\n                    \n                # Draw object in new position (one step down)\n                for r, c in obj_coords:\n                    grid[r + 1, c] = blue_color\n                    \n        # If no object moved in this entire pass, the grid is stable\n        if not moved_in_iteration:\n            break\n            \n    # Return the final grid state, converted back to list of lists if necessary\n    return grid.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 4796,
+    "candidates_token_count": 1243,
+    "total_token_count": 6039,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 24.45889,
+  "retries": null
+}

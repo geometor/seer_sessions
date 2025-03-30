@@ -1,0 +1,51 @@
+task_description: Identify repeating block patterns in an input grid containing noise pixels (green=3). Determine the canonical form of the most frequent block pattern. Construct an output grid containing only instances of this block pattern, where noise pixels within each instance are replaced by the corresponding canonical pixel, unless the canonical pixel itself is noise.
+
+definitions:
+  background_color: 0 # white
+  noise_color: 3 # green
+  core_structure: A connected component of pixels where the color is NOT background_color (0) and NOT noise_color (3). Used to find the location and size of potential blocks.
+  block_instance: The rectangular subgrid extracted from the *original input grid* corresponding to the bounding box size and location of an identified core_structure matching the most frequent size.
+  canonical_pattern: A template grid representing the ideal form of the most common block size. Each pixel (r, c) in the canonical pattern is the most frequent non-noise color found at (r, c) across all block_instances. If only noise_color exists at (r, c) across all instances, the canonical pixel is noise_color. If only background_color exists, it's background_color.
+
+grid_properties:
+  dimensionality: 2D
+  color_space: 10 discrete colors (0-9)
+  max_size: 30x30
+
+observations:
+  - Input grid contains multiple instances of similar geometric patterns (blocks).
+  - Blocks appear at various locations.
+  - Blocks are corrupted by noise_color pixels (green=3), which replace original pixels within the block structure.
+  - Noise_color pixels may also appear scattered outside the blocks.
+  - The transformation must identify the repeating block structure, ignoring the noise during identification.
+  - The most frequent block size determines the canonical shape.
+  - A canonical pattern is derived by finding the most frequent non-noise color for each position within the block shape, across all instances.
+  - The output retains only the instances of the most common block.
+  - Within these retained blocks, noise_color pixels are "repaired" by replacing them with the corresponding canonical pixel, but *only if* the canonical pixel is not itself the noise_color.
+  - All other pixels (scattered noise, blocks of incorrect size, original background not part of a placed block) are set to the background_color in the output.
+
+actions:
+  1. Identify core structures: Find connected components of pixels where color != background_color (0) AND color != noise_color (3).
+  2. Determine bounding boxes: Find the bounding box for each core structure.
+  3. Find common size: Calculate the frequency of bounding box sizes and identify the most common size (height, width).
+  4. Extract instances: Identify locations (R, C) of core structures matching the common size. Extract block_instances (subgrids of the common size) from the *original input grid* starting at each (R, C).
+  5. Derive canonical pattern: Create a template grid of the common size. For each position (r, c):
+      a. Collect colors at (r, c) from all extracted block_instances.
+      b. Count frequency of each color.
+      c. Find the most frequent color that is NOT noise_color (3).
+      d. If such a non-noise color exists, canonical_pattern[r, c] = that color.
+      e. Else if noise_color (3) was present among the colors at (r, c), canonical_pattern[r, c] = 3.
+      f. Else, canonical_pattern[r, c] = background_color (0).
+  6. Generate output:
+      a. Initialize an output grid (same size as input) with background_color (0).
+      b. For each extracted block_instance at location (R, C):
+          i. Create a temporary repaired_block of the common size.
+          ii. For each position (r, c) within the block:
+              - input_pixel = block_instance[r, c]
+              - canonical_pixel = canonical_pattern[r, c]
+              - if input_pixel == noise_color (3) and canonical_pixel != noise_color (3):
+                  repaired_block[r, c] = canonical_pixel
+              - else:
+                  repaired_block[r, c] = input_pixel
+          iii. Place the repaired_block onto the output grid at location (R, C).
+  7. Return the output grid.

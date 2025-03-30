@@ -1,0 +1,46 @@
+task_description: Fill specific regions of a grid based on L-shapes, preserving original non-white pixels.
+
+definitions:
+  - object: L-shape
+    description: Exactly three pixels of the same non-white color occupying 3 cells of a 2x2 square.
+    properties:
+      - color: The color of the pixels (1-9).
+      - coordinates: A set of 3 (row, col) tuples defining the shape's location.
+      - type: Can be 'azure' (color 8) or 'non-azure' (colors 1-7, 9).
+
+input_features:
+  - L-shapes: Multiple L-shapes of various colors can exist.
+  - fill_color_source: Exactly one non-azure L-shape exists per grid, its color determines the fill color.
+  - azure_L-shapes: One or more azure (color 8) L-shapes exist.
+  - other_pixels: Pixels not part of any L-shape can exist with non-white colors.
+
+derived_features:
+  - fill_color: The color of the single non-azure L-shape.
+  - all_L_shape_pixels: The set of coordinates covered by *any* L-shape (azure or non-azure).
+  - L_shape_bounding_box: The smallest rectangle enclosing all pixels from `all_L_shape_pixels`.
+
+transformations:
+  - action: identify_L-shapes
+    input: input_grid
+    output: list of L-shapes (color, coordinates).
+  - action: determine_fill_color
+    input: list of L-shapes
+    output: fill_color (integer).
+  - action: determine_L_shape_bounding_box
+    input: list of L-shapes
+    output: bounding_box (min_row, max_row, min_col, max_col).
+  - action: generate_output
+    input: input_grid, fill_color, L_shape_bounding_box
+    process:
+      1. Copy input_grid to output_grid.
+      2. Iterate through each cell (r, c) within the L_shape_bounding_box.
+      3. If input_grid[r, c] is white (0):
+         Set output_grid[r, c] = fill_color.
+      4. Otherwise (if input_grid[r, c] is non-white):
+         Keep output_grid[r, c] unchanged from input_grid[r, c].
+      5. Cells outside the L_shape_bounding_box remain unchanged.
+    output: output_grid
+
+edge_cases:
+  - If no L-shapes are found, return the input grid unchanged.
+  - If no non-azure L-shape is found (only azure or no L-shapes), return the input grid unchanged.

@@ -1,0 +1,38 @@
+task_description: Fill areas between green shapes and aligned magenta markers.
+
+objects:
+  - type: grid
+    properties:
+      colors: [white (0), green (3), magenta (6)]
+      background: white (0)
+  - type: shape
+    color: green (3)
+    properties:
+      - contiguous block of green pixels
+      - defines an initial bounding box (min_row, max_row, min_col, max_col)
+      - can have internal "holes" of white pixels
+  - type: marker
+    color: magenta (6)
+    properties:
+      - single pixel
+      - influences expansion of green shapes if aligned
+
+actions:
+  - identify: Find all distinct green shapes and their bounding boxes.
+  - identify: Find all magenta markers and their coordinates.
+  - process_shapes: For each green shape independently:
+      - determine_alignment: Find magenta markers that are:
+          - Horizontally aligned: Marker row is within the shape's [min_row, max_row].
+          - Vertically aligned: Marker column is within the shape's [min_c, max_c].
+      - calculate_expansion_zones: For aligned markers outside the initial bounding box:
+          - Left zone: rows=[min_r, max_r], cols=[marker_col + 1, min_c - 1]
+          - Right zone: rows=[min_r, max_r], cols=[max_c + 1, marker_col - 1]
+          - Top zone: rows=[marker_row + 1, min_r - 1], cols=[min_c, max_c]
+          - Bottom zone: rows=[max_r + 1, marker_row - 1], cols=[min_c, max_c]
+          - Note: Multiple markers can define the extent of a zone (use min/max marker positions).
+      - apply_fill: In the output grid (initially a copy of the input):
+          - Iterate through pixels within the calculated expansion zones.
+          - If a pixel `(r, c)` in an expansion zone corresponds to a white (0) pixel in the *input* grid, change its color to green (3) in the *output* grid.
+          - Preserve all other pixels (original green, original magenta, original white outside expansion zones, original white inside the initial shape bounding box).
+
+output: A grid where green shapes have expanded into adjacent white areas towards aligned magenta markers, stopping one pixel short of the marker, and preserving internal structures and markers.

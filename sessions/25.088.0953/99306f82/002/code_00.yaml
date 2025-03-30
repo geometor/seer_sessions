@@ -1,0 +1,51 @@
+task_description: Fill the interior of a rectangular frame with concentric colored layers.
+
+definitions:
+  - object: grid
+    description: A 2D array of pixels with integer values 0-9 representing colors.
+  - object: frame
+    description: A hollow rectangle made of blue (1) pixels. It defines the boundary for filling.
+    properties:
+      - location: Defined by minimum and maximum row and column indices (r_min, c_min, r_max, c_max).
+      - color: Blue (1).
+  - object: interior
+    description: The area strictly inside the frame boundaries.
+    properties:
+      - initial_state: Contains white (0) pixels that need to be filled. May contain other pixels which should be ignored if not white.
+  - object: key_pixels
+    description: Pixels located on the main diagonal starting from the top-left corner (0,0).
+    properties:
+      - location: (d, d) where d starts from 0.
+      - sequence: The sequence stops when a white (0) or blue (1) pixel is encountered, or the grid boundary is reached.
+      - role: Their colors determine the colors of the concentric layers inside the frame.
+  - object: layers
+    description: Concentric layers filling the white space inside the frame.
+    properties:
+      - shape: Square-like, defined by the minimum distance to the frame boundary.
+      - color_source: Determined by the key_pixels sequence. The color at (d, d) maps to the layer at distance d+1.
+
+actions:
+  - action: find_frame
+    input: grid
+    output: frame_coordinates (r_min, c_min, r_max, c_max) or None
+    description: Identify the boundaries of the blue (1) rectangular frame.
+  - action: find_key_colors
+    input: grid
+    output: sequence of colors (key_colors)
+    description: Extract the sequence of colors from pixels (d, d) starting at (0, 0), stopping at white (0), blue (1), or grid boundary.
+  - action: calculate_distance
+    input: pixel coordinates (r, c), frame_coordinates
+    output: distance (dist)
+    description: Calculate the minimum distance from the pixel (r, c) to the nearest edge of the frame boundary. Distance is min(r - r_min, r_max - r, c - c_min, c_max - c).
+  - action: fill_interior
+    input: grid, frame_coordinates, key_colors
+    output: modified_grid
+    description: >
+      Iterate through each pixel (r, c) within the interior (r_min < r < r_max, c_min < c < c_max).
+      If the pixel is white (0) in the input grid:
+        1. Calculate its minimum distance 'dist' to the frame boundary.
+        2. Determine the corresponding key color index: `key_index = dist - 1`.
+        3. If `key_index` is valid (within the bounds of the `key_colors` list), fill the pixel at (r, c) in the output grid with `key_colors[key_index]`.
+        4. Otherwise (if the pixel is not white or `key_index` is invalid), the pixel retains its original color from the input grid.
+
+output_grid: A copy of the input grid where the white pixels inside the frame have been filled according to the layers defined by the key colors and distance.

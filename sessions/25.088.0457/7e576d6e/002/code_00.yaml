@@ -1,0 +1,74 @@
+task_name: c3e64983 # Assumed, replace with actual if different
+observations:
+  - goal: Draw a path between two specific points in the grid.
+  - initial_state: Input grid contains multiple colors.
+  - final_state: Output grid is the input grid with a path added.
+  - objects:
+      - type: grid_cells
+        properties:
+          - color: Integer from 0-9
+          - location: (row, column) coordinate
+      - type: endpoints
+        identification:
+          - Two cells of the same color (endpoint_color).
+          - This color is distinct from the background color.
+          # Constraint (needs verification across all examples): Is it always the color with exactly two pixels? Or is there another rule?
+          # Example: The hypothetical analysis suggests ambiguity if multiple colors appear twice.
+        properties:
+          - color: endpoint_color
+          - count: 2
+          - location_1: (r1, c1)
+          - location_2: (r2, c2)
+      - type: background
+        identification:
+          - Cells where the path can be drawn.
+          # Constraint (needs verification): Is it always the most frequent color?
+        properties:
+          - color: background_color
+      - type: obstacles
+        identification:
+          - Cells that the path cannot traverse.
+          - Includes all colors that are not the background_color or the endpoint_color.
+        properties:
+          - color: obstacle_color (can be multiple different colors)
+      - type: path
+        identification:
+          - A sequence of connected cells added to the grid in the output.
+          - Connects the two endpoints.
+        properties:
+          - color: Must match the endpoint_color.
+          - connectivity: Adjacent horizontally or vertically. (Needs verification: Diagonal allowed?)
+          - constraint: Path cells (excluding endpoints) must occupy locations that were originally background_color cells.
+          - constraint: Path must be the shortest possible route between endpoints under the given constraints. (Needs verification)
+actions:
+  - action: identify_elements
+    inputs: input_grid
+    outputs: background_color, endpoint_color, endpoint_locations, obstacle_colors
+    logic:
+      - Determine background color (e.g., most frequent).
+      - Find the two endpoint cells and their color (e.g., unique color with count 2). Resolve ambiguities if necessary.
+      - Identify all other non-background colors as obstacles.
+  - action: find_shortest_path
+    inputs: input_grid, background_color, endpoint_locations, obstacle_colors
+    outputs: list_of_path_coordinates
+    logic:
+      - Use BFS (or similar algorithm) starting from one endpoint.
+      - Explore adjacent (horizontal/vertical) cells.
+      - Only move onto cells with background_color.
+      - Avoid cells with obstacle_colors.
+      - Stop when the other endpoint is reached.
+      - Return the sequence of coordinates forming the shortest path found.
+  - action: draw_path
+    inputs: input_grid, path_coordinates, endpoint_color
+    outputs: output_grid
+    logic:
+      - Create a copy of the input_grid.
+      - For each coordinate in the path_coordinates (excluding the endpoints themselves):
+        - Change the color of the cell at that coordinate to endpoint_color.
+      - Return the modified grid.
+uncertainties:
+  - How to reliably distinguish endpoints if multiple colors appear exactly twice?
+  - Is the background always the most frequent color?
+  - Is diagonal movement ever allowed for the path?
+  - Does the path *always* use the shortest route, or are there other criteria?
+  - Why did the first example time out? (Requires inspection of that specific example grid)

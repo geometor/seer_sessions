@@ -1,0 +1,38 @@
+task_type: object_transformation
+grid_properties:
+  size: 16x16 (consistent across examples)
+  background_color: 8 (azure, most frequent color)
+object_properties:
+  count: 1 per input grid
+  definition: contiguous region of non-background pixels
+  colors_present: varies (e.g., [0, 5], [1, 2])
+transformation:
+  actions:
+    - action: identify_object
+      target: the single non-background object
+    - action: determine_target_color
+      input: colors within the identified object
+      output: target_color
+      rule: maximum numerical value among the object's colors
+    - action: duplicate_and_modify_color
+      input: identified object
+      output: a modified copy of the object
+      rule: change all pixels in the copy to the target_color
+    - action: calculate_translation
+      input:
+        - original_object_bounding_box (min_col, max_col)
+        - target_color
+      output: horizontal_shift_amount
+      rule: |
+        offset = -1 if target_color is odd else 1
+        new_min_col = max_col + 1 + offset
+        shift = new_min_col - min_col
+    - action: apply_translation
+      target: the modified copy
+      parameters: horizontal_shift_amount
+      rule: move copy right by the shift amount
+    - action: compose_output
+      elements:
+        - original background
+        - original object (unchanged, in original position)
+        - modified, translated copy (overlaid on background)

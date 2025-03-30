@@ -1,0 +1,42 @@
+task_description: Transform yellow rectangles based on enclosed pixels.
+
+definitions:
+  background_pixel: A pixel with color white (0).
+  yellow_rectangle: A contiguous rectangular block of yellow (4) pixels.
+  bounding_box: The smallest rectangle enclosing all pixels of an object.
+  internal_pixel: A pixel strictly inside the bounding box of a yellow_rectangle that is neither yellow (4) nor white (0).
+  inner_color: The color of the internal_pixels, applicable only if all internal_pixels within a single yellow_rectangle's bounding_box share the same color.
+  border_thickness: An integer value equal to the count of internal_pixels associated with a yellow_rectangle, applicable only if an inner_color exists.
+
+transformation_steps:
+  - step: 1
+    action: identify_objects
+    object_type: yellow_rectangle
+    source: input_grid
+  - step: 2
+    action: analyze_objects
+    input: yellow_rectangle
+    output: [bounding_box, internal_pixels_list]
+    details: For each yellow_rectangle, determine its bounding_box and find all internal_pixels within it.
+  - step: 3
+    action: filter_objects
+    input: [yellow_rectangle, internal_pixels_list]
+    output: qualified_object_list
+    condition: internal_pixels_list is not empty AND all pixels in internal_pixels_list share the same color.
+    derived_properties: [inner_color, border_thickness] # Count of internal_pixels -> border_thickness
+  - step: 4
+    action: initialize_grid
+    output: output_grid
+    details: Create a copy of the input_grid.
+  - step: 5
+    action: draw_border
+    input: [qualified_object_list, output_grid]
+    target: output_grid
+    details: For each qualified_object, draw a solid border of inner_color with border_thickness around its original bounding_box in the output_grid. The border is drawn in the area outside the original bounding_box but within the box expanded by the thickness.
+  - step: 6
+    action: fill_rectangle_area
+    input: [qualified_object_list, output_grid, input_grid]
+    target: output_grid
+    details: For each qualified_object, iterate through pixels within its original bounding_box. If a pixel's color in the input_grid was yellow (4), set its color in the output_grid to yellow (4). Pixels that were originally internal_pixels retain their color unless overwritten by a border from step 5.
+
+final_object: output_grid

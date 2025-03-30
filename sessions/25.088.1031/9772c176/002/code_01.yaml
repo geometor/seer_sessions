@@ -1,0 +1,50 @@
+task_description: Identify white background pixels that are enclosed by azure shapes (preventing reachability from the grid border) and color these enclosed pixels yellow, leaving the azure shapes and reachable background unchanged.
+constants:
+  BACKGROUND_COLOR: 0 # white
+  BARRIER_COLOR: 8    # azure
+  FILL_COLOR: 4       # yellow
+objects:
+  - type: grid
+    properties:
+      - dimensions: variable height and width (up to 30x30)
+      - pixels: integer values 0-9 representing colors
+      - background: predominantly BACKGROUND_COLOR (white)
+  - type: shapes
+    properties:
+      - composed_of: contiguous BARRIER_COLOR (azure) pixels
+      - function: act as barriers separating regions of the grid
+      - connectivity: can be multiple disconnected shapes
+  - type: regions
+    properties:
+      - composed_of: contiguous BACKGROUND_COLOR (white) pixels
+      - characteristic: defined by reachability from the grid border without crossing BARRIER_COLOR pixels
+      - types:
+          - reachable_background: white pixels connected to the border
+          - enclosed_background: white pixels not connected to the border
+actions:
+  - name: identify_reachable_background
+    inputs:
+      - grid: the input grid
+      - background_color: BACKGROUND_COLOR (white)
+      - barrier_color: BARRIER_COLOR (azure)
+    outputs:
+      - visited_mask: a boolean grid or set of coordinates indicating all background pixels reachable from the border
+    method:
+      - Initialize a queue and a visited_mask (same dimensions as grid, all False).
+      - Add all border pixels that are not BARRIER_COLOR to the queue and mark them as True in visited_mask.
+      - Perform a 4-directional flood fill:
+          - While the queue is not empty, dequeue a pixel (r, c).
+          - For each valid neighbor (nr, nc):
+              - If the neighbor is not BARRIER_COLOR and not visited, mark as visited and enqueue.
+  - name: fill_enclosed_background
+    inputs:
+      - input_grid: the original input grid
+      - visited_mask: the output from identify_reachable_background
+      - background_color: BACKGROUND_COLOR (white)
+      - fill_color: FILL_COLOR (yellow)
+    outputs:
+      - output_grid: the transformed grid
+    method:
+      - Create a copy of the input_grid to serve as the output_grid.
+      - Iterate through all pixels (r, c) of the input_grid.
+      - If input_grid[r, c] is BACKGROUND_COLOR and visited_mask[r, c] is False, set output_grid[r, c] to FILL_COLOR.

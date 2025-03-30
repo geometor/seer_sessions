@@ -1,0 +1,42 @@
+elements:
+  - object: grid
+    description: A 2D array of pixels with colors 0-9. Contains a background and scattered colored pixels.
+  - object: background_pixel
+    color: 0 (white)
+    role: The default state, potentially modified in the output.
+  - object: colored_pixel
+    color: 1-9 (excluding 8)
+    role: Scattered pixels that might determine the fill color or be preserved in the output.
+  - object: azure_pixel
+    color: 8 (azure)
+    role: Act as markers defining a bounding box (min/max row/column). Their extent determines the columns to be filled.
+  - object: fill_area
+    description: A vertical band spanning the full height of the grid in the output.
+    properties:
+      columns: Determined by the min_col and max_col+1 of the azure_pixels' bounding box.
+      rows: Spans all rows of the grid.
+      fill_color: Determined by the non-white, non-azure color found within the azure_pixels' bounding box.
+      content: Replaces background_pixels within its boundaries with the fill_color, preserves original colored_pixels and azure_pixels.
+
+actions:
+  - action: find_azure_pixels
+    input: input_grid
+    output: coordinates of all azure (8) pixels.
+  - action: calculate_azure_bounding_box
+    input: coordinates of azure pixels
+    output: min_row, max_row, min_col, max_col
+  - action: determine_fill_columns
+    input: min_col, max_col from azure bounding box
+    output: range of columns from min_col to max_col + 1.
+  - action: find_fill_color
+    input: input_grid, azure bounding box (min_r, max_r, min_c, max_c)
+    output: The color C (not 0 and not 8) found at coordinates (r, c) such that min_r <= r <= max_r and min_c <= c <= max_c. Assume only one such color exists.
+  - action: apply_fill
+    input: input_grid, fill_columns, fill_color
+    output: output_grid
+    process: Create a copy of the input grid. Iterate through all rows. For each row, iterate through the fill_columns. If the pixel at (row, col) in the input grid is white (0), change it to the fill_color in the output grid copy. Otherwise, keep the original pixel color.
+
+relationships:
+  - The columns of the fill_area are derived directly from the horizontal extent (min/max columns) of the azure_pixels.
+  - The fill_color is determined by searching for a specific colored_pixel within the spatial bounds defined by the azure_pixels.
+  - The fill operation preserves all pre-existing non-background information within the fill_area.

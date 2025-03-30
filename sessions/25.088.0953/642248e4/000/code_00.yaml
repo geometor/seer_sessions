@@ -1,0 +1,67 @@
+task_description: Change the color of white pixels adjacent to blue pixels based on the color of the corresponding border.
+
+grid_properties:
+  - bordered: true
+  - border_type: exclusive (either horizontal top/bottom OR vertical left/right)
+  - border_thickness: 1 pixel
+
+objects:
+  - object: border_1
+    definition: The top row (if horizontal borders) or the left column (if vertical borders).
+    properties:
+      - color: uniform, non-white
+      - role: color_source_1
+  - object: border_2
+    definition: The bottom row (if horizontal borders) or the right column (if vertical borders).
+    properties:
+      - color: uniform, non-white, different from border_1
+      - role: color_source_2
+  - object: trigger_pixel
+    definition: Any pixel with the color 'blue' (value 1) located within the non-border area.
+    properties:
+      - color: blue (1)
+      - role: trigger
+  - object: target_pixel
+    definition: Any pixel with the color 'white' (value 0) located within the non-border area.
+    properties:
+      - color: white (0)
+      - role: potential_target
+
+relationships:
+  - relation: adjacency
+    subject: target_pixel
+    object: trigger_pixel
+    details: Target pixel shares an edge (up, down, left, or right) with a trigger pixel.
+
+actions:
+  - action: identify_borders
+    input: input_grid
+    output: border_type (horizontal/vertical), border_color_1, border_color_2
+  - action: find_triggers
+    input: input_grid
+    output: list_of_trigger_coordinates
+  - action: apply_color_change
+    condition: border_type is horizontal
+    steps:
+      - for each trigger_pixel at (row, col):
+        - check pixel at (row-1, col):
+          - if pixel exists and is white (0): change its color to border_color_1 (top border)
+        - check pixel at (row+1, col):
+          - if pixel exists and is white (0): change its color to border_color_2 (bottom border)
+  - action: apply_color_change
+    condition: border_type is vertical
+    steps:
+      - for each trigger_pixel at (row, col):
+        - check pixel at (row, col-1):
+          - if pixel exists and is white (0): change its color to border_color_1 (left border)
+        - check pixel at (row, col+1):
+          - if pixel exists and is white (0): change its color to border_color_2 (right border)
+  - action: construct_output
+    steps:
+      - start with a copy of the input grid.
+      - apply all determined color changes.
+      - return the modified grid.
+
+final_output:
+  - type: grid
+    content: The input grid modified according to the color change rules.

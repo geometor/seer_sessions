@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom scipy.ndimage import label\n\n\"\"\"\nTransformation Rule:\n1. Identify all distinct objects in the input grid. An object is a group of orthogonally connected non-white (0) pixels (colors 1 and 8).\n2. Count the number of azure (8) pixels within each object.\n3. Create an output grid of the same dimensions as the input, initialized to white (0).\n4. Copy objects from the input to the output grid only if they contain zero (0) or one (1) azure (8) pixel. Objects with two or more azure pixels are discarded (left as white in the output).\n\"\"\"\n\ndef get_objects(grid_np, diagonal=False):\n    \"\"\"\n    Identifies connected objects of non-background pixels in a grid.\n\n    Args:\n        grid_np: A NumPy array representing the grid.\n        diagonal: Boolean indicating if diagonal connections count.\n\n    Returns:\n        A list of objects, where each object is a dictionary containing:\n        'id': A unique integer identifier.\n        'coords': A list of [row, col] coordinates for the object's pixels.\n        'values': A list of pixel values for the object.\n    \"\"\"\n    background_color = 0\n    objects_mask = grid_np != background_color\n    # Define connectivity structure: 4-connectivity (orthogonal) or 8-connectivity (diagonal)\n    structure = np.array([[0,1,0],[1,1,1],[0,1,0]]) if not diagonal else np.array([[1,1,1],[1,1,1],[1,1,1]])\n    \n    labeled_array, num_features = label(objects_mask, structure=structure)\n    \n    objects = []\n    if num_features > 0:\n        # Find coordinates for each labeled feature\n        coords_map = {i: [] for i in range(1, num_features + 1)}\n        for r, row in enumerate(labeled_array):\n            for c, label_val in enumerate(row):\n                if label_val > 0:\n                    coords_map[label_val].append([r, c])\n\n        # Create object dictionaries\n        for i in range(1, num_features + 1):\n            coords = coords_map[i]\n            values = [grid_np[r, c] for r, c in coords]\n            objects.append({\"id\": i, \"coords\": coords, \"values\": values})\n            \n    return objects\n\ndef count_color(obj, color_code):\n    \"\"\"Counts the occurrences of a specific color code within an object's values.\"\"\"\n    return obj['values'].count(color_code)\n\ndef transform(input_grid):\n    \"\"\"\n    Filters objects in the input grid based on the count of azure (8) pixels.\n\n    Args:\n        input_grid: A list of lists representing the input grid.\n\n    Returns:\n        A list of lists representing the output grid with filtered objects.\n    \"\"\"\n    input_grid_np = np.array(input_grid, dtype=int)\n    rows, cols = input_grid_np.shape\n    output_grid_np = np.zeros_like(input_grid_np) # Initialize output with background color 0\n\n    marker_color = 8\n    max_allowed_markers = 1\n\n    # 1. Identify all distinct objects (orthogonal connectivity)\n    objects = get_objects(input_grid_np, diagonal=False)\n\n    # 2. Iterate through objects, count marker color, and filter\n    for obj in objects:\n        # 3. Count how many azure (8) pixels the object contains\n        azure_count = count_color(obj, marker_color)\n\n        # 4. If the count is 0 or 1, keep the object\n        if azure_count <= max_allowed_markers:\n            # 5. Copy the kept object's pixels to the output grid\n            for r, c in obj['coords']:\n                output_grid_np[r, c] = input_grid_np[r, c]\n\n    # Convert back to list of lists for the expected output format\n    output_grid = output_grid_np.tolist()\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 12683,
+    "candidates_token_count": 967,
+    "total_token_count": 13650,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 12.56877,
+  "retries": null
+}

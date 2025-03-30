@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom collections import deque\n\n\"\"\"\nThe transformation identifies distinct regions enclosed by an azure (8) border. \nWithin each region, it finds the smallest rectangular bounding box containing all non-white (0) and non-azure (8) pixels. This bounding box defines a \"pattern kernel\".\nThe transformation then tiles this pattern kernel across the entire corresponding enclosed region in the output grid, starting from the region's top-left corner. \nThe azure border remains unchanged.\n\"\"\"\n\ndef find_connected_region(grid, start_r, start_c, background_color, visited):\n    \"\"\"Finds all connected pixels of non-background color using BFS.\"\"\"\n    height, width = grid.shape\n    if not (0 <= start_r < height and 0 <= start_c < width) or \\\n       visited[start_r, start_c] or \\\n       grid[start_r, start_c] == background_color:\n        return []\n\n    queue = deque([(start_r, start_c)])\n    region_coords = set()\n    visited[start_r, start_c] = True\n\n    while queue:\n        r, c = queue.popleft()\n        region_coords.add((r, c))\n\n        # Check 4 neighbors (up, down, left, right)\n        for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n            nr, nc = r + dr, c + dc\n            if 0 <= nr < height and 0 <= nc < width and \\\n               not visited[nr, nc] and \\\n               grid[nr, nc] != background_color:\n                visited[nr, nc] = True\n                queue.append((nr, nc))\n\n    return list(region_coords)\n\ndef transform(input_grid):\n    \"\"\"\n    Tiles a pattern derived from non-white pixels within bordered regions across those regions.\n\n    Args:\n        input_grid (np.ndarray): The input grid.\n\n    Returns:\n        np.ndarray: The transformed output grid.\n    \"\"\"\n    # Initialize output grid as a copy of the input\n    output_grid = np.copy(input_grid)\n    height, width = input_grid.shape\n    background_color = 8\n    visited = np.zeros_like(input_grid, dtype=bool)\n\n    # Iterate through each cell to find starting points of regions\n    for r in range(height):\n        for c in range(width):\n            # If the cell is not background and not yet visited, it's part of a new region\n            if input_grid[r, c] != background_color and not visited[r, c]:\n                # Find all connected pixels in this region\n                region_pixels = find_connected_region(input_grid, r, c, background_color, visited)\n\n                if not region_pixels:\n                    continue # Should not happen if the initial check passed, but good practice\n\n                # Identify the \"seed\" pixels (non-white, non-background) within the region\n                seed_pixels = [(pr, pc) for pr, pc in region_pixels if input_grid[pr, pc] != 0]\n\n                # If there are no seed pixels (region is all white), leave it as is\n                if not seed_pixels:\n                    # Mark all pixels in this white region as visited to avoid redundant checks\n                    for pr, pc in region_pixels:\n                         visited[pr,pc] = True # Make sure find_connected_region handles visited correctly\n                    continue # Skip tiling for all-white regions\n\n                # Determine the bounding box of the seed pixels to define the kernel area\n                min_r_kernel = min(pr for pr, pc in seed_pixels)\n                max_r_kernel = max(pr for pr, pc in seed_pixels)\n                min_c_kernel = min(pc for pr, pc in seed_pixels)\n                max_c_kernel = max(pc for pr, pc in seed_pixels)\n\n                # Calculate kernel dimensions\n                kernel_h = max_r_kernel - min_r_kernel + 1\n                kernel_w = max_c_kernel - min_c_kernel + 1\n\n                # Extract the kernel pattern from the input grid\n                kernel = input_grid[min_r_kernel : max_r_kernel + 1, min_c_kernel : max_c_kernel + 1]\n\n                # Determine the top-left corner of the entire region (not just the kernel)\n                # This serves as the reference point for tiling calculation\n                region_min_r = min(pr for pr, pc in region_pixels)\n                region_min_c = min(pc for pr, pc in region_pixels)\n\n                # Iterate through all pixels in the identified region and apply the kernel pattern\n                for pr, pc in region_pixels:\n                    # Calculate the corresponding position within the kernel using modulo arithmetic\n                    # Relative position within the region determines the kernel index\n                    kernel_row_index = (pr - region_min_r) % kernel_h\n                    kernel_col_index = (pc - region_min_c) % kernel_w\n\n                    # Update the output grid with the color from the kernel pattern\n                    output_grid[pr, pc] = kernel[kernel_row_index, kernel_col_index]\n\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 7134,
+    "candidates_token_count": 1217,
+    "total_token_count": 8351,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 22.354885,
+  "retries": null
+}

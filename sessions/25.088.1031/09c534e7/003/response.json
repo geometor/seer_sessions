@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom collections import deque\n\n\"\"\"\nTransformation Rule Description:\n\nThe transformation identifies non-background (white, 0) and non-primary shape (blue, 1) pixels, referred to as \"seed\" pixels. For each seed pixel, it identifies any adjacent blue pixels (4-way adjacency). For each such adjacent blue pixel that hasn't already been colored by a previous seed's operation, it performs a flood fill (BFS) starting from that blue pixel. This flood fill propagates only through contiguous blue pixels in the original input grid that have not yet been colored. All blue pixels reached by this specific flood fill operation are changed to the color of the originating seed in the output grid. Once a blue pixel is colored, it cannot be colored again by another seed's operation. Background pixels and the original seed pixels remain unchanged.\n\"\"\"\n\ndef find_seeds(grid):\n    \"\"\"Finds seed pixels (non-white, non-blue) in the grid.\"\"\"\n    seeds = []\n    height, width = grid.shape\n    for r in range(height):\n        for c in range(width):\n            color = grid[r, c]\n            # Seeds are pixels that are not background (0) and not the primary shape color (1)\n            if color != 0 and color != 1:\n                seeds.append(((r, c), color))\n    return seeds\n\ndef get_neighbors(coord, shape):\n    \"\"\"Gets 4-way adjacent neighbor coordinates within grid bounds.\"\"\"\n    r, c = coord\n    height, width = shape\n    neighbors = []\n    for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n        nr, nc = r + dr, c + dc\n        if 0 <= nr < height and 0 <= nc < width:\n            neighbors.append((nr, nc))\n    return neighbors\n\ndef transform(input_grid):\n    \"\"\"\n    Transforms the input grid by flood-filling contiguous blue regions \n    adjacent to seed pixels with the seed's color.\n    \"\"\"\n    # Initialize output grid as a copy of the input\n    output_grid = np.copy(input_grid)\n    height, width = input_grid.shape\n    \n    # Find all seed pixels\n    seeds = find_seeds(input_grid)\n    \n    # Keep track of blue pixels that have already been colored by any seed's fill\n    # This prevents a blue region adjacent to multiple seeds from being colored multiple times\n    # and ensures the first seed encountered (in the seed iteration order) determines the color.\n    globally_colored_blue_pixels = set()\n\n    # Process each seed\n    for seed_coord, seed_color in seeds:\n        sr, sc = seed_coord\n        \n        # Find blue neighbors of the current seed\n        seed_neighbors = get_neighbors(seed_coord, (height, width))\n        \n        for neighbor_r, neighbor_c in seed_neighbors:\n            # Check if the neighbor is blue in the original grid\n            # AND if it hasn't already been colored by a fill from another seed\n            if input_grid[neighbor_r, neighbor_c] == 1 and (neighbor_r, neighbor_c) not in globally_colored_blue_pixels:\n                \n                # Start a flood fill (BFS) from this uncolored adjacent blue pixel\n                # to find the entire contiguous blue component connected to it.\n                q = deque([(neighbor_r, neighbor_c)])\n                \n                # Keep track of visited pixels *within this specific fill* to avoid cycles\n                visited_in_this_fill = set([(neighbor_r, neighbor_c)]) \n                \n                # Store all pixels belonging to the component found by this fill\n                component_pixels = set([(neighbor_r, neighbor_c)])\n\n                while q:\n                    curr_r, curr_c = q.popleft()\n                    \n                    # Explore neighbors of the current pixel in the BFS\n                    current_neighbors = get_neighbors((curr_r, curr_c), (height, width))\n                    for nr, nc in current_neighbors:\n                        # Check if the neighbor is blue in the original grid\n                        # AND it hasn't been visited during *this* specific fill operation\n                        # AND it hasn't been colored globally by *any* previous fill operation\n                        if input_grid[nr, nc] == 1 and \\\n                           (nr, nc) not in visited_in_this_fill and \\\n                           (nr, nc) not in globally_colored_blue_pixels:\n                            \n                            # Mark as visited for this fill\n                            visited_in_this_fill.add((nr, nc))\n                            # Add to the component list\n                            component_pixels.add((nr, nc))\n                            # Add to the queue to explore its neighbors\n                            q.append((nr, nc))\n                            \n                # After the BFS completes for this component, color all found pixels\n                # in the output grid and mark them as globally colored.\n                for comp_r, comp_c in component_pixels:\n                    output_grid[comp_r, comp_c] = seed_color\n                    globally_colored_blue_pixels.add((comp_r, comp_c))\n\n    # Return the modified grid\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 18930,
+    "candidates_token_count": 1190,
+    "total_token_count": 20120,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 17.177662,
+  "retries": null
+}

@@ -1,0 +1,49 @@
+task_description: Fill enclosed white areas bounded by green pixels.
+
+grid_properties:
+  - dimensions: Variable (up to 30x30)
+  - colors: Primarily white (0) and green (3). Other colors might be present but seem unaffected by the core transformation.
+
+objects:
+  - type: Boundary
+    color: green (3)
+    definition: Contiguous group of green pixels. Must form a closed loop to enclose an area.
+    properties:
+      - connectivity: Can be 4-connected (adjacent) or 8-connected (adjacent or diagonal) - Requires clarification based on examples. (The BFS code uses 4-connectivity for filling).
+      - interaction_with_edge: A boundary touching the grid edge cannot enclose an area relative to that edge.
+  - type: Background/Exterior
+    color: white (0)
+    definition: Areas of white pixels connected to the grid boundary via a path of white pixels (4-connectivity).
+  - type: Interior
+    color: white (0)
+    definition: Areas of white pixels not connected to the grid boundary via a path of white pixels without crossing a non-white pixel (specifically, the green boundary).
+    properties:
+      - location: Must be spatially surrounded by the green boundary pixels.
+
+actions:
+  - name: Identify Boundary
+    input: input_grid
+    output: Set of coordinates for green pixels potentially forming boundaries.
+  - name: Identify Exterior White Pixels
+    input: input_grid
+    method: Breadth-First Search (BFS) starting from all white pixels on the grid edges.
+    connectivity: 4-way (horizontal/vertical steps only).
+    output: Set of coordinates of all white pixels reachable from the grid edge.
+  - name: Identify Interior White Pixels
+    input: input_grid, set of exterior white pixel coordinates
+    method: Find all white pixels in the grid that are *not* in the set of exterior white pixels.
+    output: Set of coordinates of interior white pixels.
+  - name: Fill Interior
+    input: input_grid, set of interior white pixel coordinates
+    output: output_grid
+    change: Change the color of pixels at the interior coordinates from white (0) to green (3).
+    preservation: All other pixels (green boundary, other colors, exterior white pixels) retain their original color.
+
+invariants:
+  - Grid dimensions remain unchanged.
+  - Pixels that are not white (0) in the input remain unchanged in the output, except potentially green boundary pixels if the definition changes. (Current logic: green pixels remain unchanged).
+  - Pixels that are white (0) but are connected to the grid boundary remain white (0).
+
+potential_issues:
+  - The definition of "contiguous" and "enclosed" needs to be precise (4-way vs 8-way connectivity). The previous code implicitly used 4-way connectivity for the fill search.
+  - Performance of the exterior pixel identification (BFS) on large or complex grids caused a timeout.

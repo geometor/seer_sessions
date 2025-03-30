@@ -1,0 +1,63 @@
+task_description: "Identify a specific horizontal gray bar, use the pixel value to its right to determine the location and structure of a 5x5 modification area. The modification involves drawing a gray border and copying the interior 3x3 region from the input grid."
+
+input_features:
+  - object_type: horizontal_bar
+    color: gray (5)
+    pattern: [5, 5, 5, 5]
+    constraints:
+      - must be exactly 4 pixels long (not part of a longer gray bar)
+      - uniqueness: only one such bar exists in each input grid
+    location: denoted by (R, C) for the top-left pixel
+
+  - object_type: trigger_pixel
+    location: (R, C + 4) relative to the start of the source bar
+    property: value V (color index), which determines the transformation parameters
+
+transformation_parameters:
+  - name: start_col
+    calculation: (C + 4) + floor(V / 2) - 2
+    description: Starting column index for the 5x5 modification area
+
+  - name: row1
+    calculation:
+      - if V == 4: R + 1
+      - if V == 6: R + 5
+      - if V == 8: R + 4
+    description: Starting row index for the 5x5 modification area
+
+  - name: row2
+    calculation: row1 + 4
+    description: Ending row index for the 5x5 modification area
+
+  - name: end_col
+    calculation: start_col + 4
+    description: Ending column index for the 5x5 modification area
+
+output_modification:
+  - action: copy_grid
+    source: input grid
+    destination: output grid
+
+  - action: define_area
+    type: square
+    size: 5x5
+    top_left_corner: (row1, start_col)
+    bottom_right_corner: (row2, end_col)
+
+  - action: draw_border
+    area: the defined 5x5 square
+    color: gray (5)
+    thickness: 1 pixel
+
+  - action: copy_interior
+    source_grid: input grid
+    source_area: 3x3 square starting at (row1 + 1, start_col + 1)
+    destination_grid: output grid
+    destination_area: 3x3 square starting at (row1 + 1, start_col + 1) (overwriting the initial copy within the frame)
+
+constants:
+  - frame_color: gray (5)
+  - frame_size: 5x5 pixels
+  - source_bar_color: gray (5)
+  - source_bar_length: 4 pixels
+  - expected_trigger_values: [4, 6, 8]

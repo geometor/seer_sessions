@@ -1,0 +1,48 @@
+task_description: Identify repeating block patterns in an input grid containing noise pixels (green=3). Determine the canonical form of the most frequent block pattern. Construct an output grid containing only instances of this block pattern, where noise pixels within each instance are replaced by the corresponding canonical pixel, unless the canonical pixel itself is noise.
+
+definitions:
+  background_color: 0 # white
+  noise_color: 3 # green
+  block: A connected component of non-background, non-noise pixels, used as a seed to define a bounding box.
+  block_instance: The rectangular subgrid extracted from the input grid corresponding to the bounding box of an identified block structure.
+  canonical_pattern: A template grid representing the ideal form of the most common block size. Each pixel in the canonical pattern is determined by the most frequent non-noise color found at that position across all instances of the common block size. If only noise color exists at a position, the canonical pixel is noise color.
+
+grid_properties:
+  dimensionality: 2D
+  color_space: 10 discrete colors (0-9)
+  max_size: 30x30
+
+observations:
+  - Input grid contains multiple instances of a similar geometric pattern (block).
+  - Blocks have variations, primarily due to the presence of noise_color pixels (green=3).
+  - Noise_color pixels also appear scattered outside the main blocks.
+  - The task requires identifying the most frequent block size and shape.
+  - A canonical version of this block must be derived based on non-noise pixel frequency.
+  - The output grid should contain only the identified blocks, placed at their original locations.
+  - Pixels within the output blocks should match the input blocks, except where an input pixel is noise_color (3) and the corresponding canonical pixel is *not* noise_color (3); in this case, the canonical pixel is used.
+  - All pixels in the output grid that are not part of a placed block instance should be background_color (0).
+
+actions:
+  1. Identify candidate blocks: Find connected components of pixels where color is not background_color (0) and not noise_color (3).
+  2. Determine bounding boxes: Find the bounding box for each candidate block.
+  3. Find common size: Calculate the frequency of bounding box sizes and identify the most common size (height, width).
+  4. Filter instances: Select only those block locations whose bounding box matches the most common size. Extract the full subgrids (block instances) from the *original input grid* using these locations and the common size.
+  5. Derive canonical pattern: Create a template grid of the common size. For each position (r, c):
+      a. Collect the colors at (r, c) from all filtered block instances.
+      b. Count the frequency of each color.
+      c. Identify the most frequent color that is *not* noise_color (3).
+      d. If such a non-noise color exists, set canonical_pattern[r, c] to it.
+      e. Else (only noise_color or background_color present), set canonical_pattern[r, c] to noise_color (3) if noise_color was present, otherwise background_color (0).
+  6. Generate output:
+      a. Initialize an output grid of the same size as the input, filled with background_color (0).
+      b. For each filtered block instance (from step 4) at location (R, C):
+          i. Create a temporary repaired_block of the common size.
+          ii. For each position (r, c) within the block:
+              - input_pixel = instance[r, c]
+              - canonical_pixel = canonical_pattern[r, c]
+              - if input_pixel == noise_color (3) and canonical_pixel != noise_color (3):
+                  repaired_block[r, c] = canonical_pixel
+              - else:
+                  repaired_block[r, c] = input_pixel
+          iii. Place the repaired_block onto the output grid at location (R, C).
+  7. Return the output grid.

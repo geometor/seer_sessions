@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom scipy.ndimage import label, generate_binary_structure\nimport collections\n\n\"\"\"\nTransforms the input grid based on the green (color 3) objects found using 8-way connectivity.\n\n1. Find all distinct connected green objects in the input grid. Let N be the count of these objects.\n2. If N = 0: The output grid is identical to the input grid.\n3. If N > 0:\n    a. Initialize the output grid as a copy of the input grid (preserving the original objects and background).\n    b. For *each* distinct green object found:\n        i. Determine its bounding box (min_row, min_col, max_row, max_col).\n        ii. Calculate the height H = max_row - min_row + 1.\n        iii. Calculate the width W = max_col - min_col + 1.\n        iv. Define three translation vectors based on H and W:\n            - V1 = (H, -W)  (Shift down by H, left by W)\n            - V2 = (H, W)   (Shift down by H, right by W)\n            - V3 = (2*H, 2*W) (Shift down by 2*H, right by 2*W)\n        v. For each of the three translation vectors (dr, dc):\n            - Iterate through every pixel (r, c) that belongs to the *current original green object*.\n            - Calculate the new coordinates: new_r = r + dr, new_c = c + dc.\n            - Check if the new coordinates (new_r, new_c) are within the bounds of the grid.\n            - If they are within bounds, paint the pixel at (new_r, new_c) on the output grid green (color 3).\n4. Return the final modified output grid.\n\"\"\"\n\n# Define a structure to hold object information\n# bbox = (min_r, min_c, max_r, max_c) inclusive\nObject = collections.namedtuple('Object', ['pixels', 'bbox'])\n\ndef find_objects(grid, target_color):\n    \"\"\"\n    Identifies connected components (objects) of a specified color in a grid.\n    Uses 8-way connectivity.\n\n    Args:\n        grid: The input numpy array grid.\n        target_color: The integer color value to find objects of.\n\n    Returns:\n        A list of Object namedtuples. Each tuple contains:\n          - pixels: A set of (row, col) tuples for the object.\n          - bbox: A tuple (min_r, min_c, max_r, max_c) representing the\n                  inclusive bounding box.\n        Returns an empty list if no objects are found.\n    \"\"\"\n    # Create a binary mask where target_color pixels are True\n    binary_grid = (grid == target_color)\n    # Define 8-way connectivity structure\n    structure = generate_binary_structure(rank=2, connectivity=2)\n    # Label connected components\n    labeled_grid, num_labels = label(binary_grid, structure=structure)\n\n    objects = []\n    if num_labels > 0:\n        # For each label, find coordinates and calculate bounding box\n        for i in range(1, num_labels + 1):\n            coords = np.argwhere(labeled_grid == i)\n            # Ensure the component still exists (can happen with edge cases)\n            if coords.size > 0:\n                pixels = set(map(tuple, coords))\n                # Extract row and column coordinates\n                rows, cols = zip(*coords)\n                # Calculate inclusive bounding box\n                min_r, max_r = min(rows), max(rows)\n                min_c, max_c = min(cols), max(cols)\n                bbox = (min_r, min_c, max_r, max_c)\n                # Store object info\n                objects.append(Object(pixels, bbox))\n\n    return objects\n\ndef transform(input_grid):\n    \"\"\"\n    Applies the transformation rule based on the green objects found.\n    \"\"\"\n    # Define the target color\n    green_color = 3\n    # Find all distinct connected green objects\n    objects = find_objects(input_grid, green_color)\n    num_objects = len(objects)\n    # Initialize the output grid as a copy of the input\n    output_grid = np.copy(input_grid)\n    grid_h, grid_w = input_grid.shape\n\n    # --- Case N = 0: No Objects ---\n    if num_objects == 0:\n        # Return the unchanged grid if no green objects are found\n        return output_grid\n\n    # --- Case N > 0: One or More Objects ---\n    else:\n        # Process each found green object independently\n        for obj in objects:\n            pixels = obj.pixels\n            min_r, min_c, max_r, max_c = obj.bbox\n\n            # Calculate Height (H) and Width (W) of the object's bounding box\n            H = max_r - min_r + 1\n            W = max_c - min_c + 1\n\n            # Define the three translation vectors based on H and W\n            translations = [(H, -W), (H, W), (2 * H, 2 * W)]\n\n            # Apply each translation to create copies of the current object\n            for dr, dc in translations:\n                # Iterate through each pixel of the original object\n                for r, c in pixels:\n                    # Calculate the new coordinates for the pixel after translation\n                    new_r, new_c = r + dr, c + dc\n                    # Check if the new coordinates are within the grid boundaries\n                    if 0 <= new_r < grid_h and 0 <= new_c < grid_w:\n                        # Paint the translated pixel green on the output grid\n                        output_grid[new_r, new_c] = green_color\n\n        # Return the modified grid\n        return output_grid\n\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 16422,
+    "candidates_token_count": 1368,
+    "total_token_count": 17790,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 140.50225,
+  "retries": null
+}

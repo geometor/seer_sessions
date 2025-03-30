@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom typing import List, Tuple, Dict, Set\n\n\"\"\"\nIdentify horizontal and vertical lines composed entirely of the azure color (8). These lines divide the grid into rectangular cells.\nFor each cell in the grid:\n1. Determine the set of unique non-white (0) and non-azure (8) colors present within the entire row band containing the cell.\n2. Determine the set of unique non-white (0) and non-azure (8) colors present within the entire column band containing the cell.\n3. Define the \"fill color\" for the cell based on these sets:\n    a. If the row band color set is exactly {red (2)} and the column band color set is exactly {green (3)}, the fill color is magenta (6).\n    b. If the row band color set is exactly {green (3)} and the column band color set is exactly {red (2)}, the fill color is magenta (6).\n    c. Otherwise, if the row band color set contains red (2), the fill color is red (2).\n    d. Otherwise, if the row band color set contains green (3), the fill color is green (3).\n    e. Otherwise, the fill color is white (0) (no change).\n4. If a non-white fill color is determined, change all white (0) pixels within that specific cell to the fill color. Keep existing non-white pixels in the cell as they are.\nThe azure (8) divider lines remain unchanged.\n\"\"\"\n\ndef find_dividers(grid: np.ndarray, axis: int) -> List[int]:\n    \"\"\"Finds the indices of rows (axis=0) or columns (axis=1) that consist entirely of azure (8).\"\"\"\n    dividers = []\n    target_color = 8\n    num_lines = grid.shape[1 - axis] # Number of columns if axis=0, number of rows if axis=1\n    for i in range(grid.shape[axis]):\n        if axis == 0: # Check rows\n            line = grid[i, :]\n        else: # Check columns\n            line = grid[:, i]\n        if np.all(line == target_color):\n            dividers.append(i)\n    return dividers\n\ndef get_bands(dividers: List[int], max_dim: int) -> List[Tuple[int, int]]:\n    \"\"\"Creates start/end indices for bands based on divider indices.\"\"\"\n    bands = []\n    start = 0\n    for divider_idx in dividers:\n        if start < divider_idx:\n            bands.append((start, divider_idx))\n        start = divider_idx + 1\n    if start < max_dim:\n        bands.append((start, max_dim))\n    return bands\n\ndef get_band_colors(grid: np.ndarray, bands: List[Tuple[int, int]], axis: int) -> Dict[Tuple[int, int], Set[int]]:\n    \"\"\"Calculates the set of unique non-white, non-azure colors for each band.\"\"\"\n    band_colors = {}\n    ignore_colors = {0, 8} # white and azure\n    for i, (start, end) in enumerate(bands):\n        if axis == 0: # Row band\n            subgrid = grid[start:end, :]\n        else: # Column band\n            subgrid = grid[:, start:end]\n        \n        colors = set(np.unique(subgrid)) - ignore_colors\n        band_colors[(start, end)] = colors\n    return band_colors\n\ndef transform(input_grid: List[List[int]]) -> List[List[int]]:\n    \"\"\"\n    Applies the transformation rule based on row and column band colors.\n    \"\"\"\n    grid = np.array(input_grid, dtype=int)\n    output_grid = np.copy(grid)\n    height, width = grid.shape\n    \n    red = 2\n    green = 3\n    magenta = 6\n    white = 0\n    azure = 8\n\n    # Find horizontal and vertical dividers (azure lines)\n    h_dividers = find_dividers(grid, axis=0)\n    v_dividers = find_dividers(grid, axis=1)\n\n    # Define row and column bands based on dividers\n    row_bands = get_bands(h_dividers, height)\n    col_bands = get_bands(v_dividers, width)\n\n    # If there are no bands (e.g., grid is all azure), return copy\n    if not row_bands or not col_bands:\n        return output_grid.tolist()\n        \n    # Precompute colors within each entire row band and column band\n    row_band_colors = get_band_colors(grid, row_bands, axis=0)\n    col_band_colors = get_band_colors(grid, col_bands, axis=1)\n\n    # Iterate through each cell defined by the intersection of row and column bands\n    for r_start, r_end in row_bands:\n        for c_start, c_end in col_bands:\n            \n            # Get the precomputed color sets for the current cell's row and column bands\n            r_colors = row_band_colors.get((r_start, r_end), set())\n            c_colors = col_band_colors.get((c_start, c_end), set())\n\n            # Determine the fill color based on the rules\n            fill_color = white # Default: no change\n\n            if r_colors == {red} and c_colors == {green}:\n                fill_color = magenta\n            elif r_colors == {green} and c_colors == {red}:\n                fill_color = magenta\n            elif red in r_colors:\n                fill_color = red\n            elif green in r_colors:\n                fill_color = green\n                \n            # If a fill color is determined, apply it to the white pixels in the cell\n            if fill_color != white:\n                for r in range(r_start, r_end):\n                    for c in range(c_start, c_end):\n                        # Only fill pixels that are originally white\n                        if grid[r, c] == white:\n                            output_grid[r, c] = fill_color\n\n    return output_grid.tolist()\n\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 8050,
+    "candidates_token_count": 1436,
+    "total_token_count": 9486,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 61.142561,
+  "retries": null
+}

@@ -1,0 +1,83 @@
+task_description: Processes an input grid containing a background color (White 0) and exactly two other foreground colors. One foreground color forms a single, solid, connected rectangular object (the 'mask'). The other foreground color forms the 'persistent' object, which may consist of multiple disconnected components or have a complex shape. The transformation produces an output grid containing only the pixels of the 'persistent' object that do *not* share the exact same coordinates as any pixel of the 'mask' object. All other output pixels are the background color.
+
+examples:
+  - id: 1
+    input_grid_shape: [16, 16]
+    input_colors:
+      - color_name: White
+        color_value: 0
+        category: background
+      - color_name: Red
+        color_value: 2
+        category: foreground_persistent
+        input_pixel_count: 31
+        num_components: 2
+        is_solid_rectangle: false
+      - color_name: Green
+        color_value: 3
+        category: foreground_mask
+        input_pixel_count: 16
+        num_components: 1
+        is_solid_rectangle: true
+    output_grid_shape: [16, 16]
+    output_colors:
+      - color_name: White
+        color_value: 0
+      - color_name: Red
+        color_value: 2
+        # output_pixel_count: 37 # Based on manual recount, metrics unreliable
+    transformation_notes: Green object is the mask (4x4 rectangle). Red object is persistent. Direct pixel overlap between Red and Green is 0. Output retains all Red pixels from input that do not overlap Green pixels (i.e., all 31 input Red pixels). Output contains additional Red pixels not present in input. Rule unclear based solely on this example's output count discrepancy.
+
+  - id: 2
+    input_grid_shape: [16, 16]
+    input_colors:
+      - color_name: White
+        color_value: 0
+        category: background
+      - color_name: Blue
+        color_value: 1
+        category: foreground_mask
+        input_pixel_count: 12
+        num_components: 1
+        is_solid_rectangle: true
+      - color_name: Magenta
+        color_value: 6
+        category: foreground_persistent
+        input_pixel_count: 23
+        num_components: 2
+        is_solid_rectangle: false
+    output_grid_shape: [16, 16]
+    output_colors:
+      - color_name: White
+        color_value: 0
+      - color_name: Magenta
+        color_value: 6
+        # output_pixel_count: 13 # Expected based on direct overlap removal (23 - 10 = 13). Actual output image count needed. Let's recount:
+        # Row 2: 4
+        # Row 3: 4
+        # Row 4: 4
+        # Row 5: 2
+        # Row 6: 2
+        # Row 7: 4
+        # Row 8: 3
+        # Row 9: 4
+        # Row 10: 2
+        # Total: 4+4+4+2+2+4+3+4+2 = 29 pixels. Also increase!
+    transformation_notes: Blue object is the mask (3x4 rectangle). Magenta object is persistent. Direct pixel overlap occurs (estimated 10 pixels visually). Output retains Magenta pixels from input that do not overlap Blue pixels. Output also contains additional Magenta pixels not present in input. Rule unclear based solely on this example's output count discrepancy.
+
+derived_properties:
+  - background_color: 0 (White)
+  - foreground_colors: Exactly two distinct non-zero colors per grid.
+  - mask_object:
+      - Defined by one of the foreground colors.
+      - Consists of exactly one connected component (using 4-way adjacency).
+      - The component's shape is a solid rectangle (no holes).
+  - persistent_object:
+      - Defined by the other foreground color.
+      - Can have any shape or number of components.
+  - action: Appears to involve removing parts of the persistent object based on the mask, but the examples show an *increase* in persistent pixels in the output, contradicting simple removal. The most plausible *intended* rule based on the problem structure is removal by direct overlap.
+
+potential_issues:
+  - The number of persistent pixels in the expected output grids is *greater* than in the input grids for both examples analyzed. This conflicts with the intuitive "masking/removal" pattern suggested by the shapes.
+  - The metrics calculated by `tool_code` for overlap count and output pixel count seem unreliable or inconsistent with manual inspection/recounting.
+  - The true transformation rule might be more complex than direct overlap removal (e.g., involving bounding boxes, relative positioning, duplication, or a different interpretation of "mask"). However, direct overlap removal is the most parsimonious explanation fitting the object identification criteria.

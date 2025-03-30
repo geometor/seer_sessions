@@ -1,0 +1,60 @@
+task_description: "Recolor blue objects based on the shape of the spatially closest orange object, then remove the orange objects."
+elements:
+  - type: background
+    color: white (0)
+  - type: data_object
+    color: blue (1)
+    properties:
+      - shape: variable (e.g., L-shape, T-shape)
+      - undergoes_transformation: true (color change)
+      - persists: shape and position are preserved
+  - type: key_object
+    color: orange (7)
+    properties:
+      - shape: variable (specific shapes act as keys)
+      - determines_transformation: dictates the output color for associated blue objects
+      - removed_in_output: true
+relationships:
+  - type: spatial_proximity
+    description: "Each blue object is associated with the single closest orange object."
+    metric: minimum_manhattan_distance
+transformation:
+  - step: 1
+    action: identify_objects
+    inputs:
+      - input grid
+    outputs:
+      - list of blue (1) objects (coordinates and shape)
+      - list of orange (7) objects (coordinates and shape)
+  - step: 2
+    action: associate_objects
+    inputs:
+      - list of blue objects
+      - list of orange objects
+    outputs:
+      - pairs of (blue_object, closest_orange_object)
+    logic: "For each blue object, find the orange object with the minimum Manhattan distance between any pixel of the blue object and any pixel of the orange object."
+  - step: 3
+    action: determine_output_color
+    inputs:
+      - associated pairs from step 2
+    outputs:
+      - mapping of {blue_object: output_color}
+    logic: |
+      Based on the specific shape pattern of the 'closest_orange_object' in each pair, determine the output color using a predefined mapping:
+      - Orange shape [[7], [7, 7]] -> Green (3)
+      - Orange shape [[7, 7], [7]] -> Magenta (6)
+      - Orange shape [[7, 7], [0, 7]] -> Yellow (4)
+      - Orange shape [[7, 7], [7, 0]] -> Azure (8)
+      (Note: Shapes are defined relative to their top-left bounding box corner)
+  - step: 4
+    action: generate_output_grid
+    inputs:
+      - input grid dimensions
+      - mapping from step 3
+      - list of blue objects (coordinates)
+    outputs:
+      - output grid
+    logic: |
+      Create an output grid of the same dimensions as the input, initialized with white (0).
+      For each blue object, fill its corresponding pixel coordinates in the output grid with the determined 'output_color'.

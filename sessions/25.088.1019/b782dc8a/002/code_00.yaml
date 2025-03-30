@@ -1,0 +1,51 @@
+task_description: Fill specific background areas adjacent to a main structure with a checkerboard pattern, starting from existing 'seed' pixels of the pattern colors.
+
+definitions:
+  - object: grid
+    description: A 2D array of pixels with colors 0-9.
+  - object: structure
+    description: The dominant object(s) in the grid, identified by the most frequent non-background color (Azure/8 in examples).
+  - object: background
+    description: Pixels with the background color (White/0).
+  - object: pattern_colors
+    description: Two specific colors that form a checkerboard pattern. Determined by the non-structure, non-background colors present in the input. Either Blue(1)/Yellow(4) or Red(2)/Green(3).
+  - object: seed_pixels
+    description: Pixels in the input grid that already have one of the pattern_colors. These act as starting points for the fill.
+  - object: target_pixels
+    description: Background (White/0) pixels that need to be filled.
+  - property: adjacency
+    description: Pixels are adjacent if they share a side or a corner (8-connectivity).
+  - property: coordinate_parity
+    description: The sum of the row (r) and column (c) index, specifically whether it's even or odd ((r+c) % 2).
+  - property: pattern_type
+    description: Determines which color corresponds to even or odd parity.
+      - Type 1: Blue(1) for even, Yellow(4) for odd.
+      - Type 2: Red(2) for even, Green(3) for odd.
+
+actions:
+  - action: identify_structure_color
+    description: Find the most frequent color in the input grid, excluding the background color (White/0).
+  - action: identify_pattern_colors_and_seeds
+    description: Find all non-background, non-structure colors in the input grid. These define the pattern colors and their initial locations (seed_pixels). Determine the pattern_type (1/4 or 2/3) based on which colors are present.
+  - action: perform_flood_fill
+    description: Starting from the seed_pixels, iteratively fill adjacent background (White/0) pixels that are *also* adjacent to the structure_color.
+    - input: seed_pixels, structure_color, background_color, pattern_type, input_grid
+    - process:
+        - Initialize a queue or set with the coordinates of all seed_pixels.
+        - Initialize a set to keep track of visited/processed background coordinates to avoid infinite loops. Add seed coordinates to visited.
+        - Create a copy of the input grid to modify.
+        - While the queue/set of pixels to process is not empty:
+            - Get a coordinate (r, c) from the queue/set.
+            - Examine its 8 neighbors (nr, nc).
+            - For each neighbor (nr, nc):
+                - Check if it's within grid bounds.
+                - Check if it's a background pixel (color 0) in the original input grid.
+                - Check if it has NOT been visited/processed yet.
+                - Check if it is adjacent (8-connectivity) to the structure_color in the original input grid.
+                - If all conditions are met:
+                    - Calculate parity = (nr + nc) % 2.
+                    - Determine the fill_color based on parity and pattern_type.
+                    - Update the copied grid at (nr, nc) with the fill_color.
+                    - Add (nr, nc) to the queue/set to process its neighbors later.
+                    - Mark (nr, nc) as visited/processed.
+    - output: The modified grid with the filled pattern.

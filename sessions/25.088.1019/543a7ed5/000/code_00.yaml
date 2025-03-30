@@ -1,0 +1,52 @@
+elements:
+  - element: background
+    color: azure (8)
+    notes: Remains unchanged in the output unless modified by border or fill rules.
+  - element: object
+    color: magenta (6)
+    notes: These are shapes, typically hollow frames (squares, rectangles, C-shape). They are preserved in the output.
+  - element: border
+    color: green (3)
+    notes: Appears in the output. Forms a 1-pixel thick border (including diagonals) around the magenta objects, replacing the original azure background pixels at those locations.
+  - element: fill
+    color: yellow (4) or green (3)
+    notes: Appears in the output. Fills the regions of azure background pixels that were enclosed by the magenta objects in the input. The fill color depends on the size of the enclosed azure region.
+
+relationships:
+  - type: adjacency
+    from: azure pixel (8)
+    to: magenta pixel (6)
+    relation: Orthogonal or diagonal adjacency. Azure pixels adjacent to magenta pixels become the green (3) border in the output.
+  - type: enclosure
+    by: magenta pixels (6)
+    on: azure pixels (8)
+    relation: Azure pixels form connected regions that cannot reach the grid border by moving only through azure pixels, due to being surrounded by magenta pixels. These enclosed regions are filled.
+  - type: fill_rule
+    based_on: enclosed azure region size
+    relation: If the enclosed azure region has dimensions 2x2, it is filled with green (3). Otherwise, it is filled with yellow (4).
+
+transformation:
+  - step: 1
+    action: Identify_and_Preserve
+    target: magenta (6) pixels
+    result: Magenta pixels remain in the same position in the output.
+  - step: 2
+    action: Create_Border
+    source: azure (8) pixels adjacent (orthogonally or diagonally) to magenta (6) pixels
+    target_color: green (3)
+    result: Replace these adjacent azure pixels with green pixels in the output.
+  - step: 3
+    action: Identify_Enclosed_Regions
+    source: azure (8) pixels
+    condition: Cannot reach the grid border via a path of only azure pixels, blocked by magenta (6) pixels.
+    result: Identify connected components of enclosed azure pixels.
+  - step: 4
+    action: Determine_Fill_Color
+    based_on: Each enclosed azure region from Step 3
+    condition: Check if the bounding box dimensions of the azure region are exactly 2x2.
+    result: Assign fill color green (3) if 2x2, otherwise yellow (4).
+  - step: 5
+    action: Apply_Fill
+    target: Enclosed azure regions from Step 3
+    color: Determined by Step 4
+    result: Replace the azure pixels within each enclosed region with their assigned fill color (green or yellow) in the output. Overwrites any green border pixels from Step 2 that fall within the enclosed region. (Revisiting: Does fill overwrite border? Looking at T2 BL, the interior 2x2 is green, and the border around it is green. The pixels are distinct. The interior pixels were *not* adjacent to magenta, so they weren't part of the initial green border calculation. The fill happens *within* the original azure space.) Let's refine Step 5: Replace the *original azure pixels* within the enclosed region with the fill color.

@@ -1,0 +1,55 @@
+task_description: Identify enclosed regions formed by blue shapes and color the interior green and the exterior border red.
+
+elements:
+  - element: grid
+    description: A 2D array of pixels representing colors 0-9.
+  - element: pixel
+    properties:
+      - color: integer 0-9 (white, blue, red, green are relevant)
+      - location: (row, column) coordinates
+
+objects:
+  - object: blue_shape
+    description: A contiguous region of blue (1) pixels.
+    properties:
+      - connectivity: 8-way adjacency
+      - topology: Can be enclosing (forms a loop) or open.
+  - object: white_region
+    description: A contiguous region of white (0) pixels.
+    properties:
+      - connectivity: 8-way adjacency
+      - relationship: Can be inside a blue_shape, outside a blue_shape, or unbounded (background).
+
+actions:
+  - action: identify_enclosed_regions
+    input: input grid
+    output: set of white_regions that are fully surrounded by blue_shape pixels (and possibly grid boundaries) and do not reach the grid boundary via other white pixels.
+    criteria: A flood fill starting within the white_region does not reach the grid boundary.
+  - action: color_interior
+    input: enclosed white_region
+    output: change color of all pixels in the region to green (3).
+  - action: identify_exterior_border
+    input: blue_shape forming an enclosure
+    output: set of white (0) pixels in the original grid adjacent (8-way) to the blue_shape pixels, excluding pixels inside the enclosure.
+  - action: color_exterior_border
+    input: exterior_border pixel set
+    output: change color of all pixels in the set to red (2).
+
+relationships:
+  - relationship: adjacency
+    between: [pixel, pixel]
+    type: 8-way connectivity (includes diagonals)
+  - relationship: enclosure
+    between: [blue_shape, white_region]
+    description: The blue_shape completely surrounds the white_region.
+  - relationship: boundary
+    between: [blue_shape, white_region]
+    description: Pixels of the blue_shape are adjacent to pixels of the white_region.
+
+transformation_rule:
+  - step: Find all connected components of white (0) pixels.
+  - step: For each white component, check if it is bounded (a flood fill starting within it does not reach the grid edge).
+  - step: If a white component is bounded, identify it as an 'interior' region and the adjacent blue (1) pixels as its 'border'.
+  - step: Color all pixels in the 'interior' region green (3).
+  - step: Find all white (0) pixels adjacent to the 'border' blue pixels, excluding those already colored green. Color these 'exterior border' pixels red (2).
+  - step: All other pixels retain their original color from the input grid.

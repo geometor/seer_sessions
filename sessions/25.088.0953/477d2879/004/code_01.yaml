@@ -1,0 +1,41 @@
+task_description: Fill the entire grid by expanding colors from multiple 'seed' pixels based on proximity. This resembles a Voronoi diagram using Manhattan distance, with a specific tie-breaking rule favoring lower color indices.
+grid_properties:
+  - type: input_grid
+    description: A 2D grid containing pixels with color values 0-9.
+    pixel_roles:
+      - color_0: Background (white), treated as empty space.
+      - color_1: Empty space (blue), treated identically to color 0 during expansion.
+      - color_2_to_9: Seed pixels, sources of color expansion.
+  - type: output_grid
+    description: A 2D grid of the same dimensions as the input, completely filled with seed colors based on the expansion rules.
+objects:
+  - type: pixel
+    properties:
+      - location: (row, column) coordinate pair.
+      - color: Integer value from 0 to 9.
+      - role: Determined by its color in the input grid (background, empty_space, or seed).
+  - type: region
+    properties:
+      - color: The color of the seed pixel that defines the region.
+      - pixels: A set of connected pixels in the output grid that are closest to a particular seed pixel (respecting the tie-breaking rule).
+rules:
+  - rule: seed_identification
+    description: Any pixel in the input grid with a color value greater than 1 is a seed.
+  - rule: expansion_space
+    description: All pixels in the grid (originally color 0 or 1) are considered empty space that can be filled by the expansion process.
+  - rule: distance_metric
+    description: Proximity is determined by Manhattan distance (|row1 - row2| + |col1 - col2|).
+  - rule: closest_seed_determination
+    description: Each pixel in the output grid receives the color of the seed pixel closest to it according to the Manhattan distance.
+  - rule: tie_breaking
+    description: If a pixel is equidistant from two or more seed pixels, it receives the color of the seed with the numerically lowest color value (e.g., color 2 wins over color 8 if distances are equal).
+process:
+  - step: initialization
+    description: Create a distance grid initialized to infinity and an output color grid (e.g., initialized to -1). Identify all seed locations from the input grid. For each seed at (r, c) with color `val`, set distance[r, c] = 0, output_color[r, c] = `val`, and add (r, c) to a BFS queue.
+  - step: bfs_expansion
+    description: Execute a multi-source BFS. While the queue is not empty, dequeue a location (r, c). For each valid neighbor (nr, nc):
+      - Calculate the distance from the neighbor back to the originating seed: `new_dist = distance[r, c] + 1`.
+      - If `new_dist < distance[nr, nc]`: Update `distance[nr, nc] = new_dist`, set `output_color[nr, nc]` to `output_color[r, c]` (the color propagated from the seed), and enqueue (nr, nc).
+      - If `new_dist == distance[nr, nc]`: Check if the color being propagated (`output_color[r, c]`) is less than the color currently in `output_color[nr, nc]`. If it is, update `output_color[nr, nc]` to the new, lower color value. Do not re-enqueue based on a tie-break update.
+  - step: finalization
+    description: The process continues until the BFS queue is empty. The resulting `output_color` grid is the final output. All cells will be assigned a color originating from a seed.

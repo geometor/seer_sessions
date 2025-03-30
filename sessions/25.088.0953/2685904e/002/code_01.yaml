@@ -1,0 +1,63 @@
+grid_properties:
+  - name: height_control_row
+    description: The first row (index 0) of the input grid.
+    properties: Contains azure (8) and white (0) pixels.
+    role: Determines the height 'H' of the vertical lines to be drawn. H is the count of azure pixels in this row.
+  - name: anchor_row
+    description: The first row found (scanning top-to-bottom) that consists entirely of gray (5) pixels.
+    properties: Index denoted as 'R_anchor'. All pixels are gray.
+    role: Acts as a vertical reference point for drawing. Lines end just above this row.
+  - name: source_row
+    description: The last row found (scanning bottom-to-top) that contains at least one non-white (0) pixel.
+    properties: Index denoted as 'R_source'. Contains various non-white pixels that are candidates for drawing.
+    role: Provides the colors and column positions for potential drawing operations, and serves as the basis for the color filtering rule.
+  - name: drawing_area
+    description: The area of the grid above the anchor_row.
+    properties: Initially mostly white (0), except for the height_control_row. Modified in the output.
+    role: Location where vertical lines are drawn.
+
+objects:
+  - name: vertical_line
+    description: A column segment of a single color.
+    properties:
+      - color: Determined by a pixel in the source_row.
+      - column_index: Same as the column index of the determining pixel in the source_row.
+      - height: Equal to 'H' (derived from height_control_row).
+      - vertical_position: Extends upwards from row R_anchor - 1 for H rows (inclusive range: [R_anchor - H, R_anchor - 1]).
+
+actions:
+  - name: identify_parameters
+    description: Extract control values from the input grid.
+    steps:
+      - Count azure (8) pixels in height_control_row to get height 'H'.
+      - Find the row index 'R_anchor' of the anchor_row.
+      - Find the row index 'R_source' of the source_row.
+  - name: calculate_frequencies
+    description: Determine how many times each non-white color appears in the source_row.
+    inputs: source_row (at R_source)
+    outputs: A map of {color: frequency}.
+  - name: filter_colors
+    description: Select which colors from the source_row will trigger drawing.
+    inputs:
+      - Color frequencies from calculate_frequencies.
+      - Height 'H'.
+    outputs: A set of 'selected_colors'.
+    rule: A color 'C' is selected if its frequency in the source_row equals 'H'.
+  - name: draw_lines
+    description: Modify the output grid by drawing vertical lines based on filtered colors.
+    inputs:
+      - Input grid (as basis for output).
+      - R_anchor, R_source, H.
+      - selected_colors.
+    process:
+      - Iterate through each column 'c' from 0 to width-1.
+      - Get the color 'C' at input_grid[R_source, c].
+      - If 'C' is in selected_colors:
+        - For each row 'r' from R_anchor - H to R_anchor - 1 (inclusive):
+          - Set output_grid[r, c] = C.
+      - Otherwise, the output grid retains the input grid's values in that column's drawing area.
+
+output_generation:
+  - Create a copy of the input grid.
+  - Perform the 'draw_lines' action on the copy.
+  - Return the modified grid.

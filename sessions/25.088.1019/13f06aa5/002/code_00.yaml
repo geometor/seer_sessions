@@ -1,0 +1,56 @@
+task_description: Identify sparse 'special' pixels against a background, modify grid boundaries based on these pixels, and add connecting lines of pixels.
+
+definitions:
+  - background_color: The color that appears most frequently in the input grid.
+  - non_background_pixel: Any pixel whose color is not the background color.
+  - special_pixel: A non_background_pixel belonging to a color that has the minimum frequency among all non_background_pixel colors. If multiple pixels of a special color exist, the one with the minimum row index, then minimum column index, is chosen as the representative special pixel for that color.
+  - boundary: The top row (T), bottom row (B), left column (L), or right column (R) of the grid.
+  - distance_to_boundary: The number of steps from a special pixel's location (r, c) to a specific boundary (e.g., distance to T is r, distance to B is height-1-r, etc.).
+  - furthest_boundary: The boundary with the maximum distance from a special pixel. Tiebreak: T > B > L > R.
+  - closest_boundary: The boundary with the minimum distance from a special pixel. Tiebreak: T > B > L > R.
+  - internal_pixels: Pixels added along the row or column connecting a special pixel to a target boundary, placed every two steps starting from the position adjacent to the special pixel.
+
+transformation_rules:
+  - identify: Determine the background color and locate the representative special pixel(s).
+  - classification: Branch based on the number of unique special pixel colors found (typically 1 or 2).
+
+case_1_special_pixel:
+  - pixel: P, color: C
+  - identify: Find the furthest boundary (FB) from P.
+  - action_boundary: Modify the entire FB line with color C.
+  - action_internal: Add internal pixels of color C every two steps from P towards FB.
+
+case_2_special_pixels:
+  - pixels: P1 (C1), P2 (C2)
+  - properties:
+      - Calculate distances for P1 (D1) and P2 (D2).
+      - Find furthest boundaries (FB1, FB2) and max distances (MaxD1, MaxD2).
+      - Find closest boundaries (CB1, CB2).
+  - subcase_MaxD1_greater_MaxD2:
+      - primary: P1 (color C1)
+      - secondary: P2 (color C2)
+      - action_primary_boundary: Modify FB1 with C1.
+      - action_primary_internal: Add internal pixels of C1 every two steps from P1 towards FB1.
+      - action_secondary_boundary: Modify CB2 with C2.
+      - action_secondary_internal: Add internal pixels of C2 every two steps from P2 towards CB2. # Correction Added
+  - subcase_MaxD2_greater_MaxD1:
+      - primary: P2 (color C2)
+      - secondary: P1 (color C1)
+      - action_primary_boundary: Modify FB2 with C2.
+      - action_primary_internal: Add internal pixels of C2 every two steps from P2 towards FB2.
+      - action_secondary_boundary: Modify CB1 with C1.
+      - action_secondary_internal: Add internal pixels of C1 every two steps from P1 towards CB1. # Correction Added
+  - subcase_MaxD1_equals_MaxD2:
+      - secondary1: P1 (color C1)
+      - secondary2: P2 (color C2)
+      - action_secondary1_boundary: Modify CB1 with C1.
+      - action_secondary1_internal: Add internal pixels of C1 every two steps from P1 towards CB1. # Correction Added
+      - action_secondary2_boundary: Modify CB2 with C2.
+      - action_secondary2_internal: Add internal pixels of C2 every two steps from P2 towards CB2. # Correction Added
+  - intersection_handling:
+      - condition: If the modified boundaries include one horizontal (T or B) and one vertical (L or R).
+      - action: Set the pixel at the intersection of these two boundaries to White (0).
+
+notes:
+  - Assumes there will be at most two unique special pixel colors to consider based on examples. If more exist, only the first two (sorted by color index) are used.
+  - Internal pixels are added starting 2 steps away from the special pixel, not including the special pixel itself or the boundary pixel.

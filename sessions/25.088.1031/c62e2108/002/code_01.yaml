@@ -1,0 +1,66 @@
+task_description: Tile patterns across the grid based on instructions provided by aligned blue markers.
+
+grid_properties:
+  - size: Variable (1x1 to 30x30).
+  - background_color: white (0).
+
+objects:
+  - type: pattern
+    description: A contiguous block of pixels of the same color, excluding white (0) and blue (1). This is the shape to be tiled.
+    properties:
+      - color: Any from 2-9.
+      - pixels: Coordinates of the constituent pixels.
+      - bounding_box: The smallest rectangle enclosing the pattern (r_min, c_min, r_max, c_max).
+      - height: Number of rows spanned by the bounding box.
+      - width: Number of columns spanned by the bounding box.
+  - type: marker
+    description: A specific blue shape indicating a tiling operation for an associated pattern.
+    properties:
+      - color: blue (1).
+      - shape: Either a 1x4 horizontal line or a 4x1 vertical line.
+      - size: Exactly 4 pixels.
+      - orientation: 'horizontal' or 'vertical'.
+      - bounding_box: The marker's bounding box.
+      - alignment_span: For horizontal markers, the column range (min_col, max_col). For vertical markers, the row range (min_row, max_row).
+      - position_value: For horizontal markers, the row index. For vertical markers, the column index.
+
+state_changes:
+  - Initial state: Input grid containing patterns and markers.
+  - Intermediate state: Output grid initialized as a copy of input, markers removed (pixels changed to white). Pattern tiles extracted from this state.
+  - Final state: Output grid after tiling operations are completed.
+
+actions:
+  - name: identify_objects
+    input: input_grid
+    output: list_of_patterns, list_of_markers
+    description: Find all pattern and marker objects and their properties (color, pixels, bounding_box, orientation, etc.).
+  - name: associate_markers
+    input: list_of_patterns, list_of_markers
+    output: dictionary mapping each pattern to a list of associated directions ('up', 'down', 'left', 'right').
+    description: >
+      For each pattern, iterate through all markers.
+      If a horizontal marker's column span matches the pattern's bbox column span:
+        Associate 'up' if marker row < pattern min row.
+        Associate 'down' if marker row > pattern max row.
+      If a vertical marker's row span matches the pattern's bbox row span:
+        Associate 'left' if marker col < pattern min col.
+        Associate 'right' if marker col > pattern max col.
+  - name: prepare_output_grid
+    input: input_grid, list_of_markers
+    output: initial_output_grid
+    description: Copy the input grid. Set all pixels belonging to any marker to white (0).
+  - name: extract_tiles
+    input: initial_output_grid, list_of_patterns
+    output: dictionary mapping each pattern to its tile (a 2D array extracted from its bbox in initial_output_grid).
+  - name: execute_tiling
+    input: initial_output_grid, pattern_to_tile_map, pattern_to_directions_map
+    output: final_output_grid
+    description: >
+      For each pattern and its associated tile and directions:
+      For each direction ('up', 'down', 'left', 'right'):
+      Starting from the pattern's bounding box edge corresponding to the direction,
+      repeatedly copy the tile into the grid along the rows/columns defined by the pattern's bbox,
+      moving outwards towards the grid boundary. Stop when the grid boundary is reached.
+      Handle partial copies at boundaries. Overwrite existing grid content.
+
+final_output_rule: Return the grid after all tiling operations are complete.

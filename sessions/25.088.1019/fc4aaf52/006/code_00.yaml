@@ -1,0 +1,41 @@
+task_description: Copies a single object to the right, swapping its two constituent colors.
+grid_properties:
+  - dimensions: Variable (16x16 in examples)
+  - background_color: Most frequent color (azure/8 in examples). Remains unchanged.
+objects:
+  - name: primary_object
+    description: A single connected component of non-background pixels.
+    properties:
+      - composed_of_two_colors: The object always consists of pixels of exactly two distinct non-background colors.
+      - colors_observed: [white(0), gray(5)], [blue(1), red(2)]
+      - shape: Variable shape.
+      - location: Variable location.
+actions:
+  - action: identify_background
+    input: input_grid
+    output: background_color
+  - action: identify_object
+    input: input_grid, background_color
+    output: object_pixels (set of coordinates), object_colors (set of 2 colors), object_bounding_box
+  - action: create_color_swap_map
+    input: object_colors
+    output: color_map {color1: color2, color2: color1}
+  - action: initialize_output_grid
+    input: input_grid
+    output: output_grid (copy of input)
+  - action: erase_original_object
+    input: output_grid, object_pixels, background_color
+    output: modified_output_grid
+  - action: calculate_shift
+    input: object_bounding_box
+    output: horizontal_shift (rightmost column + 1 - leftmost column)
+  - action: create_transformed_copy
+    input: output_grid, object_pixels, input_grid, horizontal_shift, color_swap_map
+    output: final_output_grid
+    steps:
+      - For each (row, col) in object_pixels:
+        - Get original_color = input_grid[row, col]
+        - Get swapped_color = color_swap_map[original_color]
+        - Calculate destination coordinates: dest_row = row, dest_col = col + horizontal_shift
+        - If destination coordinates are within grid bounds:
+          - output_grid[dest_row, dest_col] = swapped_color

@@ -1,0 +1,70 @@
+task_context:
+  description: Draw a border around specific yellow structures based on internal pixels.
+  input_grid: Represents a 2D space with colored pixels (0-9).
+  output_grid: Input grid modified by adding colored borders around qualifying structures.
+
+objects:
+  - object: yellow_component
+    description: A contiguous group of yellow (4) pixels (connected via 4-way adjacency). It may not form a solid rectangle.
+    properties:
+      - color: yellow (4)
+      - coordinates: Set of (row, col) tuples for each yellow pixel in the component.
+      - bounding_box: The minimum rectangle enclosing all pixels of the yellow component (min_row, min_col, max_row, max_col).
+  - object: internal_pixel
+    description: A pixel located within the bounding box of a yellow component that is NOT yellow (4) and NOT white (0).
+    properties:
+      - color: Any color except yellow (4) or white (0).
+      - location: (row, col) coordinate within the yellow component's bounding box.
+  - object: border
+    description: A colored frame drawn around the bounding box of a qualifying yellow component.
+    properties:
+      - color: Determined by the shared color of the internal pixels of the associated yellow component.
+      - thickness: Determined by the count of internal pixels of the associated yellow component.
+      - location: The area between the original bounding box and an expanded bounding box.
+
+actions:
+  - action: identify_yellow_components
+    description: Find all distinct contiguous groups of yellow pixels in the input grid.
+    inputs: input_grid
+    outputs: List of yellow_component objects (including their coordinates and bounding_box).
+  - action: find_internal_pixels
+    description: For a given yellow component's bounding box, find all pixels within that box that are neither yellow nor white.
+    inputs: input_grid, bounding_box
+    outputs: List of internal_pixel objects (including their color and location).
+  - action: check_conditions_for_border
+    description: Determine if a yellow component qualifies for a border.
+    inputs: List of internal_pixels found for a yellow component.
+    outputs: Boolean (True if internal pixels exist AND they all share the same color).
+    conditions:
+      - Must be at least one internal_pixel.
+      - All internal_pixels must have the same color value.
+  - action: calculate_border_properties
+    description: Determine the color and thickness of the border.
+    inputs: List of internal_pixels for a qualifying yellow component.
+    outputs: border_color (the shared color), border_thickness (the count of internal pixels).
+  - action: draw_border
+    description: Modify the output grid to add the border.
+    inputs: output_grid, bounding_box, border_color, border_thickness
+    process:
+      - Calculate the expanded bounding box by extending the original bounding box outwards by 'border_thickness'.
+      - Fill pixels in the output_grid that are within the expanded bounding box but outside the original bounding box with the 'border_color'.
+  - action: preserve_yellow_component
+    description: Ensure the original yellow pixels of the component are retained in the output grid.
+    inputs: output_grid, coordinates of the yellow_component
+    process: Set the color of pixels at the yellow component's coordinates back to yellow (4). This handles cases where the border might overwrite parts of the component.
+
+workflow:
+  - Initialize output_grid as a copy of input_grid.
+  - Identify all yellow_components in the input_grid.
+  - Create a list to store components that qualify for a border and their border properties.
+  - For each yellow_component:
+    - Find its internal_pixels using its bounding_box.
+    - Check if the component qualifies for a border based on its internal_pixels.
+    - If it qualifies:
+      - Calculate the border_color and border_thickness.
+      - Store the component's bounding_box, original yellow coordinates, border_color, and border_thickness.
+  - For each qualifying component (from the stored list):
+    - draw_border onto the output_grid using its bounding_box, border_color, and border_thickness.
+  - For each qualifying component (from the stored list):
+    - preserve_yellow_component by setting its original yellow coordinates back to yellow (4) on the output_grid.
+  - Return the final output_grid.

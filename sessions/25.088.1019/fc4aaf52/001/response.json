@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom collections import Counter\n\n\"\"\"\nIdentifies a single non-background object in the input grid, determines its properties (bounding box, colors, max color). \nCalculates a horizontal shift based on the object's rightmost column and the parity of its maximum color value. \nCreates a copy of the object, changes all its pixels to the maximum color value, and places this monochrome copy \nin the calculated shifted position on the output grid, while preserving the original object in its place.\n\"\"\"\n\ndef find_background_color(grid):\n    \"\"\"Finds the most frequent color in the grid, assumed to be the background.\"\"\"\n    counts = Counter(grid.flatten())\n    # Assuming background is the most frequent color\n    background_color = counts.most_common(1)[0][0]\n    return background_color\n\ndef find_connected_object(grid, start_r, start_c, background_color, visited):\n    \"\"\"Finds all connected non-background pixels starting from (start_r, start_c) using BFS.\"\"\"\n    rows, cols = grid.shape\n    q = [(start_r, start_c)]\n    object_coords = set()\n    object_colors = set()\n\n    while q:\n        r, c = q.pop(0)\n\n        if not (0 <= r < rows and 0 <= c < cols) or (r, c) in visited or grid[r, c] == background_color:\n            continue\n\n        visited.add((r, c))\n        object_coords.add((r, c))\n        object_colors.add(grid[r, c])\n\n        # Check neighbors (4-connectivity)\n        for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n            nr, nc = r + dr, c + dc\n            if 0 <= nr < rows and 0 <= nc < cols and (nr, nc) not in visited and grid[nr, nc] != background_color:\n                 q.append((nr, nc))\n\n    return object_coords, object_colors\n\n\ndef find_the_object(grid, background_color):\n    \"\"\"Finds the single non-background object in the grid.\"\"\"\n    rows, cols = grid.shape\n    visited = set()\n    for r in range(rows):\n        for c in range(cols):\n            if grid[r, c] != background_color and (r, c) not in visited:\n                # Found the start of the object, find all connected parts\n                object_coords, object_colors = find_connected_object(grid, r, c, background_color, visited)\n                if object_coords: # Ensure an object was actually found\n                    return object_coords, object_colors\n    return None, None # Should not happen based on task description\n\n\ndef get_object_properties(object_coords, object_colors):\n    \"\"\"Calculates bounding box and finds the maximum color value.\"\"\"\n    if not object_coords:\n        return None, None, None, None, None\n\n    rows = [r for r, c in object_coords]\n    cols = [c for r, c in object_coords]\n\n    min_row, max_row = min(rows), max(rows)\n    min_col, max_col = min(cols), max(cols)\n    target_color = max(object_colors)\n\n    return min_row, max_row, min_col, max_col, target_color\n\n\ndef transform(input_grid):\n    \"\"\"\n    Applies the transformation rule: duplicate object, change color to max, shift right.\n    \"\"\"\n    # Convert input to numpy array for easier manipulation\n    grid = np.array(input_grid, dtype=int)\n    rows, cols = grid.shape\n\n    # 1. Identify the background color\n    background_color = find_background_color(grid)\n\n    # 2. Find the single connected non-background object\n    object_coords, object_colors = find_the_object(grid, background_color)\n\n    if not object_coords:\n        # If no object found (e.g., empty grid or all background), return original\n        return input_grid\n\n    # 3. Determine object properties\n    min_row, max_row, min_col, max_col, target_color = get_object_properties(object_coords, object_colors)\n\n    # 4. Calculate the translation offset and shift\n    # offset = -1 if target_color is odd else 1\n    offset = -1 if target_color % 2 != 0 else 1\n    # new_min_col = max_col + 1 + offset\n    # Note: The shift calculation places the *start* of the copy relative to the *end* of the original.\n    # The actual distance to shift each pixel is the difference between the new start and the old start.\n    new_copy_min_col = max_col + 1 + offset\n    shift = new_copy_min_col - min_col\n\n    # 5. Initialize the output grid as a copy of the input grid\n    output_grid = np.copy(grid)\n\n    # 6. Iterate through original object pixels and place the colored, shifted copy\n    for r, c in object_coords:\n        # Calculate destination coordinates for the copy\n        r_dest, c_dest = r, c + shift\n\n        # Check if the destination is within grid bounds\n        if 0 <= r_dest < rows and 0 <= c_dest < cols:\n            # Set the pixel in the output grid to the target color\n            output_grid[r_dest, c_dest] = target_color\n        # else: the copied pixel falls off the grid, do nothing\n\n    # Convert output numpy array back to list of lists\n    return output_grid.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 8095,
+    "candidates_token_count": 1329,
+    "total_token_count": 9424,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 17.237098,
+  "retries": null
+}

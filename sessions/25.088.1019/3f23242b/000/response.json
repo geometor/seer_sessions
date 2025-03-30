@@ -1,0 +1,35 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "Okay, let's break down the task.\n\n**Perception of Elements:**\n\n1.  **Input:** The input grids are relatively sparse, containing mostly background pixels (white, 0) and one or more isolated green (3) pixels.\n2.  **Output:** The output grids replace each green pixel from the input with a larger, complex structure or pattern. The background remains white except where the pattern is drawn.\n3.  **Transformation:** The core transformation seems to involve locating each green pixel and \"stamping\" a predefined pattern onto the grid, centered at the location of that green pixel.\n4.  **Pattern Details:** The pattern itself is consistent across examples. It's a 5-row high structure. Let's analyze its components relative to the original green pixel's location (r, c):\n    *   The original green pixel at (r, c) remains green.\n    *   A gray pixel (5) appears above it at (r-1, c).\n    *   A horizontal line of 5 gray pixels (5) appears two rows above, centered horizontally: (r-2, c-2) to (r-2, c+2).\n    *   Vertical segments of red pixels (2) flank the center:\n        *   Left: (r-1, c-2), (r, c-2), (r+1, c-2)\n        *   Right: (r-1, c+2), (r, c+2), (r+1, c+2)\n    *   A base row appears two rows below (r+2):\n        *   Red pixels (2) at (r+2, c-4) and (r+2, c-3).\n        *   Azure pixels (8) from (r+2, c-2) to (r+2, c+2).\n        *   Red pixels (2) at (r+2, c+3), (r+2, c+4), and (r+2, c+5).\n5.  **Multiple Instances:** When multiple green pixels are present in the input (Train 2), a copy of the pattern is stamped for each green pixel, centered on its respective location.\n6.  **Boundary Conditions:** The pattern seems to be clipped if it extends beyond the grid boundaries (as seen in Train 2, where parts of the base row are cut off at the left edge for one instance and the right edge for the other).\n7.  **Overlap:** In the provided examples, the stamped patterns do not overlap. The rule should likely handle overlap by simply overwriting pixels (the order wouldn't matter if they don't overlap, but if they could, the latest stamp might take precedence, or maybe specific colors overwrite others - though simple overlay seems most likely). Given the examples, we assume stamps overwrite the background (white) and potentially each other if they were to overlap.\n\n**YAML Facts:**\n\n"
+          },
+          {
+            "text": "```yaml\ntask_description: Replace each green pixel in the input grid with a predefined 5x10 pixel pattern, centered on the green pixel's location. Handle boundary clipping.\n\ninput_elements:\n  - element: background\n    color: white (0)\n    description: The default pixel color filling most of the grid.\n  - element: trigger_pixel\n    color: green (3)\n    description: Isolated pixels whose location determines where a pattern is placed in the output.\n    quantity: One or more per grid.\n\noutput_elements:\n  - element: background\n    color: white (0)\n    description: Persists from the input unless overwritten by the pattern.\n  - element: pattern\n    description: A fixed 5x10 structure replacing each input green pixel.\n    center_location: Aligned with the corresponding input green pixel location (r, c).\n    shape_and_color_map: # Relative coordinates (dr, dc) from center (0,0)\n      - coords: [[-2, -2], [-2, -1], [-2, 0], [-2, 1], [-2, 2]]\n        color: gray (5)\n      - coords: [[-1, -2]]\n        color: red (2)\n      - coords: [[-1, 0]]\n        color: gray (5)\n      - coords: [[-1, +2]]\n        color: red (2)\n      - coords: [[0, -2]]\n        color: red (2)\n      - coords: [[0, 0]] # Center\n        color: green (3)\n      - coords: [[0, +2]]\n        color: red (2)\n      - coords: [[+1, -2]]\n        color: red (2)\n      - coords: [[+1, +2]]\n        color: red (2)\n      - coords: [[+2, -4], [+2, -3]]\n        color: red (2)\n      - coords: [[+2, -2], [+2, -1], [+2, 0], [+2, 1], [+2, 2]]\n        color: azure (8)\n      - coords: [[+2, +3], [+2, +4], [+2, +5]]\n        color: red (2)\n\ntransformations:\n  - action: find_pixels\n    color: green (3)\n    input: input_grid\n    output: list_of_coordinates\n  - action: generate_output_grid\n    source: input_grid\n    operation: Create a copy (or start with a same-sized white grid).\n  - action: place_pattern\n    trigger: Each coordinate from list_of_coordinates\n    pattern: The predefined 5x10 pattern.\n    target: output_grid\n    placement_rule: Center the pattern's (0,0) relative coordinate at the trigger coordinate.\n    boundary_handling: Clip parts of the pattern extending beyond the grid dimensions. Pixels from the pattern overwrite existing pixels in the output grid.\n\nrelationships:\n  - type: one-to-one_mapping\n    from: each green (3) pixel in input\n    to: one instance of the pattern in output\n    details: The pattern is centered on the location of the input green pixel.\n```"
+          },
+          {
+            "text": "\n\n**Natural Language Program:**\n\n1.  Create a copy of the input grid to serve as the output grid. (Alternatively, create a new grid of the same dimensions filled with white pixels).\n2.  Identify the row and column coordinates (r, c) of every green pixel (color 3) in the input grid.\n3.  For each identified green pixel coordinate (r, c):\n    a.  Define the fixed 5x10 pattern relative to a center point (0,0). The pattern consists of specific colors (green, gray, red, azure) at relative coordinates ranging from (-2, -2) to (+2, +5) as detailed in the YAML `pattern.shape_and_color_map`.\n    b.  For each colored pixel within this relative pattern definition at relative coordinates (dr, dc) with color `C`:\n        i.  Calculate the target absolute coordinates in the output grid: `target_row = r + dr`, `target_col = c + dc`.\n        ii. Check if the `target_row` and `target_col` are within the valid bounds of the output grid (Row >= 0 and < grid_height, Col >= 0 and < grid_width).\n        iii. If the coordinates are within bounds, set the pixel at (`target_row`, `target_col`) in the output grid to color `C`, overwriting any previous value at that location.\n4.  Return the modified output grid."
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 2647,
+    "candidates_token_count": 6617,
+    "total_token_count": 9264,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 59.454135,
+  "retries": null
+}

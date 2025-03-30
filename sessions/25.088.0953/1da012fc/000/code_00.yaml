@@ -1,0 +1,60 @@
+task_description: Recolor specific objects based on colors found within a designated frame region.
+
+elements:
+  - object: grid
+    description: A 2D array of pixels representing colors (0-9).
+  - object: frame
+    description: A large, usually rectangular, monochromatic (typically gray, 5) object present in both input and output. Appears to define a reference area.
+    properties:
+      - color: Typically gray (5).
+      - shape: Rectangular.
+      - role: Container/Reference. Remains static during transformation.
+  - object: indicator_pixel
+    description: Non-background pixels located within the bounding box of the frame, but not part of the frame itself.
+    properties:
+      - location: Inside the frame's bounds.
+      - color: Various non-background, non-frame colors.
+      - role: Source colors for the transformation. Remain static.
+  - object: target_object
+    description: Monochromatic objects located outside the frame's bounding box. All target objects in a single input share the same initial color.
+    properties:
+      - location: Outside the frame's bounds.
+      - color: Uniform initial color (e.g., azure 8, blue 1). This color changes in the output.
+      - shape: Preserved during transformation.
+      - role: Objects undergoing color transformation.
+
+relationships:
+  - type: spatial
+    description: Indicator pixels are located inside the frame. Target objects are located outside the frame.
+  - type: mapping
+    description: A one-to-one mapping exists between indicator pixels and target objects based on sorted order.
+    entity_1: indicator_pixels (sorted by row, then column)
+    entity_2: target_objects (sorted by top-left pixel's row, then column)
+    rule: The color of the i-th sorted indicator pixel determines the output color of the i-th sorted target object.
+
+actions:
+  - action: identify
+    actor: system
+    target: frame, indicator_pixels, target_objects
+    description: Locate and classify the key objects in the input grid.
+  - action: sort
+    actor: system
+    target: indicator_pixels
+    by: location (row, then column)
+  - action: sort
+    actor: system
+    target: target_objects
+    by: location of top-left pixel (row, then column)
+  - action: map_colors
+    actor: system
+    source: sorted indicator_pixels
+    destination: sorted target_objects
+    description: Assign the color from each indicator pixel to the corresponding target object based on their sorted order.
+  - action: recolor
+    actor: system
+    target: target_objects
+    description: Change the color of each pixel within the target objects in the output grid according to the mapped color.
+  - action: copy
+    actor: system
+    target: frame, indicator_pixels, background
+    description: Preserve the frame, indicator pixels, and background in the output grid.

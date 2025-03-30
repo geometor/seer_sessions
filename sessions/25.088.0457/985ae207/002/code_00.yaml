@@ -1,0 +1,71 @@
+task_name: pattern_tiling_adjacent_area
+description: Fill contiguous areas adjacent to specific 3x3 patterns by tiling the pattern.
+observations:
+  - object_type: grid
+    properties:
+      - background_color: Most frequent color in the grid (typically gray/8).
+  - object_type: pattern
+    definition: A 3x3 subgrid with a uniform border color (frame_color) different from the grid's background color, and a single center color (center_color).
+    properties:
+      - frame_color: The color of the 8 border pixels.
+      - center_color: The color of the central pixel.
+      - location: Top-left coordinate (row, col) in the input grid.
+      - grid: The 3x3 numpy array representing the pattern.
+  - object_type: contiguous_area
+    definition: A region of connected pixels (4-connectivity) of the same color.
+    properties:
+      - color: The color of the pixels in the area.
+      - coordinates: A set of (row, col) tuples representing the pixels in the area.
+      - bounding_box: Min/max row and column.
+      - is_background_area: True if the area's color matches the grid's background_color.
+  - object_type: target_area
+    definition: A contiguous_area that meets specific criteria relative to a pattern.
+    criteria:
+      - Must be adjacent (8-connectivity, touching borders) to the 3x3 bounding box of a pattern.
+      - The area's color must either match the pattern's center_color OR match the grid's background_color.
+    relation_to_pattern: Each target_area is associated with exactly one adjacent pattern responsible for filling it (assuming no ambiguous adjacencies in examples).
+actions:
+  - action: find_background_color
+    inputs:
+      - input_grid
+    outputs:
+      - background_color
+  - action: find_patterns
+    inputs:
+      - input_grid
+      - background_color
+    outputs:
+      - list_of_patterns (each with grid, frame_color, center_color, location)
+    notes: Scans for 3x3 subgrids with uniform borders where frame_color != background_color.
+  - action: find_contiguous_areas
+    inputs:
+      - input_grid
+      - background_color
+    outputs:
+      - list_of_areas (each with color, coordinates, bounding_box, is_background_area)
+  - action: identify_target_areas
+    inputs:
+      - list_of_patterns
+      - list_of_areas
+      - background_color
+    outputs:
+      - mapping_pattern_to_target_areas: A structure linking each pattern to the specific area(s) it should fill.
+    process:
+      - For each pattern, check all areas for adjacency.
+      - If an area is adjacent, check if its color matches the pattern's center_color or the background_color.
+      - If criteria met, link the pattern to this target area.
+  - action: apply_tiling
+    inputs:
+      - input_grid (as template)
+      - mapping_pattern_to_target_areas
+    outputs:
+      - output_grid
+    process:
+      - Create a copy of the input grid.
+      - For each pattern and its associated target_area(s):
+        - For each target_area:
+          - Get the pattern's 3x3 grid (P).
+          - Get the target_area's coordinates (A_coords) and bounding box top-left (r_min, c_min).
+          - For each pixel (r, c) in A_coords:
+            - Calculate pattern indices: pr = (r - r_min) % 3, pc = (c - c_min) % 3.
+            - Set output_grid[r, c] = P[pr, pc].

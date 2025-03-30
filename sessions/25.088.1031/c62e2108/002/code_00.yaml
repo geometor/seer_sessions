@@ -1,0 +1,64 @@
+task_description: Tile patterns based on instructions from aligned markers.
+
+grid_properties:
+  - size: Variable height and width (up to 30x30).
+  - background_color: white (0).
+
+objects:
+  - type: pattern
+    description: Contiguous block of non-white (0), non-blue (1) pixels. Represents the content to be tiled.
+    properties:
+      - color: Any color except white (0) or blue (1).
+      - pixels: Set of coordinates forming the object.
+      - bounding_box: Minimum rectangle enclosing the pattern (r_min, c_min, r_max, c_max).
+      - height: r_max - r_min + 1
+      - width: c_max - c_min + 1
+  - type: marker
+    description: Specifies tiling direction and lanes for a pattern. Always blue (1).
+    properties:
+      - color: blue (1)
+      - shape: Exactly 1x4 (horizontal) or 4x1 (vertical). Size is 4 pixels.
+      - orientation: 'horizontal' or 'vertical'.
+      - bounding_box: Minimum rectangle enclosing the marker.
+      - alignment_axis: Columns for horizontal markers, Rows for vertical markers.
+      - position_axis: Row for horizontal markers, Column for vertical markers.
+
+actions:
+  - name: identify_patterns
+    input: input_grid
+    output: list of pattern objects (color, pixels, bounding_box)
+    description: Find all contiguous components of colors other than white(0) and blue(1). Calculate their bounding boxes.
+  - name: identify_markers
+    input: input_grid
+    output: list of marker objects (color, pixels, bounding_box, orientation)
+    description: Find all blue(1) components that are exactly 1x4 or 4x1. Determine orientation.
+  - name: associate_markers_patterns
+    input: patterns, markers
+    output: patterns with associated directions (e.g., ['up', 'left'])
+    description: >
+      For each pattern, find markers that align with its bounding box.
+      A horizontal marker aligns if its column range matches the pattern's bbox column range.
+      A vertical marker aligns if its row range matches the pattern's bbox row range.
+      The relative position (marker above/below pattern for horizontal; marker left/right of pattern for vertical) determines the direction ('up', 'down', 'left', 'right').
+  - name: initialize_output
+    input: input_grid
+    output: output_grid
+    description: Create a copy of the input grid.
+  - name: remove_markers
+    input: output_grid, markers
+    output: modified output_grid
+    description: Change the color of all marker pixels in the output grid to white (0).
+  - name: extract_tile
+    input: output_grid (after marker removal), pattern_bbox
+    output: tile (numpy array)
+    description: Extract the content within the pattern's bounding box from the modified output grid.
+  - name: perform_tiling
+    input: output_grid, pattern_bbox, tile, associated_directions
+    output: modified output_grid
+    description: >
+      For each associated direction ('up', 'down', 'left', 'right'):
+      Repeatedly copy the 'tile' into the output grid, starting from the edge of the pattern's bounding box and moving in the specified direction.
+      Tiling occurs only along the rows (for left/right) or columns (for up/down) defined by the pattern's bounding box.
+      Stop tiling at the grid boundaries. Overwrite existing pixels.
+
+final_output: The modified output_grid after all patterns have been tiled according to their associated markers.

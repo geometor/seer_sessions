@@ -1,0 +1,61 @@
+elements:
+  - object: yellow_shape
+    description: A contiguous region of yellow (4) pixels. Acts as a container.
+    properties:
+      - color: 4 (yellow)
+      - shape: Roughly rectangular in examples, but defined by connectivity.
+      - location: Defined by coordinates of its pixels.
+      - bounding_box: The minimum rectangle enclosing the object.
+    contains:
+      - object: internal_pixel
+        description: One or more pixels located within the bounding box of a yellow_shape, having a color different from yellow (4) and white (0).
+        properties:
+          - color: Varies (e.g., 1, 2, 3, 8 in examples). Defines the 'fill_color'.
+          - location: Inside the corresponding yellow_shape.
+  - object: background
+    description: Pixels not part of any yellow_shape or its associated frame in the output.
+    properties:
+      - color: 0 (white)
+
+actions:
+  - action: identify_objects
+    actor: system
+    input: input_grid
+    output: list_of_yellow_shapes
+    description: Find all connected components of yellow (4) pixels.
+  - action: determine_fill_color
+    actor: system
+    input: yellow_shape, input_grid
+    output: fill_color
+    description: Find the color of the non-yellow, non-white pixel(s) inside the yellow_shape's bounding box. Assume a single unique color exists per shape based on examples.
+  - action: calculate_bounding_box
+    actor: system
+    input: yellow_shape
+    output: bounding_box_coordinates
+  - action: calculate_expanded_box
+    actor: system
+    input: bounding_box_coordinates, grid_dimensions
+    output: expanded_box_coordinates
+    description: Increase the bounding box dimensions by 1 in each direction (top, bottom, left, right), respecting grid boundaries.
+  - action: create_frame
+    actor: system
+    input: expanded_box_coordinates, fill_color, input_grid, output_grid
+    output: modified_output_grid
+    description: Iterate through cells within the expanded_box. If a cell was white (0) in the input_grid, color it with the fill_color in the output_grid.
+
+relationships:
+  - type: containment
+    from: yellow_shape
+    to: internal_pixel
+  - type: determines
+    from: internal_pixel.color
+    to: fill_color
+  - type: surrounds
+    from: frame (created by create_frame action)
+    to: yellow_shape
+  - type: location_based
+    description: The frame is located in the area defined by the expanded_box minus the original yellow_shape area.
+
+state_change:
+  - initial: Input grid with yellow shapes containing internal pixels on a white background.
+  - final: Output grid identical to input, except for added frames around each yellow shape, colored according to their respective internal pixels.

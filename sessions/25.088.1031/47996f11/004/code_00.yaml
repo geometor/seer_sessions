@@ -1,0 +1,79 @@
+# Based on the interpretation of the provided code and timeout error.
+# Assumes the core logic is related to nearest neighbors but needs optimization.
+# Verification with all examples is pending.
+
+Objects:
+  - type: Grid
+    properties:
+      - height: Integer (1-30)
+      - width: Integer (1-30)
+      - pixels: 2D array of colors (integers 0-9)
+  - type: Pixel
+    properties:
+      - color: Integer (0-9)
+      - position: (row, column)
+      - is_magenta: Boolean (True if color == 6)
+  - type: SourcePixel
+    description: A non-magenta pixel (color != 6) acting as a source for coloring magenta pixels.
+  - type: TargetPixel
+    description: A magenta pixel (color == 6) that needs its color replaced.
+
+Relationships:
+  - type: Adjacency
+    between: [Pixel, Pixel]
+    properties:
+      - type: Cardinal (Up, Down, Left, Right)
+      - type: Diagonal
+  - type: Distance
+    between: [Pixel, Pixel]
+    properties:
+      - type: Manhattan (|r1-r2| + |c1-c2|)
+
+Actions:
+  - action: Identify
+    actor: System
+    target: Pixels
+    constraints:
+      - property: is_magenta
+        value: True
+    output: Set of TargetPixels
+  - action: Identify
+    actor: System
+    target: Pixels
+    constraints:
+      - property: is_magenta
+        value: False
+    output: Set of SourcePixels
+  - action: FindNearestSource
+    actor: System
+    target: TargetPixel
+    using:
+      - metric: Manhattan Distance
+      - sources: Set of SourcePixels
+    tie_breaking: # Based on code interpretation
+      - rule: Prefer minimum distance
+      - rule: Prefer Up direction (-1, 0) relative to TargetPixel
+      - rule: Prefer Left direction (0, -1) relative to TargetPixel
+      - rule: Prefer Down direction (+1, 0) relative to TargetPixel
+      - rule: Prefer Right direction (0, +1) relative to TargetPixel
+      - rule: Prefer minimum row index of SourcePixel
+      - rule: Prefer minimum column index of SourcePixel
+    output: The selected SourcePixel
+  - action: ReplaceColor
+    actor: System
+    target: TargetPixel
+    using:
+      - source: Output of FindNearestSource action for that TargetPixel
+    effect: Changes the TargetPixel's color to the SourcePixel's color.
+  - action: PreserveColor
+    actor: System
+    target: SourcePixel
+    effect: The pixel's color remains unchanged in the output grid.
+
+TransformationGoal:
+  - description: Create an output grid where every pixel that was magenta (6) in the input grid is replaced by the color of the nearest non-magenta pixel according to Manhattan distance, using the specified tie-breaking rules. All non-magenta pixels retain their original color.
+  - performance_constraint: Must execute within the time limit (e.g., 10 seconds).
+
+PotentialOptimization:
+  - strategy: Multi-source BFS
+    description: Initiate BFS simultaneously from all SourcePixels. Expand outwards, recording distance and source color. When expanding into an unvisited cell or a cell reached at a greater distance, update it. If reached at the same distance, apply tie-breaking rules to decide if the new source takes precedence. TargetPixels inherit the color of the source recorded for their position after the BFS completes.

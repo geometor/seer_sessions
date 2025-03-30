@@ -1,0 +1,54 @@
+task_description: Swap the colors of nested layers within each object symmetrically.
+
+definitions:
+  - name: Grid
+    type: 2D array of integers (0-9) representing colors.
+  - name: Background Color
+    value: 0 (white)
+  - name: Object
+    type: A connected component of non-background pixels (using 4-way adjacency).
+    properties:
+      - consists_of_nested_layers
+  - name: Layer
+    type: A set of connected pixels within an object, typically forming a boundary or shell.
+    properties:
+      - uniform_color: All pixels in a single layer have the same color in the input.
+      - sequential_order: Layers are ordered from outermost to innermost.
+        - Layer 1: Object pixels adjacent to the background (0).
+        - Layer k (k>1): Object pixels not in previous layers, adjacent to Layer k-1.
+      - layer_pixels: Set of (row, column) coordinates belonging to the layer.
+      - layer_color: The original color of the pixels in the layer.
+
+actions:
+  - name: Identify Objects
+    input: Input Grid
+    output: List of Objects (each represented by its set of pixel coordinates).
+  - name: Identify Layers
+    input: An Object (set of pixel coordinates), Input Grid
+    output: Ordered list of Layers [(layer1_pixels, layer1_color), (layer2_pixels, layer2_color), ...].
+    method:
+      1. Initialize remaining_object_pixels = all pixels of the object.
+      2. Initialize layers_data = [].
+      3. Find Layer 1 = {p in remaining_object_pixels | p is adjacent to background(0)}. Add (Layer 1 pixels, color) to layers_data. Update remaining_object_pixels.
+      4. For k = 2 onwards:
+         - Find Layer k = {p in remaining_object_pixels | p is adjacent to Layer k-1 pixels}.
+         - If Layer k is empty, stop.
+         - Add (Layer k pixels, color) to layers_data. Update remaining_object_pixels.
+  - name: Swap Layer Colors
+    input: Ordered list of Layers [(L1, C1), (L2, C2), ..., (Ln, Cn)], Output Grid (initially a copy of Input Grid)
+    output: Modified Output Grid.
+    method:
+      1. Create reversed_colors = [Cn, C(n-1), ..., C1].
+      2. For i from 0 to n-1:
+         - Get layer_pixels Li+1 from layers_data[i].
+         - Get new_color from reversed_colors[i].
+         - For each pixel (r, c) in layer_pixels:
+           - Set output_grid[r, c] = new_color.
+
+workflow:
+  1. Create a copy of the input grid for the output.
+  2. Identify all distinct Objects in the input grid.
+  3. For each Object:
+     a. Identify its Layers sequentially (L1, L2, ..., Ln) and their corresponding original colors (C1, C2, ..., Cn).
+     b. Perform the Swap Layer Colors action using the identified layers/colors and the output grid.
+  4. Return the final output grid.

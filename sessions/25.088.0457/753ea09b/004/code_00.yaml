@@ -1,0 +1,51 @@
+task_description: Identify three key colors based on frequency (background, barrier, fill) and perform a conditional flood fill.
+objects:
+  - name: color_pixels
+    properties:
+      - color_value (0-9)
+      - position (row, col)
+      - count (frequency within the grid)
+  - name: grid
+    properties:
+      - dimensions (height, width)
+      - distinct_colors
+      - color_counts
+key_colors:
+  - name: background_color
+    identification: Most frequent color in the input grid.
+  - name: fill_color
+    identification: Least frequent color among the two non-background colors (lower value tie-breaker). Requires at least 3 distinct colors total.
+  - name: barrier_color
+    identification: The remaining non-background color (after identifying background and fill). Requires at least 3 distinct colors total.
+actions:
+  - name: check_adjacency
+    input:
+      - grid
+      - fill_color
+      - background_color
+    output: boolean (true if any fill_color pixel is cardinally adjacent to any background_color pixel)
+    implementation_note: Current implementation iterates through all grid cells, potential bottleneck.
+  - name: flood_fill
+    condition: Requires `check_adjacency` to be true.
+    input:
+      - grid
+      - fill_color
+      - background_color
+      - barrier_color (implicit barrier)
+    process:
+      - Start BFS from all initial `fill_color` pixel locations.
+      - Expand fill into cardinally adjacent pixels if they are within bounds AND have the `background_color` in the original grid AND have not been visited.
+      - Mark newly filled pixels as visited and add them to the queue.
+    output: grid with filled areas.
+    implementation_note: BFS generally efficient, but could be slow on large fill areas; combined with adjacency check, led to timeout on train[0].
+transformation_rule:
+  - IF the grid has fewer than 3 distinct colors, return the input grid unchanged.
+  - Identify background, fill, and barrier colors based on frequency.
+  - IF the grid has exactly 3 distinct colors (after finding the max frequency background):
+    - IF the `fill_color` is cardinally adjacent to the `background_color`:
+        - Perform flood fill starting from `fill_color` pixels, converting adjacent `background_color` pixels to `fill_color`.
+        - Return the modified grid.
+    - ELSE (no adjacency):
+        - Return the input grid unchanged.
+  - ELSE (more or less than 2 non-background colors identified):
+      - Return the input grid unchanged.

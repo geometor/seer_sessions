@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom typing import List, Tuple\n\n\"\"\"\nTransforms the input grid by:\n1. Identifying the background color (from corners), frame color (adjacent to background border), and core object pixels (neither background nor frame).\n2. Extracting the 'core pattern' defined by the bounding box of the core object pixels.\n3. Constructing a 'placed pattern' by adding a border around the 'core pattern'. The border corners use the background color, and the border sides use the frame color.\n4. Creating a 15x15 output grid filled with the background color.\n5. Placing the 'constructed pattern' onto the output grid twice, at fixed top-left coordinates (2, 2) and (8, 8).\n\"\"\"\n\ndef find_bounding_box(coords: List[Tuple[int, int]]) -> Tuple[int, int, int, int]:\n    \"\"\"Finds the minimum bounding box containing all coordinates.\"\"\"\n    if not coords:\n        return 0, 0, -1, -1 # Indicate empty box if no coords\n    min_r = min(r for r, c in coords)\n    min_c = min(c for r, c in coords)\n    max_r = max(r for r, c in coords)\n    max_c = max(c for r, c in coords)\n    return min_r, min_c, max_r, max_c\n\ndef transform(input_grid: List[List[int]]) -> List[List[int]]:\n    \"\"\"\n    Applies the described transformation to the input grid.\n\n    Args:\n        input_grid: The input grid as a list of lists.\n\n    Returns:\n        The transformed 15x15 output grid as a list of lists.\n    \"\"\"\n    input_grid_np = np.array(input_grid, dtype=int)\n    h, w = input_grid_np.shape\n\n    # --- 1. Identify Input Components ---\n    \n    # Assume background color is at the corners\n    background_color = input_grid_np[0, 0]\n    \n    # Assume frame color is adjacent to the background border.\n    # Check multiple locations in case of thin inputs.\n    frame_color = -1 # Initialize with invalid color\n    candidates = [(0, 1), (1, 0), (1, 1)]\n    for r, c in candidates:\n        if 0 <= r < h and 0 <= c < w and input_grid_np[r, c] != background_color:\n            frame_color = input_grid_np[r, c]\n            break\n    # If frame color wasn't found above (e.g., 1xN grid), check further\n    if frame_color == -1:\n         if h > 1 and w > 1 and input_grid_np[h-1, w-2] != background_color:\n             frame_color = input_grid_np[h-1, w-2]\n         elif h > 1 and w > 1 and input_grid_np[h-2, w-1] != background_color:\n             frame_color = input_grid_np[h-2, w-1]\n         # Add more fallbacks if needed, though examples suggest frame is near TL corner\n\n    # Identify core object pixels (not background, not frame)\n    core_coords = []\n    for r in range(h):\n        for c in range(w):\n            if input_grid_np[r, c] != background_color and input_grid_np[r, c] != frame_color:\n                core_coords.append((r, c))\n\n    # --- 2. Extract Core Pattern ---\n    \n    if not core_coords:\n         # Handle cases with no core objects - based on examples this shouldn't happen,\n         # but safest to define behavior. Let's assume a 1x1 core of background color.\n         min_r, min_c, max_r, max_c = 0, 0, 0, 0\n         core_pattern = np.array([[background_color]], dtype=int) # Default 1x1\n    else:\n        min_r, min_c, max_r, max_c = find_bounding_box(core_coords)\n        core_pattern = input_grid_np[min_r : max_r + 1, min_c : max_c + 1]\n\n    core_h, core_w = core_pattern.shape\n\n    # --- 3. Construct Placed Pattern ---\n    \n    placed_h = core_h + 2\n    placed_w = core_w + 2\n    # Initialize with background color, makes border filling easier\n    placed_pattern = np.full((placed_h, placed_w), background_color, dtype=int)\n\n    # Place core pattern in the center\n    if core_h > 0 and core_w > 0:\n        placed_pattern[1:-1, 1:-1] = core_pattern\n\n    # Fill border sides (non-corners) with frame color\n    if placed_h > 1: # Fill top/bottom sides\n        placed_pattern[0, 1:-1] = frame_color\n        placed_pattern[placed_h - 1, 1:-1] = frame_color\n    if placed_w > 1: # Fill left/right sides\n        placed_pattern[1:-1, 0] = frame_color\n        placed_pattern[1:-1, placed_w - 1] = frame_color\n        \n    # Corners are already background_color due to initialization\n\n    # --- 4. Initialize Output Grid ---\n    \n    output_h = 15\n    output_w = 15\n    output_grid = np.full((output_h, output_w), background_color, dtype=int)\n\n    # --- 5. Place Constructed Pattern onto Output ---\n    \n    loc1_r, loc1_c = 2, 2\n    loc2_r, loc2_c = 8, 8\n\n    # Function to safely place a pattern onto a grid\n    def place_subgrid(target_grid, subgrid, r_start, c_start):\n        target_h, target_w = target_grid.shape\n        sub_h, sub_w = subgrid.shape\n        \n        r_end = min(r_start + sub_h, target_h)\n        c_end = min(c_start + sub_w, target_w)\n        \n        paste_h = r_end - r_start\n        paste_w = c_end - c_start\n        \n        if paste_h > 0 and paste_w > 0:\n            target_grid[r_start:r_end, c_start:c_end] = subgrid[:paste_h, :paste_w]\n\n    # Place the first instance\n    place_subgrid(output_grid, placed_pattern, loc1_r, loc1_c)\n\n    # Place the second instance (will overwrite if overlap occurs)\n    place_subgrid(output_grid, placed_pattern, loc2_r, loc2_c)\n\n    return output_grid.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 8106,
+    "candidates_token_count": 1662,
+    "total_token_count": 9768,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 198.572167,
+  "retries": null
+}

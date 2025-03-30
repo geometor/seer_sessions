@@ -1,0 +1,61 @@
+task_description: Propagate colors from the four sides of a 1-pixel border inwards into an enclosed area, overwriting a background color but being blocked by obstacle objects.
+grid_properties:
+  - type: input_output_pair
+  - input_grid: 2D array of integers 0-9
+  - output_grid: 2D array of integers 0-9, same dimensions as input
+objects:
+  - object: border
+    description: A 1-pixel thick frame around the grid. Corners are ignored for determining border colors.
+    properties:
+      - location: Outermost row and column (indices 0 and height-1, 0 and width-1)
+      - structure: Single pixel thickness
+      - content: Pixels along each side (excluding corners) have a specific color.
+      - top_color: Color at grid[0, 1] (if width > 1)
+      - right_color: Color at grid[1, width-1] (if height > 1)
+      - bottom_color: Color at grid[height-1, 1] (if width > 1)
+      - left_color: Color at grid[1, 0] (if height > 1)
+    actions:
+      - remains_unchanged: The border pixels in the output are identical to the input.
+  - object: inner_area
+    description: The area enclosed by the border.
+    properties:
+      - location: grid[1:height-1, 1:width-1]
+      - content: Contains background pixels and potentially obstacle pixels.
+  - object: background
+    description: The most frequent color in the initial inner_area.
+    properties:
+      - color: Determined by frequency analysis of the inner_area.
+    actions:
+      - overwritten: Background pixels are targets for color propagation from the borders. If reached by propagation, their color changes to the corresponding border color.
+      - unchanged: If shielded by obstacles or not reached by propagation, they retain their original background color.
+  - object: obstacle
+    description: Objects within the inner_area composed of colors different from the background color. Assumed to be a single color type based on examples.
+    properties:
+      - color: Any color(s) in the initial inner_area that are not the background color.
+      - shape: Can be contiguous blocks or scattered pixels.
+    actions:
+      - remains_unchanged: Obstacle pixels in the output are identical to the input.
+      - blocks_propagation: Propagation waves cannot pass through or color obstacle pixels.
+actions:
+  - action: identify_elements
+    actor: system
+    steps:
+      - Identify border colors (top, right, bottom, left).
+      - Analyze the inner area (excluding the border) to find the background color (most frequent) and the obstacle color (other color present).
+  - action: propagate_colors
+    description: Simultaneously spread border colors inwards from the four sides.
+    actor: system
+    constraints:
+      - Propagation starts from the initial background pixels immediately adjacent to the inner side of the border.
+      - Propagation proceeds orthogonally one step per iteration (like BFS).
+      - Propagation only colors pixels that were *originally* the background color.
+      - Propagation stops at obstacle pixels; obstacle pixels are *not* colored and block further spread along that path.
+      - If waves from different borders reach the same background pixel in the same step, the color is determined by the processing order (e.g., Top, then Right, then Bottom, then Left). The first wave to claim the pixel colors it.
+    output: Modifies a copy of the input grid, changing background pixels to border colors based on propagation rules.
+  - action: finalize_output
+    actor: system
+    steps:
+      - Ensure the border remains unchanged from the input.
+      - Ensure obstacle pixels remain unchanged from the input.
+      - Ensure background pixels not reached by propagation remain unchanged.
+      - Output the modified grid.

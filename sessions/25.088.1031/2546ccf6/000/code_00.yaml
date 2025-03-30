@@ -1,0 +1,48 @@
+task_context:
+  grid_properties:
+    - background_color: white (0)
+    - grid_structure: Divided into cells by horizontal and vertical lines of a single color (C_grid).
+    - C_grid_color: Varies per example (Magenta=6 in train_1, Red=2 in train_2). Preserved in output.
+  objects:
+    - type: grid_lines
+      properties:
+        - color: C_grid
+        - orientation: horizontal, vertical
+        - function: divides grid into cells
+        - persistence: unchanged from input to output
+    - type: cell
+      properties:
+        - location: defined by grid lines (e.g., Top-Left, Middle-Center, Bottom-Middle, Extra-Bottom-Right)
+        - content: can contain a pattern or be empty (white)
+    - type: pattern
+      properties:
+        - color: Various (Yellow=4, Green=3, Blue=1 observed), distinct from white and C_grid.
+        - location: resides within a specific cell
+        - structure: composed of one or more contiguous or non-contiguous pixels of the pattern color.
+        - persistence: The pattern itself (shape/pixels) is preserved, but its location may change.
+  actions:
+    - name: identify_grid_lines
+      inputs: input_grid
+      outputs: C_grid color, line coordinates
+    - name: identify_cells
+      inputs: grid_lines coordinates, grid dimensions
+      outputs: list of cell boundaries/locations
+    - name: extract_pattern
+      inputs: input_grid, cell location
+      outputs: pattern data, pattern color (or None if empty)
+    - name: apply_transformation_rule
+      inputs: pattern data, pattern color, cell location
+      outputs: target cell location(s) for the pattern in the output grid
+      rules:
+        - condition: pattern_color == Green (3)
+          action: Perform cyclic shift among specific cells (TL -> ML -> MC -> TM).
+        - condition: pattern_color == Blue (1)
+          action: Perform specific copy/move operations involving BM, BR, ExtraBM, ExtraBR cells.
+        - condition: pattern_color == other (e.g., Yellow=4) or cell is empty
+          action: Keep pattern in the same cell location (no change).
+    - name: construct_output_grid
+      inputs: input_grid (for background and grid lines), transformed pattern placements
+      outputs: final output grid
+  relationships:
+    - The transformation rule applied to a pattern depends solely on its color.
+    - The locations of cells are relative to the grid lines. Specific relative positions (TL, ML, MC, TM, BM, BR, ExtraBM, ExtraBR) are referenced by the transformation rules.

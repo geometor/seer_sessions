@@ -1,0 +1,52 @@
+task_description: Isolate a single object from the input grid based on positional uniqueness and size comparison.
+
+definitions:
+  - &object
+    name: object
+    description: A contiguous block of pixels of the same non-background (non-zero) color.
+    properties:
+      - color: The integer value (1-9) representing the object's color.
+      - pixels: A list of (row, column) coordinates belonging to the object.
+      - pixel_count: The total number of pixels in the object.
+      - bounding_box: The minimum rectangle enclosing the object [min_row, min_col, max_row, max_col].
+      - start_row: The minimum row index of any pixel in the object.
+      - end_row: The maximum row index of any pixel in the object.
+      - start_col: The minimum column index of any pixel in the object.
+
+grid_elements:
+  - background:
+      color: 0 (white)
+      role: Separates objects, fills empty space in input and output.
+  - objects:
+      type: list[*object]
+      role: Candidates for selection. Multiple distinct objects exist in the input.
+
+selection_criteria:
+  - primary: Positional uniqueness (top-most starting row, bottom-most ending row).
+  - secondary: Pixel count (size comparison when both top and bottom are unique).
+  - tie_breaker: Horizontal position (left-most starting column for top-row ties).
+
+transformation:
+  - action: Identify all distinct objects in the input grid.
+  - action: Determine properties for each object (color, pixels, pixel_count, start_row, end_row, start_col).
+  - action: Find the minimum start_row (min_start_row) among all objects.
+  - action: Find the maximum end_row (max_end_row) among all objects.
+  - action: Identify the set of objects starting at min_start_row (top_objects).
+  - action: Identify the set of objects ending at max_end_row (bottom_objects).
+  - logic: |
+      Select the target object based on these rules in order:
+      1. If exactly one object is in top_objects AND exactly one object is in bottom_objects:
+         - Compare the pixel_count of the unique top object and the unique bottom object.
+         - Select the object with the larger pixel_count.
+         - If pixel_counts are equal, select the unique top object.
+      2. Else if exactly one object is in top_objects:
+         - Select that unique top object.
+      3. Else if exactly one object is in bottom_objects:
+         - Select that unique bottom object.
+      4. Else (implies multiple objects in top_objects):
+         - From top_objects, select the one with the minimum start_col.
+  - action: Determine the bounding box of the selected target object.
+  - action: Create a new grid with the dimensions of the target object's bounding box.
+  - action: Copy the pixels of the target object into the new grid, relative to its bounding box origin, filling the rest with the background color (0).
+
+output: A grid containing only the selected object and background pixels, matching the object's bounding box dimensions.

@@ -1,0 +1,51 @@
+task_context:
+  description: "The task involves filling enclosed areas within blue frames and propagating the fill color outwards through gaps ('leaks') in these frames."
+  input_colors: [white, blue]
+  output_colors: [white, blue, azure]
+  grid_properties:
+    - static_size: True # Grid dimensions do not change
+    - static_background: True # Background white pixels generally remain white unless filled
+    - static_foreground: True # Blue frame pixels remain blue
+
+objects:
+  - type: frame
+    color: blue
+    description: "Rectangular or irregular shapes made of blue pixels, acting as containers."
+    properties:
+      - can_be_incomplete: True # Frames can have gaps (missing blue pixels)
+  - type: enclosed_area
+    color: white
+    description: "Regions of white pixels surrounded by blue frames or grid boundaries."
+  - type: fill_color
+    color: azure
+    description: "The color used to fill enclosed areas and propagate through leaks."
+  - type: leak_point
+    color: white
+    description: "A white pixel adjacent to an initially filled azure pixel, located where a blue pixel is missing in the frame."
+    properties:
+      - relative_position: Defines the direction of the leak (up, down, left, right relative to the filled area).
+
+actions:
+  - name: initial_fill
+    description: "Identify all white areas completely enclosed by blue frames or grid boundaries and fill them with azure."
+    input: white enclosed_area
+    output: azure filled_area
+    implementation: "Use flood fill starting from all border white pixels to mark reachable exterior white pixels. Any remaining un-marked white pixels are enclosed and should be filled with azure."
+  - name: leak_identification
+    description: "Identify white pixels orthogonally adjacent to the initially filled azure pixels. These are the leak points."
+    input: initial azure filled_area, adjacent white pixels
+    output: set of leak_point coordinates and their corresponding leak direction
+  - name: leak_propagation
+    description: "Fill outwards from each leak point with azure color, following direction-specific rules."
+    input: leak_point coordinates, leak direction
+    output: modified grid with azure color spread
+    rules:
+      - direction: Up
+        extent: "Fill leak point and continue filling upwards cell-by-cell until grid boundary, blue pixel, or any azure pixel is encountered."
+      - direction: Down
+        extent: "Fill leak point and the cell directly below it (total 2 cells), if they are white and within bounds."
+      - direction: Left
+        extent: "Fill leak point and continue filling leftwards cell-by-cell until grid boundary, blue pixel, or any azure pixel is encountered."
+      - direction: Right
+        extent: "Fill leak point (total 1 cell), if it is white and within bounds."
+    constraints: "Do not overwrite blue pixels. Stop propagation if a non-white pixel or boundary is hit. Handle overlaps gracefully (filling an already-azure pixel is okay)."

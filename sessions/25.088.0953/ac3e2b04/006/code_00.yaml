@@ -1,0 +1,65 @@
+task_description: Find regions of white pixels enclosed by non-white pixels and fill them, also changing adjacent boundary red pixels.
+
+definitions:
+  - &white_pixel
+    color_name: white
+    color_value: 0
+  - &red_pixel
+    color_name: red
+    color_value: 2
+  - &green_pixel
+    color_name: green
+    color_value: 3
+  - &blue_pixel
+    color_name: blue
+    color_value: 1
+  - &non_white_pixel
+    color_name: non-white
+    color_value: [1, 2, 3, 4, 5, 6, 7, 8, 9] # Any color except white
+  - &enclosing_pixel
+    color_name: enclosing
+    color_value: [2, 3] # Red or Green seem to be the enclosing colors in examples
+
+objects:
+  - object: grid
+    type: 2D array of pixels
+  - object: pixel
+    properties:
+      - color_name: string
+      - color_value: integer (0-9)
+      - location: (row, column) coordinate
+  - object: region
+    type: Contiguous area of pixels of the same color
+    properties:
+      - color: *white_pixel
+      - connectivity: 4-directional adjacency
+      - enclosed: boolean (true if cannot reach grid border via path of only white pixels)
+
+actions:
+  - action: identify_enclosed_white_regions
+    input: grid
+    output: set of coordinates of pixels belonging to enclosed white regions
+    method:
+      1. Create a boolean mask where white pixels are True (walkable) and non-white pixels are False (walls).
+      2. Perform a Breadth-First Search (BFS) starting from all *white* pixels located on the grid border (row 0, row H-1, col 0, col W-1).
+      3. The search explores only through True (white) cells using 4-directional adjacency.
+      4. Identify all white pixels in the original grid that were *not* visited by the BFS. These constitute the enclosed white regions.
+  - action: identify_adjacent_red_pixels
+    input:
+      - grid
+      - set of enclosed white pixel coordinates
+    output: set of coordinates of red pixels to change
+    method:
+      1. Iterate through all red (2) pixels in the original input grid.
+      2. For each red pixel, check its 4-directional neighbors (up, down, left, right).
+      3. If any neighbor's coordinate is present in the set of enclosed white pixel coordinates identified previously, mark the red pixel for change.
+  - action: transform_grid
+    input: grid
+    output: new_grid
+    method:
+      1. Copy the input grid to create the output grid.
+      2. Execute 'identify_enclosed_white_regions' to get `enclosed_white_coords`.
+      3. Execute 'identify_adjacent_red_pixels' using `enclosed_white_coords` to get `red_coords_to_change`.
+      4. For every coordinate in `enclosed_white_coords`, set the corresponding pixel in the output grid to blue (1).
+      5. For every coordinate in `red_coords_to_change`, set the corresponding pixel in the output grid to blue (1).
+      6. Return the modified output grid.

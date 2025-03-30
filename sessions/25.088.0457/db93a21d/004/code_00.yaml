@@ -1,0 +1,63 @@
+task_description: >
+  Color white background pixels based on their proximity (Chebyshev distance)
+  to distinct maroon rectangular objects, but only within a specific region
+  defined by the spatial arrangement of these maroon objects. Pixels outside
+  this region remain white.
+
+definitions:
+  - object: Maroon Object
+    description: A contiguous block of maroon (9) pixels connected 4-directionally. Assumed to be rectangular in the examples, but the rule might apply generally.
+    properties:
+      - color: 9 (maroon)
+      - shape: Rectangular (observed), generally connected component
+      - pixels: Set of (row, col) coordinates
+  - object: Background Pixel
+    description: A pixel with color 0 (white).
+    properties:
+      - color: 0 (white)
+  - object: Green Pixel
+    description: An output pixel resulting from a white pixel being closest to exactly one Maroon Object.
+    properties:
+      - color: 3 (green)
+  - object: Blue Pixel
+    description: An output pixel resulting from a white pixel being equidistant to two or more Maroon Objects.
+    properties:
+      - color: 1 (blue)
+  - concept: Proximity
+    description: Measured using Chebyshev distance (max(|dx|, |dy|)), equivalent to 8-directional grid steps.
+  - concept: Region of Interest (ROI)
+    description: >
+      A specific area of the grid where the coloring transformation is applied.
+      White pixels outside this region remain white. The exact definition is
+      key; it appears to enclose all maroon objects and the space between them,
+      possibly resembling their convex hull or a slightly expanded bounding box. It does NOT encompass the entire grid.
+
+actions:
+  - action: Identify Maroon Objects
+    actor: System
+    input: Input Grid
+    output: List of Maroon Objects (sets of pixel coordinates)
+  - action: Define Region of Interest (ROI)
+    actor: System
+    input: List of Maroon Objects (or all maroon pixels)
+    output: A representation of the ROI (e.g., a boolean mask, a set of coordinates)
+    hypothesis: This region might be the convex hull of all maroon pixels, or related area fill.
+  - action: Calculate Proximity and Sources
+    actor: System
+    input: Input Grid, List of Maroon Objects
+    output:
+      - distance_grid: Grid where each cell (r, c) stores the minimum Chebyshev distance to any maroon pixel.
+      - source_grid: Grid where each cell (r, c) stores the set of IDs of the Maroon Object(s) at the minimum distance.
+    method: Multi-source Breadth-First Search (BFS) starting from all maroon pixels simultaneously.
+  - action: Color Pixels
+    actor: System
+    input: Input Grid, ROI mask, distance_grid, source_grid
+    output: Output Grid
+    logic:
+      - Iterate through each pixel (r, c).
+      - If input_grid[r, c] == 9, output_grid[r, c] = 9.
+      - If input_grid[r, c] == 0 AND pixel (r, c) is within the ROI:
+        - Get the set of closest source object IDs, S = source_grid[r, c].
+        - If len(S) == 1, output_grid[r, c] = 3 (green).
+        - If len(S) > 1, output_grid[r, c] = 1 (blue).
+      - Otherwise (input was white but outside ROI, or another color), output_grid[r, c] = 0 (white). # Assuming non-maroon input pixels other than 0 don't exist or become white. Examples only show 0 and 9.

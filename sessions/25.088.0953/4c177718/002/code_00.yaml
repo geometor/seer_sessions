@@ -1,0 +1,56 @@
+task_structure:
+  input_grid:
+    height: 15
+    width: 15
+    components:
+      - type: separator
+        color: 5 (gray)
+        orientation: horizontal
+        position: fixed row 5 (0-indexed)
+      - type: object_group
+        location: above separator (rows 0-4)
+        count: 3
+        properties:
+          colors: variable (blue, red, green, yellow, magenta, orange in examples)
+          arrangement: horizontal (left, middle, right)
+      - type: object
+        location: below separator (rows 6-14)
+        count: 1
+        properties:
+          color: 1 (blue)
+          role: key
+          shape: variable (3 types observed: Hollow, Plus, Diagonal)
+          position: variable vertical start row (7, 9, 11 observed)
+  output_grid:
+    height: 9
+    width: 15 # Same as input width
+    content: two objects stacked vertically, centered horizontally
+
+transformation:
+  steps:
+    - identify: separator row (row 5)
+    - identify: 3 upper objects (sort left, middle, right by horizontal position)
+    - identify: 1 lower blue key object
+    - identify: key object's shape type (Hollow, Plus, Diagonal)
+    - identify: key object's vertical position class ('High' if min_row < 10, 'Low' otherwise)
+    - match: find upper object with the same shape as the key object (always the left blue object in examples) -> MatchedObject
+    - select_objects_for_output:
+        - MatchedObject
+        - NonMatchedObject: If MatchedObject is Left, select Right upper object. (Need rules for other match positions).
+    - determine_stacking_order:
+        - BaseOrder: Hollow->Right on top, Diagonal->Right on top, Plus->Left on top.
+        - Modification: If Key Type is Hollow AND Key Height is High, flip BaseOrder.
+        - ('Left'/'Right' refers to the original positions of the two selected objects)
+    - determine_vertical_start_row:
+        - If Key Height is High: Hollow->3, Diagonal->0, Plus->1
+        - If Key Height is Low: Hollow->2, Diagonal->?, Plus->? (Only Hollow observed for Low)
+    - generate_output:
+        - Create 9xWidth white grid.
+        - Calculate horizontal center position based on output grid width and object width.
+        - Place top object starting at determined vertical_start_row and centered horizontally.
+        - Place bottom object immediately below the top object, centered horizontally.
+
+shape_definitions:
+  Hollow: frozenset({(0, 1), (1, 2), (2, 1), (0, 0), (2, 0), (0, 2), (2, 2), (1, 0)})
+  Plus: frozenset({(0, 1), (1, 2), (2, 1), (1, 0), (1, 1)})
+  Diagonal: frozenset({(0, 2), (2, 2), (0, 0), (1, 1), (2, 0)})

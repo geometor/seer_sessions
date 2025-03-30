@@ -1,0 +1,82 @@
+task_description: Fill rectangular regions defined by colored markers, applying conditional erasure to the markers themselves.
+
+definitions:
+  - object: background_pixel
+    properties:
+      color: white (0)
+  - object: target_pixel
+    properties:
+      color: gray (5)
+  - object: marker_pixel
+    properties:
+      color: any color except white (0) or gray (5)
+      location: (row, column) coordinates
+  - object: marker_group
+    properties:
+      color: a single marker color C
+      pixels: a list of all marker_pixel locations with color C
+      bounding_box: the minimal rectangle enclosing all pixels in the group, defined by (min_row, min_col, max_row, max_col)
+
+transformation_steps:
+  - action: identify_markers
+    input: input_grid
+    output: marker_groups (one for each unique marker color)
+  - action: define_fill_region
+    input:
+      - marker_group (for color C)
+      - input_grid
+    process:
+      - Calculate the bounding_box for the marker_group.
+      - Identify all target_pixel (gray) locations within the bounding_box in the input_grid.
+    output: fill_region (a set of coordinates) for color C
+  - action: initialize_output
+    input: input_grid
+    output: output_grid (a copy of input_grid)
+  - action: apply_fill
+    input:
+      - output_grid
+      - fill_region for color C
+      - color C
+    process: Set the color of each pixel in output_grid corresponding to a coordinate in fill_region to color C.
+    loop: Repeat for each marker color C.
+  - action: apply_conditional_marker_erasure
+    input:
+      - output_grid
+      - all marker_pixel locations from input_grid
+      - the calculated fill_region for each marker color
+    process:
+      - For each marker_pixel at location (r, c) with original color C:
+        - Find the fill_region associated with color C.
+        - Check if (r, c) is present in that fill_region.
+        - If (r, c) is NOT in the fill_region, set output_grid[r, c] to white (0).
+        - If (r, c) IS in the fill_region, leave output_grid[r, c] as it is (it will be either its original marker color C from the copy, or potentially overwritten if it was gray and part of another color's fill region - though this latter case seems unlikely based on examples).
+    output: final output_grid
+
+example_observations:
+  - example: 1
+    markers: Red(2) at [(2, 8), (3, 3), (9, 2)]
+    bbox_red: (2, 2, 9, 8)
+    fill_region_red: {(r, c) | 3<=r<=9, 3<=c<=8, input[r,c]==5}
+    markers_kept: [(3, 3)] # Inside fill_region_red
+    markers_erased: [(2, 8), (9, 2)] # Outside fill_region_red
+  - example: 2
+    markers_green: [(1, 8), (2, 2), (6, 1)]
+    bbox_green: (1, 1, 6, 8)
+    fill_region_green: {(r, c) | 2<=r<=6, 2<=c<=8, input[r,c]==5}
+    markers_yellow: [(7, 13), (12, 13), (13, 8)]
+    bbox_yellow: (7, 8, 13, 13)
+    fill_region_yellow: {(r, c) | 7<=r<=12, 8<=c<=12, input[r,c]==5}
+    markers_kept: [(2, 2)] # Inside fill_region_green
+    markers_erased: [(1, 8), (6, 1), (7, 13), (12, 13), (13, 8)] # Outside respective fill regions
+  - example: 3
+    markers_blue: [(0, 6), (1, 2), (4, 1)]
+    bbox_blue: (0, 1, 4, 6)
+    fill_region_blue: {(r, c) | 1<=r<=4, 2<=c<=6, input[r,c]==5}
+    markers_yellow: [(0, 10), (1, 13), (7, 13)]
+    bbox_yellow: (0, 10, 7, 13)
+    fill_region_yellow: {(r, c) | 1<=r<=7, 10<=c<=13, input[r,c]==5}
+    markers_magenta: [(8, 1), (13, 2), (14, 5)]
+    bbox_magenta: (8, 1, 14, 5)
+    fill_region_magenta: {(r, c) | 8<=r<=13, 2<=c<=5, input[r,c]==5}
+    markers_kept: [(1, 2), (1, 13), (7, 13), (13, 2)] # Inside respective fill regions
+    markers_erased: [(0, 6), (4, 1), (0, 10), (8, 1), (14, 5)] # Outside respective fill regions
