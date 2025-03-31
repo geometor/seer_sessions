@@ -1,0 +1,61 @@
+task_description: Determine the output grid based on color frequencies in the input grid, with special rules for 4x4 inputs versus other sizes.
+
+elements:
+  - name: input_grid
+    type: 2D array of integers (colors)
+    properties:
+      - height: variable (e.g., 4, 5, 7)
+      - width: variable (e.g., 4, 5, 7)
+      - colors: contains multiple colors including white (0) and others (1-9)
+  - name: output_grid
+    type: 2D array of integers (colors)
+    properties:
+      - dimensions: 1x1 or 2x2
+      - colors: derived from input grid's non-white colors
+
+observations:
+  - background_color: White (0) appears to be ignored in frequency calculations determining the output.
+  - relevant_colors: Non-white colors present in the input grid.
+  - frequency_analysis: The counts of each non-white color are crucial.
+  - key_colors:
+      - C_min: The non-white color with the minimum frequency. (Tie-breaking: lowest color value wins).
+      - C_max: The non-white color with the maximum frequency. (Tie-breaking: lowest color value wins).
+  - conditional_logic: The transformation rule depends on the input grid's dimensions.
+
+relationships_and_actions:
+  - action: count_frequencies
+    on: non-white colors in input_grid
+    produces: frequency map, C_max, C_min
+  - condition: input_grid dimensions == 4x4
+    action: generate_output
+    using: C_min
+    output_properties: 1x1 grid containing C_min
+  - condition: input_grid dimensions != 4x4
+    action: generate_output
+    using: C_max, C_min, frequency_of_C_max
+    output_properties: 2x2 grid
+    sub_condition: frequency_of_C_max is odd
+      pattern: [[C_max, C_max], [C_min, C_max]]
+    sub_condition: frequency_of_C_max is even
+      pattern: [[C_min, C_min], [C_min, C_max]]
+
+example_specific_facts:
+  - example: train_1
+    input_dims: 4x4
+    non_white_counts: {Azure(8): 6, Magenta(6): 9}
+    C_min: Azure(8)
+    output: [[8]] (1x1 grid of C_min)
+  - example: train_2
+    input_dims: 5x5
+    non_white_counts: {Blue(1): 13, Red(2): 8}
+    C_max: Blue(1)
+    C_min: Red(2)
+    frequency_of_C_max: 13 (odd)
+    output_pattern: uses Pattern A -> [[1, 1], [2, 1]]
+  - example: train_3
+    input_dims: 7x7
+    non_white_counts: {Red(2): 24, Gray(5): 21}
+    C_max: Red(2)
+    C_min: Gray(5)
+    frequency_of_C_max: 24 (even)
+    output_pattern: uses Pattern B -> [[5, 5], [5, 2]]
