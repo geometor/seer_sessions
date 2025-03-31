@@ -24,7 +24,11 @@ def run():
 
     seer = Seer(config)
 
+<<<<<<< HEAD
     seer.run(tasks[0:50], "unsolved sorted 000:050")
+=======
+    seer.run(tasks[0:2], "unsolved")
+>>>>>>> e78cb4fbf65628c7fdad1b5b5ad0431450fd2a25
     #  seer.run(tasks)
 
 
