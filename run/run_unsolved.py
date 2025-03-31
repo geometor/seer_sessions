@@ -24,7 +24,7 @@ def run():
 
     seer = Seer(config)
 
-    seer.run(tasks[0:5], "unsolved")
+    seer.run(tasks[0:2], "unsolved")
     #  seer.run(tasks)
 
 
