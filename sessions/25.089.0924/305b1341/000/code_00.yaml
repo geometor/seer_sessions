@@ -1,0 +1,52 @@
+task_description: Transform input grids based on key pairs and pattern columns into output grids with corresponding filled checkerboard rectangles.
+
+elements:
+  - object: key_pairs
+    description: Pairs of non-white pixels located in the top-left area of the input grid.
+    properties:
+      - location: Typically rows 0-2, columns 0-1.
+      - structure: Two adjacent non-white pixels, e.g., `(C1, C2)`.
+    role: Define the color mapping for the transformation. A pair `(C1, C2)` indicates that input patterns of color `C1` should be transformed using colors `C1` and `C2`.
+
+  - object: pattern_columns
+    description: Vertical columns in the input grid containing a repeating sequence of a specific color `C` and white `0` (e.g., `C 0 C 0...`).
+    properties:
+      - structure: Alternating non-white color `C` and white `0`.
+      - separation: Pattern columns are usually separated by columns containing only white pixels.
+      - multiplicity: Multiple pattern columns with different colors can exist in one input.
+    role: Define the areas to be transformed in the output grid.
+
+  - object: output_rectangle
+    description: A rectangular area in the output grid filled with a two-color checkerboard pattern.
+    properties:
+      - fill: Two colors, determined by a key pair from the input.
+      - pattern: Checkerboard fill.
+      - location: Corresponds to the bounding box of a specific pattern color `C1` from the input's pattern columns.
+      - color_rule: Input cells with `C1` become `C1` in output; input cells with `0` become `C2` in output (where `(C1, C2)` is the key pair).
+
+actions:
+  - action: identify_key_pairs
+    description: Scan the top-left region of the input grid to find all color pairs `(C1, C2)`.
+    output: A mapping from `C1` to `C2`. (Implicitly, `C1` also maps to itself).
+
+  - action: identify_pattern_areas
+    description: For each unique pattern color `C1` found outside the key pair region:
+      - Find all columns containing `C1`.
+      - Calculate the bounding box (min_row, max_row, min_col, max_col) enclosing all `C1` pixels within these columns.
+    output: A set of bounding boxes, one for each pattern color `C1`, associated with the colors `(C1, C2)` derived from the key pairs.
+
+  - action: generate_output
+    description: Create an output grid of the same dimensions as the input, initially filled with white (`0`).
+    input: Bounding boxes and associated fill colors `(C1, C2)`.
+    process: For each bounding box associated with `(C1, C2)`:
+      - Iterate through each cell `(r, c)` within the bounding box.
+      - If the corresponding input cell `input[r][c]` was `C1`, set `output[r][c]` to `C1`.
+      - If the corresponding input cell `input[r][c]` was `0`, set `output[r][c]` to `C2`.
+
+relationships:
+  - relationship: key_pair_to_pattern
+    description: The first color `C1` of a key pair `(C1, C2)` corresponds to the color `C1` found in pattern columns.
+  - relationship: pattern_to_rectangle
+    description: The bounding box of a pattern color `C1` in the input defines the location and extent of the corresponding output rectangle.
+  - relationship: key_pair_to_fill
+    description: The key pair `(C1, C2)` determines the two colors (`C1` and `C2`) used to fill the output rectangle corresponding to pattern `C1`.

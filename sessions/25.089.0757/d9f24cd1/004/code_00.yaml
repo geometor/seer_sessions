@@ -1,0 +1,45 @@
+task_description: Fill columns in the output based on red pixels in the input, duplicating the fill to the next column if gray is also present in the source column, then overlay original gray pixels.
+
+grid_properties:
+  - dimensions: Input and output grids have the same height and width.
+  - background_color: Output grid starts white (0).
+
+objects:
+  - object: red_pixel
+    description: Pixels with value 2.
+    role: Trigger for column filling.
+  - object: gray_pixel
+    description: Pixels with value 5.
+    role: Modifier for red column filling and final overlay.
+  - object: column
+    description: A vertical slice of the grid.
+    properties:
+      - contains_red: True if any pixel in the column is red (2).
+      - contains_gray: True if any pixel in the column is gray (5).
+
+actions:
+  - action: initialize_output
+    input: input_grid dimensions
+    output: white grid of same dimensions
+  - action: identify_source_columns
+    input: input_grid
+    output: set of column indices `c` where input_grid[:, c] contains red (2).
+  - action: determine_target_columns
+    input: input_grid, source_columns
+    output: set of column indices `t` to be filled red in the output grid.
+    logic:
+      - For each source column `c`:
+        - Add `c` to the target set.
+        - If input_grid[:, c] also contains gray (5), add `c + 1` to the target set (if `c + 1` is within grid bounds).
+  - action: fill_red_columns
+    input: output_grid, target_columns
+    output: modified output_grid where all cells in target columns are set to red (2).
+  - action: overlay_gray_pixels
+    input: input_grid, output_grid (after red fill)
+    output: final output_grid
+    logic:
+      - Find all coordinates (r, c) where input_grid[r, c] is gray (5).
+      - Set output_grid[r, c] = 5 for these coordinates, overwriting any previous value.
+
+constraints:
+  - Column indices must stay within the grid width (0 <= column_index < width).

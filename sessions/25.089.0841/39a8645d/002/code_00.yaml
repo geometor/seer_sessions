@@ -1,0 +1,50 @@
+task_description: Identify and extract a specific 3x3 monochromatic subgrid from the input grid based on color value and pixel count.
+
+definitions:
+  - object: grid
+    properties:
+      - height: integer (1-30)
+      - width: integer (1-30)
+      - pixels: 2D array of colors (0-9)
+  - object: pixel
+    properties:
+      - color: integer (0-9, 0=white)
+      - location: (row, column) coordinates
+  - object: subgrid
+    properties:
+      - size: 3x3
+      - location: center (row, column) coordinates in the original grid
+      - pixels: 3x3 array of colors
+      - is_monochromatic: boolean (True if contains exactly one non-white color)
+      - primary_color: integer (the single non-white color value, if monochromatic; -1 otherwise)
+      - primary_color_count: integer (count of pixels matching primary_color, if monochromatic; 0 otherwise)
+
+selection_criteria:
+  - criterion: highest_primary_color
+    description: Find the maximum primary_color value among all monochromatic subgrids.
+    scope: all monochromatic 3x3 subgrids
+  - criterion: highest_pixel_count
+    description: Among subgrids matching the highest_primary_color, find the maximum primary_color_count.
+    scope: subgrids matching highest_primary_color
+  - criterion: position
+    description: Among subgrids matching both highest_primary_color and highest_pixel_count, select the one whose center has the minimum row index, then the minimum column index (top-left preference).
+    scope: subgrids matching highest_primary_color and highest_pixel_count
+
+actions:
+  - action: find_monochromatic_subgrids
+    inputs: input_grid
+    outputs: list of monochromatic subgrids with properties (location, primary_color, primary_color_count)
+    description: Iterate through all possible 3x3 subgrid positions, check for monochromaticity, and record valid ones with their properties.
+  - action: select_target_subgrid
+    inputs: list of monochromatic subgrids
+    outputs: the single selected 3x3 subgrid (or default white 3x3 if none found)
+    description: Apply selection_criteria sequentially (highest_primary_color, highest_pixel_count, position) to filter the list down to a single subgrid.
+  - action: handle_no_valid_subgrids
+    inputs: list of monochromatic subgrids
+    outputs: default 3x3 white grid
+    description: If the initial scan finds no monochromatic subgrids, output a 3x3 grid of white (0).
+
+output_specification:
+  - type: grid
+  - size: 3x3
+  - content: The pixels of the selected target subgrid, or all white pixels if no valid subgrid was found.

@@ -1,0 +1,84 @@
+elements:
+  - object: background
+    color: white
+    value: 0
+  - object: marker
+    color: yellow
+    value: 4
+    role: control signal
+    quantity: multiple in input, single in output
+  - object: target
+    color: [blue, azure]
+    value: [1, 8]
+    shape: 3x3 contiguous block
+    role: transformed object
+    quantity: single
+
+properties:
+  - property: location
+    applies_to: [marker, target]
+  - property: center_coords
+    applies_to: target
+    calculation: (origin_row + 1, origin_col + 1)
+  - property: distance
+    between: marker location
+    and: target center_coords
+    metric: Euclidean
+  - property: relative_direction
+    from: target center_coords
+    to: closest marker location
+    categories: [Top-Left, Top-Right, Bottom-Left, Bottom-Right]
+
+actions:
+  - action: identify
+    target: target object (blue/azure)
+    result: 3x3 grid content, origin coordinates, center coordinates
+  - action: identify
+    target: marker pixels (yellow)
+    result: list of marker coordinates
+  - action: calculate_distances
+    inputs: [target center coordinates, marker coordinates list]
+    computation: Euclidean distance for each marker
+    result: list of {'pos': (r, c), 'dist': distance}
+  - action: sort_markers
+    input: list of marker distances
+    key: distance (ascending)
+    result: sorted list of markers
+  - action: find_closest_marker
+    input: sorted list of markers
+    result: marker with minimum distance
+  - action: determine_relative_direction
+    inputs: [target center coordinates, closest marker coordinates]
+    result: direction quadrant (TL, TR, BL, BR)
+      # TL: marker_row < center_row and marker_col < center_col
+      # TR: marker_row < center_row and marker_col >= center_col
+      # BL: marker_row >= center_row and marker_col < center_col
+      # BR: marker_row >= center_row and marker_col >= center_col
+  - action: determine_rotation_k
+    input: relative direction quadrant
+    mapping: # k for numpy.rot90 (counter-clockwise)
+      TL: 1
+      TR: 1
+      BL: 0
+      BR: 2
+    result: rotation parameter k
+  - action: rotate_target
+    target: 3x3 grid of target object
+    parameter: rotation parameter k (using numpy.rot90)
+    result: rotated 3x3 grid
+  - action: find_second_closest_markers
+    input: sorted list of markers
+    logic: Find all markers whose distance is the smallest value strictly greater than the minimum distance.
+    result: list of second closest marker coordinates
+  - action: calculate_average_position
+    input: list of second closest marker coordinates
+    computation: average row, average column, round to nearest integer
+    result: single output marker coordinates (row, col)
+    edge_case: if fewer than 2 markers total, use closest marker position. if no distinct second distance, use closest marker position.
+  - action: construct_output_grid
+    inputs: [grid dimensions, rotated target grid, target origin coordinates, output marker coordinates]
+    steps:
+      - Create empty grid (all white).
+      - Place rotated target grid at target origin coordinates.
+      - Place single yellow marker at output marker coordinates.
+    result: final output grid

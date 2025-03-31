@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom scipy.ndimage import distance_transform_cdt\n\n\"\"\"\nIdentifies objects composed of nested, concentric frames against a white (0) background.\nFor each object, determines the sequence of frame colors from outermost to innermost.\nReverses this sequence of colors.\nReconstructs the object in the output grid, preserving its shape and location, but applying the reversed color sequence to the frames.\nThe outermost frame layer receives the color of the original innermost frame layer, the second outermost receives the color of the second innermost, and so on.\n\"\"\"\n\ndef transform(input_grid):\n    \"\"\"\n    Transforms the input grid by reversing the color sequence of nested frames within objects.\n\n    Args:\n        input_grid (list[list[int]]): A 2D list representing the input grid.\n\n    Returns:\n        list[list[int]]: A 2D list representing the transformed output grid.\n    \"\"\"\n    # Convert input grid to a numpy array for efficient processing\n    input_array = np.array(input_grid, dtype=int)\n    height, width = input_array.shape\n    \n    # Create an output array initialized with background color (0)\n    output_array = np.zeros_like(input_array)\n\n    # Create a boolean mask where True indicates background pixels (color 0)\n    is_background = (input_array == 0)\n\n    # Calculate the Chebyshev distance (chessboard distance) from each pixel\n    # to the nearest background pixel. For non-background pixels, this effectively\n    # gives the layer depth of the frame, starting from 1 for the outermost frame.\n    # Background pixels will have a distance of 0.\n    depth_grid = distance_transform_cdt(is_background, metric='chessboard')\n\n    # Find the maximum depth value across the entire grid. This represents\n    # the number of layers in the \"deepest\" object structure.\n    max_depth = np.max(depth_grid)\n\n    # If max_depth is 0, it means the grid is all background or empty.\n    if max_depth == 0:\n        return input_grid # Return the original grid\n\n    # Create a map to store the original color associated with each depth layer.\n    # We assume that all pixels at a given depth within a single nested structure\n    # share the same color, as per the examples.\n    depth_to_color = {}\n    for d in range(1, max_depth + 1):\n        # Find coordinates where the depth grid equals the current depth d\n        coords = np.argwhere(depth_grid == d)\n        if len(coords) > 0:\n            # Get the color from the input array at the first coordinate found for this depth\n            r, c = coords[0]\n            depth_to_color[d] = input_array[r, c]\n        # else: # Should not happen if max_depth >= 1, but handle defensively if needed\n            # Handle case where a depth layer might theoretically exist but has no pixels (unlikely with cdt)\n            # pass or assign a default/error value\n\n    # Iterate through each pixel of the grid to build the output\n    for r in range(height):\n        for c in range(width):\n            # Get the depth of the current pixel\n            current_depth = depth_grid[r, c]\n\n            # If the current pixel is part of a frame (depth > 0)\n            if current_depth > 0:\n                # Calculate the target depth for the color swap\n                # Outermost (depth 1) swaps with innermost (depth max_depth)\n                # Second outermost (depth 2) swaps with second innermost (depth max_depth - 1)\n                # etc.\n                target_depth = max_depth - current_depth + 1\n                \n                # Get the color corresponding to the target depth\n                # Handle potential missing keys defensively, though unlikely if map built correctly\n                new_color = depth_to_color.get(target_depth, 0) # Default to background if something went wrong\n                \n                # Assign the new color to the output grid\n                output_array[r, c] = new_color\n            else:\n                # If it's a background pixel, keep it as background (already initialized to 0)\n                pass # output_array[r, c] is already 0\n\n    # Convert the resulting numpy array back to a list of lists\n    output_grid = output_array.tolist()\n\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 6909,
+    "candidates_token_count": 1012,
+    "total_token_count": 7921,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 117.142146,
+  "retries": 2
+}

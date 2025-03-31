@@ -1,0 +1,55 @@
+task_description: Create a symmetric pattern by reflecting one object across the axes defined by another object.
+
+components:
+  - role: background
+    value: 0
+    color: white
+  - role: object_color
+    count: 2
+    description: Exactly two distinct non-white colors exist in the input. All pixels of a single color form one logical object for this task.
+
+relationships:
+  - type: identity
+    description: Pixels of one color ('mirror color') occupy the exact same coordinates in both the input and output grids.
+  - type: transformation
+    object_role: pattern object
+    description: The pixels of the other color ('pattern color') from the input grid are used as a template to create a 4-fold symmetric pattern in the output grid. The original pattern object pixels are removed (except as part of the new pattern).
+    reference_object: mirror object
+    symmetry_axes:
+      - type: vertical reflection
+        axis_definition: Horizontal line defined by the vertical extent of the mirror object. `reflection_row = (mirror_min_row + mirror_max_row) - original_row`.
+      - type: horizontal reflection
+        axis_definition: Vertical line defined by the horizontal extent of the mirror object. `reflection_col = (mirror_min_col + mirror_max_col) - original_col`.
+
+actions:
+  - action: identify_colors
+    inputs: input_grid
+    outputs: two distinct non-white colors (color_A, color_B)
+  - action: group_pixels_by_color
+    inputs: input_grid, color_A, color_B
+    outputs: object_A (color, coords, bounds), object_B (color, coords, bounds)
+  - action: identify_mirror_and_pattern
+    inputs: input_grid, output_grid, object_A, object_B # Uses output grid for identification logic
+    outputs: mirror_object, pattern_object
+    condition: The object whose coordinates are identical between input and output is the mirror_object. The other is the pattern_object.
+    # Note: For prediction, must *assume* this identification rule based on training.
+  - action: calculate_reflection_axes
+    inputs: mirror_object
+    outputs: axis_sum_V = mirror_min_r + mirror_max_r, axis_sum_H = mirror_min_c + mirror_max_c
+  - action: construct_output
+    inputs: grid_dimensions, mirror_object, pattern_object, axis_sum_V, axis_sum_H
+    outputs: output_grid
+    process:
+      1. Create a grid of grid_dimensions filled with background color.
+      2. Copy all pixels from mirror_object to the output grid.
+      3. For each pixel (r, c) with color P in pattern_object:
+         a. Calculate r_vr = axis_sum_V - r
+         b. Calculate c_hr = axis_sum_H - c
+         c. Draw pixel P at (r, c) if within bounds.
+         d. Draw pixel P at (r_vr, c) if within bounds.
+         e. Draw pixel P at (r, c_hr) if within bounds.
+         f. Draw pixel P at (r_vr, c_hr) if within bounds.
+
+properties:
+  - grid_size: remains constant between input and output.
+  - colors: Colors present remain the same, but the count of non-mirror pixels increases fourfold.

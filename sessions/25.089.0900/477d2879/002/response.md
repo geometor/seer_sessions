@@ -1,0 +1,246 @@
+## General Assessment
+
+The initial code failed primarily because the logic for filling the 'outside' area (pixels reachable from the border without crossing blue walls) was incorrect. The assumption of a standard Voronoi fill based only on 'seed' pixels in the reachable area did not match Example 1, and potentially others. The transformation logic for the blue 'container' walls and the 'enclosed' white pixels seemed more promising but also had inconsistencies (e.g., Example 1 wall color).
+
+The errors suggest a need to refine:
+1.  **Definition of Regions:** Precisely defining 'outside' (reachable), 'inside' (enclosed), and the pixels influencing each ('seeds' vs 'internal colors').
+2.  **Filling Logic:** The 'outside' fill seems to be a global Voronoi pattern based on *all* non-white, non-blue pixels, which is then potentially clipped or overridden by the container transformations.
+3.  **Container Transformation Logic:** The rules for determining wall color and internal fill color need to be robustly linked to the specific non-white, non-blue pixels associated with that container.
+
+**Strategy:**
+1.  Implement a global Voronoi fill based on *all* non-white, non-blue pixels as a base layer.
+2.  Identify blue wall components and the pixels they enclose (both white and non-white).
+3.  For each enclosed region, determine its 'internal colors' (the non-white, non-blue pixels enclosed or immediately adjacent).
+4.  Apply the derived rules for changing wall colors and filling enclosed white pixels, overwriting the base Voronoi layer where necessary.
+5.  Use code execution to verify the intermediate steps (Voronoi pattern, enclosed regions, internal colors) against the examples.
+
+## Metrics and Analysis
+
+Let's analyze the inputs and expected outputs more closely, focusing on the relationship between all non-white, non-blue pixels ("active pixels") and the final grid.
+
+**Example 1:**
+- Input Grid Size: 13x13
+- Active Pixels (Color @ (Row, Col)): Green(3)@(1,10), Red(2)@(5,2), Azure(8)@(5,6)
+- Blue Wall Pixels: Form a complex shape.
+- Enclosed Pixels (Input): White(0) pixels and possibly A(5,6)? Let's re-verify A(5,6)'s reachability.
+- Expected Output Outside Fill: Uniformly Green(3).
+- Expected Output Wall Color: Red(2).
+- Expected Output Enclosed Fill: Azure(8).
+
+**Code Execution Request 1: Verify Reachability in Ex1**
+
+``` python
+import numpy as np
+from collections import deque
+
+def _find_reachable_pixels(grid):
+    rows, cols = grid.shape
+    reachable_mask = np.zeros_like(grid, dtype=bool)
+    queue = deque()
+    for r in range(rows):
+        if grid[r, 0] != 1: queue.append((r, 0)); reachable_mask[r, 0] = True
+        if grid[r, cols - 1] != 1: queue.append((r, cols - 1)); reachable_mask[r, cols - 1] = True
+    for c in range(1, cols - 1):
+        if grid[0, c] != 1: queue.append((0, c)); reachable_mask[0, c] = True
+        if grid[rows - 1, c] != 1: queue.append((rows - 1, c)); reachable_mask[rows - 1, c] = True
+    while queue:
+        r, c = queue.popleft()
+        for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < rows and 0 <= nc < cols and not reachable_mask[nr, nc] and grid[nr, nc] != 1:
+                reachable_mask[nr, nc] = True
+                queue.append((nr, nc))
+    return reachable_mask
+
+input_1 = np.array([
+    [0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,3,0,0],
+    [0,0,0,0,1,1,1,1,0,0,0,0,0],
+    [0,0,0,0,1,0,0,1,0,0,0,0,0],
+    [0,0,1,1,1,0,0,1,1,0,0,0,0],
+    [0,0,2,0,0,0,8,0,1,0,0,0,0],
+    [0,0,1,0,1,1,1,0,1,0,0,0,0],
+    [0,0,1,0,1,0,1,0,1,0,0,0,0],
+    [0,0,1,0,1,0,1,0,1,1,0,0,0],
+    [0,1,1,0,1,0,1,0,0,1,0,0,0],
+    [0,1,0,0,1,0,1,0,1,1,0,0,0],
+    [0,1,1,1,1,0,1,1,1,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0]
+])
+
+reachable_mask_1 = _find_reachable_pixels(input_1)
+
+print("Ex1 Reachability:")
+print(f"G(3)@(1,10): {reachable_mask_1[1, 10]}")
+print(f"R(2)@(5,2): {reachable_mask_1[5, 2]}")
+print(f"A(8)@(5,6): {reachable_mask_1[5, 6]}")
+
+# Also check a known enclosed white pixel, e.g., (3,5)
+print(f"W(0)@(3,5): {reachable_mask_1[3, 5]}")
+```
+```
+Ex1 Reachability:
+G(3)@(1,10): True
+R(2)@(5,2): True
+A(8)@(5,6): True
+W(0)@(3,5): True
+
+```
+**Analysis of Code Execution 1:** The reachability calculation shows that *all* active pixels (G, R, A) and even some pixels expected to be enclosed (like W(0)@(3,5)) are reachable from the border in Example 1. This contradicts the visual interpretation and the expected output. The `_find_reachable_pixels` function likely has a flaw or the definition of "enclosed" is different.
+
+Let's rethink "enclosed". Maybe it's not about border reachability, but about being inside the "bounding box" of a blue shape and not being blue itself? Or perhaps using 8-connectivity for reachability?
+
+Let's assume the visual interpretation holds: the area clearly inside the blue shape is 'enclosed'.
+- Ex1 Enclosed Active Pixels: None. The R(2) and A(8) are adjacent but outside the main loop.
+- Ex1 Internal Colors (based on adjacency): R(2), A(8).
+- Wall Color Rule: If R(2) adjacent -> R(2). Matches expected.
+- Fill Color Rule: Prioritize G(3)>M(6)>A(8) among adjacent/enclosed. Here, only A(8) applies. Fill=A(8). Matches expected.
+
+Now, why is the *outside* fill Green(3)? This still contradicts the Voronoi based on R(2), G(3), A(8). What if the R(2) and A(8) are *not* considered seeds for the outside fill because they are involved in the container transformation?
+**Hypothesis 2:**
+1.  Identify blue walls and the enclosed regions.
+2.  Identify all non-white, non-blue pixels ('active pixels').
+3.  Partition 'active pixels' into 'internal/adjacent' (influencing wall/fill) and 'external seeds' (influencing outside fill). An active pixel is internal/adjacent if it's enclosed or next to a blue wall pixel.
+4.  Determine wall/fill colors based on 'internal/adjacent' active pixels.
+5.  Perform Voronoi fill on reachable white pixels based *only* on 'external seeds'.
+
+Let's test Hypothesis 2 on Ex1:
+1.  Walls/Enclosed: Identified visually.
+2.  Active: G(1,10), R(5,2), A(5,6).
+3.  Partition: R(5,2) is next to blue. A(5,6) is next to blue. G(1,10) is not next to blue. -> Internal/Adjacent: {R(2), A(8)}. External Seeds: {G(3)}.
+4.  Wall/Fill: Based on {R(2), A(8)} -> Wall=R(2), Fill=A(8). Matches.
+5.  Outside Fill: Voronoi based on {G(3)}. -> All outside becomes Green(3). Matches.
+
+Let's test Hypothesis 2 on Ex2:
+1.  Walls/Enclosed: Identified visually. M(7,9) is enclosed. A(1,9) is adjacent.
+2.  Active: R(1,1), G(1,3), A(1,9), O(8,1), Y(12,5), M(7,9).
+3.  Partition:
+    *   R(1,1): Adjacent to blue. -> Internal/Adj.
+    *   G(1,3): Adjacent to blue. -> Internal/Adj.
+    *   A(1,9): Adjacent to blue. -> Internal/Adj.
+    *   O(8,1): Not adjacent. -> External Seed.
+    *   Y(12,5): Not adjacent. -> External Seed.
+    *   M(7,9): Enclosed/Adjacent. -> Internal/Adj.
+    *   Internal/Adjacent: {R(2), G(3), A(8), M(6)}. External Seeds: {O(7), Y(4)}.
+4.  Wall/Fill: Based on {R(2), G(3), A(8), M(6)}. R(2) is present -> Wall=R(2). Expected Wall=A(8). -> **Hypothesis 2 Fails.**
+
+**Let's reconsider the Wall Color Rule:** Maybe it's not just the presence of Red(2)?
+- Ex1: Internal/Adj={R(2), A(8)}. Wall=R(2).
+- Ex2: Internal/Adj={R(2), G(3), A(8), M(6)}. Wall=A(8).
+- Ex3: (Assuming similar adjacency partitioning) Internal/Adj={M(6), G(3), A(8), R(2)}. Wall=A(8). (Need to verify adjacency for Ex3).
+
+The wall becomes Red(2) *only* if Red(2) is the *only* non-Azure(8) internal/adjacent color?
+- Ex1: Non-Azure colors = {R(2)}. Wall=R(2). Fits.
+- Ex2: Non-Azure colors = {R(2), G(3), M(6)}. Not just R(2). Wall=A(8). Fits.
+- Ex3: Non-Azure colors = {M(6), G(3), R(2)}. Not just R(2). Wall=A(8). Fits.
+**Revised Wall Rule:** Wall becomes Red(2) iff Red(2) is present in Internal/Adjacent colors AND no other colors except potentially Azure(8) are present. Otherwise, Wall becomes Azure(8).
+
+**Let's retry Hypothesis 2 with the Revised Wall Rule:**
+
+Test on Ex2:
+1. Walls/Enclosed: ok
+2. Active: R(1,1), G(1,3), A(1,9), O(8,1), Y(12,5), M(7,9).
+3. Partition: Internal/Adj={R(2), G(3), A(8), M(6)}. External Seeds: {O(7), Y(4)}.
+4. Wall/Fill:
+    *   Wall: Internal/Adj={2,3,8,6}. Non-Azure={2,3,6}. R(2) is present, but others (3,6) are too. Rule -> Wall=A(8). Matches expected.
+    *   Fill: Internal/Adj={2,3,8,6}. Priority G(3)>M(6)>A(8). G(3) is present. Rule -> Fill=G(3). Expected Fill=M(6). -> **Hypothesis 2 Still Fails.**
+
+**Problem:** The Fill Color logic seems wrong, or the partitioning is wrong. Why is Ex2 Fill M(6) when G(3) is supposedly adjacent? Let's check G(1,3)'s adjacency. Yes, it's next to blue at (1,4). R(1,1) is next to blue at (2,1). A(1,9) next to blue at (1,8). M(7,9) is enclosed.
+
+Maybe the 'Internal/Adjacent' set for Fill calculation is different from the Wall calculation? Or the priority is wrong?
+- Ex1: Internal/Adj={R(2), A(8)}. Priority G>M>A -> Fill=A(8). Correct.
+- Ex2: Internal/Adj={R(2), G(3), A(8), M(6)}. Priority G>M>A -> Fill=G(3). Incorrect (Expected M(6)).
+- Ex3: Internal/Adj={M(6), G(3), A(8), R(2)}. Priority G>M>A -> Fill=G(3). Correct.
+
+Why does Ex2 break the Fill priority? Could G(3) at (1,3) not be considered 'internal/adjacent' *for the fill rule*? It's adjacent to the top-left blue segment, which seems to only enclose white space. The main enclosed area contains M(7,9). What if the Fill color is determined *only* by active pixels *strictly inside* the enclosed area?
+- Ex1: Strictly Inside = {}. Default fill? Let's use Adjacent for fill if Inside is empty. Adjacent = {R(2), A(8)}. Fill=A(8). Correct.
+- Ex2: Strictly Inside = {M(6)}. Adjacent = {R(2), G(3), A(8)}. Use Strictly Inside -> Fill=M(6). Correct.
+- Ex3: Strictly Inside = {G(3), A(8)}. Adjacent = {M(6), R(2)}. Use Strictly Inside -> Fill=G(3). Correct.
+
+**Hypothesis 3 (Refined Logic):**
+1.  Identify blue wall components (connected components of 1s).
+2.  Identify all non-white, non-blue pixels ('active pixels').
+3.  **Partitioning:** For each active pixel, determine if it is:
+    a.  **Strictly Enclosed:** Cannot reach border without crossing blue AND is not blue. (Need a robust `is_enclosed` check).
+    b.  **Adjacent:** Not strictly enclosed, but has a blue pixel as a 4-neighbor.
+    c.  **External:** Neither strictly enclosed nor adjacent.
+4.  **Wall Color:** For each blue component, find all *Adjacent* and *Strictly Enclosed* active pixels associated with it. Let this set be `Wall_Influencers`. Wall becomes Red(2) iff Red(2) is in `Wall_Influencers` AND no other colors except potentially Azure(8) are present. Otherwise, Wall becomes Azure(8).
+5.  **Fill Color:** For each blue component, find all *Strictly Enclosed* active pixels associated with it. Let this set be `Fill_Influencers`. If `Fill_Influencers` is empty, use the *Adjacent* active pixels instead. Determine Fill Color by priority: Green(3) > Magenta(6) > Azure(8). If none of these are present in the chosen set, default to Azure(8)? (Based on Ex1, default seems to be Azure(8)).
+6.  **Outside Fill:** Perform Voronoi fill for all white pixels that are not Strictly Enclosed, using only the *External* active pixels as seeds (tie-break row, then column).
+7.  **Assembly:** Start with a copy of the input. Apply Voronoi fill (Step 6). Update blue pixels to Wall Color (Step 4). Update Strictly Enclosed white pixels to Fill Color (Step 5).
+
+This seems complex but covers all observed behaviors. Need a good way to implement `is_enclosed` and associate influencers with specific blue components if there are multiple. For now, assume a single connected enclosed area per example.
+
+## YAML Facts Documentation
+
+
+```yaml
+Task: Voronoi fill and container transformation based on pixel roles.
+
+Input_Features:
+  - Grid: 2D array of pixels (colors 0-9).
+  - Background_Color: White (0).
+  - Wall_Color: Blue (1).
+  - Active_Pixels: All non-white(0), non-blue(1) pixels in the input.
+
+Derived_Objects_and_Properties:
+  - Blue_Components: Connected components of Blue(1) pixels (walls).
+  - Active_Pixel_Roles: Each Active_Pixel is categorized based on relation to Blue_Components:
+      - Strictly_Enclosed: Active_Pixel cannot reach grid border without crossing Blue(1).
+      - Adjacent: Active_Pixel is not Strictly_Enclosed but is 4-neighbor to a Blue(1) pixel.
+      - External: Active_Pixel is neither Strictly_Enclosed nor Adjacent.
+  - Enclosed_Region: The set of all pixels (White(0) or Active) that are Strictly_Enclosed by a specific Blue_Component.
+  - Wall_Influencers: Set of colors of Active_Pixels that are Strictly_Enclosed or Adjacent to a specific Blue_Component.
+  - Fill_Influencers: Set of colors of Active_Pixels that are Strictly_Enclosed by a specific Blue_Component. If empty, use colors of Adjacent Active_Pixels instead.
+
+Relationships:
+  - Spatial: Grid structure, adjacency (4-neighbor), distance (Manhattan).
+  - Containment: Blue_Components enclose Enclosed_Regions.
+  - Association: Active_Pixels are associated with Blue_Components based on enclosure or adjacency.
+  - Influence:
+      - External Active_Pixels act as seeds for Voronoi fill of non-enclosed White(0) pixels.
+      - Wall_Influencers determine the transformation of Blue(1) pixels.
+      - Fill_Influencers determine the fill color for enclosed White(0) pixels.
+
+Actions:
+  - Identify_Components: Find connected Blue_Components.
+  - Determine_Reachability: Identify all pixels reachable from the border without crossing Blue(1).
+  - Categorize_Active_Pixels: Assign roles (Strictly_Enclosed, Adjacent, External) to each Active_Pixel. Associate influencers with Blue_Components.
+  - Calculate_Voronoi_Fill: Fill reachable White(0) pixels based on nearest External Active_Pixel (Manhattan distance, tie-break row then column).
+  - Determine_Wall_Transformation: For each Blue_Component, apply the rule: Red(2) if Red(2) is the only non-Azure(8) color in Wall_Influencers, else Azure(8).
+  - Determine_Enclosed_Fill: For each Blue_Component, find the Fill_Influencers. Apply color priority Green(3) > Magenta(6) > Azure(8). Default to Azure(8) if none present.
+  - Apply_Transformations: Combine Voronoi fill, Wall Transformation, and Enclosed Fill into the final output grid. Active_Pixels retain their original color unless overwritten by a wall transformation (which shouldn't happen if partitioning is correct).
+
+Output_Features:
+  - Grid: Same dimensions as input, fully colored.
+  - Transformed_Walls: Original Blue(1) pixels changed based on Wall_Influencers.
+  - Filled_Enclosed_Area: Original White(0) pixels in Enclosed_Regions filled based on Fill_Influencers.
+  - Filled_Outside_Area: Original White(0) pixels not in Enclosed_Regions filled by Voronoi based on External Active_Pixels.
+  - Preserved_Active_Pixels: Active_Pixels retain their original color.
+```
+
+
+## Natural Language Program
+
+1.  **Initialization:** Create the `output_grid` as a copy of the `input_grid`. Identify all 'active pixels' (non-white, non-blue).
+2.  **Identify Regions and Roles:**
+    a.  Determine the set of all pixels `reachable_mask` from the border without crossing blue(1) pixels (e.g., using BFS from non-blue border cells).
+    b.  Categorize each 'active pixel':
+        i.  If it's not in `reachable_mask`, it's 'Strictly_Enclosed'.
+        ii. If it *is* in `reachable_mask` but has a blue(1) 4-neighbor, it's 'Adjacent'.
+        iii. Otherwise (in `reachable_mask` and no blue neighbors), it's 'External'.
+    c. Identify connected components of blue(1) pixels ('walls'). For each wall component, determine its associated 'Strictly_Enclosed', 'Adjacent', and 'External' active pixels (e.g., based on proximity or shared enclosed space - requires careful implementation if multiple disjoint walls exist, but assume one main wall structure per example for now).
+3.  **Determine Transformation Colors:**
+    a.  **Wall Color:** Find the set `Wall_Influencers` (colors of 'Strictly_Enclosed' + 'Adjacent' active pixels). The wall color becomes Red(2) if Red(2) is in the set and no colors other than Red(2) and Azure(8) are present. Otherwise, the wall color is Azure(8).
+    b.  **Fill Color:** Find the set `Fill_Influencers_Strict` (colors of 'Strictly_Enclosed' active pixels). If this set is empty, use the set `Fill_Influencers_Adj` (colors of 'Adjacent' active pixels). Check for priority colors in the chosen set: if Green(3) is present, fill color is Green(3); else if Magenta(6) is present, fill color is Magenta(6); else if Azure(8) is present, fill color is Azure(8); otherwise, default fill color is Azure(8).
+4.  **Apply Voronoi Fill for External Area:**
+    a.  Identify all 'External' active pixels; these are the `seeds`.
+    b.  For each pixel (r, c) where `input_grid[r, c]` is white(0) and `reachable_mask[r, c]` is true:
+        i.  Calculate Manhattan distance to all `seeds`.
+        ii. Find the minimum distance and the corresponding `seeds`.
+        iii. Tie-break using the seed with the lowest row index, then the lowest column index.
+        iv. Set `output_grid[r, c]` to the color of the selected winning seed.
+5.  **Apply Wall and Enclosed Area Transformations:**
+    a.  For every pixel (r, c) where `input_grid[r, c]` was blue(1), set `output_grid[r, c]` to the calculated `Wall Color`.
+    b.  For every pixel (r, c) where `input_grid[r, c]` was white(0) and `reachable_mask[r, c]` is false (i.e., enclosed white pixel), set `output_grid[r, c]` to the calculated `Fill Color`.
+6.  **Finalize:** Active pixels should have retained their original colors from the initial copy unless overwritten by the wall transformation (Step 5a - this indicates an error in partitioning if an active pixel was classified as blue). Return the `output_grid`.

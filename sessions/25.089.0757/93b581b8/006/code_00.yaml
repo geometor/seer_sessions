@@ -1,0 +1,50 @@
+task_description: Copies the input grid to the output grid, then identifies a unique 2x2 block of non-white pixels in the input (source_block). It uses the colors of the pixels within this source_block to paint four 2x2 monochromatic blocks at the absolute corners of the output grid, overwriting any existing content in those corner locations.
+
+grid_properties:
+  - input_output_shape_match: true # Input and Output grids always have the same dimensions.
+  - background_color: white (0)
+
+objects:
+  - object: source_block
+    description: The single contiguous 2x2 block within the input grid where all four pixels have non-white colors.
+    properties:
+      - location: Varies per example.
+      - size: Always 2x2.
+      - pixels: Let top-left be A, top-right B, bottom-left C, bottom-right D.
+          - pixel_A_color: color of source_block[0, 0]
+          - pixel_B_color: color of source_block[0, 1]
+          - pixel_C_color: color of source_block[1, 0]
+          - pixel_D_color: color of source_block[1, 1]
+  - object: corner_blocks
+    description: Four 2x2 monochromatic blocks painted onto the output grid.
+    properties:
+      - count: 4
+      - size: Always 2x2.
+      - location: Fixed at the absolute corners of the output grid (Top-Left, Top-Right, Bottom-Left, Bottom-Right).
+      - color_source: Determined by pixels from the input source_block.
+
+actions:
+  - action: identify_source_block
+    actor: system
+    input: input_grid
+    output: location and pixel colors (A, B, C, D) of the source_block.
+    logic: Find the top-left coordinate (r, c) such that grid[r:r+2, c:c+2] contains no white pixels.
+  - action: initialize_output
+    actor: system
+    input: input_grid
+    output: output_grid
+    logic: Create a deep copy of the input_grid.
+  - action: paint_corner_blocks
+    actor: system
+    input: output_grid, source_block colors (A, B, C, D)
+    output: modified output_grid
+    logic:
+      - Paint a 2x2 block at the Top-Left corner (0, 0) of output_grid with color D.
+      - Paint a 2x2 block at the Top-Right corner (0, W-2) of output_grid with color C.
+      - Paint a 2x2 block at the Bottom-Left corner (H-2, 0) of output_grid with color B.
+      - Paint a 2x2 block at the Bottom-Right corner (H-2, W-2) of output_grid with color A.
+      - These paint actions overwrite existing pixels in the output_grid at the corner locations.
+
+consistency_notes:
+  - Examples 2 and 3 follow the described transformation perfectly.
+  - Example 1's provided expected output appears inconsistent with the pattern observed in Examples 2 and 3, specifically regarding the shape/size of the corner blocks and the preservation of input content. The color mapping (TL=D, TR=C, BL=B, BR=A) holds for the single corner pixels shown, but the block shapes vary (1x1, 1x2, 2x1, 2x2). The implementation will follow the clearer pattern from Ex 2 & 3.

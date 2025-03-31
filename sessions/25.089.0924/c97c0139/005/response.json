@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\nTransformation Rule:\n\n1. Identify all distinct connected objects composed of red pixels (color 2), considering 8-way connectivity (including diagonals).\n2. For each identified red object:\n    a. Calculate its size 'L' (number of pixels).\n    b. Determine a maximum Manhattan distance threshold 'k' using the formula: k = floor((L - 1) / 2). Store this threshold associated with the object.\n3. Create a copy of the input grid.\n4. Iterate through every pixel (r, c) in the grid.\n5. If the pixel at (r, c) in the *original* input grid is white (color 0):\n    a. Check if this pixel should be colored azure: Iterate through each red object found earlier.\n    b. For the current red object, calculate the minimum Manhattan distance ('d_min') from the white pixel (r, c) to *any* pixel within that red object.\n    c. Retrieve the threshold 'k' calculated for this specific red object.\n    d. If the condition '0 < d_min <= k' is met:\n        i. The white pixel (r, c) qualifies to be colored azure.\n        ii. Change the color of the pixel at (r, c) in the *output grid* to azure (color 8).\n        iii. Stop checking other red objects for this white pixel (r, c) and move to the next pixel in the grid.\n6. Return the modified output grid.\n\"\"\"\n\nimport numpy as np\nfrom scipy.ndimage import label\nimport math\n\ndef manhattan_distance(p1, p2):\n    \"\"\"Calculates the Manhattan distance between two points (tuples or lists).\"\"\"\n    return abs(p1[0] - p2[0]) + abs(p1[1] - p2[1])\n\ndef find_objects(grid, color):\n    \"\"\"Finds connected components of a specific color.\"\"\"\n    structure = np.array([[1, 1, 1], [1, 1, 1], [1, 1, 1]]) # 8-connectivity\n    labeled_array, num_features = label(grid == color, structure=structure)\n    objects = {}\n    if num_features > 0:\n        for i in range(1, num_features + 1):\n            pixels = list(map(tuple, np.argwhere(labeled_array == i)))\n            if pixels: # Ensure object is not empty\n                 objects[i] = pixels\n    return objects\n\n\ndef transform(input_grid: np.ndarray) -> np.ndarray:\n    \"\"\"\n    Applies the transformation rule: colors white pixels azure if they are within\n    a specific Manhattan distance 'k' (derived from the size of a red object)\n    from that red object.\n    \"\"\"\n    # Define colors\n    white_color = 0\n    red_color = 2\n    azure_color = 8\n    \n    # Initialize output_grid as a copy of the input\n    output_grid = np.copy(input_grid)\n    height, width = input_grid.shape\n\n    # --- Step 1 & 2: Find red objects and calculate their properties ---\n    red_objects_pixels = find_objects(input_grid, red_color)\n    \n    # If no red objects, return the original grid copy\n    if not red_objects_pixels:\n        return output_grid\n\n    # Store object properties (pixels and threshold k)\n    object_properties = {}\n    for obj_id, pixels in red_objects_pixels.items():\n        L = len(pixels)\n        k = math.floor((L - 1) / 2)\n        object_properties[obj_id] = {'pixels': pixels, 'k': k}\n\n    # --- Step 3-7: Iterate through grid and color qualifying white pixels ---\n    for r in range(height):\n        for c in range(width):\n            # Check if the pixel in the original input is white\n            if input_grid[r, c] == white_color:\n                current_pos = (r, c)\n                should_color_azure = False # Flag for this white pixel\n\n                # Check against each red object\n                for obj_id, properties in object_properties.items():\n                    obj_pixels = properties['pixels']\n                    obj_k = properties['k']\n\n                    # Optimization: if k < 1 for this object, it cannot color any pixels\n                    if obj_k < 1:\n                        continue\n\n                    # Calculate min distance from current_pos to this object\n                    min_dist_to_obj = float('inf')\n                    for obj_pixel_coords in obj_pixels:\n                        dist = manhattan_distance(current_pos, obj_pixel_coords)\n                        min_dist_to_obj = min(min_dist_to_obj, dist)\n                        # Small optimization: if dist becomes 1, we know it's the minimum possible > 0\n                        if min_dist_to_obj == 1: \n                           break # No need to check other pixels in this *same* object\n\n                    # Check if the distance condition is met for this object\n                    if 0 < min_dist_to_obj <= obj_k:\n                        should_color_azure = True\n                        break # Found a qualifying object, no need to check others for this white pixel\n\n                # If any object qualified this pixel, color it in the output\n                if should_color_azure:\n                    output_grid[r, c] = azure_color\n\n    # Return the modified grid\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 20193,
+    "candidates_token_count": 1263,
+    "total_token_count": 21456,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 15.453713,
+  "retries": 1
+}

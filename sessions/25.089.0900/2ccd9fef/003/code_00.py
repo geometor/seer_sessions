@@ -1,0 +1,194 @@
+import numpy as np
+from collections import Counter
+
+"""
+Transforms the input grid by first selecting a specific horizontal slice and then modifying it through horizontal color expansion.
+
+The transformation follows these steps:
+1.  **Slicing:** Assumes the input grid is composed of exactly 3 vertically stacked slices of equal height. The input grid is divided into these three slices.
+2.  **Background Identification:** Determines 'background' colors by finding the set of colors present in *all* three slices.
+3.  **Slice Selection:** Calculates the number of 'content' pixels (non-background colors) in each slice. The slice with the maximum number of content pixels is selected. Ties are broken by choosing the topmost slice (lowest index).
+4.  **Fill Color Identification:** Within the selected slice, identifies the 'fill color'. This is the background color that appears most frequently in that specific slice. If background colors are tied in frequency, the one with the lower numerical value is chosen. If no background colors are present in the selected slice (or if no background colors were identified globally), no fill color is determined.
+5.  **Horizontal Expansion:** Creates a modified version of the selected slice. For each pixel that is a 'content' color in the original selected slice, its color is expanded horizontally (left and right) into adjacent pixels, overwriting them *only if* their original color was the 'fill color'. Expansion stops at the grid boundaries or when a pixel of a different color (not the fill color) is encountered. If no fill color was determined, this step is skipped.
+6.  **Output:** The resulting modified slice is the output grid.
+"""
+
+
+def _get_unique_colors(grid_slice: np.ndarray) -> set:
+    """Helper function finds the set of unique non-zero colors in a numpy grid slice."""
+    return set(np.unique(grid_slice))
+
+def _get_fill_color(grid_slice: np.ndarray, background_colors: set) -> int | None:
+    """
+    Identifies the most frequent background color within the slice.
+
+    Args:
+        grid_slice: The numpy array representing the selected slice.
+        background_colors: A set of colors identified as background.
+
+    Returns:
+        The integer color value of the most frequent background color in the slice,
+        or None if no background colors are present in the slice.
+    """
+    if not background_colors:
+        return None # No background colors defined globally
+
+    # Flatten the slice and count all colors
+    colors, counts = np.unique(grid_slice, return_counts=True)
+    
+    # Filter counts to include only background colors present in this slice
+    bg_color_counts = {
+        color: count
+        for color, count in zip(colors, counts)
+        if color in background_colors
+    }
+
+    if not bg_color_counts:
+        return None # No background colors found in this specific slice
+
+    # Find the background color with the maximum count
+    # If counts are tied, max() on the dictionary items will prioritize the key (color value)
+    # after prioritizing the value (count). We want max count, then min color value for ties.
+    # A more explicit way:
+    max_count = -1
+    fill_color = None
+    # Sort by count desc, then color asc to handle ties consistently
+    sorted_bg_colors = sorted(bg_color_counts.items(), key=lambda item: (-item[1], item[0]))
+
+    if sorted_bg_colors:
+       fill_color = sorted_bg_colors[0][0]
+       return int(fill_color) # Ensure return type is standard int
+       
+    return None # Should not be reached if bg_color_counts was not empty
+
+def _expand_horizontally(grid_slice: np.ndarray, background_colors: set, fill_color: int | None) -> np.ndarray:
+    """
+    Performs the horizontal expansion of content colors into the fill color.
+
+    Args:
+        grid_slice: The numpy array representing the selected slice.
+        background_colors: A set of colors identified as background.
+        fill_color: The specific background color to be overwritten by expansion.
+
+    Returns:
+        A new numpy array representing the slice after horizontal expansion.
+    """
+    # If there's no fill color, no expansion can occur
+    if fill_color is None:
+        return grid_slice.copy() # Return a copy to maintain immutability of the original slice
+
+    H, W = grid_slice.shape
+    output_slice = grid_slice.copy() # Work on a copy
+
+    for r in range(H):
+        for c in range(W):
+            original_color = grid_slice[r, c]
+
+            # Check if the current pixel is a content color
+            if original_color not in background_colors:
+                content_color = original_color
+
+                # Expand Left
+                for col in range(c - 1, -2, -1): # Go from c-1 down to -1 (boundary check)
+                    if col < 0: # Hit left boundary
+                        break
+                    # Check the color in the *original* slice to decide if we can expand *into* it
+                    if grid_slice[r, col] == fill_color:
+                        # Modify the output slice
+                        output_slice[r, col] = content_color
+                    else:
+                        # Stop expanding left if we hit a non-fill color
+                        break
+
+                # Expand Right
+                for col in range(c + 1, W + 1, 1): # Go from c+1 up to W (boundary check)
+                    if col >= W: # Hit right boundary
+                        break
+                     # Check the color in the *original* slice to decide if we can expand *into* it
+                    if grid_slice[r, col] == fill_color:
+                         # Modify the output slice
+                        output_slice[r, col] = content_color
+                    else:
+                        # Stop expanding right if we hit a non-fill color
+                        break
+                        
+    return output_slice
+
+
+def transform(input_grid_list):
+    """
+    Applies the slice selection and horizontal expansion logic.
+
+    Args:
+        input_grid_list: A list of lists representing the input grid pixels.
+
+    Returns:
+        A list of lists representing the transformed output grid.
+    """
+    # Convert input list of lists to a numpy array for efficient processing
+    input_grid = np.array(input_grid_list, dtype=int)
+
+    # Handle edge case: empty input grid
+    if input_grid.size == 0:
+        return []
+
+    H_in, W_in = input_grid.shape
+
+    # --- 1. Slicing ---
+    num_slices = 3
+    if H_in == 0 or H_in % num_slices != 0:
+        # If height is 0 or not divisible by 3, the core assumption is violated.
+        # Depending on ARC rules, might return input, raise error, or return empty.
+        # Returning input unchanged seems safest if the pattern doesn't match.
+        # However, the examples strongly suggest divisibility by 3 is required.
+        # Let's raise an error for clarity during development/testing.
+        raise ValueError(f"Input grid height {H_in} is not divisible by {num_slices} or is zero.")
+
+    slice_height = H_in // num_slices
+
+    slices = []
+    for i in range(num_slices):
+        start_row = i * slice_height
+        end_row = start_row + slice_height
+        slices.append(input_grid[start_row:end_row, :])
+
+    # --- 2. Background Identification ---
+    if not slices: # Should not happen if H_in > 0 and divisible by 3
+         return []
+
+    common_colors = _get_unique_colors(slices[0])
+    for i in range(1, num_slices):
+        slice_colors = _get_unique_colors(slices[i])
+        common_colors.intersection_update(slice_colors)
+        if not common_colors: # Optimization
+            break
+    background_colors = common_colors
+
+    # --- 3. Slice Selection ---
+    content_pixel_counts = []
+    for i in range(num_slices):
+        current_slice = slices[i]
+        count = 0
+        # Efficiently count non-background pixels
+        mask = ~np.isin(current_slice, list(background_colors))
+        count = np.sum(mask)
+        content_pixel_counts.append(count)
+
+    # Find the index of the slice with the maximum content pixels
+    # np.argmax handles ties by returning the first occurrence (lowest index)
+    if not content_pixel_counts: # Should only happen if input was empty or H_in=0
+        best_slice_index = 0 # Default to first slice if counts are somehow empty
+    else:
+        best_slice_index = np.argmax(content_pixel_counts)
+
+    selected_slice = slices[best_slice_index]
+
+    # --- 4. Fill Color Identification ---
+    fill_color = _get_fill_color(selected_slice, background_colors)
+
+    # --- 5. Horizontal Expansion ---
+    output_grid_np = _expand_horizontally(selected_slice, background_colors, fill_color)
+
+    # --- 6. Output ---
+    # Convert the resulting numpy array back to a list of lists
+    return output_grid_np.tolist()

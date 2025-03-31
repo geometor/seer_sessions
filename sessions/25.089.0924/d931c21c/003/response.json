@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom collections import deque\n\n\"\"\"\nIdentifies closed loops formed by blue (1) pixels in the input grid. \nFinds the single connected region of white (0) pixels reachable from the grid boundary (exterior).\nIdentifies any other connected regions of white (0) pixels not reachable from the boundary (interior).\nFor each interior white region:\n1. Fills the entire region with green (3) pixels in the output grid.\n2. Identifies the blue (1) pixels immediately adjacent (orthogonally) to this interior region (the loop boundary).\n3. Identifies the exterior white pixels immediately adjacent (orthogonally) to these blue boundary pixels.\n4. Colors these adjacent exterior white pixels red (2) in the output grid.\nBlue shapes that do not enclose an interior white region, and the exterior white region itself (unless adjacent to a loop), remain unchanged.\n\"\"\"\n\ndef get_neighbors(r, c, height, width):\n    \"\"\"Yields valid orthogonal neighbors for a given cell (r, c).\"\"\"\n    for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n        nr, nc = r + dr, c + dc\n        if 0 <= nr < height and 0 <= nc < width:\n            yield nr, nc\n\ndef transform(input_grid):\n    \"\"\"\n    Applies the fill (green) and border (red) transformation to closed blue loops.\n    \n    Args:\n        input_grid (list of list of int): The input grid.\n\n    Returns:\n        list of list of int: The transformed grid.\n    \"\"\"\n    input_grid_np = np.array(input_grid, dtype=int)\n    output_grid = input_grid_np.copy()\n    height, width = input_grid_np.shape\n\n    # --- Step 1: Identify the Exterior White Region ---\n    is_exterior = np.zeros_like(input_grid_np, dtype=bool)\n    q_exterior = deque()\n\n    # Initialize queue with boundary white pixels\n    for r in range(height):\n        for c in [0, width - 1]:\n            if input_grid_np[r, c] == 0 and not is_exterior[r, c]:\n                is_exterior[r, c] = True\n                q_exterior.append((r, c))\n    # Ensure corners are included if width/height > 1\n    for c in range(1, width - 1): \n        for r in [0, height - 1]:\n            if input_grid_np[r, c] == 0 and not is_exterior[r, c]:\n                is_exterior[r, c] = True\n                q_exterior.append((r, c))\n\n    # BFS to find all connected exterior white pixels\n    while q_exterior:\n        r, c = q_exterior.popleft()\n        for nr, nc in get_neighbors(r, c, height, width):\n            if input_grid_np[nr, nc] == 0 and not is_exterior[nr, nc]:\n                is_exterior[nr, nc] = True\n                q_exterior.append((nr, nc))\n    \n    # --- Step 2: Identify and Process Interior White Regions ---\n    visited_interior = np.zeros_like(input_grid_np, dtype=bool)\n\n    for r_start in range(height):\n        for c_start in range(width):\n            # Check if it's a potential start of an interior region\n            if (input_grid_np[r_start, c_start] == 0 and \n                    not is_exterior[r_start, c_start] and \n                    not visited_interior[r_start, c_start]):\n                \n                # Found a new interior region, start BFS\n                current_interior_region = set()\n                blue_boundary = set()\n                q_interior = deque([(r_start, c_start)])\n                visited_interior[r_start, c_start] = True\n                \n                while q_interior:\n                    r_int, c_int = q_interior.popleft()\n                    current_interior_region.add((r_int, c_int))\n                    \n                    # Fill with green\n                    output_grid[r_int, c_int] = 3 \n\n                    # Check neighbors\n                    for nr, nc in get_neighbors(r_int, c_int, height, width):\n                        pixel_value = input_grid_np[nr, nc]\n                        \n                        if pixel_value == 1: # Blue pixel - part of boundary\n                            blue_boundary.add((nr, nc))\n                        elif (pixel_value == 0 and \n                              not is_exterior[nr, nc] and \n                              not visited_interior[nr, nc]):\n                            # Unvisited interior white neighbor\n                            visited_interior[nr, nc] = True\n                            q_interior.append((nr, nc))\n\n                # --- Step 3: Identify and Apply Red Border for this loop ---\n                red_border_locations = set()\n                for br, bc in blue_boundary:\n                    for nr, nc in get_neighbors(br, bc, height, width):\n                        # Check if neighbor is exterior white\n                        if is_exterior[nr, nc]: \n                            red_border_locations.add((nr, nc))\n                            \n                # Apply the red border\n                for rr, rc in red_border_locations:\n                    output_grid[rr, rc] = 2 # Red\n\n    return output_grid.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 18278,
+    "candidates_token_count": 1279,
+    "total_token_count": 19557,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 16.971559,
+  "retries": 1
+}

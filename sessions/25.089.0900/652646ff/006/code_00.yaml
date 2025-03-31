@@ -1,0 +1,90 @@
+task_description: >
+  Identify maximal contiguous regions of pixels whose colors are not the background color and not designated noise colors (Gray=5, Orange=7, Maroon=9).
+  Filter these regions, keeping only those whose minimal bounding box is exactly 6x6 pixels.
+  Determine the top-left corner (row, column) for each filtered region's bounding box.
+  Collect these top-left corners. Sort them primarily by row index, secondarily by column index.
+  Check the original input grid for the presence of any Orange (7) pixels. If found, reverse the sorted order of corners.
+  For each corner in the final ordered list:
+    1. Extract the 6x6 pixel subgrid from the input grid starting at that corner.
+    2. Create a cleaned version of the extracted 6x6 subgrid by replacing any pixels matching the noise colors (5, 7, 9) with the background color.
+  Vertically stack the cleaned 6x6 subgrids in the final determined order to produce the output grid.
+
+elements:
+  - element: grid
+    role: input/output container
+    properties:
+      - background_color: Most frequent color in the input grid.
+      - dimensions: Variable for input; Output height is N*6, width is 6 (N=number of selected regions).
+
+  - element: region
+    role: primary object candidate
+    properties:
+      - type: Maximal contiguous block of pixels.
+      - composition: Contains one or more pixels whose color is not the background color and not a noise color. Contiguity ignores background/noise pixels.
+      - bounding_box: Minimal rectangle enclosing all pixels of the region.
+
+  - element: noise_pixel
+    role: irrelevant data or control signal
+    properties:
+      - colors: [Gray (5), Orange (7), Maroon (9)]
+      - role_finding: Ignored during region identification (treated like background for connectivity).
+      - role_cleaning: Replaced by background color if within a selected 6x6 extraction window.
+      - role_ordering: Presence of Orange (7) anywhere in the input reverses the output stacking order.
+
+  - element: selected_region
+    role: object to be extracted
+    criteria: A 'region' whose 'bounding_box' has dimensions exactly 6x6.
+
+  - element: extraction_window
+    role: area to extract from input
+    properties:
+      - size: 6x6 pixels.
+      - location: Top-left corner matches the 'bounding_box' top-left corner of a 'selected_region'.
+
+  - element: output_subgrid
+    role: component of the final output
+    properties:
+      - size: 6x6 pixels.
+      - content: A cleaned 'extraction_window'.
+
+actions:
+  - action: identify_background_color
+    description: Find the most frequent pixel color in the input grid.
+  - action: define_noise_colors
+    description: Set noise colors to {Gray (5), Orange (7), Maroon (9)}.
+  - action: find_maximal_regions
+    description: Identify all maximal contiguous regions of non-background, non-noise pixels using 4-neighbor connectivity.
+  - action: calculate_bounding_boxes
+    description: Determine the min_row, max_row, min_col, max_col for each maximal region.
+  - action: filter_regions_by_bbox
+    description: Select only those regions where (max_row - min_row + 1) == 6 AND (max_col - min_col + 1) == 6.
+  - action: get_extraction_corners
+    description: Collect the (min_row, min_col) from the bounding boxes of the filtered regions. Ensure uniqueness.
+  - action: determine_order
+    description: Sort the unique corners by row, then column. Check for Orange (7) in the input; if present, reverse the sort order.
+  - action: extract_and_clean_windows
+    description: For each corner in the final order, extract the 6x6 window from the input starting at that corner. Replace any noise pixels (5, 7, 9) within the window with the background color.
+  - action: stack_output
+    description: Vertically concatenate the cleaned 6x6 windows in the determined order.
+
+relationships:
+  - relation: region_selection
+    subject: region
+    object: selected_region
+    description: A region becomes a selected_region if its bounding box is exactly 6x6.
+  - relation: corner_definition
+    subject: selected_region
+    object: extraction_window
+    description: The top-left corner of a selected_region's bounding box defines the top-left corner of an extraction_window.
+  - relation: noise_removal
+    subject: noise_pixel
+    object: extraction_window
+    description: Noise pixels within an extraction_window are replaced by the background color to create an output_subgrid.
+  - relation: order_determination
+    subject: extraction_window location (corner)
+    object: stacking order
+    description: Relative positions of corners determine the initial stacking order.
+  - relation: order_reversal
+    subject: Orange (7) pixel presence
+    object: stacking order
+    description: Presence of Orange (7) in the input grid reverses the default stacking order.

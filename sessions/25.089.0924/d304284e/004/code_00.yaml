@@ -1,0 +1,57 @@
+task_description: Tile patterns across the output grid based on an initial pattern found in the input grid, modifying color and shape based on position relative to the origin.
+
+elements:
+  - type: background
+    color: white (0)
+  - type: input_pattern
+    description: The single contiguous object of a non-background color found in the input.
+    properties:
+      - color: orange (7) # Referred to as original_color
+      - shape: variable, defined by relative offsets from top-left pixel # Referred to as input_pattern_shape
+      - location: defined by its top-left corner (r0, c0)
+  - type: fixed_pattern
+    description: A fixed 3x3 '8' shape used for tiling in subsequent rows.
+    properties:
+      - color: Not intrinsic, determined by placement rule (always alternate_color when used)
+      - shape: [(0,0), (0,1), (0,2), (1,0), (1,2), (2,0), (2,1), (2,2)] # Referred to as fixed_pattern_shape
+  - type: alternate_color
+    value: magenta (6)
+  - type: tiling_parameters
+    properties:
+      - horizontal_step: 4 pixels
+      - vertical_step: 4 pixels
+
+actions:
+  - action: identify_input_pattern
+    inputs: input_grid
+    outputs: input_pattern_shape, original_color, top_left_corner (r0, c0)
+  - action: define_fixed_pattern
+    outputs: fixed_pattern_shape
+  - action: initialize_output
+    inputs: input_grid_dimensions
+    outputs: output_grid (filled with background color)
+  - action: tile_patterns
+    inputs: output_grid, input_pattern_shape, fixed_pattern_shape, original_color, alternate_color, r0, c0, horizontal_step, vertical_step
+    outputs: modified_output_grid
+    details:
+      - Iterate through potential tile locations (r, c) = (r0 + vertical_step * j, c0 + horizontal_step * i) for i >= 0, j >= 0.
+      - For each potential location (r, c) corresponding to indices (i, j):
+        - Check if placing a pattern starting at (r, c) would go off-grid. Do not attempt to place if the starting pixel is off-grid.
+        - Determine pattern shape and color:
+          - If j == 0: # First row of tiles
+            - shape = input_pattern_shape
+            - color = alternate_color if i % 3 == 2 else original_color
+            - Place the pattern with 'shape' and 'color' starting at (r, c), clipping pixels that fall outside grid boundaries.
+          - If j > 0: # Subsequent rows of tiles
+            - if i % 3 == 2:
+              - shape = fixed_pattern_shape
+              - color = alternate_color
+              - Place the pattern with 'shape' and 'color' starting at (r, c), clipping pixels that fall outside grid boundaries.
+            - else:
+              - Do not place a pattern.
+
+relationships:
+  - The output grid size is the same as the input grid size.
+  - The shape used for tiling depends on the row index `j` relative to the initial pattern's row.
+  - The color used for tiling depends on the column index `i` relative to the initial pattern's column and sometimes the row index `j`.
+  - Patterns are placed pixel by pixel and clipped at the grid boundaries.

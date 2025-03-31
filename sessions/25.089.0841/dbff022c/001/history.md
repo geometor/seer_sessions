@@ -1,0 +1,171 @@
+
+## train_1
+
+**input:**
+```
+0 4 4 4 4 4 0 3 4 6 9 5
+0 4 0 4 0 4 0 3 6 7 2 9
+0 4 4 4 4 4 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0
+0 3 3 3 3 0 0 0 0 0 0 0
+0 3 0 0 3 0 0 0 0 0 0 0
+0 3 0 0 3 0 0 7 7 7 7 0
+0 3 0 0 3 0 0 7 0 7 7 0
+0 0 3 0 3 0 0 7 0 0 7 0
+0 0 0 3 0 0 0 7 7 0 7 0
+0 0 0 0 0 0 0 7 7 7 7 0
+0 0 0 0 0 0 0 0 0 0 0 0
+```
+
+
+**output:**
+```
+0 4 4 4 4 4 0 3 4 6 9 5
+0 4 6 4 6 4 0 3 6 7 2 9
+0 4 4 4 4 4 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0
+0 3 3 3 3 0 0 0 0 0 0 0
+0 3 3 3 3 0 0 0 0 0 0 0
+0 3 3 3 3 0 0 7 7 7 7 0
+0 3 3 3 3 0 0 7 0 7 7 0
+0 0 3 3 3 0 0 7 0 0 7 0
+0 0 0 3 0 0 0 7 7 0 7 0
+0 0 0 0 0 0 0 7 7 7 7 0
+0 0 0 0 0 0 0 0 0 0 0 0
+```
+
+
+## train_2
+
+**input:**
+```
+2 6 0 0 8 8 8 8 0 0
+4 5 0 0 8 0 0 8 0 0
+6 8 0 0 8 0 0 8 0 0
+8 1 0 0 8 8 8 8 0 0
+0 0 0 0 0 0 0 0 0 0
+0 5 5 5 5 5 0 4 4 4
+0 5 0 0 0 5 0 4 0 4
+0 0 5 5 5 5 0 4 4 4
+0 0 0 0 0 0 0 4 0 4
+0 0 0 0 0 0 0 4 4 4
+```
+
+
+**output:**
+```
+2 6 0 0 8 8 8 8 0 0
+4 5 0 0 8 1 1 8 0 0
+6 8 0 0 8 1 1 8 0 0
+8 1 0 0 8 8 8 8 0 0
+0 0 0 0 0 0 0 0 0 0
+0 5 5 5 5 5 0 4 4 4
+0 5 0 0 0 5 0 4 5 4
+0 0 5 5 5 5 0 4 4 4
+0 0 0 0 0 0 0 4 5 4
+0 0 0 0 0 0 0 4 4 4
+```
+
+
+## train_3
+
+**input:**
+```
+0 2 6 0 4 4 4 4 4 0 2 2 2 2 0
+0 7 1 0 4 0 0 0 4 0 2 0 2 2 0
+0 0 0 0 4 0 0 0 4 0 2 2 0 2 0
+0 0 0 0 4 4 4 4 4 0 2 2 2 2 0
+```
+
+
+**output:**
+```
+0 2 6 0 4 4 4 4 4 0 2 2 2 2 0
+0 7 1 0 4 0 0 0 4 0 2 7 2 2 0
+0 0 0 0 4 0 0 0 4 0 2 2 7 2 0
+0 0 0 0 4 4 4 4 4 0 2 2 2 2 0
+```
+
+Okay, let's analyze the provided examples.
+
+**Perception of Task Elements:**
+
+1.  **Input/Output Structure:** Both input and output are grids of colored pixels (represented by integers 0-9). The output grid retains the same dimensions as the input grid.
+2.  **Core Transformation:** The primary transformation involves filling in areas of white pixels (color 0) within the input grid. The surrounding structures and most other pixels remain unchanged.
+3.  **Object Identification:** The non-white pixels form distinct shapes or objects. These objects often appear as closed boundaries (like rectangles or other polygons), sometimes complex.
+4.  **Identifying Target Areas:** The white pixels that get filled are those completely enclosed within a non-white shape. White pixels connected to the grid's border are *not* filled. This suggests a concept of "inside" vs. "outside".
+5.  **Fill Color Determination:** The color used to fill an enclosed white area seems dependent on the color of the single, unique non-white color that forms the immediate boundary around that white area. There appears to be a specific mapping or set of rules:
+    *   If the boundary color is Green (3), the fill color is Green (3).
+    *   If the boundary color is Orange (7), the fill color is Orange (7).
+    *   If the boundary color is Gray (5), the fill color is Gray (5).
+    *   If the boundary color is Gray (8), the fill color is Blue (1).
+    *   If the boundary color is Red (2), the fill color is Orange (7).
+    *   If the boundary color is Yellow (4), the fill color depends on the context of the *entire grid*:
+        *   If Magenta (6) exists anywhere in the input grid, the fill color is Magenta (6) (seen in train\_1).
+        *   Otherwise, if Gray (5) exists anywhere in the input grid, the fill color is Gray (5) (seen in train\_2).
+        *   Otherwise, the fill color is Yellow (4) (seen in train\_3).
+6.  **Process:** The process seems to be:
+    *   Identify all white pixels enclosed by a single color.
+    *   Determine the specific boundary color for each enclosed region.
+    *   Apply the color mapping rule (including the conditional logic for Yellow) to find the fill color.
+    *   Modify the input grid by replacing the enclosed white pixels with their determined fill color.
+
+**Facts (YAML):**
+
+
+```yaml
+Grid:
+  - Type: 2D Array
+  - Cell Values: Integers 0-9 (representing colors)
+  - Background Color: White (0)
+
+Objects:
+  - Type: Contiguous areas of non-white pixels.
+  - Property: Often form closed boundaries.
+  - Property: Can be composed of a single color (monochromatic) or multiple colors.
+
+Target Areas:
+  - Type: Regions of white (0) pixels.
+  - Property: Must be completely enclosed by non-white pixels (not connected to the grid border by other white pixels).
+  - Relationship: Each enclosed white region is bordered by exactly one unique non-white color in the examples provided.
+
+Transformation:
+  - Action: Fill enclosed white regions with a specific color.
+  - Rule: The fill color (F) is determined by the unique border color (B) of the enclosed region.
+  - Mapping:
+      - If B=3 (Green), F=3 (Green).
+      - If B=7 (Orange), F=7 (Orange).
+      - If B=5 (Gray), F=5 (Gray).
+      - If B=8 (Gray), F=1 (Blue).
+      - If B=2 (Red), F=7 (Orange).
+      - If B=4 (Yellow):
+          - If color 6 (Magenta) exists anywhere in the input grid, F=6 (Magenta).
+          - Else if color 5 (Gray) exists anywhere in the input grid, F=5 (Gray).
+          - Else, F=4 (Yellow).
+  - Invariance: Pixels not part of an enclosed white region remain unchanged. Grid dimensions remain unchanged.
+
+Assumptions:
+  - Each enclosed white region is bordered by only one unique non-white color.
+```
+
+
+**Natural Language Program:**
+
+1.  Initialize the output grid as a copy of the input grid.
+2.  Identify all white pixels (color 0) in the input grid that are connected to any border of the grid (top, bottom, left, right) through a path of adjacent (sharing a side) white pixels. Mark these as "external white".
+3.  Identify all remaining white pixels. These are the "internal white" pixels, forming one or more enclosed regions.
+4.  For each distinct contiguous region of internal white pixels:
+    a.  Find the set of all non-white pixels that are adjacent (sharing a side or corner) to any pixel within this internal white region.
+    b.  Determine the unique color B present in this set of adjacent non-white pixels. (Assume there is only one unique color B).
+    c.  Determine the fill color F based on the border color B:
+        i.  If B is Gray (8), set F to Blue (1).
+        ii. Else if B is Red (2), set F to Orange (7).
+        iii. Else if B is Yellow (4):
+            1. Scan the entire input grid. Check if Magenta (6) is present anywhere.
+            2. If Magenta (6) is present, set F to Magenta (6).
+            3. Else, scan the entire input grid. Check if Gray (5) is present anywhere.
+            4. If Gray (5) is present, set F to Gray (5).
+            5. Else, set F to Yellow (4).
+        iv. Else (if B is Green (3), Orange (7), Gray (5), or any other color not covered above), set F to B.
+    d.  For every pixel within the current internal white region, change its color in the output grid to the determined fill color F.
+5.  Return the modified output grid.

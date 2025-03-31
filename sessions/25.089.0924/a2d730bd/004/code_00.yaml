@@ -1,0 +1,49 @@
+task_description: Fill specific background pixels based on adjacency to non-background colors within their respective bounding boxes, using the original input grid for adjacency checks.
+
+elements:
+  - role: background_pixel
+    property: The most frequent color in the input grid.
+    example_1: green (3)
+    example_2: azure (8)
+    example_3: blue (1)
+  - role: object_pixels
+    property: Pixels of colors other than the background color. Processed independently by color.
+    example_1: blue (1), yellow (4)
+    example_2: green (3)
+    example_3: azure (8)
+  - role: bounding_box
+    property: The smallest rectangle enclosing all pixels of a specific non-background color in the input grid. Calculated independently for each non-background color.
+    example_1_color_1: rows 2-9, cols 4-12
+    example_1_color_4: rows 11-17, cols 3-13
+    example_2_color_3: rows 1-9, cols 3-9
+    example_3_color_8: rows 2-17, cols 2-12
+  - role: adjacency
+    property: Includes 8 neighbors (cardinal and diagonal). Checked against the state of the *input* grid.
+
+transformation:
+  - action: initialize_output
+    input: input grid
+    output: An identical copy of the input grid.
+  - action: identify_background_color
+    input: input grid
+    output: background color value (most frequent).
+  - action: identify_non_background_colors
+    input: input grid
+    output: set of color values present, excluding background.
+  - action: process_each_non_background_color
+    steps:
+      - find_pixels: Locate all pixels `(r, c)` of the current non-background color `C` in the *input* grid.
+      - calculate_bounding_box: Determine the min/max row/column `(min_r, min_c, max_r, max_c)` for pixels of color `C`.
+      - iterate_within_bounding_box: Examine each pixel `(br, bc)` where `min_r <= br <= max_r` and `min_c <= bc <= max_c`.
+      - check_pixel_condition:
+          - condition_1: The pixel `(br, bc)` in the *input* grid has the background color.
+          - condition_2: Examine the 8 neighbors of `(br, bc)`. At least one neighbor `(nr, nc)` in the *input* grid must have the color `C`.
+      - update_output: If both conditions are met, set the pixel `(br, bc)` in the *output* grid to color `C`.
+  - action: preserve_pixels
+    rule: Pixels in the output grid retain their initial color from the input grid unless updated by the `update_output` step.
+
+relationship:
+  - A background pixel `(r, c)` changes to a non-background color `C` in the output if and only if:
+    1.  Pixel `(r, c)` has the background color in the input grid.
+    2.  Pixel `(r, c)` lies within the bounding box defined by all pixels of color `C` in the input grid.
+    3.  Pixel `(r, c)` has at least one neighbor (8-way adjacency) that has color `C` in the *input* grid.

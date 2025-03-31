@@ -18,13 +18,13 @@ def run():
     #  tasks = Tasks("tasks/ARC/training").get_ordered_by_train_count()
     #  tasks = list(reversed(tasks))
 
-    tasks = get_unsolved_tasks("./sessions")
+    tasks = get_unsolved_tasks(Path("../sessions"))
 
     tasks = tasks.get_ordered_tasks()
 
     seer = Seer(config)
 
-    seer.run(tasks[300:], "ARCv1 EVAL sorted 300:400")
+    seer.run(tasks[0:50], "unsolved sorted 000:050")
     #  seer.run(tasks)
 
 

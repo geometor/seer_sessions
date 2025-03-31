@@ -1,0 +1,51 @@
+task_description: Crop the input grid based on the location and alignment of two gray marker pixels.
+elements:
+  - object: grid
+    role: input_output
+    properties:
+      - type: 2D array of integers 0-9
+      - background_color: azure (8)
+      - contains_patterns: yes
+      - contains_markers: yes, exactly two gray (5) pixels
+
+  - object: marker_pixels
+    role: signaling
+    properties:
+      - count: 2
+      - color: gray (5)
+      - alignment: either vertically (same column) or horizontally (same row)
+      - location: variable, but observed in first/last column or first row
+
+actions:
+  - action: locate_markers
+    input: input grid
+    output: coordinates (r1, c1), (r2, c2) of the two gray pixels
+
+  - action: determine_alignment
+    input: marker coordinates
+    output: axis ('vertical' or 'horizontal') and shared index (column or row)
+
+  - action: calculate_crop_parameters
+    input: input grid dimensions, marker alignment, marker location
+    output: start_row, end_row, start_col, end_col for the crop
+
+  - action: crop_grid
+    input: input grid, crop parameters
+    output: output grid (subgrid of input)
+
+relationships:
+  - type: dependency
+    from: crop_parameters
+    to: marker_alignment, marker_location, input_dimensions
+  - rule: vertical_alignment
+    condition: markers share the same column `c`
+    effect:
+      - output height is half of input height (`H_out = H_in // 2`)
+      - rows to remove from top depends on `c`: 2 if `c` is first col (0), 1 if `c` is last col
+      - output columns span the full input width
+  - rule: horizontal_alignment
+    condition: markers share the same row `r`
+    effect:
+      - output width is half of input width (`W_out = W_in // 2`)
+      - columns to remove from left depends on `r`: 2 if `r` is first row (0) (based on single example)
+      - output rows span the full input height

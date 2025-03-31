@@ -1,0 +1,56 @@
+task_description: Draw two connected 'staple' shapes based on two input pixels, oriented either horizontally or vertically.
+
+elements:
+  - element: background
+    color: white (0)
+  - element: anchor_pixel
+    count: 2
+    properties:
+      - color: non-white (1-9)
+      - position: (row, column)
+
+relationships:
+  - type: positional
+    description: Two anchor pixels exist in the input grid. Their relative positions (same row or same column) determine the orientation of the output structure.
+  - type: midpoint
+    description: The geometric midpoint between the two anchor pixels helps determine the placement and division of the output shapes.
+  - type: symmetry
+    description: The two staple shapes are largely symmetrical relative to the midpoint, differing in color and connection direction back to the original anchor pixels.
+
+actions:
+  - action: identify_pixels
+    inputs: input_grid
+    outputs: p1_data (row, col, color), p2_data (row, col, color)
+    description: Find the coordinates and colors of the two non-white pixels.
+  - action: calculate_midpoint
+    inputs: p1_data, p2_data
+    outputs: midpoint_row (mr), midpoint_col (mc)
+    description: Calculate the midpoint coordinates between the two anchor pixels.
+  - action: determine_orientation_and_centers
+    inputs: p1_data, p2_data, midpoint_row, midpoint_col
+    outputs: orientation ('horizontal'/'vertical'), center1_coord, center2_coord
+    description: >
+      Determine if pixels are in the same row ('horizontal') or column ('vertical').
+      Calculate the coordinates for the center of the 5-pixel segment for each staple.
+      Horizontal: Centers are (r1, vc1) and (r1, vc2), where vc1=floor(mc-1), vc2=ceil(mc+1).
+      Vertical: Centers are (hr1, c1) and (hr2, c1), where hr1=floor(mr-1), hr2=ceil(mr+1). Ensure p1 corresponds to center1, p2 to center2 based on position.
+  - action: define_staple_segments
+    inputs: anchor_pixel_data, corresponding_center_coord, midpoint_row, midpoint_col, orientation
+    outputs: list_of_segments_for_one_staple (lines/pixels with coords and color)
+    description: >
+      For a single anchor pixel and its calculated center, define the three segments forming its staple:
+      1. Main Segment: A 5-pixel line (vertical for horizontal orientation, horizontal for vertical orientation) centered at the 'center_coord'.
+      2. Connector Segment: A line connecting the original 'anchor_pixel' position to the 'center_coord'.
+      3. Two Prong Segments: Two short (2-pixel) lines parallel to the Connector Segment, starting from the ends of the Main Segment and extending towards the midpoint between the staples. The exact range depends on the midpoint (mc or mr).
+  - action: draw_output
+    inputs: input_grid_dimensions, segments_for_staple1, segments_for_staple2
+    outputs: output_grid
+    description: Create an output grid of the same size as the input, initialized to white, and draw all defined segments for both staples using their respective colors.
+
+properties_change:
+  - property: pixel_count
+    change: Increases significantly. Two pixels expand into two larger staple shapes.
+  - property: structure
+    change: Two single pixels transform into two connected, extended 'staple' shapes.
+  - property: grid_content
+    change: White background is partially filled with colored pixels forming the new structure. Input pixel locations remain part of the structure.

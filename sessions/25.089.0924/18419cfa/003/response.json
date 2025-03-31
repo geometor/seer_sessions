@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\nTransformation Rule Natural Language Description:\n\nThe transformation identifies regions enclosed by azure (8) pixels. \nFirst, it determines which white (0) pixels are 'inside' these regions by performing a flood fill from the grid borders; any white pixel *not* reached by this initial fill is considered 'inside'.\nThen, within each enclosed region ('inside' area), it performs a separate flood fill operation starting from any existing red (2) pixels found within that specific 'inside' area. \nThe fill color is red (2), and it propagates cardinally (up, down, left, right) only to adjacent 'inside' white (0) pixels. \nThe fill is constrained by the azure (8) boundaries and does not spread to 'outside' white pixels or other non-white pixels. Pixels outside the azure boundaries and 'inside' white pixels not reachable from a red seed remain unchanged. Azure (8) pixels themselves remain unchanged.\n\"\"\"\n\nimport numpy as np\nfrom collections import deque\n\ndef transform(input_grid):\n    \"\"\"\n    Performs a constrained flood fill with red (2) starting from existing red pixels,\n    limited to white (0) pixels located inside regions bounded by azure (8) pixels.\n\n    Args:\n        input_grid (np.array): A 2D numpy array representing the input grid.\n\n    Returns:\n        np.array: A 2D numpy array representing the transformed output grid.\n    \"\"\"\n    # Initialize output_grid as a copy of the input\n    output_grid = np.copy(input_grid)\n    rows, cols = input_grid.shape\n\n    # 1. Identify 'inside' white pixels\n    # Initialize a boolean grid to track if a white pixel is inside (True) or outside (False)\n    # Initially assume all are potentially inside, except non-white pixels.\n    is_inside = (input_grid == 0)\n    outside_queue = deque()\n\n    # Add all border white pixels to the queue and mark them as outside\n    for r in range(rows):\n        for c in [0, cols - 1]: # Left and right borders\n            if is_inside[r, c]:\n                is_inside[r, c] = False\n                outside_queue.append((r, c))\n        # Avoid double-adding corners\n        if r == 0 or r == rows - 1:\n            for c in range(1, cols - 1): # Top and bottom borders (excluding corners)\n                 if is_inside[r, c]:\n                    is_inside[r, c] = False\n                    outside_queue.append((r, c))\n\n    # Perform BFS to find all white pixels reachable from the outside\n    while outside_queue:\n        r, c = outside_queue.popleft()\n        for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n            nr, nc = r + dr, c + dc\n            # Check bounds and if the neighbor is white and still marked as 'inside'\n            if 0 <= nr < rows and 0 <= nc < cols and is_inside[nr, nc]:\n                is_inside[nr, nc] = False # Mark as outside\n                outside_queue.append((nr, nc))\n\n    # 2. Perform constrained red flood fill\n    red_fill_queue = deque()\n    visited_red_fill = set() # Keep track of visited cells for *this* fill\n\n    # Seed the queue with initial red pixels\n    for r in range(rows):\n        for c in range(cols):\n            if input_grid[r, c] == 2:\n                # Only add valid starting points (should inherently be inside, but good practice)\n                if 0 <= r < rows and 0 <= c < cols: # Basic bounds check\n                   red_fill_queue.append((r,c))\n                   visited_red_fill.add((r,c))\n                   # No need to change output_grid color here, it's already red\n\n    # Perform BFS for the red fill, constrained to 'inside' white pixels\n    while red_fill_queue:\n        r, c = red_fill_queue.popleft()\n\n        # Explore cardinal neighbors\n        for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n            nr, nc = r + dr, c + dc\n\n            # Check conditions for filling the neighbor:\n            # 1. Within grid bounds\n            # 2. Not already visited in *this* red fill\n            # 3. Is an 'inside' white pixel (input was 0 and is_inside is True)\n            if (0 <= nr < rows and 0 <= nc < cols and\n                    (nr, nc) not in visited_red_fill and\n                    input_grid[nr, nc] == 0 and\n                    is_inside[nr, nc]):\n\n                # Conditions met: fill the pixel\n                output_grid[nr, nc] = 2\n                visited_red_fill.add((nr, nc))\n                red_fill_queue.append((nr, nc))\n\n    # Return the modified grid\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 16732,
+    "candidates_token_count": 1173,
+    "total_token_count": 17905,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 15.036296,
+  "retries": 1
+}

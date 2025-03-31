@@ -1,0 +1,61 @@
+task_type: grid_transformation
+colors_used:
+  - white (0)
+  - azure (8)
+  - red (2)
+rules:
+  - condition: Azure (8) pixels exist in the first row (row 0).
+    mode: vertical_shift
+    elements:
+      - role: pattern_definition
+        color: azure (8)
+        location: first row (row 0)
+        property: column indices define the initial vertical pattern (P)
+      - role: trigger
+        color: red (2)
+        location: any row 'r'
+        action: modifies the pattern 'P' for row 'r' and subsequent rows based on the trigger's column 'c_trig' relative to the grid width 'W'.
+        details:
+          - If multiple triggers in row 'r', use the one with the smallest column index 'c_trig'.
+          - If c_trig < W / 2, shift pattern 'P' right by 1 column (add 1 to each index, discard indices >= W).
+          - If c_trig >= W / 2, shift pattern 'P' left by 1 column (subtract 1 from each index, discard indices < 0).
+      - role: background
+        color: white (0)
+        action: can be overwritten by the azure pattern 'P'
+      - role: preserved_pixels
+        color: non-white pixels from input (e.g., red triggers)
+        action: are not overwritten by the azure pattern 'P' in this mode
+    transformation:
+      - Initialize output grid as a copy of the input.
+      - Identify initial azure column pattern 'P' from row 0.
+      - Iterate through rows 'r' from 0 to height-1.
+      - Check input row 'r' for any red (2) pixels.
+      - If red pixels are found:
+          - Find the minimum column index 'c_trig' of these red pixels.
+          - Calculate grid width 'W' and midpoint 'M = W / 2'.
+          - Update 'P': If c_trig < M, shift right; if c_trig >= M, shift left. Apply boundary checks.
+      - Apply the current (potentially updated) pattern 'P': For each column 'c' in 'P', if `input[r, c]` is white (0), set `output[r, c]` to azure (8).
+  - condition: No azure (8) pixels in row 0, but azure (8) pixels exist in the first column (col 0).
+    mode: horizontal_blocks
+    elements:
+      - role: trigger
+        color: azure (8)
+        location: first column (col 0) at row `r`
+        action: initiates drawing of three horizontal blocks
+      - role: drawn_object
+        color: azure (8)
+        shape: horizontal block, 4 pixels wide
+        placement:
+          - Starts at (r, 0), length 4 (cols 0-3)
+          - Starts at (r-1, 4), length 4 (cols 4-7), if r-1 >= 0
+          - Starts at (r-2, 8), length 4 (cols 8-11), if r-2 >= 0
+        property: Overwrites any existing pixel values in the output grid.
+      - role: background/preserved_pixels
+        color: all input pixels
+        action: are preserved unless overwritten by the drawn azure blocks
+    transformation:
+      - Initialize output grid as a copy of the input.
+      - Find all rows 'r' where `input[r, 0]` is azure (8).
+      - For each such 'r', draw the three specified 4-pixel horizontal azure blocks in the output grid (checking row and column boundaries), overwriting previous content.
+  - condition: Fallback (neither of the above conditions met).
+    transformation: Output grid is identical to the input grid.

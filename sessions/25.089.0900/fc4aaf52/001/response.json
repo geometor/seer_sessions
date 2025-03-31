@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\nTransformation Rule:\n1. Identify the background color (assumed to be the most frequent color, Azure 8).\n2. Find the single contiguous object composed of non-background colors.\n3. Determine the anchor pixel of this object, defined as the pixel with the minimum row index, and among those, the minimum column index.\n4. Determine the horizontal shift distance (dx) based on the color of the anchor pixel:\n   - If the anchor color is white (0), dx = 3.\n   - If the anchor color is blue (1), dx = 5.\n5. Create a new grid of the same dimensions, filled with the background color.\n6. Translate the object horizontally by dx columns: copy each pixel of the original object at (row, col) to the new grid at (row, col + dx).\n\"\"\"\n\nimport numpy as np\nfrom collections import Counter\n\ndef find_objects(grid, background_color):\n    \"\"\"\n    Finds contiguous objects of non-background colors.\n    Returns a list of objects, where each object is a list of (row, col, color) tuples.\n    \"\"\"\n    height, width = grid.shape\n    visited = np.zeros_like(grid, dtype=bool)\n    objects = []\n\n    for r in range(height):\n        for c in range(width):\n            if grid[r, c] != background_color and not visited[r, c]:\n                # Found the start of a potential object\n                current_object_pixels = []\n                q = [(r, c)]\n                visited[r, c] = True\n                \n                while q:\n                    row, col = q.pop(0)\n                    color = grid[row, col]\n                    current_object_pixels.append((row, col, color))\n\n                    # Check neighbors (4-connectivity)\n                    for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n                        nr, nc = row + dr, col + dc\n                        if 0 <= nr < height and 0 <= nc < width and \\\n                           grid[nr, nc] != background_color and not visited[nr, nc]:\n                            visited[nr, nc] = True\n                            q.append((nr, nc))\n                \n                if current_object_pixels:\n                     objects.append(current_object_pixels)\n                     \n    return objects\n\ndef find_anchor_pixel(object_pixels):\n    \"\"\"\n    Finds the anchor pixel (top-most, then left-most) of an object.\n    object_pixels is a list of (row, col, color) tuples.\n    Returns the (row, col, color) of the anchor pixel.\n    \"\"\"\n    if not object_pixels:\n        return None\n\n    min_row = min(p[0] for p in object_pixels)\n    top_row_pixels = [p for p in object_pixels if p[0] == min_row]\n    min_col = min(p[1] for p in top_row_pixels)\n    \n    # Find the specific pixel matching min_row and min_col\n    for p in top_row_pixels:\n        if p[1] == min_col:\n            return p # Returns (row, col, color)\n\n    return None # Should not happen if object_pixels is not empty\n\n\ndef get_shift_amount(anchor_color):\n    \"\"\"\n    Determines the horizontal shift based on the anchor color.\n    \"\"\"\n    if anchor_color == 0: # white\n        return 3\n    elif anchor_color == 1: # blue\n        return 5\n    else:\n        # Default or error case - return 0 shift if color not mapped\n        # Or raise an error if the mapping must be exhaustive\n        # For now, assume the provided examples cover the necessary cases\n        print(f\"Warning: Unhandled anchor color {anchor_color}, returning shift 0.\")\n        return 0 \n\ndef transform(input_grid):\n    \"\"\"\n    Applies the transformation rule to the input grid.\n    \"\"\"\n    input_grid_np = np.array(input_grid)\n    height, width = input_grid_np.shape\n\n    # 1. Identify background color (most frequent)\n    colors, counts = np.unique(input_grid_np, return_counts=True)\n    background_color = colors[np.argmax(counts)]\n\n    # 2. Find the non-background object\n    # Assuming only one relevant object based on examples\n    objects = find_objects(input_grid_np, background_color)\n    if not objects:\n         # Handle case with no object - return original or background grid\n         print(\"Warning: No object found. Returning input grid.\")\n         return input_grid # Or return a grid filled with background_color\n    \n    # We assume there's only one major object based on the examples\n    source_object_pixels = objects[0] \n\n    # 3. Find the anchor pixel and its color\n    anchor = find_anchor_pixel(source_object_pixels)\n    if not anchor:\n        print(\"Warning: Could not find anchor pixel. Returning input grid.\")\n        return input_grid\n        \n    anchor_color = anchor[2]\n\n    # 4. Determine the horizontal shift (dx)\n    dx = get_shift_amount(anchor_color)\n\n    # 5. Create the output grid, initialized with background color\n    output_grid = np.full((height, width), background_color, dtype=int)\n\n    # 6. Translate the object by dx\n    for r, c, color in source_object_pixels:\n        new_c = c + dx\n        # Ensure the new position is within bounds\n        if 0 <= new_c < width:\n            output_grid[r, new_c] = color\n        else:\n             # Handle pixels moving out of bounds if necessary \n             # (though not seen in examples)\n             print(f\"Warning: Pixel at ({r}, {c}) moved out of bounds to ({r}, {new_c}).\")\n\n\n    return output_grid.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 4374,
+    "candidates_token_count": 1397,
+    "total_token_count": 5771,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 15.255057,
+  "retries": 1
+}

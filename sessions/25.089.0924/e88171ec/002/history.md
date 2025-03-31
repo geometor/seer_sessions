@@ -1,0 +1,306 @@
+
+## train_1
+
+**input:**
+```
+0 0 2 2 2 0 2 2 0 0 0 0 2 2 2
+2 2 2 2 0 2 2 2 2 0 0 2 0 2 2
+2 2 0 0 2 0 2 0 2 0 2 0 2 2 0
+2 0 0 2 2 0 0 0 0 0 0 2 2 0 2
+2 0 2 2 0 0 0 0 0 2 0 0 0 2 2
+0 2 0 2 2 0 0 0 0 0 2 2 0 2 0
+2 0 0 0 2 0 0 0 0 0 2 0 2 2 2
+0 0 2 2 0 0 0 2 2 2 0 2 0 2 2
+2 2 2 2 0 2 2 2 0 0 2 0 0 2 2
+0 0 0 2 2 2 2 0 2 0 2 2 2 2 2
+2 2 0 2 2 2 2 0 0 2 2 0 0 2 0
+2 2 2 0 2 2 0 0 0 0 0 0 2 2 0
+2 0 2 2 2 0 0 2 0 0 2 2 2 2 2
+0 2 2 2 2 0 0 0 2 2 2 2 2 2 0
+0 2 0 2 0 2 2 2 2 2 0 2 2 2 0
+```
+
+
+**output:**
+```
+0 0 2 2 2 0 2 2 0 0 0 0 2 2 2
+2 2 2 2 0 2 2 2 2 0 0 2 0 2 2
+2 2 0 0 2 0 2 0 2 0 2 0 2 2 0
+2 0 0 2 2 0 0 0 0 0 0 2 2 0 2
+2 0 2 2 0 0 8 8 0 2 0 0 0 2 2
+0 2 0 2 2 0 8 8 0 0 2 2 0 2 0
+2 0 0 0 2 0 0 0 0 0 2 0 2 2 2
+0 0 2 2 0 0 0 2 2 2 0 2 0 2 2
+2 2 2 2 0 2 2 2 0 0 2 0 0 2 2
+0 0 0 2 2 2 2 0 2 0 2 2 2 2 2
+2 2 0 2 2 2 2 0 0 2 2 0 0 2 0
+2 2 2 0 2 2 0 0 0 0 0 0 2 2 0
+2 0 2 2 2 0 0 2 0 0 2 2 2 2 2
+0 2 2 2 2 0 0 0 2 2 2 2 2 2 0
+0 2 0 2 0 2 2 2 2 2 0 2 2 2 0
+```
+
+
+## train_2
+
+**input:**
+```
+4 0 0 4 0 0 0 4 0 0 5 0 0 0 0 4 4 4 4
+0 4 4 4 4 5 4 4 0 0 0 4 4 4 0 4 0 4 0
+0 0 4 4 4 0 4 4 4 4 4 4 0 4 4 4 4 0 4
+0 4 0 4 0 4 4 4 4 4 4 4 4 0 5 0 5 4 4
+4 0 4 4 0 0 0 0 0 4 4 0 4 0 4 0 4 0 4
+4 4 4 0 0 0 0 0 0 4 0 0 4 0 0 4 4 0 4
+4 4 0 0 0 0 0 0 0 4 4 4 0 0 4 4 4 4 4
+4 4 4 4 0 0 0 0 0 4 4 4 4 5 4 4 0 5 4
+4 4 4 0 0 0 0 0 0 4 5 4 4 4 0 4 0 0 5
+0 4 4 4 0 0 0 0 0 4 4 0 4 4 5 4 0 0 4
+4 4 4 4 4 4 4 0 4 4 4 0 4 0 4 0 4 4 5
+4 4 4 4 4 4 4 0 4 4 5 5 4 0 4 0 4 4 5
+4 4 4 4 4 5 0 4 0 4 0 4 4 0 4 0 5 4 4
+5 4 4 0 4 4 0 0 4 4 4 4 4 4 4 0 4 4 4
+4 0 4 0 4 0 4 4 4 4 4 4 0 4 0 4 0 4 4
+5 4 4 4 4 4 4 4 4 0 4 4 4 0 0 4 4 4 0
+0 0 4 4 0 4 4 4 0 0 4 0 4 0 0 0 0 4 4
+4 0 0 4 4 5 4 5 4 5 4 0 4 4 0 4 4 5 0
+4 0 0 4 4 0 0 0 5 4 4 0 0 4 4 5 4 4 0
+```
+
+
+**output:**
+```
+4 0 0 4 0 0 0 4 0 0 5 0 0 0 0 4 4 4 4
+0 4 4 4 4 5 4 4 0 0 0 4 4 4 0 4 0 4 0
+0 0 4 4 4 0 4 4 4 4 4 4 0 4 4 4 4 0 4
+0 4 0 4 0 4 4 4 4 4 4 4 4 0 5 0 5 4 4
+4 0 4 4 0 0 0 0 0 4 4 0 4 0 4 0 4 0 4
+4 4 4 0 0 8 8 8 0 4 0 0 4 0 0 4 4 0 4
+4 4 0 0 0 8 8 8 0 4 4 4 0 0 4 4 4 4 4
+4 4 4 4 0 8 8 8 0 4 4 4 4 5 4 4 0 5 4
+4 4 4 0 0 8 8 8 0 4 5 4 4 4 0 4 0 0 5
+0 4 4 4 0 0 0 0 0 4 4 0 4 4 5 4 0 0 4
+4 4 4 4 4 4 4 0 4 4 4 0 4 0 4 0 4 4 5
+4 4 4 4 4 4 4 0 4 4 5 5 4 0 4 0 4 4 5
+4 4 4 4 4 5 0 4 0 4 0 4 4 0 4 0 5 4 4
+5 4 4 0 4 4 0 0 4 4 4 4 4 4 4 0 4 4 4
+4 0 4 0 4 0 4 4 4 4 4 4 0 4 0 4 0 4 4
+5 4 4 4 4 4 4 4 4 0 4 4 4 0 0 4 4 4 0
+0 0 4 4 0 4 4 4 0 0 4 0 4 0 0 0 0 4 4
+4 0 0 4 4 5 4 5 4 5 4 0 4 4 0 4 4 5 0
+4 0 0 4 4 0 0 0 5 4 4 0 0 4 4 5 4 4 0
+```
+
+
+## train_3
+
+**input:**
+```
+0 0 3 0 3 3 3 0 0 0 0 0 3 3 3 0
+0 0 3 0 0 3 0 3 0 0 0 3 3 0 3 3
+0 3 0 3 0 3 3 3 3 3 0 3 3 3 0 0
+3 3 3 3 3 0 3 0 3 3 3 3 0 3 3 3
+3 3 0 3 0 0 3 0 0 3 3 3 0 0 3 3
+0 0 3 3 0 0 3 3 3 3 3 0 0 3 3 0
+3 0 3 3 3 0 0 0 0 3 0 3 3 3 3 3
+0 0 0 0 3 3 3 0 3 3 3 3 3 3 3 0
+3 3 3 0 3 3 0 3 0 3 0 3 3 3 3 0
+3 0 0 3 0 0 0 0 3 3 3 3 0 3 3 3
+0 0 0 3 0 3 3 0 0 0 0 0 0 3 0 0
+0 3 3 3 3 0 0 0 0 0 0 0 0 0 3 3
+3 0 0 0 3 0 3 0 0 0 0 0 0 3 3 3
+0 0 0 3 3 3 3 0 0 0 0 0 0 0 0 3
+3 3 3 3 3 3 0 0 0 3 3 3 3 0 3 0
+0 0 0 3 3 0 0 3 3 0 3 3 0 0 3 3
+```
+
+
+**output:**
+```
+0 0 3 0 3 3 3 0 0 0 0 0 3 3 3 0
+0 0 3 0 0 3 0 3 0 0 0 3 3 0 3 3
+0 3 0 3 0 3 3 3 3 3 0 3 3 3 0 0
+3 3 3 3 3 0 3 0 3 3 3 3 0 3 3 3
+3 3 0 3 0 0 3 0 0 3 3 3 0 0 3 3
+0 0 3 3 0 0 3 3 3 3 3 0 0 3 3 0
+3 0 3 3 3 0 0 0 0 3 0 3 3 3 3 3
+0 0 0 0 3 3 3 0 3 3 3 3 3 3 3 0
+3 3 3 0 3 3 0 3 0 3 0 3 3 3 3 0
+3 0 0 3 0 0 0 0 3 3 3 3 0 3 3 3
+0 0 0 3 0 3 3 0 0 0 0 0 0 3 0 0
+0 3 3 3 3 0 0 0 8 8 8 8 0 0 3 3
+3 0 0 0 3 0 3 0 8 8 8 8 0 3 3 3
+0 0 0 3 3 3 3 0 0 0 0 0 0 0 0 3
+3 3 3 3 3 3 0 0 0 3 3 3 3 0 3 0
+0 0 0 3 3 0 0 3 3 0 3 3 0 0 3 3
+```
+
+Okay, let's analyze the task examples.
+
+**Perception of Elements:**
+
+1.  **Input/Output Similarity:** The output grids are largely identical to the input grids, with only a localized change.
+2.  **Color Palette:** The primary colors involved are white (0) and another dominant color (red (2), yellow (4), green (3) respectively in the examples). The change introduces azure (8). Gray (5) appears in example 2 but isn't directly involved in the transformation.
+3.  **Key Feature:** In each input grid, there is a prominent square block composed entirely of white (0) pixels.
+    *   Example 1: 3x3 white square.
+    *   Example 2: 4x4 white square.
+    *   Example 3: 5x5 white square.
+4.  **Transformation Area:** The modification occurs within this white square block.
+5.  **Modification:** A smaller square block within the white square is filled with azure (8) pixels.
+    *   Example 1: 3x3 white -> 2x2 azure.
+    *   Example 2: 4x4 white -> 3x3 azure.
+    *   Example 3: 5x5 white -> 4x4 azure.
+    *   The size of the azure square is `(N-1) x (N-1)`, where `N x N` is the size of the white square.
+6.  **Placement:** The placement of the azure block within the white block seems to depend on the size `N` of the white block.
+    *   If `N` is odd (3, 5), the `(N-1)x(N-1)` azure block starts 1 row below the top-left corner of the white block.
+    *   If `N` is even (4), the `(N-1)x(N-1)` azure block starts at the same top-left corner as the white block.
+
+**YAML Facts:**
+
+
+```yaml
+task_description: Find the largest square block of white pixels and fill a slightly smaller square within it with azure pixels, adjusting the starting position based on the size of the white square.
+elements:
+  - object: grid
+    attributes:
+      - background: white (0)
+      - foreground: variable (red, yellow, green)
+      - contains: shapes, blocks
+  - object: white_square
+    description: The largest contiguous square block composed entirely of white (0) pixels.
+    properties:
+      - color: white (0)
+      - shape: square
+      - size: N x N (variable, e.g., 3x3, 4x4, 5x5)
+      - location: variable
+      - uniqueness: assumed to be the largest unique square of white pixels per grid
+  - object: azure_square
+    description: The block of azure (8) pixels replacing part of the white_square in the output.
+    properties:
+      - color: azure (8)
+      - shape: square
+      - size: (N-1) x (N-1), where N is the side length of the white_square
+      - location: derived from the white_square's location and size N
+actions:
+  - action: find
+    actor: system
+    target: white_square
+    condition: largest square block of white (0) pixels
+  - action: determine_properties
+    actor: system
+    target: white_square
+    details: find its top-left corner (r, c) and side length N
+  - action: calculate_placement
+    actor: system
+    target: azure_square
+    condition: based on N (side length of white_square)
+    details: |
+      If N is odd, top-left corner is (r+1, c).
+      If N is even, top-left corner is (r, c).
+  - action: fill
+    actor: system
+    target: area within the output grid corresponding to the calculated azure_square location and size
+    color: azure (8)
+relationships:
+  - type: containment
+    source: white_square
+    target: azure_square (conceptually, the area is within the original white square)
+  - type: derivation
+    source: white_square (size N, location (r,c))
+    target: azure_square (size (N-1)x(N-1), location depends on N's parity)
+```
+
+
+**Natural Language Program:**
+
+1.  **Identify Candidate Squares:** Scan the input grid to find all contiguous square blocks composed entirely of white (0) pixels.
+2.  **Select Target Square:** Determine the largest among these white squares. Let its side length be `N` and its top-left corner coordinates be `(row, col)`. (Assume there is a unique largest white square).
+3.  **Calculate Azure Square Properties:**
+    *   Determine the side length of the azure square: `azure_N = N - 1`.
+    *   Determine the top-left corner `(azure_row, azure_col)` for the azure square based on the parity of `N`:
+        *   If `N` is odd, set `azure_row = row + 1` and `azure_col = col`.
+        *   If `N` is even, set `azure_row = row` and `azure_col = col`.
+4.  **Generate Output Grid:** Create a copy of the input grid.
+5.  **Fill Azure Square:** Modify the copied grid by filling the square region of size `azure_N x azure_N` starting at `(azure_row, azure_col)` with azure (8) pixels.
+6.  **Return Result:** The modified grid is the output.
+```python
+import numpy as np
+
+"""
+Transformation rule:
+1. Find the largest contiguous square block composed entirely of white (0) pixels in the input grid.
+2. Let the side length of this largest white square be N and its top-left corner be (r, c).
+3. Determine the side length of the azure square to be placed: azure_N = N - 1.
+4. Determine the top-left corner (azure_r, azure_c) for the azure square:
+   - If N is odd, azure_r = r + 1 and azure_c = c.
+   - If N is even, azure_r = r and azure_c = c.
+5. Create the output grid by copying the input grid.
+6. If azure_N is greater than 0, fill the square region of size azure_N x azure_N starting at (azure_r, azure_c) in the output grid with azure (8) pixels.
+"""
+
+def _is_square_all_color(grid, r, c, size, color):
+    """Checks if a square region in the grid is entirely of a specific color."""
+    rows, cols = grid.shape
+    if r + size > rows or c + size > cols:
+        return False  # Square goes out of bounds
+    square_region = grid[r:r+size, c:c+size]
+    return np.all(square_region == color)
+
+def _find_largest_square_of_color(grid, color):
+    """Finds the largest square block of a specified color."""
+    rows, cols = grid.shape
+    max_size = 0
+    top_left = None
+
+    # Iterate through possible sizes from largest possible down to 1
+    for size in range(min(rows, cols), 0, -1):
+        # Iterate through all possible top-left corners for this size
+        for r in range(rows - size + 1):
+            for c in range(cols - size + 1):
+                if _is_square_all_color(grid, r, c, size, color):
+                    # Found a square of this size, since we iterate largest first, this is the largest
+                    return size, r, c
+        # If we found a square of size > 0 in the inner loops, we would have returned.
+        # If we reach here, no square of 'size' was found, continue to smaller sizes.
+    
+    # If no square of any size > 0 is found
+    return 0, -1, -1 # Indicate no square found
+
+def transform(input_grid):
+    """
+    Finds the largest white square in the input grid and fills a slightly
+    smaller azure square within it, adjusting position based on the white
+    square's size parity.
+    """
+    input_np = np.array(input_grid, dtype=int)
+    output_grid = np.copy(input_np)
+    rows, cols = input_np.shape
+
+    # Find the largest square of white (0) pixels
+    white_color = 0
+    azure_color = 8
+    
+    n, r, c = _find_largest_square_of_color(input_np, white_color)
+
+    # If a white square was found (n > 0)
+    if n > 0:
+        # Calculate properties for the azure square
+        azure_n = n - 1
+        
+        # Determine placement based on parity of n
+        if n % 2 != 0:  # N is odd
+            azure_r = r + 1
+            azure_c = c
+        else:  # N is even
+            azure_r = r
+            azure_c = c
+
+        # Ensure the azure square has a positive size and fits within the grid
+        if azure_n > 0:
+             # Check bounds just in case (though placement logic should keep it within original white square)
+             if azure_r + azure_n <= rows and azure_c + azure_n <= cols:
+                # Fill the azure square in the output grid
+                output_grid[azure_r : azure_r + azure_n, azure_c : azure_c + azure_n] = azure_color
+
+    # Convert back to list of lists for the expected output format
+    return output_grid.tolist()
+```

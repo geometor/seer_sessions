@@ -1,0 +1,84 @@
+task_type: object_transformation_and_shape_generation
+
+components:
+  - role: background
+    color: white (0)
+  - role: input_pixels
+    description: All non-white pixels in the input grid.
+    properties:
+      - color: Varies (multiple colors possible)
+      - count: Total number of pixels for each color.
+  - role: static_color
+    description: The single non-white color with the highest pixel count in the input grid. Tie-breaking favors the color with the higher numerical index.
+    properties:
+      - color: Varies (determined per grid)
+  - role: static_pixels
+    description: All pixels in the input grid that have the static_color.
+    properties:
+      - color: Same as static_color.
+      - persistence: Position is maintained from input to output.
+  - role: dynamic_pixels
+    description: All non-white pixels in the input grid that are *not* static_pixels.
+    properties:
+      - color: Varies (multiple colors possible)
+      - persistence: Removed from original location in the output.
+      - role: contributes_to_N_total
+        value: The total count of all dynamic pixels.
+      - role: contributes_to_actor_color_frequency
+        value: Used to determine the actor color.
+  - role: actor_color (A)
+    description: The color among dynamic_pixels with the highest frequency (count). Tie-breaking favors the color with the higher numerical index.
+    properties:
+      - color: Varies (determined per grid from dynamic pixels)
+  - role: actor_pixels
+    description: The subset of dynamic_pixels that have the actor_color.
+    properties:
+      - color: Same as actor_color.
+      - role: contributes_to_N_actor
+        value: The count of these pixels.
+  - role: size_parameter_total (N_total)
+    description: The total count of all dynamic_pixels.
+    value_source: count(dynamic_pixels)
+  - role: size_parameter_actor (N_actor)
+    description: The count of dynamic_pixels matching the actor_color.
+    value_source: count(actor_pixels)
+  - role: output_shape
+    description: A geometric shape drawn in a corner of the output grid.
+    properties:
+      - color: Determined by the actor_color (A).
+      - shape_parameter: Determined based on A (either N_total or N_actor).
+      - type_and_location: Determined by A:
+          - A=Yellow(4): Vertical line in BR corner. Length = N_actor.
+          - A=Red(2): Right-angled triangle (Up-Right hypotenuse) in BL corner. Side = N_total.
+          - A=Magenta(6): Right-angled triangle (Up-Left hypotenuse) in BR corner. Side = N_actor.
+          - A=Orange(7): Right-angled triangle (Down-Right hypotenuse) in TL corner. Side = N_total.
+
+relationships:
+  - type: calculation
+    from: input_pixels
+    to: static_color
+    rule: Find color S with max count(pixels of color S). Tie-break with max(S index).
+  - type: categorization
+    from: input_pixels, static_color
+    to: static_pixels, dynamic_pixels
+    rule: Pixels with static_color are static; other non-white pixels are dynamic.
+  - type: calculation
+    from: dynamic_pixels
+    to: N_total
+    rule: N_total = count(dynamic_pixels).
+  - type: calculation
+    from: dynamic_pixels
+    to: actor_color (A)
+    rule: Find color A within dynamic_pixels with max frequency. Tie-break with max(A index).
+  - type: calculation
+    from: dynamic_pixels, actor_color
+    to: N_actor
+    rule: N_actor = count(dynamic_pixels where color == A).
+  - type: determination
+    from: actor_color (A), N_total, N_actor
+    to: output_shape properties (type, corner, size parameter, specific coordinates)
+    rule: Apply specific rules based on A to select shape type, corner, and relevant size parameter (N_total or N_actor), then calculate pixel coordinates.
+  - type: composition
+    from: static_pixels, output_shape
+    to: output_grid
+    rule: Create a white grid of original dimensions. Add static_pixels at original locations. Add output_shape pixels.

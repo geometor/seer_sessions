@@ -1,0 +1,86 @@
+task_description: >
+  Identify distinct, same-colored contiguous objects (non-background, non-noise) whose minimal bounding box fits within 6x6.
+  Use the top-left corner of each such object's bounding box to define the top-left corner of a 6x6 window to extract from the input.
+  Collect all unique 6x6 window definitions. Order them top-to-bottom, left-to-right based on their top-left corner.
+  If the input grid contains any Orange (7) pixels, reverse this order.
+  Extract each 6x6 window, clean it by replacing noise pixels (Gray=5, Orange=7, Maroon=9) with the background color,
+  and vertically stack the cleaned windows to create the output.
+
+elements:
+  - element: grid
+    role: input/output container
+    properties:
+      - background_color: Most frequent color in the input grid.
+      - dimensions: Variable for input; output is N*6 rows by 6 columns, where N is the number of unique 6x6 windows identified.
+
+  - element: object
+    role: basis for defining extraction windows
+    properties:
+      - colors: Any color except background_color and noise_colors.
+      - structure: Contiguous block of pixels of the *same* color.
+      - location: Defined by minimal bounding box (min_r, max_r, min_c, max_c).
+      - size_constraint: Bounding box height <= 6 and width <= 6.
+
+  - element: extraction_window
+    role: region to be extracted, cleaned, and stacked
+    properties:
+      - size: Exactly 6x6 pixels.
+      - location: Defined by a top-left corner (r, c) derived from the minimal bounding box corner of a valid 'object'. Unique corners define the set of windows.
+      - content: Pixels copied from the input grid at the specified location.
+
+  - element: noise_pixel
+    role: irrelevant data within input or signal for order reversal
+    properties:
+      - colors: [Gray (5), Orange (7), Maroon (9)]
+      - significance:
+          - Within an extraction_window: Replaced by background_color during cleaning.
+          - Orange (7) anywhere in input: Triggers reversal of the stacking order of extraction_windows.
+
+actions:
+  - action: identify_background_color
+    description: Find the most frequent pixel color in the input grid.
+  - action: identify_noise_colors
+    description: Define the set of noise colors {5, 7, 9}.
+  - action: find_objects_by_color
+    description: >
+      Find all maximal contiguous blocks where all pixels have the same color,
+      and that color is not the background color and not a noise color.
+      For each block, record its color, pixels, and minimal bounding box.
+  - action: filter_objects_by_size
+    description: Select only those objects whose bounding box dimensions (height, width) are both less than or equal to 6.
+  - action: determine_window_corners
+    description: >
+      Create a set of unique top-left corner coordinates (min_r, min_c) derived
+      from the bounding boxes of the size-filtered objects.
+  - action: determine_order
+    description: >
+      Sort the unique window corners based on row, then column.
+      Check if any Orange (7) pixels exist anywhere in the input grid.
+      If yes, reverse the sorted list of corners.
+  - action: extract_clean_stack
+    description: >
+      Initialize an empty list for output grids.
+      For each corner (r, c) in the final ordered list:
+        1. Check if r+6 <= input_rows and c+6 <= input_cols. If not, skip (or handle error).
+        2. Extract the 6x6 window `subgrid = input[r:r+6, c:c+6].copy()`.
+        3. Clean the `subgrid`: Iterate through its pixels. If a pixel is a noise color (5, 7, or 9), replace it with the background_color.
+        4. Append the cleaned `subgrid` to the list.
+      Vertically concatenate the grids in the list to create the final output grid.
+
+relationships:
+  - relation: object_defines_window
+    subject: object (size-filtered)
+    object: extraction_window
+    description: The top-left corner (min_r, min_c) of an object's bounding box defines the top-left corner for a potential 6x6 extraction window. Unique corners are used.
+  - relation: noise_removal
+    subject: noise_pixel
+    object: extraction_window (during cleaning)
+    description: Noise pixels within an extracted 6x6 window are replaced by the background color.
+  - relation: order_determination
+    subject: window_corner location
+    object: stacking order
+    description: The relative position (row, then column) of unique window corners determines their default stacking order.
+  - relation: order_reversal
+    subject: Orange (7) pixel presence
+    object: stacking order
+    description: The presence of any Orange (7) pixel in the input grid reverses the default stacking order.

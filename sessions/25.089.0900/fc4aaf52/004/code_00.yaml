@@ -1,0 +1,43 @@
+task_context:
+  grid_size: constant (16x16 in examples)
+  background_color: azure (8), determined as the most frequent color.
+objects:
+  - id: source_object
+    description: A single contiguous shape composed of exactly two non-background colors found in the input grid.
+    properties:
+      colors: A set of exactly two distinct colors present in the object (e.g., {white(0), gray(5)} or {blue(1), red(2)}).
+      pixels: List of coordinates (row, col) and original color for each pixel occupied by the object.
+      anchor_pixel: The pixel within the object having the minimum row index, and among those, the minimum column index.
+      anchor_color: The color of the anchor_pixel in the input grid.
+actions:
+  - name: identify_background
+    input: input_grid
+    output: background_color (azure, 8)
+  - name: identify_object
+    input: input_grid, background_color
+    output: source_object (pixels, colors)
+    validation: Asserts that exactly two distinct non-background colors are found.
+  - name: find_anchor_pixel
+    input: source_object.pixels
+    output: anchor_pixel (coordinate), anchor_color
+  - name: determine_shift
+    input: anchor_color
+    output: horizontal_shift (integer dx)
+    logic: If anchor_color is white(0), dx=3; if anchor_color is blue(1), dx=5.
+  - name: create_color_swap_map
+    input: source_object.colors (set of 2 colors)
+    output: color_map (dictionary)
+    logic: Map color1 -> color2 and color2 -> color1.
+  - name: transform_object
+    input: input_grid, source_object.pixels, background_color, horizontal_shift (dx), color_map
+    output: output_grid
+    logic:
+      1. Create a new grid filled with background_color.
+      2. For each pixel (r, c) with original_color belonging to the source_object:
+         a. Find the mapped_color using the color_map.
+         b. Calculate the new column: new_c = c + dx.
+         c. If (r, new_c) is within grid bounds, set output_grid[r, new_c] = mapped_color.
+relationships:
+  - The horizontal_shift amount depends solely on the anchor_color of the source_object.
+  - The output grid is formed by translating the source_object horizontally by the calculated horizontal_shift.
+  - During translation, the two colors making up the object are swapped according to the created color_map.

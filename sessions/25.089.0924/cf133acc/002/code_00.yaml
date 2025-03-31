@@ -1,0 +1,56 @@
+elements:
+  - type: grid
+    properties:
+      background_color: white (0)
+      contains:
+        - colored_pixels
+        - objects
+
+  - type: object
+    subtype: horizontal_line_segment
+    properties:
+      color: C (any color 1-9)
+      orientation: horizontal
+      structure: contiguous segment of color C
+
+  - type: object
+    subtype: gapped_horizontal_line
+    description: A potential target for transformation.
+    properties:
+      color: C (any color 1-9)
+      orientation: horizontal
+      location: row R
+      structure: Consists of one or more horizontal_line_segments of color C, separated by exactly one white (0) pixel (the gap) at column C_gap.
+      condition: The total horizontal span (sum of segment lengths + 1 for the gap) must be >= 3.
+
+  - type: location
+    subtype: gap
+    properties:
+      color: white (0)
+      position: (R, C_gap) within a gapped_horizontal_line
+
+actions:
+  - name: find_qualifying_gaps
+    input: grid
+    output: list of tuples (line_color C, gap_row R, gap_col C_gap)
+    description: Identifies all single-pixel white gaps within horizontal lines of a single color where the total span (line parts + gap) is 3 or more pixels.
+
+  - name: fill_gap
+    input: grid, gap_location (R, C_gap), fill_color C
+    output: modified grid
+    effect: Sets the pixel value at (R, C_gap) to C.
+
+  - name: draw_overwriting_vertical_ray_upwards
+    input: grid, start_row R_start (row above the gap), column C_ray, color C_ray
+    output: modified grid
+    effect:
+      - Iterate row `r` from `R_start` down to 0.
+      - For each `r`, set grid[r, C_ray] = C_ray.
+    constraints: This action unconditionally overwrites any existing pixel values in its path from R_start up to row 0.
+
+relationships:
+  - The `fill_gap` action uses the `line_color` of the `gapped_horizontal_line`.
+  - The `draw_overwriting_vertical_ray_upwards` action is triggered for each filled gap.
+  - The ray starts at `R - 1` (where R is the row of the filled gap) and `C_gap`.
+  - The ray uses the same `line_color` (C) as the filled gap.
+  - Pixels in the grid not explicitly modified by `fill_gap` or `draw_overwriting_vertical_ray_upwards` retain their original values from the input grid.

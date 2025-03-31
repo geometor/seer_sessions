@@ -1,0 +1,63 @@
+elements:
+  - type: grid
+    properties:
+      background_color: white (0)
+      contains:
+        - colored_pixels
+        - objects
+
+  - type: object
+    subtype: horizontal_line_segment
+    properties:
+      color: C (any color 1-9)
+      orientation: horizontal
+      structure: A contiguous horizontal sequence of pixels of color C.
+
+  - type: location
+    subtype: potential_gap
+    properties:
+      color: white (0)
+      position: (R, C_gap)
+      context: Must be located within a row R, at column C_gap, such that the pixels at (R, C_gap-1) and (R, C_gap+1) exist and are the same non-white color (let's call it `line_color`).
+
+  - type: object
+    subtype: gapped_horizontal_line
+    criteria:
+      - Identify a `potential_gap` at (R, C_gap) with `line_color`.
+      - Trace left from (R, C_gap-1) as long as pixels have `line_color`. Let the leftmost column be `start_c`.
+      - Trace right from (R, C_gap+1) as long as pixels have `line_color`. Let the rightmost column be `end_c`.
+      - The segment span is `end_c - start_c + 1`. This span must be >= 3.
+      - Within the columns `start_c` to `end_c` in row R, there must be exactly one white pixel (the `potential_gap` at `C_gap`), and all other pixels must have `line_color`.
+    properties:
+        color: `line_color`
+        gap_location: (R, `C_gap`)
+        row: R
+
+actions:
+  - name: find_gapped_horizontal_lines
+    input: grid
+    output: list of `gapped_horizontal_line` objects (containing color C, gap_row R, gap_col C_gap)
+
+  - name: fill_gap
+    input: grid_state, gap_location (R, C_gap), fill_color C
+    output: modified grid_state
+    effect: Sets the pixel value at (R, C_gap) in the grid_state to C.
+
+  - name: draw_vertical_ray_upwards
+    input: grid_state, start_location (R_start, C), color C_ray
+    output: modified grid_state
+    effect:
+      - Initialize current row `r = R_start - 1`.
+      - While `r >= 0`:
+        - Check the pixel value in the `grid_state` at (`r`, `C`).
+        - If the pixel value is NOT white (0), STOP the ray.
+        - If the pixel value IS white (0), set `grid_state[r, C] = C_ray`.
+        - Decrement `r` by 1.
+    constraints:
+      - The ray starts one row above the original gap row (`R_start`).
+      - The check for stopping condition (non-white pixel) is performed on the `grid_state` which might have been modified by previous `fill_gap` or `draw_vertical_ray_upwards` actions within the same overall transformation process.
+
+relationships:
+  - The color of the vertical ray (`C_ray`) matches the color of the horizontal line (`line_color`) whose gap initiated the ray.
+  - The vertical ray originates from the column of the filled gap (`C_gap`) and extends upwards from the row directly above the horizontal line (`R_start - 1`).
+  - Original pixels in the input grid persist in the output unless they are part of a filled gap or overwritten by an upward ray according to the rules.

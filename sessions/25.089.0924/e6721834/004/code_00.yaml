@@ -1,0 +1,78 @@
+task_description: Combines elements from two halves of an input grid based on foreground pixel density.
+
+definitions:
+  input_grid: The initial grid.
+  H: Height of input_grid.
+  W: Width of input_grid.
+  split_axis: The axis along which the grid is divided ('horizontal' if H > W, 'vertical' otherwise).
+  half_A: The first half after splitting (Top or Left).
+  half_B: The second half after splitting (Bottom or Right).
+  bg_A: The most frequent color (background) in half_A.
+  bg_B: The most frequent color (background) in half_B.
+  foreground_A: Pixels in half_A whose color is not bg_A.
+  foreground_B: Pixels in half_B whose color is not bg_B.
+  count_A: The number of foreground_A pixels.
+  count_B: The number of foreground_B pixels.
+  pattern_source_half: The half (A or B) with a higher foreground pixel count (count_A >= count_B ? A : B).
+  canvas_target_half: The half (A or B) with a lower or equal foreground pixel count (count_A >= count_B ? B : A).
+  bg_pattern: The background color of the pattern_source_half.
+  bg_canvas: The background color of the canvas_target_half.
+  output_grid: The resulting grid.
+
+grid_properties:
+  - input_grid: Variable dimensions (H, W). Contains two visually distinct regions, typically halves.
+  - half_A: Dimensions determined by split_axis (H/2 x W or H x W/2, rounded appropriately).
+  - half_B: Dimensions determined by split_axis (H/2 x W or H x W/2, rounded appropriately). Note: In examples, half_A and half_B always have identical dimensions.
+  - output_grid: Dimensions match the dimensions of the canvas_target_half.
+
+processing_steps:
+  - step: Determine split_axis based on input dimensions H and W.
+      - if H > W: split_axis = 'horizontal'. Split input_grid into Top (half_A) and Bottom (half_B).
+      - if W >= H: split_axis = 'vertical'. Split input_grid into Left (half_A) and Right (half_B).
+  - step: Identify background colors bg_A and bg_B by finding the most frequent color in half_A and half_B respectively.
+  - step: Count foreground pixels count_A (pixels in half_A != bg_A) and count_B (pixels in half_B != bg_B).
+  - step: Determine pattern_source_half and canvas_target_half based on counts.
+      - if count_A >= count_B: pattern_source_half = half_A, canvas_target_half = half_B.
+      - else: pattern_source_half = half_B, canvas_target_half = half_A.
+  - step: Identify bg_pattern (background of pattern_source_half) and bg_canvas (background of canvas_target_half).
+  - step: Create output_grid with the dimensions of canvas_target_half, filled entirely with bg_canvas.
+  - step: Iterate through pattern_source_half using relative coordinates (r, c).
+      - For each pixel P = pattern_source_half[r, c]:
+          - if P != bg_pattern:
+              - Set output_grid[r, c] = P.
+  - step: Return output_grid.
+
+examples: # Based on metrics
+  - example: train_1
+    input_dims: 11x20
+    split: Vertical (A=Left, B=Right)
+    shapes: A(11,10), B(11,10)
+    bg_A: 6, bg_B: 1
+    count_A: 24, count_B: 4
+    pattern_source: A, canvas_target: B
+    bg_pattern: 6, bg_canvas: 1
+    output_dims: (11, 10) # Shape of B
+    output_bg: 1
+    output_fg: foreground_A pixels copied to output at same relative coords.
+  - example: train_2
+    input_dims: 30x17
+    split: Horizontal (A=Top, B=Bottom)
+    shapes: A(15,17), B(15,17)
+    bg_A: 8, bg_B: 0
+    count_A: 49, count_B: 7
+    pattern_source: A, canvas_target: B
+    bg_pattern: 8, bg_canvas: 0
+    output_dims: (15, 17) # Shape of B
+    output_bg: 0
+    output_fg: foreground_A pixels copied to output at same relative coords.
+  - example: train_3
+    input_dims: 10x16
+    split: Vertical (A=Left, B=Right)
+    shapes: A(10,8), B(10,8)
+    bg_A: 4, bg_B: 8
+    count_A: 3, count_B: 18
+    pattern_source: B, canvas_target: A
+    bg_pattern: 8, bg_canvas: 4
+    output_dims: (10, 8) # Shape of A
+    output_bg: 4
+    output_fg: foreground_B pixels copied to output at same relative coords.

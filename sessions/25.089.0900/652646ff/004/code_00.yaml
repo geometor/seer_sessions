@@ -1,0 +1,74 @@
+task_description: Extract specific 6x6 shapes from an input grid, clean noise pixels from them, and stack them vertically in an order determined by their position and the presence of an orange signal pixel.
+
+elements:
+  - element: grid
+    role: input/output container
+    properties:
+      - background_color: The most frequent color in the input grid. (e.g., Red=2, Green=3, Yellow=4, Azure=8)
+      - dimensions: Variable for input (up to 30x30). Output width is always 6. Output height is 6 * N, where N is the number of identified shapes.
+
+  - element: target_shape_object
+    role: The primary structure to identify and extract.
+    properties:
+      - composition: A maximal contiguous block of one or more pixels whose colors are NOT the background color and NOT noise colors. Adjacency is defined by side-sharing (not diagonal).
+      - size_constraint: The minimal bounding box containing all pixels of the object MUST be exactly 6x6 pixels.
+      - location: Defined by the top-left corner (min_row, min_col) of its 6x6 bounding box in the input grid.
+
+  - element: noise_pixel
+    role: Irrelevant data or control signal.
+    properties:
+      - colors: [Gray (5), Orange (7), Maroon (9)]
+      - location: Can appear anywhere in the input grid.
+      - significance:
+          - Gray (5), Maroon (9): Ignored during object identification. If located within an extracted 6x6 shape region, they are replaced by the background color in the output subgrid.
+          - Orange (7): Presence *anywhere* in the input grid acts as a control signal, reversing the default stacking order of the output subgrids. Also replaced by the background color if within an extracted 6x6 region.
+
+actions:
+  - action: identify_background_color
+    description: Find the most frequent pixel color in the input grid.
+  - action: identify_noise_colors
+    description: Define the set of noise colors {5, 7, 9}.
+  - action: find_potential_objects
+    description: >
+      Perform a search (e.g., BFS) starting from every unvisited pixel that is not background and not noise.
+      Expand the search to adjacent (up, down, left, right) pixels that are also not background and not noise, marking them as visited.
+      Group all pixels visited during a single search into one potential object.
+  - action: filter_objects_by_bbox
+    description: >
+      For each potential object found:
+      1. Calculate its minimal bounding box (min_row, max_row, min_col, max_col).
+      2. Check if the height (max_row - min_row + 1) is exactly 6.
+      3. Check if the width (max_col - min_col + 1) is exactly 6.
+      4. If both conditions are true, record the top-left corner (min_row, min_col) of this bounding box.
+  - action: determine_order
+    description: >
+      Collect all recorded top-left corners from the filtered objects.
+      Sort these corners first by row index, then by column index (top-to-bottom, left-to-right).
+      Scan the original input grid for any Orange (7) pixel.
+      If an Orange (7) pixel is found, reverse the sorted order of corners.
+  - action: extract_clean_stack
+    description: >
+      Initialize an empty list for output subgrids.
+      For each corner (r, c) in the final determined order:
+      1. Extract the 6x6 region from the input grid starting at (r, c).
+      2. Create a cleaned copy of this 6x6 region: Replace every pixel with a noise color (5, 7, or 9) with the background color.
+      3. Append the cleaned 6x6 subgrid to the list.
+      Vertically concatenate (stack) all subgrids in the list to create the final output grid.
+
+relationships:
+  - relation: object_defines_extraction_window
+    subject: target_shape_object
+    object: 6x6_subgrid
+    description: The exact 6x6 bounding box of a valid target shape object defines the 6x6 window to be extracted from the input.
+  - relation: noise_removal
+    subject: noise_pixel
+    object: extracted_6x6_subgrid
+    description: Noise pixels within an extracted 6x6 subgrid are replaced by the background color.
+  - relation: order_determination
+    subject: target_shape_object location (top-left corner)
+    object: stacking_order
+    description: The relative positions (row, then column) of the top-left corners of the valid 6x6 objects determine their default stacking order.
+  - relation: order_reversal_signal
+    subject: Orange (7) pixel presence (anywhere in input)
+    object: stacking_order
+    description: The presence of any Orange (7) pixel reverses the default stacking order.

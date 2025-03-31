@@ -1,0 +1,53 @@
+task_description: Find pixels completely enclosed by an object of a different color (which is not the background color), replace the enclosed pixel with the background color, and project its original color onto a specific edge of the grid based on the color itself. Handle corner intersections and special rules for Magenta.
+
+definitions:
+  background_color: The most frequent color in the input grid.
+  contained_pixel: A pixel at (r, c) with color C1 whose 8 direct neighbors all have color C2, where C2 is not the background_color.
+  container_object: The object made of color C2 surrounding the contained_pixel.
+
+transformations:
+  - operation: find_contained_pixels
+    description: Identify all contained_pixels, recording their color (C1), row (r), and column (c).
+  - operation: process_contained_pixels
+    description: For each contained pixel (C1, r, c) found:
+      - action: replace_pixel
+        location: (r, c)
+        new_color: background_color
+      - action: determine_projection
+        based_on: C1
+        rules:
+          - color: Blue (1)
+            target_edge: Top row (row 0)
+            target_coord: (0, c)
+          - color: Red (2)
+            target_edge: Left column (col 0)
+            target_coord: (r, 0)
+          - color: Green (3)
+            target_edge: Top row (row 0)
+            target_coord: (0, c)
+          - color: Azure (8)
+            target_edge: Right column (col width-1)
+            target_coord: (r, width-1)
+          - color: Magenta (6)
+            target_edge: Bottom row (row height-1)
+            target_coord: (height-1, c)
+            additional_actions:
+              - fill_row:
+                  row_index: height-1
+                  color: Magenta (6)
+              - place_pixels:
+                  column_index: c
+                  start_row: r + 2
+                  step: 2
+                  end_row: height - 2 # Inclusive or exclusive? Output suggests up to row 12 when height=15, r=2. So up to height-3? No, Ex3 output has (12, 5) filled. Let's say up to height-2 inclusive.
+                  color: Magenta (6)
+  - operation: apply_projections
+    description: Paint the target_coord on the output grid with the color C1 for all non-Magenta projections. Magenta projections are handled during its special processing.
+  - operation: handle_intersections
+    description: If projections occurred onto two intersecting edges (e.g., Top and Left), set the corner pixel (e.g., (0,0)) to White (0). This applies to Top/Left, Top/Right corners based on examples.
+
+unchanged_elements:
+  - All pixels not part of a contained_pixel replacement or an edge/corner/Magenta projection remain the same as the input. This includes the container_object pixels (C2).
+
+grid_properties:
+  - dimensions: Input and output grids have the same height and width.

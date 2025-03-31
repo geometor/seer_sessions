@@ -1,0 +1,79 @@
+task_type: object_transformation_and_creation
+
+components:
+  - role: background
+    color: white (0)
+  - role: static_pixels
+    description: Pixels of a specific color whose positions remain unchanged between input and output.
+    properties:
+      - color: Determined by matching non-white pixel locations between input and output (S).
+      - persistence: Position is maintained from input to output.
+      - identification_rule: Find non-white color S such that the set of coordinates for S in the input equals the set of coordinates for S in the output.
+  - role: dynamic_pixels
+    description: All non-white pixels in the input grid that are not static pixels. These are removed from their original locations in the output.
+    properties:
+      - color: Any non-white color except the static color S.
+      - persistence: Removed from original location.
+      - role: contributes_to_size (N)
+        value: The total count (N) of all dynamic pixels determines the size parameter for the output shape (except when Actor is Yellow).
+      - role: determines_actor_color (A)
+        value: The dynamic color with the highest frequency (count). Tie-breaking favors the highest color index.
+  - role: output_shape
+    description: A geometric shape drawn in a corner of the output grid, replacing the dynamic pixels.
+    properties:
+      - color: Determined by the actor color A.
+      - type_and_size:
+        - If A is Yellow (4): Type is Square, Size is 2x2 (fixed).
+        - Otherwise: Type is Right-Angled Triangle, Side Length is N (total dynamic pixel count).
+      - corner_location_and_orientation (based on Actor color A):
+        - A = Red (2): Bottom-Left corner, hypotenuse Up-Right.
+        - A = Yellow (4): Bottom-Right corner (for the 2x2 square).
+        - A = Magenta (6): Bottom-Right corner, hypotenuse Up-Left.
+        - A = Orange (7): Top-Left corner, hypotenuse Down-Right.
+
+relationships:
+  - type: identification
+    from: input_grid, output_grid
+    to: static_pixels, static_color_S
+    rule: Find the unique non-white color S and its coordinates {(r, c)} such that input_grid[r, c] == S and output_grid[r, c] == S for all pixels of color S, and output_grid does not contain S at any location where input_grid did not have S.
+  - type: identification
+    from: input_grid, static_color_S
+    to: dynamic_pixels
+    rule: All pixels (r, c, color) where input_grid[r, c] != 0 and input_grid[r, c] != S.
+  - type: calculation
+    from: dynamic_pixels
+    to: size_parameter_N
+    rule: N = count(dynamic_pixels).
+  - type: selection
+    from: dynamic_pixels
+    to: actor_color_A
+    rule: A = color within dynamic_pixels with max frequency. Tie-break using highest color index.
+  - type: determination
+    from: actor_color_A, size_parameter_N
+    to: output_shape properties (type, size, corner, orientation, color)
+    rule: |
+      shape_color = A
+      if A == 4:
+        shape_type = Square
+        shape_size = 2x2
+        corner = Bottom-Right
+        orientation = N/A
+      else:
+        shape_type = Right-Angled Triangle
+        shape_size = N (side length)
+        if A == 2:
+          corner = Bottom-Left
+          orientation = Up-Right
+        elif A == 6:
+          corner = Bottom-Right
+          orientation = Up-Left
+        elif A == 7:
+          corner = Top-Left
+          orientation = Down-Right
+        else:
+          # Undefined for other actor colors based on examples
+          pass
+  - type: composition
+    from: static_pixels, output_shape
+    to: output_grid
+    rule: Create a new grid of the original dimensions filled with white (0). Add the static_pixels at their original locations. Draw the output_shape according to its determined properties (color, type, size, corner, orientation).

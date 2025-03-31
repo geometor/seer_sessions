@@ -1,0 +1,55 @@
+task_description: Extract the minimal bounding box containing all pixels of the non-background color.
+
+elements:
+  - role: background_pixel
+    description: The pixel color that appears most frequently in the input grid.
+    properties:
+      - color: The specific color value (e.g., 3, 1, 4, 2 in examples)
+      - frequency: Highest count among all colors in the grid.
+  - role: object_pixel
+    description: Any pixel whose color is not the background color.
+    properties:
+      - color: Any color value present in the grid that is not the background color (e.g., 4, 4, 9, 4 in examples)
+      - frequency: Lower count than the background color.
+  - role: object_pixel_set
+    description: The collection of all object_pixels in the input grid.
+    properties:
+      - spatial_extent: The set of coordinates (row, column) occupied by these pixels.
+  - role: bounding_box
+    description: The smallest rectangular region enclosing all pixels in the object_pixel_set.
+    properties:
+      - definition: Defined by the minimum row, maximum row, minimum column, and maximum column of the coordinates in the object_pixel_set.
+      - top_left_corner: (min_row, min_col)
+      - bottom_right_corner: (max_row, max_col)
+  - role: output_grid
+    description: The subgrid extracted from the input grid using the bounding_box coordinates.
+    properties:
+      - content: Exactly the pixels from the input grid located within the bounding_box boundaries.
+      - dimensions: Height = (max_row - min_row + 1), Width = (max_col - min_col + 1)
+
+relationships:
+  - type: frequency_comparison
+    element1: background_pixel
+    element2: object_pixel
+    description: The background_pixel color has a strictly higher count than any object_pixel color.
+  - type: spatial_containment
+    element1: bounding_box
+    element2: object_pixel_set
+    description: The bounding_box minimally encloses all coordinates of the object_pixel_set.
+  - type: extraction
+    source: input_grid
+    region: bounding_box
+    result: output_grid
+    description: The output_grid is created by copying the pixels from the input_grid within the area defined by the bounding_box.
+
+actions:
+  - action: identify_colors_and_counts
+    description: Scan the input grid to find all unique colors and count their occurrences.
+  - action: determine_background_color
+    description: Identify the color with the highest count as the background_pixel color.
+  - action: locate_object_pixels
+    description: Find the coordinates (row, column) of all pixels whose color is *not* the background_pixel color. These form the object_pixel_set.
+  - action: calculate_bounding_box
+    description: Compute the minimum and maximum row and column indices from the coordinates in the object_pixel_set. Handle the case where no object pixels exist (e.g., return an empty grid).
+  - action: extract_subgrid
+    description: Create the output_grid by copying the section of the input_grid defined by the calculated bounding_box coordinates (from min_row to max_row inclusive, and min_col to max_col inclusive).

@@ -1,0 +1,72 @@
+task_description: "Identify closed loops formed by blue pixels. Fill the enclosed regions with green and border the loops externally with red on adjacent exterior white pixels."
+elements:
+  - element: "grid"
+    properties:
+      - "height"
+      - "width"
+      - "boundary (edges)"
+  - element: "background"
+    color_name: "white"
+    color_value: 0
+    properties:
+      - "can be exterior or interior"
+  - element: "shape_outline"
+    color_name: "blue"
+    color_value: 1
+    properties:
+      - "forms contiguous shapes"
+      - "can enclose white regions (form loops)"
+      - "can be open structures"
+  - element: "outer_border"
+    color_name: "red"
+    color_value: 2
+    properties:
+      - "replaces exterior white pixels"
+      - "must be orthogonally adjacent to a blue pixel that is part of a closed loop boundary"
+      - "is one pixel thick"
+  - element: "inner_fill"
+    color_name: "green"
+    color_value: 3
+    properties:
+      - "replaces interior white pixels"
+      - "fills the entire region enclosed by a blue loop"
+regions:
+  - region_type: "exterior_white"
+    definition: "All white pixels connected to the grid boundary without crossing blue pixels."
+    identification: "BFS/Flood fill starting from all boundary white pixels."
+  - region_type: "interior_white"
+    definition: "Any white pixel not belonging to the exterior_white region."
+    properties:
+      - "May consist of multiple disconnected components."
+      - "Each component is enclosed by a blue loop."
+actions:
+  - action: "identify_exterior_white"
+    input: "input grid"
+    target: "white (0) pixels"
+    method: "BFS/Flood fill starting from all grid boundary white pixels."
+    output: "Set of coordinates for all exterior white pixels."
+  - action: "identify_interior_white_regions"
+    input: "input grid, set of exterior white pixels"
+    target: "white (0) pixels not in the exterior set"
+    method: "Find connected components (BFS/DFS) of the remaining white pixels."
+    output: "List of sets, where each set contains coordinates for one interior white region."
+  - action: "process_interior_region"
+    input: "interior white region (set of coordinates), input grid, exterior white pixel set, output grid"
+    steps:
+      - "1. Fill: Change color of all pixels in the interior region to green (3) in the output grid."
+      - "2. Find Boundary: Identify blue (1) pixels in the input grid orthogonally adjacent to any pixel in the (now green) interior region."
+      - "3. Find Border Target: Identify exterior white pixels (from exterior set) orthogonally adjacent to any blue pixel found in step 2."
+      - "4. Apply Border: Change color of target exterior white pixels (from step 3) to red (2) in the output grid."
+relationships:
+  - relationship: "spatial_adjacency"
+    between: ["red pixels", "blue loop boundary pixels"]
+    condition: "red pixel must be an exterior white pixel"
+  - relationship: "spatial_adjacency"
+    between: ["green pixels", "blue loop boundary pixels"]
+    condition: "green pixel must be an interior white pixel"
+  - relationship: "containment"
+    region: "interior_white region"
+    boundary: "specific blue loop"
+  - relationship: "connectivity"
+    region: "exterior_white region"
+    connects_to: "grid boundary"

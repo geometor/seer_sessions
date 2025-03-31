@@ -1,0 +1,69 @@
+task_elements:
+  - element: input_grid
+    description: A 2D grid containing pixels with colors 0-9.
+    properties:
+      - size: variable height and width (up to 30x30).
+      - content: Mostly white (0) with three significant non-white pixels.
+  - element: significant_pixels
+    description: The three non-white pixels in the input grid that determine the output.
+    properties:
+      - pixel_fill_color:
+          location: [0, 0]
+          role: Defines the fill color (C_fill) for the output shape.
+      - pixel_outline_color:
+          location: [0, 1]
+          role: Defines the outline color (C_outline) for the output shape.
+      - pixel_anchor:
+          color: 1 (blue)
+          location: variable coordinates [r_anchor, c_anchor]
+          role: Defines the anchor point for positioning the shape in the output.
+  - element: output_grid
+    description: A 2D grid representing the transformed input.
+    properties:
+      - size: Same dimensions as the input grid.
+      - content: Initially white (0), then a shape is drawn onto it relative to the anchor position.
+  - element: shape_template_library
+    description: A collection of predefined shape templates, indexed by the (fill_color, outline_color) pair. Each template specifies the shape's geometry.
+    properties:
+      - mapping: (C_fill, C_outline) -> specific_shape_template
+      - structure: Each specific_shape_template contains two lists of relative coordinates (dr, dc) - one for fill pixels and one for outline pixels.
+      - content: # Based on metric extraction from *all* examples
+          - key: (5, 6) # Gray fill, Magenta outline ("T" shape)
+            anchor: (4, 3) in example 1
+            fill_coords: [(-2, -3), (-2, -2), (-2, -1), (-2, 0), (-2, 1), (0, -2), (0, -1), (3, -1), (3, 0), (3, 1), (3, 2)]
+            outline_coords: [(-2, 2), (-1, 2), (0, 2), (1, -2), (1, 2), (2, -2), (2, 2), (3, -2)]
+          - key: (3, 2) # Green fill, Red outline ("H" shape)
+            anchor: (6, 6) in example 2
+            fill_coords: [(-2, -4), (-2, -3), (-2, -2), (-2, -1), (-2, 0), (-2, 1), (0, -2), (0, -1), (3, -1), (3, 0), (3, 1), (3, 2)]
+            outline_coords: [(-2, 2), (-1, -4), (-1, 2), (0, -4), (0, 2), (1, -4), (1, -2), (1, 2), (2, -4), (2, -2), (2, 2), (3, -4), (3, -2), (4, -4)] # Corrected list
+          - key: (5, 3) # Gray fill, Green outline ("Key/F" shape)
+            anchor: (6, 5) in example 3
+            fill_coords: [(-4, -5), (-4, -4), (-4, -3), (-4, -2), (-4, -1), (-4, 0), (-4, 1), (-4, 2), (-4, 3), (-2, -4), (-2, -3), (-2, -2), (-2, -1), (-2, 0), (-2, 1), (0, -2), (0, -1), (3, -1), (3, 0), (3, 1), (3, 2), (5, -3), (5, -2), (5, -1), (5, 0), (5, 1), (5, 2), (5, 3), (5, 4)]
+            outline_coords: [(-4, 4), (-3, 4), (-2, 2), (-2, 4), (-1, -4), (-1, 2), (-1, 4), (0, -4), (0, 2), (0, 4), (1, -4), (1, -2), (1, 2), (1, 4), (2, -4), (2, -2), (2, 2), (2, 4), (3, -4), (3, -2), (3, 4), (4, -4), (4, 4), (5, -4)] # Corrected list
+
+actions:
+  - action: identify_metadata_and_anchor
+    inputs: input_grid
+    outputs: fill_color, outline_color, anchor_location [r_anchor, c_anchor]
+    steps:
+      - Read color at input_grid[0, 0] -> fill_color.
+      - Read color at input_grid[0, 1] -> outline_color.
+      - Find coordinates [r_anchor, c_anchor] of the pixel with color 1.
+  - action: select_shape_template
+    inputs: fill_color, outline_color
+    outputs: fill_relative_coords, outline_relative_coords
+    description: Retrieve the predefined lists of relative fill and outline coordinates from the shape_template_library using the (fill_color, outline_color) pair as the key.
+  - action: draw_shape_on_output
+    inputs: input_grid_dimensions, fill_color, outline_color, anchor_location [r_anchor, c_anchor], fill_relative_coords, outline_relative_coords
+    outputs: output_grid
+    steps:
+      - Create a new output_grid with the same dimensions as the input_grid, initialized with white (0) pixels.
+      - For each relative coordinate (dr, dc) in fill_relative_coords:
+          - Calculate absolute coordinate [r, c] = [r_anchor + dr, c_anchor + dc].
+          - If [r, c] is within the grid bounds:
+              - Set output_grid[r, c] = fill_color.
+      - For each relative coordinate (dr, dc) in outline_relative_coords:
+          - Calculate absolute coordinate [r, c] = [r_anchor + dr, c_anchor + dc].
+          - If [r, c] is within the grid bounds:
+              - Set output_grid[r, c] = outline_color. (This overwrites fill if coordinates overlap).
+      - Set output_grid[r_anchor, c_anchor] = 1 (blue). (This overwrites fill/outline at the anchor).

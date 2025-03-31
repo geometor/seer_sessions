@@ -1,0 +1,69 @@
+task_description: Creates an output grid using the dimensions and background color from one half of the input (the "target canvas") and overlays the foreground pixels from the other half (the "pattern source").
+
+definitions:
+  input_grid: The original HxW grid.
+  split_axis: The axis along which the input is split (0 for horizontal if H>W, 1 for vertical if W>=H).
+  half_A: The first half after splitting (Top or Left).
+  half_B: The second half after splitting (Bottom or Right).
+  bg_A: The most frequent color (background) in half_A. Ties broken by smallest color index.
+  bg_B: The most frequent color (background) in half_B. Ties broken by smallest color index.
+  foreground_A: Pixels in half_A whose color is not bg_A.
+  foreground_B: Pixels in half_B whose color is not bg_B.
+  count_A: The number of foreground_A pixels.
+  count_B: The number of foreground_B pixels.
+  pattern_source_half: The half (A or B) where its foreground pixel count is greater than or equal to the other half's count (if count_A >= count_B, source is A, else source is B).
+  canvas_target_half: The half (A or B) that is not the pattern_source_half.
+  bg_pattern: The background color of the pattern_source_half.
+  bg_canvas: The background color of the canvas_target_half.
+  output_grid: The resulting grid after transformation.
+
+grid_properties:
+  - input_grid: Variable dimensions (H, W). Can have odd dimensions.
+  - output_grid: Dimensions match the dimensions of the canvas_target_half.
+
+processing_steps:
+  - step: Determine input dimensions (H, W).
+  - step: Determine split_axis. If H > W, split horizontally (axis 0). Else, split vertically (axis 1).
+  - step: Split input_grid into half_A and half_B using np.array_split along split_axis.
+  - step: Identify background colors bg_A and bg_B for each half.
+  - step: Count foreground pixels count_A and count_B for each half.
+  - step: Determine pattern_source_half and canvas_target_half based on counts (source has >= count). Note their respective background colors (bg_pattern, bg_canvas).
+  - step: Create output_grid with the dimensions of canvas_target_half, filled entirely with bg_canvas.
+  - step: Iterate through pattern_source_half with relative coordinates (r, c).
+  - step: For each pixel P at (r, c) in pattern_source_half:
+      - if color(P) is not equal to bg_pattern:
+          - Check if (r, c) is within the bounds of output_grid.
+          - if yes: Set output_grid pixel at (r, c) to color(P).
+  - step: Return output_grid.
+
+examples_analysis:
+  - example: train_1
+    dims: 11x20
+    split: Vertical (Left=A(11,10), Right=B(11,10))
+    bg_A: 6, fg_count_A: 24
+    bg_B: 1, fg_count_B: 4
+    source: A, target: B
+    bg_pattern: 6, bg_canvas: 1
+    output_dims: (11, 10) (from B)
+    output_bg: 1 (from B)
+    output_fg: from A (relative coords preserved)
+  - example: train_2
+    dims: 30x17
+    split: Horizontal (Top=A(15,17), Bottom=B(15,17))
+    bg_A: 8, fg_count_A: 49
+    bg_B: 0, fg_count_B: 7
+    source: A, target: B
+    bg_pattern: 8, bg_canvas: 0
+    output_dims: (15, 17) (from B)
+    output_bg: 0 (from B)
+    output_fg: from A (relative coords preserved)
+  - example: train_3
+    dims: 10x16
+    split: Vertical (Left=A(10,8), Right=B(10,8))
+    bg_A: 4, fg_count_A: 3
+    bg_B: 8, fg_count_B: 18
+    source: B, target: A
+    bg_pattern: 8, bg_canvas: 4
+    output_dims: (10, 8) (from A)
+    output_bg: 4 (from A)
+    output_fg: from B (relative coords preserved)

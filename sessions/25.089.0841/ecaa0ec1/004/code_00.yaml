@@ -1,0 +1,81 @@
+elements:
+  - object: background
+    color: white
+    value: 0
+  - object: marker
+    color: yellow
+    value: 4
+    role: control signal
+    quantity: multiple in input, single in output
+  - object: target
+    color: [blue, azure]
+    value: [1, 8]
+    shape: 3x3 contiguous block
+    role: transformed object
+    quantity: single
+
+relationships:
+  - type: spatial
+    description: Yellow markers are located relative to the target object's center.
+  - type: distance
+    description: Euclidean distance is calculated between the target object's center and each yellow marker.
+  - type: ranking
+    description: Yellow markers are ranked based on their distance to the target object (closest, second closest).
+  - type: relative_position
+    description: Quadrant (TL, TR, BL, BR) of markers relative to the target object's center.
+
+actions:
+  - action: initialize_output
+    result: Grid of same dimensions as input, filled with white (0).
+  - action: identify_target
+    target_colors: [blue, azure]
+    value: [1, 8]
+    expected_shape: 3x3
+    result: 3x3 grid patch, top-left origin coordinates (origin_row, origin_col), center coordinates (center_row, center_col).
+  - action: identify_markers
+    target_color: yellow
+    value: 4
+    result: List of marker coordinates [(r1, c1), (r2, c2), ...].
+  - action: calculate_distances_and_quadrants
+    inputs: [marker coordinates, target center coordinates]
+    computation: Euclidean distance, relative quadrant determination
+    result: List of dictionaries, each containing {'pos': (r, c), 'dist': float, 'quad': str}.
+  - action: sort_markers
+    input: List of marker dictionaries
+    key: distance (ascending)
+    result: Sorted list of marker dictionaries.
+  - action: find_closest_marker
+    input: Sorted marker list
+    result: Marker dictionary for the closest marker.
+  - action: find_second_closest_markers
+    input: Sorted marker list
+    computation: Identify the smallest distance strictly greater than the minimum distance; find all markers matching this second distance.
+    result: List of marker dictionaries for the second closest marker(s).
+  - action: determine_rotation_k
+    inputs: [closest marker quadrant, second closest markers quadrants]
+    logic:
+      - If closest quadrant is TL: k=1
+      - If closest quadrant is BL: k=0
+      - If closest quadrant is BR: k=2
+      - If closest quadrant is TR:
+        - Check if all second closest markers are in TL or BL quadrants: k=1
+        - Check if all second closest markers are in TR or BR quadrants: k=3
+        - Default/fallback: (Needs definition if mixed quadrants occur, but not seen in examples - perhaps default to k=1 or k=0?) Assume examples cover necessary cases.
+    result: Rotation parameter k (integer 0, 1, 2, or 3) for np.rot90.
+  - action: rotate_target
+    target: 3x3 target patch
+    parameter: rotation_k
+    result: Rotated 3x3 grid patch.
+  - action: place_rotated_target
+    target: output grid
+    input: rotated 3x3 patch, original top-left origin coordinates
+    effect: Copies rotated patch to the output grid.
+  - action: calculate_output_marker_position
+    input: List of positions of second closest marker(s)
+    computation: Calculate the mean row and mean column, round both to nearest integer.
+    fallback: If no second closest markers exist, use the position of the closest marker.
+    result: Output marker coordinates (output_marker_row, output_marker_col).
+  - action: place_output_marker
+    target: output grid
+    input: output marker coordinates, marker color (yellow, 4)
+    effect: Sets the pixel at the specified coordinates to yellow, if within bounds.

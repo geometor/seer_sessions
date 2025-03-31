@@ -1,0 +1,71 @@
+task_description: Identify isolated pixels (triggers), replace them with the background color, and project their original color onto a grid edge based on the color. Handle special rules for Magenta projections and corner intersections.
+
+definitions:
+  background_color: The most frequent color in the input grid.
+  trigger_pixel:
+    description: A pixel at (r, c) with color C1 that meets two conditions:
+      1. C1 is not the background_color.
+      2. None of the 8 neighboring pixels (if they exist within grid bounds) have the color C1.
+    properties:
+      color: C1
+      location: (r, c)
+
+transformations:
+  - operation: setup
+    action: Copy the input grid to create the output grid.
+    action: Determine the background_color.
+  - operation: find_triggers
+    action: Identify all trigger_pixels using the definition above. Store their color C1, row r, and column c.
+  - operation: process_triggers
+    description: For each trigger pixel (C1, r, c) found:
+      - action: replace_pixel
+        target: output grid location (r, c)
+        new_color: background_color
+      - action: determine_projection_or_special_action
+        based_on: C1
+        rules:
+          - color: Blue (1)
+            effect: Standard projection
+            target_edge: Top row (row 0)
+            target_coord: (0, c)
+            projected_color: Blue (1)
+          - color: Red (2)
+            effect: Standard projection
+            target_edge: Left column (col 0)
+            target_coord: (r, 0)
+            projected_color: Red (2)
+          - color: Green (3)
+            effect: Standard projection
+            target_edge: Top row (row 0)
+            target_coord: (0, c)
+            projected_color: Green (3)
+          - color: Azure (8)
+            effect: Standard projection
+            target_edge: Right column (col width-1)
+            target_coord: (r, width-1)
+            projected_color: Azure (8)
+          - color: Magenta (6)
+            effect: Special action (applied immediately to output grid)
+            actions:
+              - fill_row:
+                  row_index: height-1
+                  color: Magenta (6)
+              - place_pixels_periodically:
+                  column_index: c
+                  start_row: r + 2 # Row below the original trigger's row + 1
+                  step: 2
+                  end_row_exclusive: height - 1 # Stop before the last row
+                  color: Magenta (6)
+  - operation: apply_standard_projections
+    description: After processing all triggers, apply the standard projections determined in the previous step.
+    action: For each standard projection (Color, TargetRow, TargetCol), set the pixel at (TargetRow, TargetCol) in the output grid to Color. Keep track of which edges (Top, Left, Right) received projections.
+  - operation: handle_intersections
+    description: Resolve conflicts at corners if standard projections landed on intersecting edges.
+    action: If both Top and Left edges received projections, set output_grid[0, 0] to White (0).
+    action: If both Top and Right edges received projections, set output_grid[0, width-1] to White (0).
+
+unchanged_elements:
+  - All pixels not identified as trigger_pixels and not modified by projections or special actions retain their original color from the input grid.
+
+grid_properties:
+  - dimensions: Input and output grids have the same height and width.

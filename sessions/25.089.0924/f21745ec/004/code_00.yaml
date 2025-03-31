@@ -1,0 +1,69 @@
+task_type: object_transformation_pattern_fill
+objects:
+  - type: background
+    properties:
+      color: white
+      value: 0
+      role: static_canvas
+  - type: simple_hollow_rectangle
+    properties:
+      color: non-white (1-9)
+      value: 1-9
+      connectivity: contiguous
+      form: perfect rectangular frame (>= 3x3)
+      thickness: 1 pixel
+      interior: contains only white pixels (value 0)
+      role: potential_target
+    attributes:
+      bounding_box: (min_row, min_col, max_row, max_col)
+      area: height * width of bounding_box
+  - type: pattern_source
+    properties:
+      color: non-white (1-9)
+      value: 1-9
+      connectivity: contiguous
+      form: any shape that is *not* a simple_hollow_rectangle
+      role: provides_fill_pattern
+    attributes:
+      bounding_box: (min_row, min_col, max_row, max_col)
+      pixel_count: number of non-white pixels in the object
+      pattern_grid: 2D array representing the pixels strictly *inside* the bounding box of the source object
+relationships:
+  - type: spatial
+    description: Objects are placed on the background, non-overlapping.
+  - type: selection_criteria
+    description: Two selection processes occur based on object type and attributes.
+    criteria_target:
+      - object_type: simple_hollow_rectangle
+      - metric: area (descending)
+      - tie-breaker-1: bounding_box min_row (ascending)
+      - tie-breaker-2: bounding_box min_col (ascending)
+      - quantity: 2
+    criteria_source:
+      - object_type: not simple_hollow_rectangle
+      - metric: pixel_count (descending)
+      - tie-breaker-1: bounding_box min_row (ascending)
+      - tie-breaker-2: bounding_box min_col (ascending)
+      - quantity: 1
+actions:
+  - name: identify_objects
+    input: grid
+    output: list of all distinct non-white objects with properties (color, pixels, bbox, pixel_count)
+  - name: classify_objects
+    input: list of objects
+    output: two lists - simple_hollow_rectangles (with area calculated), pattern_sources
+  - name: select_pattern_source
+    input: list of pattern_sources
+    output: the single pattern_source object meeting criteria_source
+  - name: extract_pattern
+    input: pattern_source object, grid
+    output: pattern_grid (2D array derived from pixels within the source's bbox, potentially excluding frame if source resembles a filled rect)
+    details: Pattern coordinates are relative to the top-left interior corner of the source bbox. Color information in the pattern itself is ignored; only shape is used.
+  - name: select_target_rectangles
+    input: list of simple_hollow_rectangles
+    output: the two target rectangles meeting criteria_target
+  - name: tile_fill_interior
+    input: target rectangle, pattern_grid, target_color (from target rectangle frame)
+    output: modified grid section
+    process: Iterate through the white pixels strictly inside the target rectangle's bounding box. For each interior pixel (r, c), calculate its relative position (r - min_r - 1, c - min_c - 1). Use the modulo operator with the pattern_grid dimensions to find the corresponding pattern pixel. If the pattern pixel is non-white (indicating part of the pattern shape), change the output grid pixel at (r, c) to the target_color.
+transformation_scope: Applies only to the white pixels inside the two selected target rectangles. All other pixels remain unchanged.

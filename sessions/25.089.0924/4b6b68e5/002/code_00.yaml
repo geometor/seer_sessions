@@ -1,0 +1,41 @@
+Grid:
+  Properties:
+    - dimensions (height, width)
+    - pixels (color, position)
+Objects:
+  - Type: BoundaryComponent
+    Properties:
+      - color (B > 0)
+      - pixels (set of connected pixel positions {(r, c), ...} with color B)
+      - is_single_color (boolean, always true for processing)
+  - Type: EnclosedRegion
+    Properties:
+      - interior_pixels (set of pixel positions {(r, c), ...} inside the boundary)
+      - boundary_component (reference to the specific BoundaryComponent enclosing it)
+      - seed_pixels (list of pixels within interior_pixels whose color is not white (0) and not the boundary_component.color)
+        Properties:
+          - color (C_seed)
+          - position (r, c)
+  - Type: ExteriorRegion
+    Properties:
+      - pixels (set of pixel positions reachable from grid edges without crossing any non-white pixel)
+Relationships:
+  - Enclosure: A BoundaryComponent fully encloses an EnclosedRegion if all paths from any interior_pixel to the grid edge must cross a pixel belonging to that specific BoundaryComponent. Pixels adjacent to the EnclosedRegion must *only* be part of that BoundaryComponent or other interior_pixels of the same region.
+  - Adjacency: Pixels are 4-directionally connected. Used for component finding, exterior/interior determination, and identifying seeds adjacent to boundaries.
+  - Frequency: Used to determine the fill color from seed pixel colors within an EnclosedRegion.
+Actions:
+  - Identify_Boundaries: Find all connected components of each non-white color.
+  - Identify_Exterior: Flood fill from grid edges, avoiding all non-white pixels, to mark the ExteriorRegion.
+  - Identify_Enclosed_Regions:
+      For each potential interior pixel (not boundary, not exterior):
+        Flood fill to find a connected region of such pixels.
+        Identify all adjacent boundary pixels for this region.
+        Check if all adjacent boundary pixels belong to *one single* BoundaryComponent identified earlier.
+        If yes, classify the region as an EnclosedRegion associated with that BoundaryComponent.
+  - Identify_Seeds: For each EnclosedRegion, find non-white, non-boundary pixels within its interior_pixels.
+  - Count_Seeds: Determine the number of seed_pixels for each EnclosedRegion.
+  - Analyze_Seeds:
+    - If count > 1: Calculate frequency of seed colors, find the most frequent color (C_fill). If tie, use smallest color index.
+    - If count <= 1: No action needed.
+  - Transform_Region:
+    - If count > 1: Flood fill the EnclosedRegion's interior_pixels with C_fill in the output grid.

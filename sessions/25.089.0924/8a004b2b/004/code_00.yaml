@@ -1,0 +1,81 @@
+elements:
+  - object: grid
+    type: 2D array of integers (0-9)
+    role: input/output container
+  - object: pixel
+    attributes:
+      - color: integer (0-9) corresponding to specific colors
+      - position: (row, column)
+  - object: yellow_pixels
+    color: 4
+    role: delimiter
+    description: Define the corners of a bounding box in the input grid. Always appear at the corners of the output grid.
+  - object: bounding_box
+    defined_by: yellow_pixels
+    properties:
+      - min_row: minimum row index of yellow pixels
+      - min_col: minimum column index of yellow pixels
+      - max_row: maximum row index of yellow pixels
+      - max_col: maximum column index of yellow pixels
+      - height: max_row - min_row + 1
+      - width: max_col - min_col + 1
+    role: defines the region of interest in the input and the size of the output.
+  - object: inner_content
+    location: Input grid region strictly inside the bounding_box (rows from min_row + 1 to max_row - 1, columns from min_col + 1 to max_col - 1)
+    description: The pixels and their arrangement within the bounding box, excluding the boundary itself.
+    role: content to be transferred to the output grid.
+  - object: outside_pixels
+    location: Input grid region outside the bounding_box (rows < min_row or rows > max_row or cols < min_col or cols > max_col)
+    description: Pixels not enclosed by the yellow markers.
+  - object: shift_color
+    derived_from: outside_pixels
+    calculation: Most frequent non-background (non-zero) color among outside_pixels. Ties broken by choosing the smallest color index.
+    role: color used for the shifted copies of inner objects.
+  - object: inner_object
+    location: Contiguous block of same-colored non-background pixels within the inner_content area *after* it has been placed in the output grid (offset by 1,1).
+    role: Subject of the shifting action.
+actions:
+  - name: identify_bounding_box
+    input: input grid
+    output: bounding_box coordinates (min_row, min_col, max_row, max_col)
+  - name: calculate_output_size
+    input: bounding_box coordinates
+    output: output grid dimensions (height, width)
+  - name: create_output_grid
+    input: output grid dimensions
+    output: new grid initialized with white (0)
+  - name: determine_shift_color
+    input: input grid, bounding_box coordinates
+    output: shift_color
+    steps:
+      - Identify all non-background pixels outside the bounding box.
+      - Count frequency of each color.
+      - Find the maximum frequency.
+      - Select the color(s) with the maximum frequency.
+      - If multiple colors tie, choose the one with the smallest integer value.
+      - If no non-background pixels outside, default shift_color might be 0 (or this case doesn't occur in examples).
+  - name: copy_inner_content_to_output
+    input: input grid, bounding_box coordinates, output grid
+    action: Copy pixels from input[min_row + 1 : max_row, min_col + 1 : max_col] to output[1 : height-1, 1 : width-1].
+  - name: identify_inner_objects
+    input: output grid (after content copy)
+    region: output[1 : height-1, 1 : width-1]
+    output: list of objects, each defined by its color and set of coordinates.
+    method: Find connected components (e.g., BFS or DFS) for non-background pixels in the specified region.
+  - name: apply_object_shifts
+    input: output grid, list of inner_objects, shift_color
+    action: For each pixel (r, c) in each inner_object:
+      - Calculate potential shifted positions: (r, c-2) and (r, c+2).
+      - For each potential position (nr, nc):
+        - Check if (nr, nc) is within the output grid bounds.
+        - Check if output_grid[nr, nc] is currently background (0).
+        - If both conditions are true, set output_grid[nr, nc] = shift_color.
+  - name: set_output_corners
+    input: output grid
+    action: set pixels at [0, 0], [0, width-1], [height-1, 0], [height-1, width-1] to yellow (4).
+relationships:
+  - Input yellow pixels define the output grid size and the source region for inner_content.
+  - Input pixels outside the bounding box determine the shift_color.
+  - Objects copied into the output grid are then used as templates for shifting.
+  - Shifted pixels use the shift_color and only fill background cells.
+  - Output grid corners are always yellow.

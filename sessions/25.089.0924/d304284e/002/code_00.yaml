@@ -1,0 +1,62 @@
+task_description: Tile patterns across the output grid based on their row and column index relative to the initial input pattern, potentially drawing partial patterns at the grid edges.
+
+elements:
+  - type: background
+    color: white (0)
+  - type: input_pattern
+    description: A single contiguous object of a non-background color found in the input.
+    properties:
+      - color: orange (7) in examples (original_color)
+      - shape: variable (input_pattern_shape, derived from input)
+      - location: defined by its top-left corner (r0, c0)
+  - type: fixed_pattern
+    description: A specific 3x3 pattern resembling the digit '8'.
+    properties:
+      - color: N/A (color determined by placement rule)
+      - shape: fixed_pattern_shape = [(0,0), (0,1), (0,2), (1,0), (1,2), (2,0), (2,1), (2,2)] relative offsets
+  - type: alternate_color
+    value: magenta (6)
+  - type: tiling_parameters
+    properties:
+      - horizontal_step: 4 pixels
+      - vertical_step: 4 pixels
+
+actions:
+  - action: identify_input_pattern
+    inputs: input_grid
+    outputs: input_pattern_shape, original_color, top_left_corner (r0, c0)
+  - action: define_fixed_pattern
+    outputs: fixed_pattern_shape
+  - action: initialize_output
+    inputs: input_grid_dimensions
+    outputs: output_grid (filled with background color)
+  - action: tile_patterns
+    inputs: output_grid, input_pattern_shape, fixed_pattern_shape, original_color, alternate_color, r0, c0, horizontal_step, vertical_step
+    outputs: modified_output_grid
+    details:
+      - Iterate through potential copy positions (r, c) = (r0 + vertical_step * j, c0 + horizontal_step * i) for i >= 0, j >= 0.
+      - For each potential position (r, c) corresponding to indices (i, j):
+        - Determine the pattern shape and color based on j and i:
+          - If j == 0:
+            - shape_to_draw = input_pattern_shape
+            - color = alternate_color if i % 3 == 2 else original_color
+            - draw_flag = True
+          - If j > 0:
+            - if i % 3 == 2:
+              - shape_to_draw = fixed_pattern_shape
+              - color = alternate_color
+              - draw_flag = True
+            - else:
+              - draw_flag = False
+        - If draw_flag is True:
+            - For each relative offset (dr, dc) in shape_to_draw:
+                - Calculate absolute pixel coordinate (pr, pc) = (r + dr, c + dc).
+                - If (pr, pc) is within the grid bounds:
+                    - Set output_grid[pr, pc] = color.
+
+relationships:
+  - The output grid size is the same as the input grid size.
+  - Two patterns are used: one from the input, one fixed ('8' shape).
+  - The pattern used depends on the row index `j` of the tile position.
+  - The color used depends on the row index `j` and the column index `i` of the tile position.
+  - Patterns are drawn pixel by pixel, allowing partial rendering at grid boundaries.

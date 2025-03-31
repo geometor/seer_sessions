@@ -1,0 +1,39 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\nTransformation Rule:\n1. Identify marker pairs in the first two columns (col 0, col 1) of the input grid. These pairs define a mapping from an object color (col 0) to a frame color (col 1). Store the coordinates of these marker pixels.\n2. Find all distinct contiguous objects (4-way connectivity) in the grid composed of a single non-background color, excluding the pixels identified as markers.\n3. For each identified object:\n    a. Determine its color.\n    b. Check if this color has a corresponding frame color defined by the markers.\n    c. If a frame color exists:\n        i. Calculate the bounding box of the object (min_row, min_col, max_row, max_col).\n        ii. Define an expanded bounding box by extending the original box by one pixel in all directions (clamped to grid boundaries).\n        iii. Iterate through all pixels within the expanded bounding box.\n        iv. If a pixel is within the expanded box but outside the original object's bounding box, it belongs to the frame area.\n        v. If a pixel belongs to the frame area and its current color in the output grid is the background color (0), update its color to the determined frame color.\n4. The final output grid contains the original input elements plus the newly drawn frames, ensuring original elements and other frames are not overwritten.\n\"\"\"\n\nimport numpy as np\nfrom collections import deque\n\ndef find_objects(grid, marker_coords):\n    \"\"\"\n    Finds all distinct contiguous objects (4-way connected) of the same color \n    in the grid, excluding coordinates specified in marker_coords.\n\n    Args:\n        grid (np.array): The input grid.\n        marker_coords (set): A set of (row, col) tuples representing marker locations.\n\n    Returns:\n        list: A list of dictionaries, where each dictionary represents an object\n              and contains 'color' (int) and 'coords' (set of (row, col) tuples).\n    \"\"\"\n    height, width = grid.shape\n    visited = set(marker_coords) # Start with markers as visited\n    objects = []\n    \n    for r in range(height):\n        for c in range(width):\n            # Check if the pixel is non-background and not visited (and not a marker)\n            if grid[r, c] != 0 and (r, c) not in visited:\n                object_color = grid[r, c]\n                current_object_coords = set()\n                q = deque([(r, c)])\n                visited.add((r, c))\n                current_object_coords.add((r, c))\n\n                while q:\n                    row, col = q.popleft()\n\n                    # Check 4 neighbors (up, down, left, right)\n                    for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n                        nr, nc = row + dr, col + dc\n\n                        # Check bounds, color match, and not visited\n                        if 0 <= nr < height and 0 <= nc < width and \\\n                           grid[nr, nc] == object_color and \\\n                           (nr, nc) not in visited:\n                            \n                            visited.add((nr, nc))\n                            current_object_coords.add((nr, nc))\n                            q.append((nr, nc))\n                \n                # Store the found object if it has coordinates\n                if current_object_coords: \n                     objects.append({'color': object_color, 'coords': current_object_coords})\n\n    return objects\n\ndef transform(input_grid):\n    \"\"\"\n    Applies the transformation rule to the input grid.\n\n    Args:\n        input_grid (np.array): A 2D numpy array representing the input grid.\n\n    Returns:\n        np.array: A 2D numpy array representing the output grid.\n    \"\"\"\n    \n    # Initialize output_grid as a copy of the input\n    output_grid = np.copy(input_grid)\n    height, width = input_grid.shape\n    \n    # --- Step 1: Identify Markers and Create Color Map ---\n    color_map = {}\n    marker_coords = set()\n    # Scan columns 0 and 1 for vertical non-background pairs\n    for r in range(height):\n        # Check if cells in col 0 and col 1 are non-background\n        if input_grid[r, 0] != 0 and input_grid[r, 1] != 0:\n             # Assume these form a marker pair\n             object_color = input_grid[r, 0]\n             frame_color = input_grid[r, 1]\n             # Add/update the mapping\n             color_map[object_color] = frame_color\n             # Record marker coordinates\n             marker_coords.add((r, 0))\n             marker_coords.add((r, 1))\n\n    # --- Step 2: Find all distinct objects (excluding markers) ---\n    objects = find_objects(input_grid, marker_coords)\n\n    # --- Step 3 & 4: Process each object and draw frame if applicable ---\n    for obj in objects:\n        obj_color = obj['color']\n        \n        # Check if this object's color requires a frame according to the markers\n        if obj_color in color_map:\n            frame_color = color_map[obj_color]\n            coords = obj['coords']\n            \n            # Calculate the original bounding box of the object\n            min_r = min(r for r, c in coords)\n            max_r = max(r for r, c in coords)\n            min_c = min(c for r, c in coords)\n            max_c = max(c for r, c in coords)\n            \n            # Define the expanded bounding box coordinates (1 pixel outwards)\n            # Clamp coordinates to the grid boundaries\n            frame_min_r = max(0, min_r - 1)\n            frame_max_r = min(height - 1, max_r + 1)\n            frame_min_c = max(0, min_c - 1)\n            frame_max_c = min(width - 1, max_c + 1)\n\n            # --- Step 4: Draw the frame ---\n            # Iterate through all pixels within the expanded bounding box\n            for r in range(frame_min_r, frame_max_r + 1):\n                for c in range(frame_min_c, frame_max_c + 1):\n                    # Check if the current pixel (r, c) is *outside* the original object's bounding box\n                    is_outside_original_box = (r < min_r or r > max_r or \n                                               c < min_c or c > max_c)\n                    \n                    # If it's part of the frame area (outside original box) \n                    # AND the corresponding pixel in the output grid is currently background (0)\n                    if is_outside_original_box and output_grid[r, c] == 0:\n                        # Draw the frame pixel\n                        output_grid[r, c] = frame_color\n                            \n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "citation_metadata": {
+        "citation_sources": [
+          {
+            "start_index": 7286,
+            "end_index": 7485,
+            "uri": "https://github.com/Rijgersberg/advent-of-code-2020",
+            "license_": ""
+          }
+        ]
+      },
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 14665,
+    "candidates_token_count": 1646,
+    "total_token_count": 16311,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 19.963682,
+  "retries": 1
+}

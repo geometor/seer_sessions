@@ -1,0 +1,66 @@
+task_description: "Identify closed loops formed by blue pixels. Fill connected white areas inside the loop with green. Add a red border on adjacent exterior white pixels."
+elements:
+  - element: "background"
+    color_name: "white"
+    color_value: 0
+    properties:
+      - "exists as exterior (connected to boundary)"
+      - "can exist as interior (enclosed by blue)"
+  - element: "loop"
+    color_name: "blue"
+    color_value: 1
+    properties:
+      - "forms shapes"
+      - "remains unchanged in output"
+      - "if shape encloses interior white regions, it triggers fill/border"
+  - element: "outer_border"
+    color_name: "red"
+    color_value: 2
+    properties:
+      - "replaces exterior white pixels"
+      - "is orthogonally adjacent to the blue loop pixels"
+      - "is one pixel thick"
+      - "only appears if a loop encloses an interior white region"
+  - element: "inner_fill"
+    color_name: "green"
+    color_value: 3
+    properties:
+      - "replaces interior white pixels"
+      - "fills connected components of interior white pixels"
+      - "only appears if a loop encloses an interior white region"
+      - "does not replace non-white pixels inside the loop boundary"
+actions:
+  - action: "identify_exterior_white"
+    input: "input grid"
+    target: "white pixels (0)"
+    method: "BFS/flood fill starting from all boundary white pixels"
+    output: "set of coordinates of all exterior white pixels"
+  - action: "identify_interior_white_regions"
+    input: "input grid, set of exterior white coordinates"
+    target: "white pixels (0) not in exterior set"
+    method: "Iterate grid, perform BFS on unvisited non-exterior white pixels"
+    output: "list of sets, each set contains coordinates of one connected interior white region"
+  - action: "apply_fill_and_border"
+    trigger: "For each identified interior white region"
+    input: "output grid (copy of input), interior region coordinates, exterior white coordinates"
+    steps:
+      - "1. Find blue boundary: Identify blue (1) pixels orthogonally adjacent to the interior region."
+      - "2. Apply green fill: Change color of all pixels in the interior region to green (3) in the output grid."
+      - "3. Find border locations: Identify exterior white pixels orthogonally adjacent to any pixel in the blue boundary."
+      - "4. Apply red border: Change color of these border location pixels to red (2) in the output grid."
+relationships:
+  - relationship: "adjacency"
+    between: ["red border pixels", "blue loop boundary pixels"]
+    details: "Red pixels are orthogonally adjacent to blue pixels."
+  - relationship: "adjacency"
+    between: ["blue loop boundary pixels", "green fill pixels (originally interior white)"]
+    details: "Blue pixels are orthogonally adjacent to green pixels."
+  - relationship: "spatial"
+    between: ["red border pixels", "exterior white region"]
+    details: "Red pixels replace a subset of the exterior white pixels."
+  - relationship: "spatial"
+    between: ["green fill pixels", "interior white region(s)"]
+    details: "Green pixels replace connected components of interior white pixels."
+  - relationship: "containment"
+    element: "interior white regions"
+    condition: "are fully enclosed by blue pixels (not connected to exterior white)"

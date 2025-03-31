@@ -1,0 +1,88 @@
+---
+task_description: "Fill the interior of hollow rectangles with a checkerboard pattern using colors derived from scattered pixels, then remove the scattered pixels."
+
+elements:
+  - element: grid
+    description: "A 2D array of pixels with values 0-9 representing colors."
+    properties:
+      - background_color: 0 (white)
+      - dimensions: variable (up to 30x30)
+
+  - element: hollow_rectangle
+    description: "A rectangular frame, one pixel thick, made of a single uniform color, enclosing only white pixels."
+    properties:
+      - frame_color: (integer 1-9)
+      - location: (defined by bounding box)
+      - interior: (region of white pixels enclosed by the frame)
+    identification:
+      - Find connected components of non-white pixels.
+      - Check if a component forms a 1-pixel thick rectangular frame surrounding only white pixels.
+
+  - element: scattered_pixel
+    description: "A single non-white pixel whose 8 neighbouring cells are all white (0)."
+    properties:
+      - color: (integer 1-9)
+      - location: (row, column)
+    identification:
+      - Check each non-white pixel.
+      - If all 8 neighbours are white (0), it's a scattered pixel.
+
+actions:
+  - action: identify_objects
+    description: "Locate all hollow_rectangles and scattered_pixels in the input grid."
+    inputs:
+      - input_grid
+    outputs:
+      - list_of_rectangles
+      - list_of_scattered_pixels
+
+  - action: determine_fill_colors
+    description: "Establish a mapping between each rectangle's frame_color and the color used to fill its interior."
+    inputs:
+      - list_of_rectangles
+      - list_of_scattered_pixels
+    outputs:
+      - color_map (frame_color -> fill_color)
+    logic: |
+      1. Get distinct frame_colors from rectangles.
+      2. Get distinct colors from scattered_pixels.
+      3. Sort both sets of colors numerically (ascending).
+      4. Pair the i-th sorted frame_color with the (n-1-i)-th sorted scattered_color (where n is the number of distinct colors).
+
+  - action: apply_checkerboard_fill
+    description: "Fill the interior of each hollow_rectangle with the determined fill_color using a checkerboard pattern."
+    inputs:
+      - target_grid (initially copy of input_grid)
+      - rectangle
+      - fill_color
+    outputs:
+      - modified_target_grid
+    logic: |
+      1. Find the top-left coordinate (r0, c0) of the rectangle's interior (first white pixel inside).
+      2. Calculate the target parity P = (r0 + c0) % 2.
+      3. For each pixel (r, c) in the rectangle's interior:
+      4. If (r + c) % 2 == P, set target_grid[r][c] = fill_color.
+
+  - action: remove_scattered_pixels
+    description: "Set the color of all original scattered_pixels in the grid to white (0)."
+    inputs:
+      - target_grid
+      - list_of_scattered_pixels
+    outputs:
+      - modified_target_grid
+    logic: |
+      For each scattered_pixel at (r, c), set target_grid[r][c] = 0.
+
+relationships:
+  - relationship: fill_color_source
+    description: "The colors used to fill the rectangles are sourced exclusively from the colors of the scattered pixels."
+  - relationship: pairing_rule
+    description: "The specific pairing between a rectangle's color and its fill color is determined by sorting both sets of colors and pairing smallest-frame-color with largest-scattered-color, etc."
+  - relationship: checkerboard_anchor
+    description: "The checkerboard pattern's alignment (which squares get filled) depends on the coordinates of the top-left interior pixel of the rectangle."
+
+final_state:
+  - property: "Output grid contains the original hollow rectangles."
+  - property: "Interiors of hollow rectangles are filled with a checkerboard pattern according to the derived color map."
+  - property: "All originally scattered pixels are removed (set to white)."
+---

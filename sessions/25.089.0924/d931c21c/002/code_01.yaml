@@ -1,0 +1,75 @@
+task_description: "Identify closed loops formed by blue pixels. Fill the enclosed white regions with green and border the loops externally by coloring adjacent exterior white pixels red."
+elements:
+  - element: "grid"
+    properties:
+      - "height"
+      - "width"
+      - "boundary (edges)"
+  - element: "pixel_colors"
+    values:
+      - color_name: "white"
+        value: 0
+        role: "background (exterior or interior)"
+      - color_name: "blue"
+        value: 1
+        role: "shape_outline"
+      - color_name: "red"
+        value: 2
+        role: "outer_border"
+      - color_name: "green"
+        value: 3
+        role: "inner_fill"
+objects:
+  - object: "blue_shape"
+    composed_of: "connected blue (1) pixels"
+    properties:
+      - "can be open or closed (loop)"
+  - object: "exterior_white_region"
+    composed_of: "connected white (0) pixels"
+    properties:
+      - "connected to the grid boundary"
+      - "unique (usually only one, unless fully partitioned by blue)"
+  - object: "interior_white_region"
+    composed_of: "connected white (0) pixels"
+    properties:
+      - "not connected to the grid boundary"
+      - "fully enclosed by a blue_shape loop"
+      - "can be multiple distinct regions per grid"
+actions:
+  - action: "identify_exterior"
+    input: "input grid"
+    target: "white (0) pixels"
+    method: "Flood fill (e.g., BFS) starting from all boundary white pixels."
+    output: "Set of coordinates for the exterior_white_region."
+  - action: "identify_interiors"
+    input: "input grid, exterior_white_region coordinates"
+    target: "white (0) pixels not in exterior_white_region"
+    method: "Find connected components (e.g., BFS) of the remaining white pixels."
+    output: "List of sets, each set contains coordinates for one interior_white_region."
+  - action: "apply_fill_and_border"
+    input: "interior_white_region coordinates, exterior_white_region coordinates, input grid"
+    output_effect: "Modifies the output grid"
+    steps:
+      - "1. Fill Interior: Change all pixels in the interior_white_region to green (3)."
+      - "2. Find Blue Boundary: Identify blue (1) pixels adjacent to the green (3) region."
+      - "3. Find Red Border Target: Identify pixels from exterior_white_region adjacent to the blue boundary pixels found in step 2."
+      - "4. Apply Border: Change the target red border pixels to red (2)."
+relationships:
+  - relationship: "spatial"
+    type: "adjacency (orthogonal)"
+    between: ["exterior_white_region", "blue_shape boundary (for closed loops)"]
+    result: "defines placement for red (2) pixels"
+  - relationship: "spatial"
+    type: "enclosure"
+    container: "blue_shape (closed loop)"
+    contained: "interior_white_region"
+    result: "defines placement for green (3) pixels"
+  - relationship: "topology"
+    type: "connectivity"
+    element: "exterior_white_region"
+    connects_to: "grid boundary"
+  - relationship: "topology"
+    type: "separation"
+    element: "interior_white_region"
+    separated_from: "grid boundary"
+    by: "blue_shape (closed loop)"

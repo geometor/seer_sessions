@@ -1,0 +1,59 @@
+task_description: Fill enclosed background areas based on border color and largest interior object color.
+
+elements:
+  - type: grid
+    properties:
+      - background_color: white (0)
+      - contains: objects
+
+  - type: object
+    properties:
+      - shape: contiguous block of non-white pixels
+      - role:
+          - boundary (forms a closed loop)
+          - interior_object (located inside a loop)
+          - exterior_object (located outside any loop)
+
+relationships:
+  - type: enclosure
+    subject: boundary_object (loop)
+    object: interior_region (pixels inside the loop)
+    properties:
+      - interior_region contains:
+          - white (0) pixels
+          - optionally, interior_objects
+
+actions:
+  - action: identify_loops
+    input: grid
+    output: list of boundary_objects (loops) and their corresponding interior_regions
+
+  - action: identify_largest_interior_object
+    input: interior_region
+    output: color of the largest non-white object within the region (or null if none)
+
+  - action: determine_fill_color
+    input:
+      - boundary_object_color
+      - largest_interior_object_color (or null)
+    output: fill_color
+    logic: Mapped based on observed pairs:
+             (Border: Red 2, Inner: Blue 1) -> Fill: Green 3
+             (Border: Yellow 4, Inner: Blue 1) -> Fill: Gray 5
+             (Border: Red 2, Inner: Yellow 4) -> Fill: Maroon 9
+             (Border: Blue 1, Inner: null) -> Fill: Magenta 6
+             (Border: Green 3, Inner: null) -> Fill: Green 3
+             (Border: Magenta 6, Inner: null) -> Fill: Orange 7
+             (Border: Yellow 4, Inner: null) -> Fill: Yellow 4
+             (Border: Orange 7, Inner: null) -> Fill: Magenta 6
+
+  - action: fill_interior_background
+    input:
+      - grid
+      - loop_boundary
+      - interior_region
+      - fill_color
+    output: modified_grid
+    effect: Changes the color of white (0) pixels within the interior_region to the fill_color.
+
+final_state: The output grid reflects the input grid with all white pixels inside identified loops filled according to the determined fill color. Loop pixels and interior object pixels remain unchanged.

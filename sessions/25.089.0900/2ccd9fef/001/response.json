@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\nTransforms the input grid by extracting a specific horizontal slice.\n\nThe transformation assumes the input grid is composed of exactly 3\nvertically stacked slices of equal height (input height / 3).\nIt identifies 'background' colors (those colors present in all 3 slices)\nand 'content' colors (all other colors present in the grid).\nIt then calculates the number of 'content' pixels within each of the 3 slices.\nThe slice containing the maximum number of content pixels is selected as\nthe output grid. If multiple slices share the maximum count, the topmost\nslice (the one with the lowest starting row index) among them is chosen.\n\"\"\"\n\nimport numpy as np\n\ndef get_unique_colors(grid_slice: np.ndarray) -> set:\n    \"\"\"Helper function finds the set of unique colors in a numpy grid slice.\"\"\"\n    # np.unique returns sorted unique elements. Converting to set is fast.\n    return set(np.unique(grid_slice))\n\ndef transform(input_grid_list):\n    \"\"\"\n    Applies the slice extraction logic to the input grid.\n\n    Args:\n        input_grid_list: A list of lists representing the input grid pixels.\n\n    Returns:\n        A list of lists representing the transformed output grid.\n\n    Raises:\n        ValueError: If the input grid height is not divisible by 3, or if the\n                    height is less than 3, violating the core structural assumption\n                    derived from the training examples.\n    \"\"\"\n    # Convert input list of lists to a numpy array for efficient processing\n    input_grid = np.array(input_grid_list, dtype=int)\n\n    # Handle edge case: empty input grid\n    if input_grid.size == 0:\n        return [] # Return empty list for empty input\n\n    H_in, W_in = input_grid.shape\n\n    # 1. Determine slice height and number of slices based on the core assumption\n    #    derived from examples: the input is composed of exactly 3 vertical slices.\n    num_slices = 3\n    if H_in % num_slices != 0:\n        # This check enforces the structural assumption. If the input grid's height\n        # is not divisible by 3, the logic derived cannot be applied.\n        raise ValueError(f\"Input grid height {H_in} is not divisible by {num_slices}.\")\n\n    slice_height = H_in // num_slices\n\n    # Check for invalid slice height (occurs if H_in < num_slices, e.g., H_in=1 or H_in=2)\n    if slice_height == 0:\n         raise ValueError(f\"Input grid height {H_in} is too small to form {num_slices} slices.\")\n\n    # 2. Divide the input grid into slices\n    slices = []\n    for i in range(num_slices):\n        start_row = i * slice_height\n        end_row = start_row + slice_height\n        # Create views or copies of the slices\n        slices.append(input_grid[start_row:end_row, :])\n\n    # 3. Identify Background Colors\n    # Background colors are defined as those colors present in ALL slices.\n    # Initialize with colors from the first slice\n    common_colors = get_unique_colors(slices[0])\n    # Sequentially find the intersection with colors from subsequent slices\n    for i in range(1, num_slices):\n        slice_colors = get_unique_colors(slices[i])\n        common_colors.intersection_update(slice_colors)\n        # Optimization: if common_colors becomes empty, no need to check further\n        if not common_colors:\n            break\n            \n    background_colors = common_colors\n\n    # 4. Calculate Content Pixel Count for Each Slice\n    # Content pixels are defined as those whose color is NOT a background color.\n    content_pixel_counts = []\n    for i in range(num_slices):\n        current_slice = slices[i]\n        count = 0\n        # Use numpy's unique function with return_counts for efficiency\n        unique_slice_colors, counts_in_slice = np.unique(current_slice, return_counts=True)\n        # Iterate through the unique colors found in the current slice\n        for color, num_pixels in zip(unique_slice_colors, counts_in_slice):\n             # If the color is not in the set of background colors, add its count\n             if color not in background_colors:\n                 count += num_pixels\n        content_pixel_counts.append(count)\n\n    # 5. Find Best Slice Index\n    # The best slice is the one with the maximum content pixel count.\n    # np.argmax is suitable as it returns the index of the *first* occurrence\n    # of the maximum value, automatically handling ties by choosing the lowest index (topmost slice).\n    if not content_pixel_counts:\n         # This case should theoretically not be reached if input is valid and slicing worked.\n         # However, if it occurs (e.g., all pixels are background), default to the first slice.\n         best_slice_index = 0\n    else:\n        best_slice_index = np.argmax(content_pixel_counts)\n\n    # 6. Extract the Best Slice\n    # Select the slice corresponding to the determined index\n    output_grid = slices[best_slice_index]\n\n    # Convert the resulting numpy array back to a list of lists format for the ARC standard output\n    return output_grid.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 3737,
+    "candidates_token_count": 1246,
+    "total_token_count": 4983,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 66.965995,
+  "retries": 1
+}

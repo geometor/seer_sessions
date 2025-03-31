@@ -1,0 +1,49 @@
+elements:
+  - type: grid
+    description: Input grid containing pixels of different colors (0-9).
+    properties:
+      size: Variable height and width (up to 30x30).
+      border_color: Typically azure (8), defining the initial 'outside'.
+      background_color: White (0) pixels are ignored/treated like the 'outside'.
+      content: Contains nested, frame-like objects made of single colors (non-azure, non-white).
+  - type: object
+    description: A contiguous block of pixels of the same non-azure (8), non-white (0) color, forming a layer.
+    properties:
+      color: A single digit (1-7 or 9).
+      shape: Generally forms a hollow rectangle or frame, potentially irregular.
+      connectivity: Defined by 8-way adjacency (including diagonals).
+  - type: region
+    description: The 'outside' region, initially defined by all azure (8) pixels. This region expands as layers are identified and absorbed. White (0) pixels are functionally part of this region.
+  - type: list
+    description: Output list containing color values.
+    properties:
+      orientation: Vertical (single column grid).
+      content: Sequence of colors corresponding to the identified nested object layers.
+      order: From outermost layer color to innermost layer color.
+
+relationships:
+  - type: adjacency
+    description: A layer is defined by being adjacent (8-way) to the *current* 'outside' region.
+    relationship: layer_pixels are adjacent to outside_region_pixels.
+  - type: nesting
+    description: Colored objects/layers are nested within each other. The identification process reveals this nesting order.
+    relationship: layer_N encloses layer_N+1.
+
+transformation:
+  - action: initialize_state
+    description: Create a working copy of the grid. Identify all initial azure (8) and white (0) pixels as the starting 'outside' region/visited set. Prepare a queue for BFS containing the boundary pixels of this initial region (or simply all pixels initially).
+  - action: iterative_layer_finding
+    description: Repeatedly perform the following steps until no new layer can be found adjacent to the current 'outside' region.
+    sub_actions:
+      - step: find_next_layer_candidate
+        description: Perform a search (e.g., BFS) expanding from the *current* 'outside' region boundary. Identify the color (`C`) and location (`P`) of the first non-azure(8)/non-white(0) pixel encountered that hasn't been visited yet.
+      - step: check_termination
+        description: If no such candidate `P` is found, terminate the loop.
+      - step: record_color
+        description: Add the identified layer color `C` to the output list.
+      - step: identify_full_layer
+        description: Starting from `P`, find all connected pixels of color `C` using a flood fill (e.g., BFS/DFS) that constitute the full layer object `O`.
+      - step: absorb_layer
+        description: Update the state by incorporating the found layer `O` into the 'outside' region. Mark all pixels in `O` as visited. Add the pixels of `O` to the set of points from which the *next* search (step 'find_next_layer_candidate') will expand. Update the working grid (optional, mainly for visualization/debugging, the visited set is key).
+  - action: format_output
+    description: Convert the collected list of colors into a single-column grid.

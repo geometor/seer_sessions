@@ -1,0 +1,46 @@
+objects:
+  - id: azure_object
+    color: azure (8)
+    initial_state: May exist as one or more contiguous pixels in the input. If multiple pixels exist, they form a single object conceptually for this task.
+    properties: Task uses only the top-leftmost pixel of this color group (if any) as a starting point.
+  - id: green_object
+    color: green (3)
+    initial_state: May exist as one or more contiguous pixels in the input. If multiple pixels exist, they form a single object conceptually for this task.
+    properties: Task uses only the top-leftmost pixel of this color group (if any) as a starting point.
+  - id: background
+    color: white (0)
+    initial_state: Fills the rest of the input grid.
+actions:
+  - action: find_start_points
+    actor: system
+    details:
+      - Locate the coordinate (row, column) of the top-leftmost azure pixel (minimum row, then minimum column). Store as `azure_start`. If no azure pixel exists, `azure_start` is null.
+      - Locate the coordinate (row, column) of the top-leftmost green pixel (minimum row, then minimum column). Store as `green_start`. If no green pixel exists, `green_start` is null.
+  - action: trace_path
+    actor: `azure_start` pixel (if exists), `green_start` pixel (if exists)
+    details:
+      - If `azure_start` exists, trace a path starting from its coordinates.
+      - If `green_start` exists, trace a path starting from its coordinates.
+      - Path movement: Diagonally one step down and one step right per step (`new_row = (old_row + 1) % height`, `new_col = (old_col + 1) % width`).
+      - Path length: Continue tracing until the path returns to the starting coordinate (or a maximum of height * width steps).
+      - Store the set of coordinates visited by the azure path (`azure_path_coords`) and the green path (`green_path_coords`).
+  - action: render_output
+    details:
+      - Create an output grid of the same dimensions as the input, initialized to white (0).
+      - Mark all cells in `azure_path_coords` with azure (8).
+      - Mark all cells in `green_path_coords` with green (3). (Note: If a cell is in both sets initially, green will overwrite azure at this stage).
+  - action: handle_collision
+    details:
+      - Identify cells present in *both* `azure_path_coords` and `green_path_coords`.
+      - Change the color of these collision cells to magenta (6) in the output grid (overwriting the previously set azure or green).
+relationships:
+  - type: spatial_priority
+    between: all azure pixels, all green pixels
+    details: Only the single pixel with the minimum row index, and then the minimum column index within that row, for each color (azure and green) is relevant for initiating action.
+  - type: interaction (collision)
+    between: azure_path, green_path
+    result: Where paths overlap, the pixel color becomes magenta (6) in the final output.
+grid_properties:
+  - size: Output grid has the same dimensions as the input grid.
+  - coordinate_system: (row, column), 0-indexed from top-left.
+  - boundary_condition: Wrap-around (modulo arithmetic) for both row and column indices during path tracing.

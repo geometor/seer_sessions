@@ -1,0 +1,43 @@
+task_context:
+  grid_properties:
+    - background_color: 7 (orange)
+    - objects_are_contiguous_pixels: true
+    - object_colors_varied: true
+  input_features:
+    - objects_are_solid_rectangles: true # Observation from examples
+    - existence_of_1x1_object: key conditional factor
+  output_features:
+    - background_color_preserved: true (unless overwritten)
+    - object_transformation_rule_applied: true
+transformation_logic:
+  condition:
+    - check: count of 1x1 sized non-background objects in the input grid
+    - equals: 1
+      actions:
+        - identify: the 1x1 object (color C, position R, P)
+        - action_1:
+            type: expand_object
+            target: the 1x1 object
+            details: replace with a 9x9 solid rectangle of color C, centered at (R, P) in the output
+        - action_2:
+            type: shrink_object
+            target: all other non-background objects
+            details: replace with an object reduced by 1 pixel on all sides (W-2 x H-2). 3x3 becomes 1x1. Smaller objects disappear.
+    - not_equals: 1
+      actions:
+        - action_1:
+            type: shrink_object
+            target: all non-background objects
+            details: replace with an object reduced by 1 pixel on all sides (W-2 x H-2). 3x3 becomes 1x1. Smaller objects disappear.
+  object_processing:
+    - find_connected_components: identify distinct objects by color
+    - calculate_bounding_box: for each object
+    - check_solid_rectangle: verify object fills its bounding box (implicit assumption)
+    - calculate_size: width (W) and height (H) from bounding box
+  shrink_rule:
+    - input_object: W x H rectangle at (min_r, min_c) to (max_r, max_c)
+    - condition: W >= 3 AND H >= 3
+    - output_object: (W-2) x (H-2) rectangle of the same color at (min_r + 1, min_c + 1) to (max_r - 1, max_c - 1)
+  expand_rule:
+    - input_object: 1x1 pixel at (r, c) with color C
+    - output_object: 9x9 rectangle of color C centered at (r, c), covering (r-4, c-4) to (r+4, c+4)

@@ -1,0 +1,65 @@
+task_description: Identify the largest square block(s) of white pixels. Based on the size (N) and number of these squares, calculate the size and position of an azure square to draw. The azure square is always offset by (1,1) from the top-left corner of the chosen white square. The size of the azure square depends on whether the white square's size N is even and whether it's the unique largest white square.
+elements:
+  - object: grid
+    attributes:
+      - background: white (0)
+      - foreground: variable (red, yellow, green, gray)
+      - contains: shapes, blocks
+  - object: white_square
+    description: A contiguous square block composed entirely of white (0) pixels.
+    properties:
+      - color: white (0)
+      - shape: square
+      - size: N x N
+      - location: (r, c) top-left corner
+  - object: largest_white_squares
+    description: A collection of all white_squares that share the maximum size (N) found in the grid.
+    properties:
+      - count: number of squares in the collection
+      - max_size: N
+      - locations: list of (r, c) top-left corners
+  - object: target_white_square
+    description: The specific largest_white_square chosen for the transformation. Typically the one with the minimum row index, breaking ties with the minimum column index.
+    properties:
+      - size: N
+      - location: (r, c)
+  - object: azure_square
+    description: The block of azure (8) pixels replacing part of the input grid in the output.
+    properties:
+      - color: azure (8)
+      - shape: square
+      - size: az_N x az_N, derived from N and the count of largest_white_squares
+      - location: (az_r, az_c), derived from the target_white_square's location
+actions:
+  - action: find_largest_white_squares
+    actor: system
+    input: input_grid
+    output: collection of largest_white_squares (N, count, locations)
+  - action: select_target_square
+    actor: system
+    input: collection of largest_white_squares
+    output: target_white_square (N, r, c)
+    condition: choose based on min r, then min c.
+  - action: calculate_azure_properties
+    actor: system
+    input: target_white_square (N, r, c), count of largest_white_squares
+    output: azure_square properties (az_N, az_r, az_c)
+    details: |
+      az_r = r + 1
+      az_c = c + 1
+      If N is even AND count > 1:
+        az_N = N
+      Else:
+        az_N = N - 2
+  - action: fill
+    actor: system
+    target: area within the output grid corresponding to the calculated azure_square location (az_r, az_c) and size (az_N)
+    color: azure (8)
+    condition: az_N must be > 0.
+relationships:
+  - type: selection
+    source: largest_white_squares
+    target: target_white_square
+  - type: derivation
+    source: target_white_square (N, r, c), count of largest_white_squares
+    target: azure_square (az_N, az_r, az_c)

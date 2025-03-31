@@ -1,0 +1,74 @@
+task_description: Extract content from multiple identical white rectangular regions and overlay them onto a single output grid.
+
+elements:
+  - element: background_grid
+    description: The main input grid.
+    properties:
+      - size: 16x16 (in examples)
+      - dominant_color: A single color filling most of the grid (azure, blue, maroon in examples), acting as a background distinct from white.
+
+  - element: container_region
+    description: Rectangular areas within the background_grid composed mainly of white pixels, acting as frames.
+    properties:
+      - border_color: white (0)
+      - location: Scattered within the background_grid.
+      - adjacency: Bounded by the dominant_color of the background_grid.
+      - uniformity: All container_regions within a single input have the same inner content dimensions (height H, width W).
+      - count: Multiple regions per input (e.g., 4, 3, 2 in examples).
+
+  - element: content_object
+    description: Colored patterns or shapes located inside the container_regions.
+    properties:
+      - color: Non-white, non-background colors (blue, red, green, yellow in examples).
+      - shape: Variable (rectangles, L-shapes, lines).
+      - relationship: Contained within a specific container_region.
+
+  - element: output_grid
+    description: The result of the transformation.
+    properties:
+      - size: HxW, matching the inner content dimensions of the container_regions.
+      - background_color: white (0) initially.
+      - content: An overlay of all content_objects from the input's container_regions.
+
+actions:
+  - action: identify_background_color
+    input: background_grid
+    output: dominant_color
+
+  - action: locate_container_regions
+    input: background_grid, dominant_color
+    output: list_of_container_regions (coordinates and dimensions)
+
+  - action: determine_output_dimensions
+    input: list_of_container_regions
+    output: height H, width W (inner dimensions)
+    condition: All regions must have the same inner dimensions.
+
+  - action: initialize_output_grid
+    input: H, W
+    output: output_grid (filled with white)
+
+  - action: extract_and_overlay_content
+    input: list_of_container_regions, output_grid
+    process:
+      - Iterate through container_regions (e.g., top-to-bottom, left-to-right).
+      - For each region, extract its inner content (HxW grid).
+      - Iterate through the HxW content grid.
+      - If a cell color is non-white, update the corresponding cell in the output_grid with that color.
+    output: final_output_grid
+
+relationships:
+  - type: containment
+    source: container_region
+    target: content_object
+  - type: adjacency
+    source: container_region
+    target: background_grid (dominant_color pixels)
+  - type: transformation
+    input: background_grid
+    output: output_grid
+    rule: Overlaying extracted contents of container_regions.
+
+constraints:
+  - All container_regions within one input must share the same inner dimensions.
+  - The overlay process overwrites previous non-white colors at a given cell with the non-white color from the currently processed region.

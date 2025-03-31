@@ -1,0 +1,35 @@
+task_description: Process a grid row by row, replacing some rows entirely with a single color ('fill rows') and others with a derived pattern template ('pattern rows').
+
+background_color: 7 (gray) - Appears to be the default empty cell color used for initializing the pattern template.
+
+definitions:
+  - object: row
+    properties:
+      - type: either 'fill' or 'pattern'
+      - fill_color: the color used to fill the row if it's a 'fill' row.
+
+rules:
+  - rule: determine_row_type
+    based_on: input grid row
+    condition: Count occurrences of each non-background color within the row. If any non-background color appears 2 or more times, the row is a 'fill' row.
+    action:
+      - if 'fill' row: Identify the specific non-background color that appeared >= 2 times. This is the 'fill_color' for this row. Store the row index and its fill color.
+      - if not 'fill' row: Classify as a 'pattern' row.
+
+  - rule: derive_pattern_template
+    based_on: entire input grid and identified fill rows/colors
+    steps:
+      - initialize: Create a template row (same width as input) filled with the background_color (7).
+      - iterate: For each cell (pixel) at `(r, c)` in the input grid:
+          - get pixel_color `p`.
+          - check if `p` is the background_color. If yes, ignore.
+          - check if row `r` is a 'fill' row and `p` is the 'fill_color' for that specific row `r`. If yes, ignore.
+          - otherwise: Update the template at column `c` with `p`. (Note: If multiple valid pixels exist in a column, the examples suggest any one of them works, possibly the first one encountered top-down, or they don't conflict).
+
+  - rule: construct_output_grid
+    based_on: input grid dimensions, row types, fill colors, derived pattern template
+    steps:
+      - create: An output grid with the same dimensions as the input.
+      - iterate: For each row index `r` from 0 to height-1:
+          - if row `r` was classified as 'fill': Fill the entire output row `r` with its corresponding 'fill_color'.
+          - if row `r` was classified as 'pattern': Copy the derived_pattern_template into the output row `r`.

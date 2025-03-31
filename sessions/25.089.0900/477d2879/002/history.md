@@ -1,0 +1,353 @@
+
+## train_1
+
+**input:**
+```
+0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 3 0 0
+0 0 0 0 1 1 1 1 0 0 0 0 0
+0 0 0 0 1 0 0 1 0 0 0 0 0
+0 0 1 1 1 0 0 1 1 0 0 0 0
+0 0 2 0 0 0 8 0 1 0 0 0 0
+0 0 1 0 1 1 1 0 1 0 0 0 0
+0 0 1 0 1 0 1 0 1 0 0 0 0
+0 0 1 0 1 0 1 0 1 1 0 0 0
+0 1 1 0 1 0 1 0 0 1 0 0 0
+0 1 0 0 1 0 1 0 1 1 0 0 0
+0 1 1 1 1 0 1 1 1 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0
+```
+
+
+**output:**
+```
+3 3 3 3 3 3 3 3 3 3 3 3 3
+3 3 3 3 3 3 3 3 3 3 3 3 3
+3 3 3 3 2 2 2 2 3 3 3 3 3
+3 3 3 3 2 8 8 2 3 3 3 3 3
+3 3 2 2 2 8 8 2 2 3 3 3 3
+3 3 2 8 8 8 8 8 2 3 3 3 3
+3 3 2 8 2 2 2 8 2 3 3 3 3
+3 3 2 8 2 3 2 8 2 3 3 3 3
+3 3 2 8 2 3 2 8 2 2 3 3 3
+3 2 2 8 2 3 2 8 8 2 3 3 3
+3 2 8 8 2 3 2 8 2 2 3 3 3
+3 2 2 2 2 3 2 2 2 3 3 3 3
+3 3 3 3 3 3 3 3 3 3 3 3 3
+```
+
+
+## train_2
+
+**input:**
+```
+0 0 0 0 0 1 0 0 0 0 0 0 0
+0 2 0 3 1 1 0 0 1 8 1 0 0
+0 0 0 1 0 0 0 0 1 0 1 0 0
+1 1 1 1 0 0 0 0 1 0 1 1 0
+0 0 1 0 0 0 0 0 1 0 0 1 0
+0 0 1 0 0 0 0 1 1 0 1 1 0
+0 0 1 1 1 1 0 1 0 0 1 0 0
+0 0 0 0 0 1 0 1 0 6 1 1 0
+0 7 0 1 1 1 0 1 0 0 0 1 0
+0 0 0 1 0 0 0 1 0 0 1 1 0
+0 0 1 1 0 0 0 1 1 1 1 0 0
+0 0 1 0 0 0 0 0 0 0 0 0 0
+0 0 1 0 0 4 0 0 0 0 0 0 0
+```
+
+
+**output:**
+```
+2 2 2 2 2 3 4 4 4 4 4 4 4
+2 2 2 3 3 3 4 4 8 8 8 4 4
+2 2 2 3 4 4 4 4 8 6 8 4 4
+3 3 3 3 4 4 4 4 8 6 8 8 4
+7 7 3 4 4 4 4 4 8 6 6 8 4
+7 7 3 4 4 4 4 8 8 6 8 8 4
+7 7 3 3 3 3 4 8 6 6 8 4 4
+7 7 7 7 7 3 4 8 6 6 8 8 4
+7 7 7 3 3 3 4 8 6 6 6 8 4
+7 7 7 3 4 4 4 8 6 6 8 8 4
+7 7 3 3 4 4 4 8 8 8 8 4 4
+7 7 3 4 4 4 4 4 4 4 4 4 4
+7 7 3 4 4 4 4 4 4 4 4 4 4
+```
+
+
+## train_3
+
+**input:**
+```
+0 0 9 0 1 0 0 0 0 0 0 0 0
+1 1 0 0 1 0 0 1 1 1 1 1 0
+0 1 6 1 1 0 0 1 0 0 0 1 0
+0 0 0 0 0 0 0 1 0 0 1 1 0
+0 0 0 0 0 1 1 1 0 0 1 0 0
+0 8 0 0 0 3 0 0 0 0 1 1 0
+0 0 0 0 0 1 0 0 8 0 0 1 0
+0 0 0 0 0 1 1 0 0 0 0 1 0
+1 1 1 0 0 0 1 0 1 1 1 1 0
+0 0 1 0 0 0 1 1 1 0 0 0 0
+0 0 1 2 1 0 0 0 0 0 0 0 0
+0 0 0 0 1 1 0 0 0 0 0 0 0
+7 0 0 0 0 1 0 0 0 0 0 0 0
+```
+
+
+**output:**
+```
+9 9 9 9 6 8 8 8 8 8 8 8 8
+6 6 9 9 6 8 8 3 3 3 3 3 8
+8 6 6 6 6 8 8 3 8 8 8 3 8
+8 8 8 8 8 8 8 3 8 8 3 3 8
+8 8 8 8 8 3 3 3 8 8 3 8 8
+8 8 8 8 8 3 8 8 8 8 3 3 8
+8 8 8 8 8 3 8 8 8 8 8 3 8
+8 8 8 8 8 3 3 8 8 8 8 3 8
+2 2 2 8 8 8 3 8 3 3 3 3 8
+7 7 2 8 8 8 3 3 3 8 8 8 8
+7 7 2 2 2 8 8 8 8 8 8 8 8
+7 7 7 7 2 2 8 8 8 8 8 8 8
+7 7 7 7 7 2 8 8 8 8 8 8 8
+```
+
+Okay, let's analyze the task based on the provided examples.
+
+## Perception of Elements
+
+1.  **Grid Structure:** The input and output are grids of colored pixels (0-9). The size remains the same between input and output (13x13 in all examples).
+2.  **Background:** The input grids have a white (0) background. The output grids are completely filled with non-white colors.
+3.  **Key Input Components:**
+    *   **Blue Shapes (Color 1):** There are distinct shapes made of blue pixels. These shapes act like containers or walls.
+    *   **Internal Pixels:** Inside the blue shapes, there can be white pixels (0) or other colored pixels (e.g., red, azure, magenta, green).
+    *   **External "Seed" Pixels:** There are isolated non-white pixels located outside the blue shapes, on the white background.
+4.  **Transformation - Background:** The white background pixels in the input are filled in the output. The fill color for any given background pixel seems to be determined by the color of the nearest "seed" pixel (using Manhattan distance). This resembles a Voronoi tessellation based on the seed pixels. Tie-breaking likely uses row/column order.
+5.  **Transformation - Blue Shapes:**
+    *   The blue (1) pixels themselves change color. This new color seems dependent on the colors of the *internal* pixels enclosed by the blue shape. If an internal red (2) pixel exists, the blue pixels become red (2) (Example 1). Otherwise, they become azure (8) (Examples 2 and 3).
+    *   The white (0) pixels *enclosed* by the blue shapes are also filled. The fill color depends on the internal non-blue pixels present: Green (3) takes precedence, then Magenta (6), then Azure (8). (Ex3: internal 3,6,8 -> fill 3; Ex2: internal 6,8 -> fill 6; Ex1: internal 2,8 -> fill 8).
+    *   The non-white, non-blue pixels *enclosed* by the blue shapes retain their original color in the output.
+6.  **Object Interaction:** The blue shapes act as barriers defining distinct "inside" and "outside" regions. The external seeds influence the outside fill, while the internal pixels influence the transformation of the container (blue shape) itself and the fill color of the enclosed white space.
+
+## YAML Facts Documentation
+
+
+```yaml
+Task: Fill grid based on region type (outside vs inside blue shapes)
+
+Input_Features:
+  - Grid: 2D array of pixels (colors 0-9).
+  - Background_Color: White (0).
+  - Container_Color: Blue (1).
+  - Objects:
+      - Containers: Connected components of Blue(1) pixels.
+      - Seeds: Non-white pixels (not Blue(1)) located on the Background(0) and not enclosed by Containers.
+      - Enclosed_Pixels: Pixels (White(0) or other colors) spatially enclosed by Containers.
+          - Enclosed_White: White(0) pixels enclosed by Containers.
+          - Enclosed_Internal: Non-white, non-blue pixels enclosed by Containers.
+
+Relationships:
+  - Spatial: Pixels are arranged in a grid. Adjacency and distance (Manhattan) are important.
+  - Containment: Blue(1) shapes enclose other pixels.
+  - Proximity: Background(0) pixels are associated with the nearest Seed pixel.
+  - Influence:
+      - Seed colors determine the fill color for Background(0) pixels.
+      - Enclosed_Internal colors determine the transformation of Container pixels and the fill color for Enclosed_White pixels.
+
+Actions:
+  - Identify_Regions: Differentiate between Background, Containers, Seeds, and Enclosed pixels.
+  - Determine_Reachability: Identify which pixels can reach the grid border without crossing Blue(1) pixels (these are Background or Seeds). Pixels that cannot reach are Enclosed.
+  - Calculate_Distances: Compute Manhattan distance from Background pixels to Seed pixels.
+  - Apply_Voronoi_Fill: Fill reachable Background(0) pixels with the color of the nearest Seed (tie-break by row, then column).
+  - Transform_Containers:
+      - Change color of Container(Blue=1) pixels based on presence of Red(2) among Enclosed_Internal pixels (if Red(2) present -> Red(2), else -> Azure(8)).
+      - Fill Enclosed_White pixels based on priority of Enclosed_Internal colors (Green(3) > Magenta(6) > Azure(8)).
+  - Preserve_Colors: Seed pixels and Enclosed_Internal pixels keep their original colors.
+
+Output_Features:
+  - Grid: Same dimensions as input, fully colored.
+  - No_Background: White(0) pixels are eliminated (either filled by Voronoi or Container transformation).
+  - Transformed_Regions: Original regions are replaced by new colors based on the rules.
+```
+
+
+## Natural Language Program
+
+1.  **Initialize:** Create a copy of the input grid to serve as the basis for the output grid.
+2.  **Identify Regions:**
+    a.  Find all connected components of blue (1) pixels. These are the "containers".
+    b.  Determine which non-blue pixels can reach the grid border by only traversing non-blue pixels (using a flood fill or BFS starting from all border non-blue cells). Mark these as "reachable".
+    c.  Identify "seed" pixels: These are the non-white, non-blue pixels marked as "reachable".
+    d.  Identify "enclosed" pixels: These are all non-blue pixels *not* marked as "reachable".
+3.  **Fill Background:**
+    a.  For each pixel (r, c) that is white (0) in the input and marked as "reachable":
+        i.  Calculate the Manhattan distance to all identified "seed" pixels.
+        ii. Find the minimum distance.
+        iii. Identify all seeds at that minimum distance.
+        iv. Select the seed with the lowest row index. If there's still a tie, select the one with the lowest column index.
+        v.  Set the color of the pixel (r, c) in the output grid to the color of the selected nearest seed.
+4.  **Transform Containers:**
+    a.  For each identified blue container:
+        i.  Find all "enclosed" pixels that are adjacent to this container or spatially inside it.
+        ii. Collect the set of colors of the enclosed pixels that are *not* white (0) and *not* blue (1). Call this set `internal_colors`.
+        iii. Determine the `fill_color` for enclosed white pixels: If Green(3) is in `internal_colors`, use Green(3). Else if Magenta(6) is in `internal_colors`, use Magenta(6). Else if Azure(8) is in `internal_colors`, use Azure(8). (Assume one of these will be present based on examples).
+        iv. Determine the `wall_color` for the container's blue pixels: If Red(2) is in `internal_colors`, use Red(2). Otherwise, use Azure(8).
+        v.  Update the output grid:
+            1.  For every pixel (r, c) that was part of this container (blue=1 in input), set its color to `wall_color`.
+            2.  For every pixel (r, c) that was white (0) in the input and is identified as enclosed within this container, set its color to `fill_color`.
+5.  **Finalize:** The output grid now contains the transformed colors. Seed pixels and original enclosed internal pixels have retained their colors from the initial copy.
+```python
+import numpy as np
+from collections import deque
+
+def _find_reachable_pixels(grid):
+    """
+    Finds pixels reachable from the border without crossing blue (1) pixels.
+    Uses Breadth-First Search (BFS).
+
+    Args:
+        grid (np.ndarray): The input grid.
+
+    Returns:
+        np.ndarray: A boolean mask where True indicates a reachable pixel.
+    """
+    rows, cols = grid.shape
+    reachable_mask = np.zeros_like(grid, dtype=bool)
+    queue = deque()
+
+    # Add border cells that are not blue (1) to the queue
+    for r in range(rows):
+        if grid[r, 0] != 1:
+            queue.append((r, 0))
+            reachable_mask[r, 0] = True
+        if grid[r, cols - 1] != 1:
+            queue.append((r, cols - 1))
+            reachable_mask[r, cols - 1] = True
+    for c in range(1, cols - 1):
+        if grid[0, c] != 1:
+            queue.append((0, c))
+            reachable_mask[0, c] = True
+        if grid[rows - 1, c] != 1:
+            queue.append((rows - 1, c))
+            reachable_mask[rows - 1, c] = True
+
+    # Perform BFS
+    while queue:
+        r, c = queue.popleft()
+
+        # Check neighbors (4-directional)
+        for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+            nr, nc = r + dr, c + dc
+            # Check bounds, if not already visited, and if not blue
+            if 0 <= nr < rows and 0 <= nc < cols and \
+               not reachable_mask[nr, nc] and grid[nr, nc] != 1:
+                reachable_mask[nr, nc] = True
+                queue.append((nr, nc))
+
+    return reachable_mask
+
+def _manhattan_distance(p1, p2):
+    """Calculates Manhattan distance between two points."""
+    return abs(p1[0] - p2[0]) + abs(p1[1] - p2[1])
+
+def transform(input_grid):
+    """
+    Transforms the input grid based on the following rules:
+    1. Identify regions: 'background' (reachable from border without crossing blue),
+       'containers' (blue pixels), and 'enclosed' (unreachable non-blue pixels).
+    2. Identify 'seed' pixels: non-white, non-blue pixels in the background.
+    3. Fill background white pixels: Each white background pixel takes the color
+       of the nearest seed pixel (Manhattan distance, tie-breaking by row then column).
+    4. Transform containers and enclosed areas:
+        a. Find all 'internal colors' (non-white, non-blue colors in the enclosed area).
+        b. Determine 'wall_color' for blue pixels: Red (2) if Red (2) is an internal color, else Azure (8).
+        c. Determine 'fill_color' for enclosed white pixels: Green (3) if Green (3) is internal,
+           else Magenta (6) if Magenta (6) is internal, else Azure (8).
+        d. Update blue pixels to 'wall_color'.
+        e. Update enclosed white pixels to 'fill_color'.
+        f. Other pixels (seeds, internal colors) keep their original color.
+    """
+    
+    input_grid = np.array(input_grid)
+    rows, cols = input_grid.shape
+    output_grid = np.copy(input_grid) # Initialize output grid as a copy
+
+    # 1. Identify Regions using reachability
+    reachable_mask = _find_reachable_pixels(input_grid)
+    enclosed_mask = ~reachable_mask & (input_grid != 1)
+
+    # 2. Identify Seeds
+    seeds = []
+    for r in range(rows):
+        for c in range(cols):
+            if reachable_mask[r, c] and input_grid[r, c] != 0 and input_grid[r, c] != 1:
+                seeds.append({'pos': (r, c), 'color': input_grid[r, c]})
+
+    # 3. Fill Background White Pixels (Voronoi Fill)
+    if seeds: # Only fill if there are seeds
+        for r in range(rows):
+            for c in range(cols):
+                if reachable_mask[r, c] and input_grid[r, c] == 0:
+                    min_dist = float('inf')
+                    nearest_seeds = []
+                    for seed in seeds:
+                        dist = _manhattan_distance((r, c), seed['pos'])
+                        if dist < min_dist:
+                            min_dist = dist
+                            nearest_seeds = [seed]
+                        elif dist == min_dist:
+                            nearest_seeds.append(seed)
+
+                    # Tie-breaking: lowest row, then lowest column
+                    best_seed = min(nearest_seeds, key=lambda s: (s['pos'][0], s['pos'][1]))
+                    output_grid[r, c] = best_seed['color']
+
+    # 4a. Find all internal colors
+    internal_colors = set()
+    enclosed_white_pixels = []
+    blue_pixels = []
+
+    for r in range(rows):
+        for c in range(cols):
+            if enclosed_mask[r, c]:
+                if input_grid[r,c] != 0: # non-white enclosed are internal colors
+                   internal_colors.add(input_grid[r, c])
+                else: # white enclosed
+                    enclosed_white_pixels.append((r,c))
+            elif input_grid[r, c] == 1: # Container pixel
+                blue_pixels.append((r,c))
+
+    # 4b. Determine wall_color
+    wall_color = 8 # Default Azure
+    if 2 in internal_colors: # If Red is present
+        wall_color = 2
+
+    # 4c. Determine fill_color
+    fill_color = 8 # Default Azure
+    if 3 in internal_colors:
+        fill_color = 3
+    elif 6 in internal_colors:
+        fill_color = 6
+    elif 8 in internal_colors:
+         # If only 8 is present among 3,6,8, fill is 8 (already default)
+         pass 
+    # If none of 3, 6, 8 are present, but other internal colors (like 2) might be, 
+    # the examples suggest 8 is still the fill color (e.g., train_1).
+    # If there are no internal colors at all, what should the fill be?
+    # Examples imply there *are* internal colors if there's enclosed space.
+    # If there happens to be enclosed white space but NO internal colors (unlikely based on examples)
+    # let's default to Azure(8) as per the priority logic.
+
+
+    # 4d. Update blue pixels
+    for r, c in blue_pixels:
+        output_grid[r, c] = wall_color
+
+    # 4e. Update enclosed white pixels
+    for r, c in enclosed_white_pixels:
+        output_grid[r, c] = fill_color
+
+    # 4f. Other pixels (seeds, internal colors) retain their original color (already handled by copying)
+
+    return output_grid.tolist() # Return as list of lists
+```

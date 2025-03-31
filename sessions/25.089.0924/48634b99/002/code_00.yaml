@@ -1,0 +1,54 @@
+task_description: Identify a unique vertical segment of maroon pixels. Determine its length L. Erase this segment (replace with orange background). Identify all vertical segments of azure pixels. Select a target azure segment based on a specific criteria. Replace the top L+1 pixels of the target azure segment with maroon pixels.
+background_color: 7 (orange)
+input_marker_color: 9 (maroon)
+target_color: 8 (azure)
+output_marker_color: 9 (maroon)
+
+objects:
+  - type: grid
+    properties:
+      - background_color: 7 (orange)
+      - contains: vertical_segments
+  - type: vertical_segment
+    properties:
+      - color: 9 (maroon) - unique in input
+      - length: L
+      - location: (start_row, col)
+  - type: vertical_segment
+    properties:
+      - color: 8 (azure) - multiple in input
+      - length: M
+      - location: (start_row, col)
+
+actions:
+  - action: find
+    target: vertical_segment
+    properties:
+      - color: 9 (maroon)
+    result: input_maroon_segment (length L, location (r1, c1))
+  - action: find
+    target: vertical_segment
+    properties:
+      - color: 8 (azure)
+    result: list_of_azure_segments
+  - action: calculate
+    value: target_length = L + 1
+  - action: replace
+    target: input_maroon_segment
+    replace_with: background_color (7)
+    location: original location (r1, c1) for length L
+  - action: select # This selection rule is still uncertain but using the current best hypothesis
+    source: list_of_azure_segments
+    criteria:
+      - filter: keep segments where length M >= target_length
+      - find: minimum length L_min among filtered segments
+      - filter: keep segments with length == L_min
+      - sort: by column index (ascending)
+      - take: first element
+    result: target_azure_segment (length M_target, location (r2, c2))
+    fallback: If no segment meets criteria, possibly leave grid unchanged after maroon removal.
+  - action: replace
+    target: top pixels of target_azure_segment
+    replace_with: output_marker_color (9)
+    location: (r2, c2) down to (r2 + target_length - 1, c2)
+    count: target_length

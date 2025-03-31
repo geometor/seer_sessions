@@ -1,0 +1,44 @@
+**Perception of the Elements:**
+
+1.  **Input Grid:** The input grid contains a white background (0), scattered gray pixels (5), and red pixels (2) typically located in the bottom row.
+2.  **Output Grid:** The output grid retains the dimensions of the input grid. The key transformation involves the red pixels. Columns that contained a red pixel in the input are filled entirely with red in the output.
+3.  **Gray Pixels:** The gray pixels (5) from the input grid remain in their exact same positions in the output grid. They seem to act as static obstacles or markers. If a column is filled with red, the gray pixel within that column retains its position and color, effectively overwriting the red pixel at that specific location.
+4.  **Transformation Logic:** The core logic identifies the columns containing red pixels in the input. These columns are then filled vertically with red in the output, from top to bottom. Finally, the original positions of the gray pixels are restored, potentially overwriting the newly placed red pixels.
+
+**Facts:**
+
+
+```yaml
+Grid:
+  - Size: Same for input and output (e.g., 10x10 in examples).
+  - Background: Primarily white (0).
+Objects:
+  - Type: Pixels
+  - Colors:
+    - Red (2): Trigger color. Primarily located in the bottom row of the input. Determines which columns are filled.
+    - Gray (5): Static objects. Their positions are preserved from input to output. They overwrite other colors at their location.
+    - White (0): Background color. Replaced by red in specific columns, except where gray pixels exist.
+Transformation:
+  - Action: Vertical Filling.
+  - Trigger: Presence of a red pixel (2) in a column in the input grid.
+  - Process:
+    1. Identify all columns containing at least one red pixel (2) in the input.
+    2. Create an output grid initialized with white (0) or copied from the input (details TBD, but initializing white and adding seems simpler).
+    3. For each identified column, fill the entire column in the output grid with red (2).
+    4. Identify the locations of all gray pixels (5) in the input grid.
+    5. Place the gray pixels (5) at their original locations in the output grid, overwriting any existing color (including the newly filled red).
+Relationships:
+  - Red pixels determine which columns are modified.
+  - Gray pixels are invariant in position and override the red filling action at their specific coordinates.
+```
+
+
+**Natural Language Program:**
+
+1.  Initialize the output grid with the same dimensions as the input grid, filled with the background color (white, 0).
+2.  Iterate through each column of the input grid.
+3.  For each column, check if it contains any red pixels (2).
+4.  If a column contains a red pixel, fill the corresponding entire column in the output grid with red (2).
+5.  Iterate through each cell of the input grid.
+6.  If a cell in the input grid contains a gray pixel (5), set the corresponding cell in the output grid to gray (5), overwriting any value previously placed there (like the red fill).
+7.  The resulting grid is the final output.

@@ -1,0 +1,145 @@
+import numpy as np
+from collections import deque
+import math
+
+"""
+Transformation Rule Description:
+
+1.  Initialize an output grid with the same dimensions as the input, filled with the background color (orange, 7).
+2.  Identify all connected objects (groups of same-colored pixels) in the input grid that are not the background color.
+3.  For each `input_object`:
+    a. Determine its color `C_in`, its pixels `pixels_in`, and the top-left corner of its bounding box (`r_min`, `c_min`).
+    b. Map the input color `C_in` to the output color `C_out` (Red(2)<->Blue(1), others unchanged).
+    c. Calculate the transposed top-left reference point: `P_t = (c_min, r_min)`. Let `r_t = c_min` and `c_t = r_min`.
+    d. Calculate the output reference point `P_out = (r_out, c_out_ref)` by applying a color-dependent coordinate transformation to `P_t`:
+        *   If `C_in` is Maroon (9): `r_out = r_t + 3`, `c_out_ref = c_t + 3`.
+        *   If `C_in` is Gray (5): `r_out = r_t + math.floor(r_t / 4) - 4`, `c_out_ref = c_t - 3`.
+        *   If `C_in` is other non-background colors (1, 2, 4, 8): `r_out = r_t`, `c_out_ref = c_t` (Placeholder - correct rule is unknown/complex).
+    e. Based on `C_in`, determine the output shape and draw it relative to `P_out` using `C_out`:
+        *   If `C_in` is Maroon (9): Draw a horizontal line of length 5 starting at `P_out`.
+        *   If `C_in` is Gray (5): Draw a single pixel at `P_out`.
+        *   If `C_in` is other non-background colors (1, 2, 4, 8): Draw the *transposed* version of the original object's pixels relative to `P_out`. (Placeholder - correct shape generation is needed for Red->Plus, Blue->L/Staircase, Yellow->Scatter, Azure->Corner placement).
+4.  Return the completed `output_grid`.
+"""
+
+
+def find_objects(grid, background_color):
+    """
+    Finds connected components (objects) of the same non-background color in the grid.
+
+    Args:
+        grid (np.ndarray): The input grid.
+        background_color (int): The color to ignore.
+
+    Returns:
+        list: A list of objects. Each object is a dictionary containing:
+              'color': The color of the object.
+              'pixels': A set of (row, col) tuples for the object's pixels.
+              'bbox': A tuple (min_row, min_col, max_row, max_col).
+    """
+    objects = []
+    visited = np.zeros(grid.shape, dtype=bool)
+    rows, cols = grid.shape
+
+    for r in range(rows):
+        for c in range(cols):
+            if grid[r, c] != background_color and not visited[r, c]:
+                color = grid[r, c]
+                obj_pixels = set()
+                q = deque([(r, c)])
+                visited[r, c] = True
+                min_r, min_c = r, c
+                max_r, max_c = r, c
+
+                while q:
+                    row, col = q.popleft()
+                    obj_pixels.add((row, col))
+                    min_r = min(min_r, row)
+                    min_c = min(min_c, col)
+                    max_r = max(max_r, row)
+                    max_c = max(max_c, col)
+
+                    # Check 4 neighbors (up, down, left, right)
+                    for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+                        nr, nc = row + dr, col + dc
+                        if 0 <= nr < rows and 0 <= nc < cols and \
+                           not visited[nr, nc] and grid[nr, nc] == color:
+                            visited[nr, nc] = True
+                            q.append((nr, nc))
+                
+                objects.append({
+                    'color': color,
+                    'pixels': obj_pixels,
+                    'bbox': (min_r, min_c, max_r, max_c)
+                })
+    return objects
+
+def draw_pixel(grid, r, c, color):
+    """ Safely draws a pixel onto the grid if coordinates are valid. """
+    rows, cols = grid.shape
+    if 0 <= r < rows and 0 <= c < cols:
+        grid[r, c] = color
+
+def draw_horizontal_line(grid, r, c, length, color):
+    """ Safely draws a horizontal line starting at (r, c). """
+    for i in range(length):
+        draw_pixel(grid, r, c + i, color)
+        
+def draw_transposed_object(grid, obj_pixels, r_out_ref, c_out_ref, r_in_ref, c_in_ref, color):
+    """ 
+    Placeholder shape drawing: Draws the object transposed relative to the output reference point.
+    Calculates relative positions from input reference point, transposes the relative coordinates (swap row/col offset), 
+    and applies them to the output reference point.
+    """
+    for r_in, c_in in obj_pixels:
+        rel_r = r_in - r_in_ref
+        rel_c = c_in - c_in_ref
+        # Transpose relative coordinates (swap roles of row/col offsets)
+        draw_pixel(grid, r_out_ref + rel_c, c_out_ref + rel_r, color)
+
+
+def transform(input_grid):
+    """
+    Applies the transformation rule to the input grid based on object properties,
+    transposition, and color-dependent shape/placement rules.
+    """
+    background_color = 7
+    output_grid = np.full(input_grid.shape, background_color, dtype=int)
+    rows, cols = input_grid.shape
+
+    # 1. Find all input objects
+    objects = find_objects(input_grid, background_color)
+
+    # 2. Process each object
+    for obj in objects:
+        c_in = obj['color']
+        pixels_in = obj['pixels']
+        r_min, c_min, _, _ = obj['bbox']
+
+        # 3a. Determine output color
+        if c_in == 2: c_out = 1      # Red -> Blue
+        elif c_in == 1: c_out = 2    # Blue -> Red
+        else: c_out = c_in           # 5->5, 9->9, 8->8, 4->4
+
+        # 3b. Calculate transposed reference point (top-left)
+        r_t, c_t = c_min, r_min
+
+        # 3c. Calculate output reference point P_out = (r_out, c_out_ref) based on input color T(C_in)
+        if c_in == 9: # Maroon (Rule derived from Ex 2)
+            r_out, c_out_ref = r_t + 3, c_t + 3
+        elif c_in == 5: # Gray (Rule derived from Ex 2, refined)
+            r_out, c_out_ref = r_t + math.floor(r_t / 4) - 4, c_t - 3
+        else: # Placeholder for Red, Blue, Yellow, Azure
+            r_out, c_out_ref = r_t, c_t
+
+        # 3d. Draw the output shape S_out relative to P_out
+        if c_in == 9: # Maroon -> Horizontal Line Length 5
+            draw_horizontal_line(output_grid, r_out, c_out_ref, 5, c_out)
+        elif c_in == 5: # Gray -> Single Pixel
+            draw_pixel(output_grid, r_out, c_out_ref, c_out)
+        else: # Placeholder for Red->Plus, Blue->L/Staircase, Yellow->Scatter, Azure->Corner
+            # Draw the transposed original shape pixels relative to P_out
+            draw_transposed_object(output_grid, pixels_in, r_out, c_out_ref, r_min, c_min, c_out)
+             
+    # 4. Return the final grid
+    return output_grid

@@ -1,0 +1,48 @@
+task_description: Extract a specific sub-pattern located below a horizontal white separator in the input grid.
+
+elements:
+  - element: grid
+    role: input
+    properties:
+      - contains an upper pattern, a separator, and a lower section
+      - upper pattern: consists primarily of one non-white color (`upper_color`) and white pixels
+      - separator: one or more contiguous rows containing only white pixels (0)
+      - lower section: rows below the separator; may contain multiple non-white colors, including potentially `upper_color` and another distinct non-white color (`lower_color`)
+
+  - element: grid
+    role: output
+    properties:
+      - is a subgrid of the input
+      - contains only `lower_color` and white pixels (0)
+      - dimensions match the minimal bounding box enclosing all `lower_color` pixels found in the lower section of the input grid
+
+relationships:
+  - type: separation
+    between: upper pattern, lower section
+    via: horizontal rows of white pixels (separator)
+  - type: identification
+    subject: lower_color
+    condition: non-white color present in the lower section AND different from `upper_color`
+  - type: bounding_box
+    target: pixels of `lower_color`
+    scope: within the rows of the lower section of the input grid
+  - type: extraction
+    source: input grid
+    target: output grid
+    details: The output grid is the content of the input grid within the calculated bounding box.
+
+actions:
+  - action: locate_separator
+    description: Find the contiguous block of rows containing only white pixels. Identify the last row index of this block (`separator_end_row`).
+  - action: identify_upper_color
+    description: Find the unique non-white color present in the rows above `separator_end_row + 1`.
+  - action: identify_lower_section_colors
+    description: Find all unique non-white colors present in the rows from `separator_end_row + 1` onwards.
+  - action: determine_target_color
+    description: Select the color from `identify_lower_section_colors` that is not equal to `identify_upper_color`. This is `lower_color`.
+  - action: find_target_pixels_coords
+    description: Find the row and column indices of all pixels in the lower section (rows >= `separator_end_row + 1`) that have the value `lower_color`.
+  - action: calculate_bounding_box
+    description: Determine the minimum row, maximum row, minimum column, and maximum column from the coordinates found in `find_target_pixels_coords`.
+  - action: extract_subgrid
+    description: Copy the portion of the input grid defined by the calculated bounding box row and column ranges to create the output grid.
