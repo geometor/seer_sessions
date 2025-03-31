@@ -1,0 +1,53 @@
+task_elements:
+  - type: grid
+    description: Input and output are 2D grids of pixels (0-9 colors).
+  - type: background
+    color_name: white
+    color_value: 0
+    description: The default background color.
+  - type: boundary_object
+    color_name: azure
+    color_value: 8
+    description: Contiguous or non-contiguous pixels of this color define the boundary area.
+  - type: contained_objects
+    description: Contiguous blocks of pixels of a single color (not white/0 and not azure/8) found within the boundary region. Must use 4-connectivity for object identification.
+  - type: bounding_box
+    description: The minimum bounding rectangle enclosing all azure (8) pixels (inclusive coordinates).
+    role: Defines the area for the fill operation.
+  - type: fill_color
+    determination:
+      - Find all contiguous objects (using 4-connectivity) with colors other than white (0) or azure (8).
+      - Filter these objects to keep only those whose coordinates are *all* within the bounding_box (inclusive).
+      - Among the filtered objects, identify the object with the largest pixel count (size). If there's a tie in size, choose the object with the numerically lowest color value.
+      - The color of this selected object is the fill_color.
+    role: The color used to replace background pixels within the bounding box.
+transformation:
+  - action: identify_boundary_pixels
+    input: input_grid
+    color: azure (8)
+    output: list of coordinates [(r1, c1), (r2, c2), ...] for all azure pixels.
+  - action: calculate_bounding_box
+    input: list of azure pixel coordinates
+    condition: Must contain at least one azure pixel.
+    output: coordinates defining the minimum bounding rectangle (min_row, max_row, min_col, max_col). If no azure pixels, no transformation occurs.
+  - action: find_all_objects
+    input: input_grid
+    ignore_colors: [white (0), azure (8)]
+    connectivity: 4
+    output: list of objects, each with {color, size, coords}.
+  - action: filter_contained_objects
+    input: list of objects, bounding_box
+    criteria: All coordinates of an object must be within or on the bounding_box edges.
+    output: list of fully contained objects.
+  - action: determine_fill_color
+    input: list of contained objects
+    condition: List must not be empty.
+    method: Find object with max size. If tie, use min color value among max-sized objects.
+    output: fill_color. If no contained objects, no transformation occurs.
+  - action: apply_fill_replacement
+    target: input_grid (to create output_grid)
+    region: All pixels (r, c) such that min_row <= r <= max_row and min_col <= c <= max_col.
+    condition: The pixel at (r, c) in the *input_grid* must be white (0).
+    replacement: Change the color of the pixel at (r, c) in the *output_grid* to fill_color.
+    preservation: All pixels outside the bounding box, all azure (8) pixels, and all non-white pixels inside the bounding box retain their original color from the input_grid.
+    output: output_grid. If no azure pixels or no contained objects found, output_grid is identical to input_grid.

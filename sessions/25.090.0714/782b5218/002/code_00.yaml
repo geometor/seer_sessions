@@ -1,0 +1,49 @@
+task_description: Processes a grid column-wise based on the highest red pixel, clearing above, preserving original red pixels at/below, and filling other cells at/below with a globally determined fill color.
+
+elements:
+  - element: grid
+    properties:
+      - type: 2D array of integers (colors)
+      - dimensions: height, width (constant per example pair)
+  - element: pixel
+    properties:
+      - color: integer 0-9
+      - position: (row, column)
+  - element: column
+    properties:
+      - index: integer
+      - contains_pixels: list of pixels
+
+key_colors:
+  - color: red (2)
+    role: vertical boundary marker (highest occurrence per column is key 'r_red'), preserved if original pixel is red at row >= r_red.
+  - color: white (0)
+    role: clear color (used above r_red, for columns without red), ignored in frequency counts.
+  - color: other (e.g., gray-5, blue-1, azure-8)
+    role: potential fill color (determined by highest frequency excluding white-0 and red-2).
+
+relationships:
+  - relationship: position
+    properties:
+      - above/below: relative row indices compared to r_red
+      - highest: minimum row index ('r_red') for red (2) in a column
+  - relationship: frequency
+    properties:
+      - most_frequent_color: calculated across the grid, excluding white (0) and red (2).
+
+actions:
+  - action: find_fill_color
+    inputs: input_grid
+    outputs: fill_color
+    constraints: Calculate most frequent color excluding white (0) and red (2).
+  - action: process_column
+    inputs: input_column, fill_color
+    outputs: output_column
+    logic:
+      - Find the row index of the highest red (2) pixel, 'r_red'.
+      - If no red pixel exists, the output column is all white (0).
+      - If a red pixel exists:
+        - For rows 'r' < r_red, set output_column[r] = white (0).
+        - For rows 'r' >= r_red:
+          - If input_column[r] == red (2), set output_column[r] = red (2).
+          - Else (if input_column[r] != red (2)), set output_column[r] = fill_color.

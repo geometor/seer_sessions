@@ -1,0 +1,44 @@
+task_description: Propagate color upwards from triggers in the last row, stopping at barriers and spilling into the next column.
+grid_properties:
+  size: Fixed at 10x10 for the examples shown.
+objects:
+  - type: pixel
+    properties:
+      color: Can be white (0), red (2), or gray (5).
+      location: Defined by row and column index.
+  - type: trigger
+    properties:
+      location: A red (2) pixel in the last row (row 9).
+      column_index: The column where the trigger resides.
+  - type: barrier
+    properties:
+      location: A gray (5) pixel anywhere in the grid.
+      column_index: The column where the barrier resides.
+relationships:
+  - type: blocks
+    description: A barrier (gray=5) pixel at (R_gray, C) blocks upward propagation originating from a trigger in the same column C. The propagation stops at row R_gray + 1.
+  - type: causes_spillover
+    description: A barrier at (R_gray, C) blocking upward propagation causes red (2) to spill into the adjacent column C+1 (if it exists) and propagate upwards from row R_gray + 1 to row 0.
+actions:
+  - name: identify_triggers
+    input: input_grid
+    output: list_of_trigger_column_indices
+    description: Find the indices of columns containing a red (2) pixel in the last row.
+  - name: identify_barriers
+    input: input_grid
+    output: dictionary_of_highest_barrier_per_column
+    description: For each column, find the row index of the highest gray (5) pixel (closest to row 0). Store as {column_index: row_index}. If no barrier, store None or skip.
+  - name: propagate_and_spill
+    input: input_grid, trigger_columns, barrier_map
+    output: output_grid
+    description:
+      1. Initialize output grid as a copy of the input grid.
+      2. Create a set to track cells to be colored red.
+      3. For each trigger_column C:
+         a. Check barrier_map for the highest barrier at (R_gray, C).
+         b. If no barrier in C: Mark all cells (row, C) for 0 <= row < grid_height as red.
+         c. If barrier at (R_gray, C):
+            i. Mark cells (row, C) for R_gray < row < grid_height as red.
+            ii. If column C+1 exists: Mark cells (row, C+1) for 0 <= row <= R_gray + 1 as red.
+      4. Apply the red markings: Iterate through the marked red cells (r, c). If output_grid[r, c] is not gray (5), set output_grid[r, c] = red (2).
+      5. (Alternative Step 4, simpler): Iterate through the marked red cells (r, c) and set output_grid[r, c] = red (2). Then, iterate through *all* original gray pixels from the input and ensure they are gray in the output_grid.

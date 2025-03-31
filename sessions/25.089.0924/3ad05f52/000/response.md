@@ -1,0 +1,51 @@
+*   **Perception:** The task involves identifying enclosed regions defined by azure (8) pixels and performing a flood fill operation within these regions. The color used for filling and the starting points (seeds) for the fill are determined by the unique non-white (0), non-azure (8) color present in the input grid.
+
+*   **YAML Facts:**
+    
+```yaml
+    task_type: flood_fill
+    elements:
+      - object: background
+        color: white (0)
+        role: default_empty_space
+      - object: boundary
+        color: azure (8)
+        role: defines_regions_limits_fill
+      - object: fillable_area
+        color: white (0)
+        location: adjacent_to_seeds_and_within_boundaries
+        role: target_for_filling
+      - object: seed_and_fill_color
+        color: dynamic (magenta(6)/yellow(4)/green(3) in examples)
+        role: determines_fill_color_and_provides_start_points
+        identification: the_unique_color_that_is_not_white_or_azure
+    action:
+      type: flood_fill
+      parameters:
+        - start_points: pixels_of_seed_and_fill_color_in_input
+        - target_color: white (0)
+        - fill_color: color_of_seed_and_fill_color
+        - boundary_color: azure (8)
+      connectivity: 4-way_adjacency (up, down, left, right)
+      constraint: fill_does_not_cross_boundary_color_or_grid_edges
+    output_grid_generation:
+      process: apply_flood_fill_to_input_grid
+    ```
+
+
+*   **Natural Language Program:**
+    1.  Initialize the output grid as a copy of the input grid.
+    2.  Scan the input grid to find the unique color that is not white (0) and not azure (8). This color is the 'fill color'.
+    3.  Identify all pixels in the input grid that have the 'fill color'. These locations are the 'seed points'.
+    4.  Create a queue or stack and add all 'seed points' to it. Maintain a set of visited locations to avoid redundant processing, initially containing the seed points.
+    5.  While the queue/stack is not empty:
+        a.  Dequeue/pop a location (row, col).
+        b.  For each of its 4-way adjacent neighbors (up, down, left, right):
+            i.  Check if the neighbor is within the grid boundaries.
+            ii. Check if the neighbor has not been visited yet.
+            iii. Check if the neighbor's color in the *output grid* is white (0).
+            iv. If all checks pass:
+                1. Change the neighbor's color in the output grid to the 'fill color'.
+                2. Mark the neighbor as visited.
+                3. Enqueue/push the neighbor's location.
+    6.  Return the modified output grid.

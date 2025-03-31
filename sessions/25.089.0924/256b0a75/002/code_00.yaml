@@ -1,0 +1,57 @@
+task_elements:
+  - type: grid
+    description: Input and output are 2D grids of pixels (0-9).
+  - type: background
+    color_name: white
+    color_value: 0
+    description: The default background color, subject to filling.
+  - type: boundary_object
+    color_name: azure
+    color_value: 8
+    description: Pixels defining the boundary of the fill region. These pixels are preserved.
+  - type: internal_objects
+    description: Contiguous blocks of pixels of a single color (not white/0 and not azure/8) found within the boundary region.
+    role: Determine fill color and act as starting points (seeds) for the fill.
+  - type: bounding_box
+    definition: The smallest rectangle enclosing all azure (8) pixels (min_row, max_row, min_col, max_col).
+    role: Defines the spatial extent for identifying contained objects and constraining the fill operation.
+  - type: fill_color
+    determination:
+      - Find all contiguous objects (not white/0, not azure/8).
+      - Filter for objects completely inside the bounding_box.
+      - Identify the object with the largest pixel count among the filtered set (break ties by lowest color value, although not strictly necessary based on examples).
+      - The color of this largest object is the fill_color.
+    role: The color used for the flood fill operation.
+  - type: seed_pixels
+    definition: All pixels within the bounding_box (inclusive) whose color is neither white (0) nor azure (8).
+    role: Starting points for the flood fill.
+transformation:
+  - action: identify_boundary
+    input: input_grid
+    color: azure (8)
+    output: set of coordinates for all azure pixels
+  - action: calculate_bounding_box
+    input: set of coordinates for azure pixels
+    output: coordinates defining the minimum bounding rectangle (min_r, max_r, min_c, max_c)
+  - action: identify_contained_objects
+    input: input_grid, bounding_box
+    criteria:
+      - Must not be white (0) or azure (8).
+      - All pixels of the object must be within the bounding_box (r in [min_r, max_r], c in [min_c, max_c]).
+    output: list of contained objects (color, size, location)
+  - action: determine_fill_color
+    input: list of contained objects
+    method: Find the object with the maximum size.
+    output: color of the largest contained object. Returns None if no contained objects.
+  - action: identify_seed_pixels
+    input: input_grid, bounding_box
+    criteria: All pixels (r, c) such that min_r <= r <= max_r and min_c <= c <= max_c, and grid[r, c] is not white (0) and not azure (8).
+    output: list of coordinates for seed pixels.
+  - action: apply_flood_fill
+    target: copy of input_grid
+    region: within the bounding_box (r in [min_r, max_r], c in [min_c, max_c])
+    seeds: seed_pixels
+    fill_color: determined fill_color
+    condition: Only fill pixels whose original color is white (0). Do not overwrite azure (8) or other non-white pixels.
+    propagation: 4-connectivity (up, down, left, right).
+    output: output_grid. If no fill_color determined or no seed_pixels found, return the copy of the input grid.

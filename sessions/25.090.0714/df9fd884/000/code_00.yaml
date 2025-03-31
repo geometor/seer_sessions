@@ -1,0 +1,62 @@
+task_description: Move a uniquely colored object from its position near one static yellow anchor to a position near the other static yellow anchor, placing it in the opposite relative quadrant.
+
+grid_properties:
+  - background_color: 7 (orange)
+  - contains_exactly_two_yellow_objects: true
+  - contains_exactly_one_other_colored_object: true
+
+objects:
+  - id: anchor1
+    color: 4 (yellow)
+    shape: L-like
+    static: true
+    description: One of the two fixed yellow shapes.
+  - id: anchor2
+    color: 4 (yellow)
+    shape: L-like
+    static: true
+    description: The other fixed yellow shape.
+  - id: mover
+    color: variable (non-yellow, non-background; e.g., blue, red, azure)
+    shape: variable (e.g., square, bar, T-shape)
+    static: false
+    description: The object that changes position.
+
+relationships:
+  - type: proximity
+    object1: mover (initial position)
+    object2: [anchor1, anchor2]
+    relation: The mover object starts closer to one anchor (Source Anchor) than the other (Target Anchor). Proximity can be measured center-to-center or bounding-box distance.
+  - type: relative_positioning (quadrant)
+    object1: mover (initial position)
+    reference: Source Anchor
+    relation: The mover occupies a specific quadrant (e.g., North-West, South-East) relative to the Source Anchor's center/bounding box.
+  - type: relative_positioning (quadrant)
+    object1: mover (final position)
+    reference: Target Anchor
+    relation: The mover is placed adjacent to the Target Anchor in the quadrant *opposite* to its initial quadrant relative to the Source Anchor. (e.g., if started NW of Source, ends SE of Target).
+
+actions:
+  - action: identify_objects
+    inputs: input_grid
+    outputs: [anchor1, anchor2, mover, background_color]
+  - action: determine_source_target_anchors
+    inputs: [anchor1, anchor2, mover]
+    outputs: [source_anchor, target_anchor]
+    logic: Find which anchor the mover is initially closest to.
+  - action: determine_relative_quadrant
+    inputs: [mover, source_anchor]
+    outputs: initial_quadrant
+    logic: Calculate the quadrant (NW, NE, SW, SE) of the mover relative to the source anchor.
+  - action: determine_target_quadrant
+    inputs: initial_quadrant
+    outputs: target_quadrant
+    logic: Find the quadrant opposite the initial_quadrant (NW <-> SE, NE <-> SW).
+  - action: calculate_new_position
+    inputs: [mover, target_anchor, target_quadrant]
+    outputs: new_mover_position_bounding_box
+    logic: Place the mover object adjacent to the target_anchor within the target_quadrant, without overlapping the anchor. The exact adjacency depends on the anchor's shape and the quadrant.
+  - action: modify_grid
+    inputs: [input_grid, mover, mover_original_position, new_mover_position]
+    outputs: output_grid
+    logic: Create the output grid by taking the input grid, filling the mover's original position with the background color, and drawing the mover at its new position.

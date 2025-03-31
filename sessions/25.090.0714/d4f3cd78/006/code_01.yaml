@@ -1,0 +1,59 @@
+task_description: Fill the interior of a gray C-shaped container with azure, and draw a vertical azure line extending from the container's opening/gap away from the container's vertical center towards the grid edge.
+
+elements:
+  - element: background
+    color: white (0)
+    role: Canvas, space to be filled (interior), space for exterior line.
+  - element: container
+    color: gray (5)
+    properties:
+      - Forms a single connected component, roughly C-shaped or rectangular with one side having a gap.
+      - Defines an interior region based on enclosure.
+      - Occupies a bounding box (min/max row/col).
+      - Has a specific column ('gap_column') within its horizontal span containing the minimum number (>0) of gray pixels.
+      - Has a vertical center of mass.
+    role: Boundary for fill, reference for exterior line position and direction.
+  - element: fill_color
+    color: azure (8)
+    role: Fills the interior region, forms the exterior line.
+
+relationships:
+  - type: containment
+    element1: container (gray)
+    element2: background (white)
+    description: The container topologically encloses a region of the background.
+  - type: adjacency
+    element1: fill_color (azure, interior)
+    element2: container (gray)
+    description: The interior azure fill pixels are adjacent to the inner boundary pixels of the gray container.
+  - type: adjacency
+    element1: fill_color (azure, exterior line)
+    element2: container (gray)
+    description: The exterior azure line starts adjacent (vertically) to the top or bottom edge of the container pixels located within the gap_column.
+  - type: spatial
+    element1: container (gray)
+    element2: grid
+    description: The vertical position of the container's center relative to the grid's center determines the direction (up/down) of the exterior line.
+
+actions:
+  - action: identify_container
+    input: grid
+    output: Coordinates of all gray (5) pixels.
+  - action: find_gap_column
+    input: grid, container_coordinates
+    output: The column index within the container's horizontal bounding box having the minimum number (>0) of gray pixels.
+  - action: find_interior_seed
+    input: grid, container_coordinates, gap_column
+    output: Coordinates of a background (0) pixel suitable for starting flood fill, located inside the container's enclosure, preferably within the gap_column and the container's vertical span.
+  - action: flood_fill_interior
+    input: grid, seed_pixel
+    output: Modify the grid, changing connected background (0) pixels starting from the seed to azure (8), bounded by non-background pixels (e.g., gray container).
+  - action: calculate_vertical_center
+    input: container_coordinates
+    output: The average row index of the container pixels.
+  - action: determine_line_properties
+    input: container_coordinates, gap_column, container_vertical_center, grid_height
+    output: A structure containing start_row (row adjacent to container edge in gap col), direction (up=-1 or down=1), and target_column (gap_column).
+  - action: draw_exterior_line
+    input: grid, line_properties
+    output: Modify the grid, changing background (0) pixels to azure (8) along the vertical line segment defined by line_properties, extending to the grid edge.

@@ -1,0 +1,53 @@
+task_context:
+  grid_representation: 2D array of integer color values (0-9).
+  background_color: White (0).
+  primary_structure: A larger grid formed by intersecting horizontal and vertical lines of a single color (grid_color).
+  grid_color: Varies per example (Green=3, Azure=8). Determined by the color forming full-width/height lines.
+  cells: The grid_color lines divide the main grid into smaller, equal-sized rectangular areas (cells).
+
+objects:
+  - object_type: grid_lines
+    color: grid_color (task-dependent)
+    shape: Horizontal and vertical lines spanning the grid.
+    role: Defines cell boundaries.
+    persistence: Unchanged between input and output.
+  - object_type: content_block
+    color: Any color except background (0) and grid_color. Varies per example.
+    shape: Solid rectangles of uniform size (block_h x block_w) within a task.
+    location: Contained within grid cells.
+    persistence: Unchanged between input and output.
+  - object_type: background_block
+    color: White (0).
+    shape: Solid rectangles, same size as content_blocks for the task (block_h x block_w).
+    location: Contained within grid cells.
+    persistence: Can be replaced in the output.
+
+properties:
+  - property_name: max_content_color
+    description: The highest numerical color value among all content_blocks present in the entire input grid.
+    scope: Global across the input grid.
+    value_constraint: Must be derived only from solid blocks of size block_h x block_w.
+  - property_name: cell_contains_content
+    description: A boolean property for each grid cell, indicating if it contains at least one content_block.
+    scope: Local to each grid cell.
+  - property_name: block_dimensions
+    description: The height (block_h) and width (block_w) of content_blocks and background_blocks, derived from the spacing between grid_lines.
+    scope: Global across the task.
+
+actions:
+  - action_name: identify_grid_structure
+    description: Find grid_color, cell boundaries, and block_dimensions (block_h, block_w).
+  - action_name: find_max_content_color
+    description: Scan input grid for all solid blocks (size block_h x block_w) that are not background or grid_color, find the maximum color value among them.
+  - action_name: check_cells_for_content
+    description: For each cell, determine if it contains any solid content_blocks (size block_h x block_w, color != 0 and != grid_color).
+  - action_name: replace_background_blocks
+    description: In cells identified as containing content, locate all background_blocks (solid blocks of color 0, size block_h x block_w) and replace them with blocks of the max_content_color.
+
+relationships:
+  - relationship_type: containment
+    description: content_blocks and background_blocks are contained within specific grid cells.
+  - relationship_type: transformation_trigger
+    description: The presence of any content_block within a cell triggers the potential replacement of background_blocks *in that same cell*.
+  - relationship_type: replacement_rule
+    description: The color used for replacement (max_content_color) is determined globally from all content_blocks. Background blocks (color 0) are the targets for replacement.

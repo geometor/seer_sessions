@@ -1,0 +1,55 @@
+task_description: Processes a grid column-wise based on the highest red pixel, clearing above and either copying or filling below.
+
+elements:
+  - element: grid
+    properties:
+      - type: 2D array of integers (colors)
+      - dimensions: height, width (variable, constant per example pair)
+  - element: pixel
+    properties:
+      - color: integer 0-9
+      - position: (row, column)
+  - element: column
+    properties:
+      - index: integer
+      - contains_pixels: list of pixels
+
+key_colors:
+  - color: red (2)
+    role: vertical boundary marker (highest occurrence per column is key)
+  - color: white (0)
+    role: clear color (used above marker, for columns without marker), ignored in frequency counts
+  - color: gray (5)
+    role: special case trigger (if most frequent non-0/2 color, triggers 'copy' mode)
+  - color: other (e.g., blue-1, azure-8)
+    role: potential fill color (if most frequent non-0/2 color and not gray-5)
+
+relationships:
+  - relationship: position
+    properties:
+      - above/below: relative row indices
+      - highest: minimum row index for a specific color (red) in a column
+  - relationship: frequency
+    properties:
+      - most_frequent_color: calculated across the grid, excluding white (0) and red (2)
+
+actions:
+  - action: find_most_frequent_color
+    inputs: input_grid
+    outputs: dominant_color
+    constraints: ignore white (0) and red (2)
+  - action: determine_mode
+    inputs: dominant_color
+    outputs: mode ('copy' or 'fill'), fill_color (if mode is 'fill')
+    logic: if dominant_color is gray (5), mode is 'copy'; else mode is 'fill' and fill_color is dominant_color.
+  - action: process_column
+    inputs: input_column, mode, fill_color
+    outputs: output_column
+    logic:
+      - Find highest red (2) pixel row 'r_red'.
+      - If no red pixel, output column is all white (0).
+      - If red pixel exists:
+        - Output rows < r_red are white (0).
+        - Output row r_red is red (2).
+        - If mode is 'copy', output rows > r_red are copied from input_column.
+        - If mode is 'fill', output rows > r_red are set to fill_color.

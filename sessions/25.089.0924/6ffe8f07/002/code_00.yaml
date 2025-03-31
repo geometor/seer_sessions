@@ -1,0 +1,50 @@
+task_description: Fill the background (white) pixels with yellow in a cross-shaped area defined by the bounding box of the single azure object, preserving all original non-white objects.
+
+elements:
+  - element_type: background
+    color: white (0)
+    role: Passive space filler in input, selectively replaced in output.
+  - element_type: focal_object
+    color: azure (8)
+    shape: solid rectangle
+    uniqueness: Always exactly one present.
+    role: Defines the area for transformation. Position and color are preserved in output.
+  - element_type: other_object
+    color: blue (1)
+    shape: solid rectangle(s)
+    role: Secondary object(s), presence/size/position varies. Positions and colors are preserved in output. Ignored for transformation area calculation.
+  - element_type: other_object
+    color: red (2)
+    shape: solid rectangle(s)
+    role: Secondary object(s), presence/size/position varies. Positions and colors are preserved in output. Ignored for transformation area calculation.
+  - element_type: fill_color
+    color: yellow (4)
+    role: Introduced in the output to replace specific background pixels.
+
+relationships:
+  - type: bounding_box
+    scope: The single azure (8) object in the input grid.
+    output_attributes: min_row, max_row, min_col, max_col
+    purpose: Defines the row and column ranges for the transformation.
+  - type: preservation
+    scope: All non-white pixels (1, 2, 8) from the input grid.
+    action: Their color and position are maintained in the output grid.
+  - type: replacement
+    scope: White (0) pixels in the input grid located within the transformation area.
+    transformation_area: Any pixel whose row index is between min_row and max_row (inclusive) of the azure bounding box, OR whose column index is between min_col and max_col (inclusive) of the azure bounding box.
+    action: These pixels are changed to yellow (4) in the output grid.
+
+actions:
+  - action: identify_focal_object
+    input: input grid
+    target_color: azure (8)
+    output: set of coordinates for all azure pixels
+  - action: calculate_focal_bounding_box
+    input: set of azure coordinates
+    output: min_row, max_row, min_col, max_col
+  - action: create_output_grid
+    based_on: input grid (copy)
+  - action: fill_background_cross_shape
+    target: output grid
+    condition: Iterate through all grid cells (r, c). If `(min_row <= r <= max_row)` OR `(min_col <= c <= max_col)`, AND if `input_grid[r, c]` is white (0).
+    effect: Change the output cell `output_grid[r, c]` color to yellow (4).

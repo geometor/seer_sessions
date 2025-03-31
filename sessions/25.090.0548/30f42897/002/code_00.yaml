@@ -1,0 +1,43 @@
+task_description: Identify a single non-background object, determine its properties (color C, height H, width W, pixel coordinates), and add new shapes of color C to the grid based on specific rules for vertical lines and rectangles, keeping the original object.
+
+examples:
+  - id: train_1 # Vertical Line H=5
+    input: { grid_size: [7, 10], background_color: 8, object_color: 2, object_pixels: [[1, 9], [2, 9], [3, 9], [4, 9], [5, 9]], H: 5, W: 1 }
+    output_additions:
+      - { shape: horizontal_line, color: 2, length: 5, position: top-left, pixels: [[0, 0], [0, 1], [0, 2], [0, 3], [0, 4]] }
+      - { shape: horizontal_line, color: 2, length: 5, position: bottom-left, pixels: [[6, 0], [6, 1], [6, 2], [6, 3], [6, 4]] }
+    transformation_rule_applied: vertical_line_h5
+
+  - id: train_2 # Rectangle H=2, W=3
+    input: { grid_size: [4, 10], background_color: 8, object_color: 9, object_pixels: [[0, 0], [0, 1], [0, 2], [1, 0]], H: 2, W: 3 }
+    output_additions:
+      - { shape: reflected_copy, color: 9, source_pixels: [[0, 0], [0, 1], [0, 2], [1, 0]], position: top-right, pixels: [[0, 7], [0, 8], [0, 9], [1, 9]] } # Horizontally reflected copy placed at [0:H, grid_w-W:grid_w]
+      - { shape: horizontal_line, color: 9, length: 4, position: bottom-center, pixels: [[3, 3], [3, 4], [3, 5], [3, 6]] } # Length W+1
+    transformation_rule_applied: rectangle_reflection
+
+  - id: train_3 # Vertical Line H=2
+    input: { grid_size: [7, 9], background_color: 8, object_color: 4, object_pixels: [[2, 0], [3, 0]], H: 2, W: 1 }
+    output_additions: # Multiple lines of length H=2 at fixed/relative positions
+      - { shape: horizontal_line, color: 4, length: 2, pixels: [[0, 1], [0, 2]] }
+      - { shape: horizontal_line, color: 4, length: 2, pixels: [[0, 5], [0, 6]] }
+      - { shape: vertical_line, color: 4, length: 2, pixels: [[1, 8], [2, 8]] }
+      - { shape: vertical_line, color: 4, length: 2, pixels: [[5, 8], [6, 8]] }
+      - { shape: horizontal_line, color: 4, length: 2, pixels: [[6, 0], [6, 1]] }
+      - { shape: horizontal_line, color: 4, length: 2, pixels: [[6, 4], [6, 5]] }
+    transformation_rule_applied: vertical_line_h2
+
+common_properties:
+  background_color: 8 # Azure is consistently the background.
+  object_count: Exactly one non-background object in input.
+  action: Add shapes based on original object's color, dimensions (H, W), and shape category (line vs rectangle).
+  color_rule: Added shapes always use the object's color.
+  original_object_persistence: The original object remains unmodified in the output grid.
+
+relationships:
+  - The rules for adding shapes depend on whether the object is a vertical line (W=1) or a rectangle (H>1, W>1).
+  - For vertical lines, the rule depends on the height (H).
+    - H=5: Add horizontal lines of length H top-left and bottom-left.
+    - H=2: Add multiple horizontal and vertical lines of length H at specific relative locations (possibly tied to grid corners/edges).
+  - For rectangles:
+    - Add a horizontally reflected copy of the original object, placing its top-left corner at `(0, GridWidth-W)`.
+    - Add a horizontal line of length `W+1` centered on the bottom row.

@@ -1,0 +1,47 @@
+task_elements:
+  - type: grid
+    description: Input and output are 2D grids of pixels with integer values 0-9 representing colors.
+  - type: background
+    color_name: white
+    color_value: 0
+    description: The default background color.
+  - type: boundary_object
+    color_name: azure
+    color_value: 8
+    description: Pixels of this color define the boundary of a region.
+  - type: contained_objects
+    description: Contiguous blocks of pixels of a single color (not white/0 and not azure/8) found within the boundary region.
+  - type: bounding_box
+    description: The smallest rectangle enclosing all azure (8) pixels.
+    role: Defines the area for the fill operation.
+  - type: fill_color
+    determination:
+      - Find all contiguous objects (not white/0, not azure/8).
+      - Filter for objects completely inside the bounding_box.
+      - Identify the object with the largest pixel count among the filtered set.
+      - The color of this largest object is the fill_color.
+    role: The color used to replace background pixels within the bounding box.
+transformation:
+  - action: identify_boundary
+    input: input_grid
+    color: azure (8)
+    output: set of coordinates for all azure pixels
+  - action: calculate_bounding_box
+    input: set of coordinates for azure pixels
+    output: coordinates defining the minimum bounding rectangle (min_row, max_row, min_col, max_col)
+  - action: identify_internal_objects
+    input: input_grid, bounding_box
+    criteria:
+      - Must not be white (0) or azure (8).
+      - Must be fully contained within the bounding_box coordinates.
+    output: list of contained objects (color, size, location)
+  - action: determine_fill_color
+    input: list of contained objects
+    method: Find the object with the maximum size (pixel count).
+    output: color of the largest contained object
+  - action: apply_fill
+    target: input_grid
+    region: inside the bounding_box
+    condition: pixel color is white (0)
+    replacement: fill_color
+    output: output_grid (pixels outside the box, boundary pixels, and non-white pixels inside the box remain unchanged)

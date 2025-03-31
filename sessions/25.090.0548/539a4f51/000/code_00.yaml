@@ -1,0 +1,67 @@
+input_grid:
+  type: 2D array of integers (colors)
+  properties:
+    height: H
+    width: W
+output_grid:
+  type: 2D array of integers (colors)
+  properties:
+    height: 2 * H
+    width: 2 * W
+    structure: Composed of 4 quadrants (TL, TR, BL, BR), each H x W.
+transformation:
+  - step: Define Quadrants
+    description: Divide the output grid into four HxW quadrants.
+  - step: Populate Top-Left (TL) Quadrant
+    action: Copy
+    source: input_grid
+    target: output_grid[0:H, 0:W]
+  - step: Calculate Characteristic Colors
+    description: Determine a characteristic color for each row and column of the input_grid.
+    variables:
+      R: list of H characteristic row colors
+      C: list of W characteristic column colors
+    logic:
+      for_each: row i in input_grid
+        non_white_colors: Filter out white (0) pixels.
+        if non_white_colors is empty:
+          R[i] = R[0] # Default to first row's characteristic color
+        else:
+          frequencies: Count occurrences of each non_white_color.
+          max_frequency: Find the maximum count.
+          candidates: List colors with max_frequency.
+          if candidates count is 1:
+            R[i] = the single candidate color
+          else: # Tie-breaking
+            R[i] = the candidate color that appears first (lowest index) in the original row i.
+      for_each: column j in input_grid
+        non_white_colors: Filter out white (0) pixels.
+        if non_white_colors is empty:
+          C[j] = C[0] # Default to first column's characteristic color
+        else:
+          frequencies: Count occurrences of each non_white_color.
+          max_frequency: Find the maximum count.
+          candidates: List colors with max_frequency.
+          if candidates count is 1:
+            C[j] = the single candidate color
+          else: # Tie-breaking
+            C[j] = the candidate color that appears first (lowest index) in the original column j.
+    dependencies: R[0] and C[0] must be calculated first or handled during iteration.
+  - step: Populate Top-Right (TR) Quadrant
+    target: output_grid[0:H, W:2*W]
+    logic:
+      for_each: column j (0 to W-1)
+        fill column j of TR quadrant with color C[j]
+  - step: Populate Bottom-Left (BL) Quadrant
+    target: output_grid[H:2*H, 0:W]
+    logic:
+      for_each: row i (0 to H-1)
+        fill row i of BL quadrant with color R[i]
+  - step: Populate Bottom-Right (BR) Quadrant
+    target: output_grid[H:2*H, W:2*W]
+    logic:
+      for_each: cell at relative coordinates (i, j) within the BR quadrant (0 <= i < H, 0 <= j < W)
+        if i >= j:
+          set cell color to R[i]
+        else:
+          set cell color to C[j]
