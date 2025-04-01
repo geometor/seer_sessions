@@ -7,18 +7,22 @@ from collections import defaultdict
 from rich.console import Console
 from rich.table import Table
 
-def find_duplicate_tasks(corpus_dirs: list[Path]) -> dict[str, list[str]]:
+def find_duplicate_tasks(corpus_dirs: list[Path]) -> tuple[dict[str, list[str]], int, int]:
     """
     Scans specified corpus directories for task files (*.json) and identifies
-    task IDs present in more than one directory.
+    task IDs present in more than one directory. Also calculates total unique
+    tasks and tasks appearing only once.
 
     Args:
         corpus_dirs: A list of Path objects representing the directories to scan.
 
     Returns:
-        A dictionary where keys are task IDs found in multiple corpora,
-        and values are lists of the names of the corpora containing that task ID.
-        Returns an empty dictionary if no duplicates are found.
+        A tuple containing:
+        - A dictionary where keys are task IDs found in multiple corpora,
+          and values are lists of the names of the corpora containing that task ID.
+          Returns an empty dictionary if no duplicates are found.
+        - An integer representing the total number of unique task IDs found.
+        - An integer representing the number of task IDs found in only one corpus.
     """
     task_locations = defaultdict(list)
     valid_corpus_names = []
@@ -50,7 +54,12 @@ def find_duplicate_tasks(corpus_dirs: list[Path]) -> dict[str, list[str]]:
         if len(set(locations)) > 1:
             duplicates[task_id] = sorted(list(set(locations))) # Store unique, sorted list
 
-    return duplicates
+    # Calculate summary statistics
+    total_unique_tasks = len(task_locations)
+    duplicate_count = len(duplicates)
+    single_occurrence_tasks = total_unique_tasks - duplicate_count
+
+    return duplicates, total_unique_tasks, single_occurrence_tasks
 
 def main():
     # --- Define your corpus directories here ---
@@ -67,7 +76,8 @@ def main():
     # Convert string paths to Path objects and resolve them (optional but good practice)
     absolute_corpus_dirs = [Path(p).resolve() for p in corpus_directory_paths]
 
-    duplicate_tasks = find_duplicate_tasks(absolute_corpus_dirs)
+    # Get duplicates and summary statistics
+    duplicate_tasks, total_unique_tasks, single_occurrence_tasks = find_duplicate_tasks(absolute_corpus_dirs)
 
     if not duplicate_tasks:
         print("\nNo duplicate task IDs found across the specified directories.")
@@ -130,6 +140,13 @@ def main():
         except IOError as e:
             print(f"Error writing CSV file: {e}", file=sys.stderr)
         # ---------------------------------------
+
+    # --- Print Summary Statistics ---
+    print("\n--- Summary ---")
+    print(f"Total unique task IDs found: {total_unique_tasks}")
+    print(f"Number of duplicate task IDs: {len(duplicate_tasks)}")
+    print(f"Number of task IDs appearing in only one corpus: {single_occurrence_tasks}")
+    # -----------------------------
 
 if __name__ == "__main__":
     main()
