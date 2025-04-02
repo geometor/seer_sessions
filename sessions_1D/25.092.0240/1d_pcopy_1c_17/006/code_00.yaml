@@ -1,0 +1,37 @@
+task_context:
+  - Grid Transformation: Modifying pixels based on spatial relationships and color identity. Assumes input is a 2D grid structure.
+  - Color Focus: Operations primarily concern one non-white color per example, determined by the topmost structure.
+  - Background: White pixels (0) are treated as background and are generally not modified unless specifically filled.
+
+elements:
+  - type: Reference Line
+    description: The first contiguous horizontal sequence of a single non-white color found when scanning the input grid top-to-bottom, left-to-right.
+    properties:
+      - color: The single non-white color of the pixels in the line (e.g., red, yellow, gray). Let's call this C.
+      - row_index: The row where this line occurs. Let's call this R.
+      - column_range: The start and end column indices of the line. Let's call this [min_col, max_col].
+  - type: Trigger Pixel
+    description: Any pixel in the input grid in a row *below* R (row index > R) that has the color C.
+    properties:
+      - color: Must be color C.
+      - row_index: Must be greater than R.
+      - column_index: Any column index within the row.
+  - type: Affected Row Segment
+    description: A horizontal segment in the output grid corresponding to a row that contained at least one Trigger Pixel in the input grid.
+    properties:
+      - color: All pixels in this segment are set to color C.
+      - row_index: Same as the row index of the Trigger Pixel(s) in that input row.
+      - column_range: Spans from min_col to max_col (inclusive), matching the Reference Line's column range.
+
+relationships:
+  - The Reference Line defines the target color (C) and the horizontal boundaries ([min_col, max_col]) for modifications in subsequent rows.
+  - The presence of at least one Trigger Pixel in an input row `r > R` activates the transformation for that row `r` in the output grid.
+  - The transformation fills the Affected Row Segment in the output grid for row `r` using color C and column range [min_col, max_col].
+
+actions:
+  - Initialize: Create the output grid as a deep copy of the input grid (assumed to be 2D).
+  - Identify: Find the Reference Line (first horizontal non-white segment). Extract its color C, row R, and column range [min_col, max_col]. If none found, return the copy.
+  - Scan: Iterate through input rows below R (r > R).
+  - Check: For each input row r, determine if any pixel within that row has color C.
+  - Fill: If the check is positive for input row r, modify the *output* grid by setting pixels from (r, min_col) to (r, max_col) to color C.
+  - Copy: Unmodified pixels (including the reference line, rows R and above, rows below R without trigger pixels, and pixels outside the [min_col, max_col] range in filled rows) retain their original values from the initial copy.

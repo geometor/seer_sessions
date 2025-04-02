@@ -1,0 +1,61 @@
+task_elements:
+  - type: background
+    color: white (0)
+    role: canvas
+  - type: ignored_pixels
+    color: gray (5)
+    role: noise
+  - type: input_pixels
+    properties:
+      - color: various (non-white, non-gray, e.g., yellow(4), magenta(6), orange(7))
+      - count: number of pixels of this color
+      - arrangement: spatial distribution of pixels
+      - bounding_box: min/max row/col encompassing these pixels
+      - is_2x2_diagonal: boolean, true if count is 2 and pixels are diagonally adjacent
+    role: pattern_source
+  - type: output_shape
+    properties:
+      - color: matches corresponding input_pixels color
+      - shape: derived from input_pixels
+    role: transformed_pattern
+
+actions:
+  - action: initialize_grid
+    output: empty (white) grid matching input dimensions
+  - action: identify_color_groups
+    input: input_grid
+    output: sets of pixel coordinates, grouped by color (excluding white and gray)
+  - action: analyze_group_properties
+    input: set of pixel coordinates for one color
+    output: count, bounding_box, is_2x2_diagonal flag
+  - action: conditional_fill
+    condition: is_2x2_diagonal is true
+    input: coordinates of the two diagonal pixels, color
+    output: specific 6-pixel pattern added to output_grid
+    description: If the input for a color is exactly two diagonally adjacent pixels, place a predefined 6-pixel shape in a 3x3 area starting at the top-left of the input pixels' bounding box.
+  - action: fill_bounding_box
+    condition: is_2x2_diagonal is false
+    input: bounding_box coordinates, color
+    output: filled rectangle added to output_grid
+    description: If the input pixels for a color do not meet the 2x2 diagonal condition, fill their calculated bounding box solid with that color.
+
+relationships:
+  - relation: input_output_color_preservation
+    description: Each non-white, non-gray color in the input corresponds to an output shape of the same color.
+  - relation: transformation_dependency
+    description: The shape drawn in the output depends on the count and spatial arrangement (specifically, the 2x2 diagonal check) of the input pixels of that color.
+
+flow:
+  - step: Initialize an empty (white) output grid matching input dimensions.
+  - step: Identify all unique colors in the input, excluding white (0) and gray (5).
+  - step: For each identified unique color:
+      - Find all pixels (coordinates) of this color in the input grid.
+      - If no pixels are found, continue to the next color.
+      - Check if there are exactly two pixels and they are diagonally adjacent (difference of 1 in both row and column indices).
+      - If TRUE (2x2 diagonal case):
+          - Determine the top-left coordinate (min_row, min_col) of these two pixels. Let this be (R, C).
+          - Add the specific 6-pixel pattern to the output grid at coordinates: (R, C), (R, C+2), (R+1, C+1), (R+2, C), (R+2, C+1), (R+2, C+2), using the current color.
+      - If FALSE (standard case):
+          - Calculate the bounding box (min/max row/col) of all input pixels of this color.
+          - Fill this rectangular bounding box area in the output grid with the current color.
+  - step: Return the final output grid.

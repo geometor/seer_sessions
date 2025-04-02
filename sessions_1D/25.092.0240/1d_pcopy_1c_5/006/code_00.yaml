@@ -1,0 +1,55 @@
+task_description: "Fill incomplete patterns based on an initial template pattern within a 1D grid (row)."
+elements:
+  - element: "pixel"
+    properties:
+      - color: "Integer 0-9 (white, blue, red, green, yellow, gray, magenta, orange, azure, maroon)"
+  - element: "background"
+    properties:
+      - color: "white (0)"
+  - element: "grid"
+    properties:
+      - type: "1D array or list of pixels"
+      - size: "Variable length (33 in examples)"
+  - element: "template_pattern"
+    properties:
+      - source: "The first contiguous block of non-white pixels in the input grid."
+      - color: "A single non-white color (C)."
+      - length: "L"
+      - role: "Acts as the target pattern for replacements."
+  - element: "trigger_pixel"
+    properties:
+      - location: "An index `i` in the input grid occurring *after* the initial template_pattern."
+      - color: "Must match the color `C` of the template_pattern."
+      - role: "Indicates a potential location for pattern replacement."
+  - element: "input_segment"
+    properties:
+       - location: "The segment of the input grid starting at a trigger_pixel index `i` with length `L`."
+       - structure: "A sequence of L pixels from the input grid."
+relationships:
+  - type: "templating"
+    description: "The first contiguous block of the non-white color defines the template_pattern (color C, length L)."
+  - type: "replacement_condition"
+    description: >
+      Replacement occurs at a trigger_pixel index `i` if the input_segment
+      (input_grid[i : i+L]) is *not* identical to the template_pattern, and
+      the segment fits within the grid boundaries (i+L <= grid_length).
+actions:
+  - action: "identify_template"
+    inputs: ["input_grid"]
+    outputs: ["template_pattern", "template_color", "template_length", "template_end_index"]
+    description: "Find the first contiguous block of non-white pixels. Record its content (pattern), color, length, and the index where it ends."
+  - action: "scan_and_replace"
+    inputs: ["input_grid", "template_pattern", "template_color", "template_length", "template_end_index"]
+    outputs: ["output_grid"]
+    description: >
+      Initialize output_grid as a copy of input_grid.
+      Iterate through input_grid starting from index `template_end_index + 1`.
+      At each index `i`:
+      1. Check if `input_grid[i]` matches `template_color`.
+      2. If it matches, check if `i + template_length` is within grid bounds.
+      3. If it fits, extract the `input_segment = input_grid[i : i + template_length]`.
+      4. Compare `input_segment` with `template_pattern`.
+      5. If they are *different*, replace the segment `output_grid[i : i + template_length]` with `template_pattern`.
+      6. If a replacement occurs, advance the scan index `i` by `template_length`.
+      7. Otherwise (no color match, doesn't fit, or segment already matches template), advance the scan index `i` by 1.
+      Return the final output_grid.

@@ -1,0 +1,53 @@
+task_context:
+  grid_representation: 1D array (assumed 1xN grid based on examples and task description 'horizontal line')
+  grid_size: Constant (e.g., 29 elements in examples)
+  colors_present:
+    - white (0): Background color
+    - azure (8): Static anchor point
+    - variable_color (C): A color other than white or azure, forming a single line segment.
+objects:
+  - object_type: anchor_pixel
+    color: azure (8)
+    count: 1
+    properties:
+      - static position: Its index remains the same from input to output.
+  - object_type: colored_line
+    color: variable_color (C)
+    count: 1
+    shape: contiguous horizontal segment (1D array context)
+    properties:
+      - constant color: The color C is preserved.
+      - constant length: The number of pixels (length L) is preserved.
+      - dynamic position: Its start and end indices change.
+relationships:
+  - relation_type: relative_position
+    object1: colored_line
+    object2: anchor_pixel
+    state_in_input: Variable, line is not necessarily adjacent to the anchor.
+    state_in_output: Adjacent, the rightmost pixel of colored_line is at index `anchor_index - 1`.
+actions:
+  - action_type: identify_anchor
+    input: input_grid
+    output: anchor_index (integer index of the pixel with value 8)
+  - action_type: identify_line
+    input: input_grid
+    output: line_color (integer), line_length (integer)
+    details: Finds the contiguous segment of pixels not equal to 0 or 8.
+  - action_type: create_output_grid
+    input: grid_size (from input_grid)
+    output: output_grid (1D array initialized with white=0)
+  - action_type: place_anchor
+    target: output_grid
+    input: anchor_index (from identify_anchor)
+    effect: Sets `output_grid[anchor_index] = 8`.
+  - action_type: calculate_new_line_position
+    input: anchor_index, line_length
+    output: new_start_index, new_end_index
+    calculation:
+      - `new_start_index = anchor_index - line_length`
+      - `new_end_index = anchor_index` (exclusive index for slicing)
+  - action_type: place_line
+    target: output_grid
+    input: new_start_index, new_end_index, line_color
+    effect: Sets `output_grid[new_start_index : new_end_index] = line_color`.
+    constraints: Ensure indices are within grid bounds (though not necessary based on examples).

@@ -1,0 +1,59 @@
+task_type: array_transformation
+dimensionality: 2D (input/output are 1xN arrays)
+focus_dimension: Row (operations apply to the single row)
+objects:
+  - type: grid
+    properties:
+      - shape: 1xN (1 row, N columns)
+      - format: numpy.ndarray
+  - type: pixel_sequence
+    source: first row of the grid
+    properties:
+      - color: white (0)
+      - color: non_white (1-9)
+  - type: first_non_white_block (C1)
+    description: The first contiguous sequence of one or more identical non-white pixels in the row.
+    properties:
+      - color: C1 (non-white)
+      - start_index: column index of the first pixel of the block
+      - end_index: column index of the last pixel of the block
+  - type: next_non_white_pixel (C2)
+    description: The first non-white pixel encountered after the end of the first_non_white_block.
+    properties:
+      - color: C2 (non-white)
+      - index: column index in the row
+      - relationship: index > end_index of C1
+  - type: gap_region
+    description: The sequence of pixels located strictly between the end of C1 and the location of C2.
+    properties:
+      - start_index: end_index of C1 + 1
+      - end_index: index of C2 - 1
+      - pixels: sequence of pixels within these indices
+      - condition: exists only if start_index <= end_index
+actions:
+  - name: extract_row
+    inputs: input_grid (1xN numpy array)
+    outputs: pixel_sequence (1D list or array)
+  - name: find_first_non_white_block
+    inputs: pixel_sequence
+    outputs: color (C1), end_index_C1
+    condition: a non-white block exists
+  - name: find_next_non_white_pixel
+    inputs: pixel_sequence, end_index_C1
+    outputs: index_C2
+    condition: a non-white pixel exists after end_index_C1
+  - name: check_gap_is_white
+    inputs: pixel_sequence, end_index_C1, index_C2
+    outputs: boolean (True if gap exists and all pixels in it are white)
+    steps:
+        1. Determine gap indices: gap_start = end_index_C1 + 1, gap_end = index_C2 - 1.
+        2. Check if gap exists (gap_start <= gap_end).
+        3. If gap exists, check if all pixels from gap_start to gap_end are white (0).
+  - name: fill_gap
+    inputs: pixel_sequence, color_C1, end_index_C1, index_C2
+    outputs: modified_pixel_sequence
+    condition: check_gap_is_white is True
+    effect: change color of pixels from (end_index_C1 + 1) to (index_C2 - 1) to C1
+  - name: reconstruct_grid
+    inputs: modified_pixel_sequence
+    outputs: output_grid (1xN numpy array)

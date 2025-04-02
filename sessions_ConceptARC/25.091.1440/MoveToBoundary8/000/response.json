@@ -1,0 +1,35 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "Okay, let's analyze the provided examples to understand the transformation.\n\n**Perception**\n\n*   **Example 1 (train_1):**\n    *   Input has a vertical green line segment and three yellow pixels horizontally aligned to the left of the line.\n    *   Output shows the same green line, but the yellow pixels have shifted horizontally to the right. Each yellow pixel moved 4 steps to the right, maintaining its row.\n*   **Example 2 (train_2):**\n    *   Input has a horizontal red line segment and three azure pixels scattered below the line.\n    *   Output shows the same red line, but the azure pixels have moved. Each azure pixel moved 5 steps up. Additionally, their horizontal position changed: pixels whose original column was outside or at the ends of the red line's column span moved 5 steps right; the pixel whose original column was strictly within the red line's span moved 3 steps right.\n\n**Commonalities and Transformation Logic:**\n1.  There is always a single static line object (vertical green or horizontal red).\n2.  There are multiple point objects of a single color (yellow or azure) distinct from the line color.\n3.  The point objects move relative to the static line.\n4.  The primary direction of movement seems to be *towards* the line (rightwards towards the vertical line in train\\_1, upwards towards the horizontal line in train\\_2).\n5.  There's a secondary movement component parallel to the line, which may depend on the point's position relative to the line's *span* (ends vs. interior).\n    *   For the vertical line (train\\_1), the secondary movement (vertical) was zero. All points moved right by 4.\n    *   For the horizontal line (train\\_2), the primary movement (vertical) was 5 steps up. The secondary movement (horizontal) was 5 steps right for points outside/at the ends of the line's span, and 3 steps right for points strictly within the span.\n\n**Facts**\n\n"
+          },
+          {
+            "text": "```yaml\ntask_description: Move point objects relative to a static line object based on orientation and position.\n\nelements:\n  - type: static_line\n    properties:\n      - color: (varies, e.g., green, red)\n      - orientation: (horizontal or vertical)\n      - position: (row index for horizontal, column index for vertical)\n      - span: (min/max column for horizontal, min/max row for vertical)\n  - type: moving_points\n    properties:\n      - color: (varies, e.g., yellow, azure)\n      - count: (multiple)\n      - initial_positions: (list of (row, col) tuples)\n\ntransformation:\n  - action: identify_objects\n    source: input_grid\n    target: static_line, moving_points\n  - action: determine_line_properties\n    source: static_line\n    target: orientation, position, span\n  - action: determine_point_properties\n    source: moving_points\n    target: color, initial_positions\n  - action: calculate_new_positions\n    inputs: initial_positions, line_orientation, line_position, line_span\n    rules:\n      - condition: line_orientation == horizontal\n        line_position: line_r\n        line_span: [min_c, max_c]\n        for_each: point (r, c) in initial_positions\n        # Assuming points are below line (r > line_r). Adapt if points can be above.\n        new_r: r - 5\n        if: (c <= min_c) or (c >= max_c) # Outside or at ends of span\n          new_c: c + 5\n        else: # Strictly within span (min_c < c < max_c)\n          new_c: c + 3\n        output: (new_r, new_c)\n\n      - condition: line_orientation == vertical\n        line_position: line_c\n        line_span: [min_r, max_r]\n        for_each: point (r, c) in initial_positions\n        # Assuming points are left of line (c < line_c). Adapt if points can be right.\n        new_c: c + 4\n        # No vertical movement observed in example\n        new_r: r\n        output: (new_r, new_c)\n  - action: construct_output_grid\n    inputs: input_grid_dimensions, static_line, moving_points_color, new_positions\n    steps:\n      - Create empty grid with background color (white).\n      - Draw the static_line onto the grid.\n      - Draw the moving_points_color at each calculated new_position.\n\nassumptions:\n  - Exactly one static line object exists.\n  - Exactly one color identifies the moving points.\n  - All moving points start on the same side relative to the line (e.g., all below, all left).\n  - The movement magnitudes (e.g., 5 up, 3/5 right; 4 right, 0 up) are constant for this task.\n  - The direction of movement components is consistent (e.g., always towards the line, secondary movement always right or always stationary vertically).\n```"
+          },
+          {
+            "text": "\n\n**Natural Language Program**\n\n1.  Identify the single, continuous static line object (ignoring background color 0) and note its color, orientation (horizontal/vertical), position (row index or column index), and span (the range of columns or rows it covers).\n2.  Identify all pixels that are not background and not part of the static line; these are the moving points. Note their color and initial positions.\n3.  Create the output grid by copying the background and the static line object from the input grid.\n4.  For each moving point found in step 2:\n    a.  If the static line is **horizontal** (at row `line_r`, spanning columns `min_c` to `max_c`):\n        i.  Calculate the new row by moving the point 5 steps vertically towards the line (new\\_row = original\\_row - 5, assuming points start below).\n        ii. Calculate the new column based on the point's original column (`c`): If `c` is strictly between `min_c` and `max_c`, the new column is `c + 3`. Otherwise (if `c <= min_c` or `c >= max_c`), the new column is `c + 5`.\n    b.  If the static line is **vertical** (at column `line_c`, spanning rows `min_r` to `max_r`):\n        i.  Calculate the new column by moving the point 4 steps horizontally towards the line (new\\_col = original\\_col + 4, assuming points start to the left).\n        ii. The new row is the same as the original row (new\\_row = original\\_row).\n    c.  Place the moving point color at the calculated (new\\_row, new\\_col) position in the output grid.\n5.  Return the completed output grid."
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 2787,
+    "candidates_token_count": 7934,
+    "total_token_count": 10721,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 70.90171,
+  "retries": 1
+}

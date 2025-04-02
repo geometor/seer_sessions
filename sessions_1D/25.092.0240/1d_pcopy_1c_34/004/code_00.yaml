@@ -1,0 +1,51 @@
+task_description: Identify the first contiguous horizontal block of non-background color (pattern). Find subsequent pixels ('markers') matching the pattern color after the initial pattern. Replace the segment starting one position *before* each marker with the pattern.
+grid_properties:
+  dimensionality: 1D (single row)
+  background_color: white (0)
+  width: Consistent within an example, appears consistent across examples (e.g., 33). Output width matches input width. (Assumption based on examples 2 & 3, treating Ex1 output length as a likely typo).
+objects:
+  - type: pattern_block
+    description: The first contiguous horizontal sequence of non-white pixels.
+    properties:
+      color: Varies per example (e.g., azure-8, orange-7, magenta-6) but is consistent within an example.
+      shape: Horizontal line segment.
+      length: Consistent across examples (3 pixels).
+      location: Starts at index >= 1.
+  - type: marker_pixel
+    description: Pixels matching the color of the pattern_block found after the pattern_block ends.
+    properties:
+      color: Same as pattern_block.
+      location: Index `i` must be greater than `pattern_start_index + pattern_length`.
+actions:
+  - name: identify_pattern
+    inputs: input_grid
+    outputs: pattern_sequence, pattern_color, pattern_length, pattern_end_index
+    description: Find the first sequence of connected non-white pixels. Record its sequence, color, length, and the index immediately after it ends (`pattern_end_index = pattern_start_index + pattern_length`).
+  - name: find_markers
+    inputs: input_grid, pattern_color, pattern_end_index
+    outputs: list_of_marker_indices
+    description: Scan the input grid starting from `pattern_end_index`. Record the index `i` of each pixel whose color matches `pattern_color`.
+  - name: replicate_pattern_at_offset
+    inputs: input_grid, pattern_sequence, pattern_length, list_of_marker_indices
+    outputs: output_grid
+    description: >
+      Create a copy of the input grid (output_grid).
+      For each `marker_index` in the list:
+      1. Calculate the `replace_start_index = marker_index - 1`.
+      2. If `replace_start_index` is valid (>= 0):
+         a. Determine the `effective_length` = min(`pattern_length`, `grid_width` - `replace_start_index`).
+         b. If `effective_length` > 0:
+            i. Get the `pattern_to_insert` = `pattern_sequence`[:`effective_length`].
+            ii. Update the `output_grid` by replacing the slice `output_grid[replace_start_index : replace_start_index + effective_length]` with `pattern_to_insert`.
+relationships:
+  - type: color_match
+    entities: [pattern_block, marker_pixel]
+    description: Marker pixels must have the same color as the pattern block.
+  - type: spatial_order
+    entities: [pattern_block, marker_pixel]
+    description: Marker pixels appear strictly after the pattern block in the row.
+  - type: trigger
+    entities: [marker_pixel, replicate_pattern_at_offset]
+    description: The discovery of a marker pixel at index `i` triggers a pattern replication action starting at index `i-1`.
+assumptions:
+  - The output grid has the same dimensions as the input grid. The discrepancy in Example 1's output length is assumed to be an error in the example data.

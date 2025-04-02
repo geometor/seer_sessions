@@ -1,0 +1,53 @@
+task_type: object_manipulation
+grid_dimensionality: 2D
+grid_shape: 1xN (variable N, observed N=12 in examples)
+objects:
+  - object_type: pixel
+    color: green (3)
+    count: 1
+    location: (row 0, column G) # G is variable
+    role: anchor
+  - object_type: horizontal_block # Contiguous sequence of same-colored pixels in row 0
+    color: non-white, non-green (e.g., magenta(6), red(2))
+    count: 1
+    properties:
+      - length: L (variable, preserved from input)
+      - color: C (variable, preserved from input)
+      - location: (row 0, columns S to S+L-1) # S is variable in input
+    role: movable_object
+  - object_type: background
+    color: white (0)
+    role: filler
+relationships:
+  - type: adjacency
+    object1: movable_object
+    object2: anchor (green pixel)
+    condition: In the output grid, the rightmost pixel of the movable_object (at column `new_S + L - 1`) is immediately to the left of the anchor pixel (at column `G`). Therefore, `new_S + L - 1 = G - 1`, which simplifies to `new_S = G - L`.
+actions:
+  - action: identify_grid_properties
+    target: input_grid
+    result: store shape (height=1, width=N)
+  - action: identify_anchor
+    target: input_grid
+    color: green (3)
+    result: store its column index G (row is always 0)
+  - action: identify_movable_object
+    target: input_grid (row 0)
+    criteria: contiguous block of pixels with color C != 0 and C != 3
+    result: store its color C, its length L
+  - action: create_grid
+    properties: shape (1, N), filled with background color (white)
+    target: output_grid
+  - action: place_anchor
+    target: output_grid
+    location: (row 0, column G)
+    color: green (3)
+  - action: calculate_new_position
+    target: movable_object
+    inputs: anchor column G, object length L
+    calculation: new_start_column = G - L
+  - action: place_movable_object
+    target: output_grid
+    location: (row 0, columns new_start_column to new_start_column + L - 1)
+    color: C (identified color)
+    length: L (identified length)

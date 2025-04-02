@@ -1,0 +1,38 @@
+task_type: grid_transformation
+dimensionality: 2D grid, processed row by row independently
+background_color: 0 (white)
+objects:
+  - type: horizontal_segment
+    description: A contiguous sequence of one or more pixels with the same non-white color in a single row.
+    properties:
+      - color: (integer > 0) The color of the pixels in the segment.
+      - row_index: (integer >= 0) The row where the segment resides.
+      - start_col_index: (integer >= 0) The starting column index of the segment.
+      - length: (integer >= 1) The number of pixels in the segment.
+      - is_single_pixel: (boolean) True if length is 1.
+relationships:
+  - type: adjacency (horizontal)
+    context: Defines segments and identifies immediate left/right neighbors.
+    properties:
+      - left_neighbor_color: Color of the pixel at (row_index, start_col_index - 1).
+      - right_neighbor_color: Color of the pixel at (row_index, start_col_index + length). # For length=1, this is start_col_index + 1
+actions:
+  - name: identify_segments
+    input: input_grid_row
+    output: list of horizontal_segments (color, start_col, length)
+  - name: process_segment
+    input: segment, input_grid_row, output_grid_row
+    logic: |
+      Initialize output_grid_row as a copy of input_grid_row.
+      If segment.is_single_pixel is True (length is 1):
+        Let P be segment.start_col_index and C be segment.color.
+        Check if P-1 and P+1 are valid column indices within the grid row.
+        Check if input_grid_row[P-1] is white (0).
+        Check if input_grid_row[P+1] is white (0).
+        If all checks are true (in bounds and neighbors are white):
+          Set output_grid_row[P-1] = C
+          Set output_grid_row[P] = C  // This might be redundant if copying initially, but clarifies intent
+          Set output_grid_row[P+1] = C
+      Else (segment.length > 1):
+        No change needed for this segment (it remains as copied initially).
+processing_mode: Row-independent. Evaluate conditions based on input state, apply modifications to an output grid copy.

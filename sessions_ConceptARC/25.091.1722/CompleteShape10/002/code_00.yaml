@@ -1,0 +1,76 @@
+task_description: Fill specific internal background-colored holes within the largest colored object based on the number and relative sizes of the holes.
+
+elements:
+  - object: grid
+    description: A 2D array of pixels with colors 0-9.
+  - object: background
+    property:
+      color: white (0)
+      role: Surrounds other objects and can form holes within them.
+  - object: main_object
+    property:
+      color: Any color C != 0. (Green=3 in ex1, Blue=1 in ex2)
+      role: The largest connected component of non-background color in the grid. Encloses potential holes.
+      determination: Found by identifying all non-background connected components and selecting the one with the most pixels. Ties are resolved arbitrarily (e.g., first one found).
+  - object: hole
+    property:
+      color: white (0)
+      role: A region of background color completely enclosed by the `main_object`.
+      connectivity: Forms a single connected component.
+      relation: A background component is a hole if it is not the 'outer' background (the one touching the grid boundary or the largest background component if none touch the boundary) AND all its orthogonal neighbors are either part of the hole itself or part of the `main_object`.
+      size: Number of pixels in the connected component.
+    identified_in_ex1:
+      - hole_1: size 6 (approx rows 10-11, cols 7-9)
+      - hole_2: size 2 (row 15, cols 6-7)
+    identified_in_ex2:
+      - hole_1: size 8 (rows 7-8, cols 8-11)
+
+actions:
+  - action: identify_main_object
+    input: grid
+    output: the largest connected component of non-background color (main_object), its color (C), its pixel coordinates.
+  - action: identify_background_components
+    input: grid
+    output: labeled grid of background components, number of components.
+  - action: identify_outer_background
+    input: labeled background grid, number of components
+    output: label index of the outer background component (typically largest or touching border).
+  - action: identify_internal_holes
+    input: grid, main_object coordinates, labeled background grid, outer background label
+    output: a list of internal holes, each with properties (label, size, coordinates).
+    logic: Iterate through background components. If a component is not the outer background and all its orthogonal neighbors are within the hole itself or the main_object, it's an internal hole.
+  - action: determine_holes_to_fill
+    input: list of internal_holes
+    output: a list of internal holes to be filled (fill_holes).
+    logic:
+      1. Let N = number of internal_holes.
+      2. If N == 0, fill_holes is empty.
+      3. If N == 1, fill_holes contains the single internal hole.
+      4. If N > 1:
+         a. Calculate sizes of all internal_holes.
+         b. Find max_size.
+         c. Count holes with max_size (max_size_count).
+         d. If max_size_count == 1 (unique largest), fill_holes = all internal_holes EXCEPT the one with max_size.
+         e. If max_size_count > 1 (tie for largest), fill_holes = all internal_holes.
+  - action: fill_holes
+    input: grid, fill_holes, color C
+    output: modified grid where pixels in fill_holes are set to C.
+
+relationships:
+  - relation: enclosure
+    subject: main_object
+    object: hole
+    description: A hole is spatially enclosed by the main_object, meaning all adjacent pixels outside the hole belong to the main_object.
+  - relation: size_comparison
+    subject: hole
+    object: hole
+    description: Holes are compared based on their pixel count (size) when multiple holes exist.
+  - relation: uniqueness
+    subject: largest_hole
+    description: Whether there is exactly one hole with the maximum size among all internal holes (relevant only when multiple holes exist).
+
+transformation:
+  rule: Identify the largest non-background object and all background regions (holes) fully enclosed within it. If exactly one such hole exists, fill it with the object's color. If multiple holes exist, fill all holes *except* for the hole with the uniquely largest size; if there is a tie for the largest size among the multiple holes, fill all of them.
+  based_on_examples:
+    - ex1: Two internal holes (size 6, size 2). Multiple holes exist. Unique largest is size 6. Fill the other (size 2).
+    - ex2: One internal hole (size 8). Only one hole exists. Fill it.

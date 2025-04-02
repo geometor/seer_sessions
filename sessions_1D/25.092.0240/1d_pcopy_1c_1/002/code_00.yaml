@@ -1,0 +1,60 @@
+task_description: Resizes all contiguous horizontal blocks of a specific non-white color within a single-row input grid to match the length of the longest block of that same color found in that row. Resizing is centered around the original block's center.
+data_format:
+  type: 2D grid (list of lists or 2D numpy array), specifically constrained to 1xN dimensions (single row).
+  cell_values: Integers 0-9 representing colors. White (0) is the background.
+objects:
+  - object: input_grid
+    description: A 2D grid containing exactly one row of pixels.
+    properties:
+      - height: 1
+      - width: N (variable)
+      - row_data: The 1D sequence of pixel colors in the single row.
+  - object: color_block
+    description: A contiguous horizontal sequence (run) of one or more identical non-white pixels within the grid's single row.
+    properties:
+      - color: The non-white color of the pixels in the block (e.g., Maroon, Gray, Orange).
+      - start_index: The starting column index of the block in the row.
+      - end_index: The ending column index of the block in the row.
+      - length: The number of pixels in the block (end_index - start_index + 1).
+      - center_index: The calculated central column index of the block.
+relationships:
+  - relationship: intra_color_comparison
+    description: All color_blocks of the same non-white color within the row are compared based on their length.
+    operands:
+      - color_block (same non-white color)
+    purpose: To find the maximum length (max_len) among them.
+actions:
+  - action: extract_row_data
+    description: Obtain the 1D sequence of pixel colors from the single row of the input grid.
+    input: input_grid
+    output: row_data (1D array or list)
+  - action: find_target_color
+    description: Identify the single non-white color present in the row_data.
+    input: row_data
+    output: target_color
+  - action: find_blocks
+    description: Locate all contiguous blocks of the target_color in the row_data.
+    input: row_data, target_color
+    output: list_of_blocks (each with start_index, end_index, length)
+  - action: find_max_length
+    description: Determine the maximum length among the identified blocks.
+    input: list_of_blocks
+    output: max_len
+  - action: generate_output_row
+    description: >
+      Create a new 1D sequence (output row) of the same length as the input row,
+      initially filled with the white color (0).
+    input: row_data_length
+    output: output_row (1D array or list)
+  - action: resize_and_place_blocks
+    description: >
+      For each original block found, calculate its center. Then, determine the start
+      and end indices for a new block of length max_len, centered at the original's center.
+      Place this new block (by setting pixel values to target_color) into the output_row,
+      respecting row boundaries.
+    input: output_row, list_of_blocks, target_color, max_len
+    output: modified output_row
+  - action: format_output_grid
+    description: Package the final output_row into the required 1xN grid format (e.g., list of lists).
+    input: output_row
+    output: output_grid

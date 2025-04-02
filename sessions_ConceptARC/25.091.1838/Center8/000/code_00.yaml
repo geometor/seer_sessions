@@ -1,0 +1,50 @@
+# Focus on train_1 first, then generalize based on train_2
+train_1:
+  input:
+    grid_size: [13, 13]
+    objects:
+      - type: pixel
+        color: red
+        position: [1, 2]
+        label: marker_pixel
+      - type: line_segment
+        color: green
+        orientation: horizontal
+        start_pos: [2, 2]
+        end_pos: [2, 10]
+        label: reference_line
+    relationships:
+      - type: relative_position
+        object1: marker_pixel
+        object2: reference_line
+        details: marker_pixel is 1 row directly above the start of reference_line (or just generally 1 row above the line's row).
+  output:
+    grid_size: [13, 13]
+    objects_removed:
+      - label: marker_pixel # Original red pixel at [1, 2] is gone
+    objects_added:
+      - type: line_segment
+        color: red # Same color as original marker_pixel
+        orientation: vertical
+        start_pos: [1, 6]
+        end_pos: [3, 6]
+        length: 3
+        label: output_line
+    objects_modified:
+      - label: reference_line
+        details: Pixel at [2, 6] (midpoint) changed from green to red (overwritten by output_line).
+    relationships:
+      - type: derivation
+        object: output_line
+        derived_from: [marker_pixel, reference_line]
+        details:
+          - color is from marker_pixel.
+          - horizontal position (column 6) is the midpoint of reference_line (columns 2 to 10 -> length 9 -> midpoint index 4 -> col 2+4=6).
+          - vertical position ([1, 6] to [3, 6]) is centered on the row of reference_line (row 2).
+
+generalization_from_train_2:
+  - Multiple independent instances of the marker/line pair can exist.
+  - The colors of the marker (C1) and line (C2) can vary (azure/yellow), but C1 != C2 and neither is white.
+  - The transformation logic (find midpoint, draw 3-pixel vertical line of color C1 centered on line's row and midpoint column, remove marker) holds for each instance.
+  - Calculation of midpoint: col_mid = col_start + floor((col_end - col_start) / 2).
+  - Output vertical line coordinates: (row_line - 1, col_mid), (row_line, col_mid), (row_line + 1, col_mid).

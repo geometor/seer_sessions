@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nimport collections\n\ndef transform_grid(input_grid):\n    \"\"\"\n    Identifies the topmost non-white object(s) in the input grid, calculates \n    a vertical downward shift distance based on the number of consecutive \n    all-white rows immediately below the object, and moves only the topmost \n    object(s) down by that distance. Other objects remain stationary.\n\n    1. Find all non-white pixels. If none, return the input grid.\n    2. Determine the minimum row index (`min_r`) containing non-white pixels.\n    3. Identify all connected non-white pixels starting from those at `min_r`. \n       This constitutes the \"topmost object\".\n    4. Find the maximum row index (`max_r`) occupied by the topmost object.\n    5. Count the number of consecutive rows composed entirely of the background \n       color (0) starting from the row immediately below the object (`max_r + 1`). \n       This count is the `shift` distance.\n    6. Create an output grid, initially a copy of the input.\n    7. Erase the topmost object from its original position in the output grid \n       by setting its pixels to the background color (0).\n    8. Redraw the topmost object in the output grid at its new position, \n       shifted down by `shift` rows.\n    \"\"\"\n    \n    grid = np.array(input_grid, dtype=int)\n    height, width = grid.shape\n    background_color = 0\n\n    # 1. Find all non-white pixels.\n    non_white_coords = list(zip(*np.where(grid != background_color)))\n\n    # If the grid is empty or all background, return it as is.\n    if not non_white_coords:\n        return input_grid\n\n    # 2. Determine the minimum row index (`min_r`)\n    min_r = min(r for r, c in non_white_coords)\n\n    # 3. Identify all connected non-white pixels forming the topmost object(s).\n    # Start BFS from all non-white pixels located at min_r.\n    q = collections.deque([(r, c) for r, c in non_white_coords if r == min_r])\n    visited = set(q)\n    topmost_object_pixels = {} # Store {(r, c): color}\n\n    while q:\n        r, c = q.popleft()\n        # Check if coord is valid before accessing grid (should be, but safe)\n        if 0 <= r < height and 0 <= c < width:\n             # Make sure we don't accidentally add background pixels if the initial\n             # pixel was isolated and somehow the neighbors search reached a background pixel (unlikely with check below)\n             color = grid[r, c]\n             if color != background_color:\n                 topmost_object_pixels[(r, c)] = color\n             else:\n                 continue # Should not happen if starting points are non-white\n        else:\n            continue # Should not happen with boundary checks below\n       \n        # Explore neighbors (4-connectivity)\n        for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n            nr, nc = r + dr, c + dc\n            \n            # Check boundaries and if the neighbor is non-white and not visited\n            if 0 <= nr < height and 0 <= nc < width and \\\n               grid[nr, nc] != background_color and (nr, nc) not in visited:\n                visited.add((nr, nc))\n                q.append((nr, nc))\n\n    if not topmost_object_pixels:\n         # This case should ideally not be reached if non_white_coords is not empty,\n         # but provides safety. It means the identified min_r pixels were isolated bg pixels?\n         return input_grid # Or handle error as appropriate\n\n    # 4. Find the maximum row index (`max_r`) occupied by the topmost object.\n    max_r = max(r for r, c in topmost_object_pixels.keys())\n\n    # 5. Count consecutive all-white rows below the object.\n    shift = 0\n    for r_check in range(max_r + 1, height):\n        if np.all(grid[r_check, :] == background_color):\n            shift += 1\n        else:\n            break # Stop counting at the first non-white row\n\n    # 6. Create the output grid as a copy.\n    output_grid = grid.copy()\n\n    # 7. Erase the original topmost object.\n    for r, c in topmost_object_pixels.keys():\n        output_grid[r, c] = background_color\n\n    # 8. Draw the shifted topmost object.\n    for (r, c), color in topmost_object_pixels.items():\n        new_r = r + shift\n        # Ensure the new position is within grid bounds\n        if 0 <= new_r < height:\n            output_grid[new_r, c] = color\n\n    # Convert back to list of lists for the required output format\n    return output_grid.tolist()\n\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 2856,
+    "candidates_token_count": 1186,
+    "total_token_count": 4042,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 25.902915,
+  "retries": 1
+}

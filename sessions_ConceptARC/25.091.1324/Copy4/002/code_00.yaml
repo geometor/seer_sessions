@@ -1,0 +1,38 @@
+task_context:
+  description: Replace specific single-pixel objects with copies of the largest object (prototype) of the same color, based on relative position.
+  grid_properties:
+    - background_color: white (0)
+    - objects_are_contiguous: true
+    - multiple_colors_per_grid: true
+
+object_identification:
+  - method: Find connected components (4-connectivity) of the same non-background color.
+  - properties: size (pixel count), bounding_box, top-left coordinate.
+
+prototype_identification:
+  - rule: For each color with multiple objects, the prototype is the object with the largest size (pixel count).
+  - tie_breaking: If sizes are equal, the prototype is the one with the top-left corner earliest in reading order (top-to-bottom, left-to-right).
+
+seed_identification:
+  - rule: A seed is any object of a given color that is not the prototype for that color.
+
+pattern_extraction:
+  - source: The rectangular region defined by the bounding box of the prototype object.
+  - content: All pixels (including potentially different colors or background) within the prototype's bounding box in the original input grid.
+
+replacement_rule:
+  - condition_1: The seed object must be exactly 1x1 pixel in size.
+  - condition_2: The seed object's top-left coordinate `(seed_r, seed_c)` must be *after* the prototype's top-left coordinate `(proto_r, proto_c)` in reading order (i.e., `seed_r > proto_r` OR (`seed_r == proto_r` AND `seed_c > proto_c`)).
+  - action: If both conditions are met, replace the seed. Otherwise, keep the seed.
+
+replacement_action:
+  - method: Paste the extracted prototype pattern onto the output grid.
+  - placement: Align the top-left corner of the pattern with the top-left corner of the seed object being replaced.
+  - overwrite: Yes, overwrite existing pixels in the target area. Handles grid boundaries (clipping).
+
+example_analysis_summary:
+  - example_1: Yellow prototype (4x5 at (1,1)). Seeds at (1,9) and (1,17) are 1x1 and after prototype -> replaced. Green object is unique -> kept.
+  - example_2:
+      - Magenta prototype (5x6 at (2,8)). Seeds at (0,3) and (10,12) are NOT 1x1 -> kept.
+      - Green prototype (U-shape, bbox 4x4 at (3,1)). Seeds at (9,2) and (12,7) ARE 1x1 and after prototype -> replaced with 4x4 pattern.
+      - Yellow object (2x2 at (4,2)) is unique (as a yellow object) and part of green prototype pattern -> kept.

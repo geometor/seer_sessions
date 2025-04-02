@@ -1,0 +1,62 @@
+task_description: Move point objects relative to a static line object based on orientation and position.
+
+elements:
+  - type: static_line
+    properties:
+      - color: (varies, e.g., green, red)
+      - orientation: (horizontal or vertical)
+      - position: (row index for horizontal, column index for vertical)
+      - span: (min/max column for horizontal, min/max row for vertical)
+  - type: moving_points
+    properties:
+      - color: (varies, e.g., yellow, azure)
+      - count: (multiple)
+      - initial_positions: (list of (row, col) tuples)
+
+transformation:
+  - action: identify_objects
+    source: input_grid
+    target: static_line, moving_points
+  - action: determine_line_properties
+    source: static_line
+    target: orientation, position, span
+  - action: determine_point_properties
+    source: moving_points
+    target: color, initial_positions
+  - action: calculate_new_positions
+    inputs: initial_positions, line_orientation, line_position, line_span
+    rules:
+      - condition: line_orientation == horizontal
+        line_position: line_r
+        line_span: [min_c, max_c]
+        for_each: point (r, c) in initial_positions
+        # Assuming points are below line (r > line_r). Adapt if points can be above.
+        new_r: r - 5
+        if: (c <= min_c) or (c >= max_c) # Outside or at ends of span
+          new_c: c + 5
+        else: # Strictly within span (min_c < c < max_c)
+          new_c: c + 3
+        output: (new_r, new_c)
+
+      - condition: line_orientation == vertical
+        line_position: line_c
+        line_span: [min_r, max_r]
+        for_each: point (r, c) in initial_positions
+        # Assuming points are left of line (c < line_c). Adapt if points can be right.
+        new_c: c + 4
+        # No vertical movement observed in example
+        new_r: r
+        output: (new_r, new_c)
+  - action: construct_output_grid
+    inputs: input_grid_dimensions, static_line, moving_points_color, new_positions
+    steps:
+      - Create empty grid with background color (white).
+      - Draw the static_line onto the grid.
+      - Draw the moving_points_color at each calculated new_position.
+
+assumptions:
+  - Exactly one static line object exists.
+  - Exactly one color identifies the moving points.
+  - All moving points start on the same side relative to the line (e.g., all below, all left).
+  - The movement magnitudes (e.g., 5 up, 3/5 right; 4 right, 0 up) are constant for this task.
+  - The direction of movement components is consistent (e.g., always towards the line, secondary movement always right or always stationary vertically).

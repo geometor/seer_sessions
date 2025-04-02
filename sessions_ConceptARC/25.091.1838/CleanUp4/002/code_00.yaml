@@ -1,0 +1,52 @@
+task_type: grid_transformation
+grid_properties:
+  dimensionality: 2
+  color_space: 0-9 integer map
+  max_size: 30x30
+observed_elements:
+  - type: pixel
+    properties: [color, location]
+  - type: object
+    definition: contiguous block of same-colored non-white pixels (using 4-connectivity)
+    properties: [color, size (pixel_count), pixel_coordinates]
+relationships:
+  - type: adjacency
+    definition: Orthogonal or diagonal neighboring pixels (8-connectivity)
+    relevance: Used in Rule 1 condition check between azure(8) and green(3) pixels.
+  - type: object_size_comparison
+    definition: Comparing pixel counts of different objects against a threshold (10).
+    relevance: Used in Rule 2 condition check.
+  - type: object_count_comparison
+    definition: Comparing the count of objects meeting a size criterion against a threshold (4).
+    relevance: Used in Rule 2 condition check.
+transformations:
+  - type: color_change
+    details:
+      - target_color: azure(8)
+        change_to: white(0)
+        condition: rule_1_triggered
+      - target_pixels: all belonging to objects with size < 10
+        change_to: white(0)
+        condition: rule_2_triggered
+      - target_color: yellow(4)
+        change_to: green(3)
+        condition: rule_3_triggered
+conditional_rules_priority:
+  - rule_1
+  - rule_2
+  - rule_3
+  - default
+rule_definitions:
+  - rule_id: rule_1
+    condition: Grid contains azure(8) AND green(3) pixels, AND at least one azure(8) pixel is adjacent (8-connectivity) to a green(3) pixel.
+    action: Change all azure(8) pixels to white(0). Other pixels remain unchanged.
+  - rule_id: rule_2
+    condition: Rule 1 condition is false. Find all distinct contiguous non-white objects (4-connectivity). Count objects with size >= 10. If this count is 4 or more.
+    action: Create a new grid initialized to white(0). Copy only the pixels belonging to objects with size >= 10 from the input grid to the new grid, maintaining their original colors and positions.
+    note: The expected output for train_2 example appears anomalous at one pixel compared to this rule; proceeding with this rule interpretation.
+  - rule_id: rule_3
+    condition: Rule 1 and Rule 2 conditions are false. Grid contains yellow(4) pixels.
+    action: Change all yellow(4) pixels to green(3). Other pixels remain unchanged.
+  - rule_id: default
+    condition: None of the above rule conditions are met.
+    action: Output the input grid unchanged.

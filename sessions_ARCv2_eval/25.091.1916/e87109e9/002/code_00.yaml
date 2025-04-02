@@ -1,0 +1,60 @@
+task_context:
+  description: "Perform a flood fill operation on a specific subgrid of the input."
+  input_dimensionality: 2D
+  output_dimensionality: 2D
+  input_size: (25, 25)
+  output_size: (19, 24)
+
+input_elements:
+  - type: header_section
+    location: Rows 0-5, Columns 0-24
+    role: Discarded informational content (palette).
+  - type: boundary_column
+    location: Rows 6-24, Column 0
+    role: Discarded boundary/padding.
+  - type: canvas_subgrid
+    location: Rows 6-24, Columns 1-24
+    role: The area where the transformation occurs. Corresponds directly to the output grid dimensions.
+
+objects_in_canvas:
+  - type: seed_pixel
+    color: Azure (8)
+    role: Starting point for the fill operation.
+    properties: Fixed position within the initial canvas_subgrid.
+  - type: background_pixel
+    color: Dynamically identified (most frequent color in canvas_subgrid excluding Azure 8).
+    role: Target pixel type for the fill operation.
+    properties: Changes color to Azure (8) if reachable by the flood fill.
+  - type: barrier_pixel
+    color: Any color in canvas_subgrid that is NOT the background_color and NOT Azure (8).
+    role: Obstacle that stops the flood fill.
+    properties: Color remains unchanged.
+
+actions:
+  - action: extract_subgrid
+    origin: Input grid
+    source_location: Rows 6-24, Columns 1-24
+    result: Initial state of the output grid (19x24).
+  - action: identify_background_color
+    input: Extracted subgrid
+    method: Find the most frequent pixel value, excluding Azure (8).
+    output: The background_color value.
+  - action: identify_seeds
+    input: Extracted subgrid
+    method: Find coordinates of all pixels with Azure (8).
+    output: List of seed coordinates.
+  - action: flood_fill
+    target_grid: Extracted subgrid (modified in-place or copied).
+    start_points: Seed coordinates.
+    fill_color: Azure (8)
+    target_color: Identified background_color.
+    rules:
+      - Fill proceeds in 4 cardinal directions (up, down, left, right).
+      - Only adjacent pixels matching the target_color are filled.
+      - Fill stops at grid boundaries.
+      - Fill stops at pixels that are not the target_color (barrier_pixels).
+    result: Final state of the output grid.
+
+output_specification:
+  source: The result of the flood_fill action on the extracted_subgrid.
+  dimensions: 19x24.

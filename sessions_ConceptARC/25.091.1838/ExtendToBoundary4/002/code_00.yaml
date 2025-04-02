@@ -1,0 +1,53 @@
+task_description: Identify a single vertical line and a single horizontal line in the input grid, then extend one of them based on their relative positions by adding pixels of the extended line's color to bridge the gap or extend slightly.
+
+grid_properties:
+  - background_color: white (0)
+  - dimensions: variable
+
+objects:
+  - name: vertical_line
+    count: 1
+    properties:
+      - shape: vertical line segment (width=1, height>=1)
+      - color: non-white (variable)
+      - location: defined by column index `v_col` and row range `v_min_r` to `v_max_r`
+  - name: horizontal_line
+    count: 1
+    properties:
+      - shape: horizontal line segment (height=1, width>=1)
+      - color: non-white (variable, different from vertical_line)
+      - location: defined by row index `h_row` and column range `h_min_c` to `h_max_c`
+
+relationships_and_actions:
+  - relationship: relative_position
+    between: [vertical_line, horizontal_line]
+    types:
+      - horizontal_line is entirely to the right of vertical_line column (`h_min_c > v_col`)
+      - vertical_line is entirely above horizontal_line row (`v_max_r < h_row`)
+      - vertical_line is entirely below horizontal_line row (`v_min_r > h_row`)
+      - lines intersect or touch (neither of the above specific conditions are met AND `h_min_c <= v_col`)
+  - action: add_pixels
+    target: EITHER vertical_line OR horizontal_line (mutually exclusive modification)
+    conditions_and_rules:
+      - condition: horizontal_line is entirely to the right of vertical_line (`h_min_c > v_col`)
+        action_details:
+          - target: horizontal_line modification
+          - added_pixel_location: (`h_row`, `h_min_c - 1`) # Extend left by 1
+          - added_pixel_color: color of horizontal_line
+      - condition: vertical_line is entirely above horizontal_line (`v_max_r < h_row`) AND (`h_min_c <= v_col`)
+        action_details:
+          - target: vertical_line modification
+          - added_pixel_locations: range of (`r`, `v_col`) for `r` from `v_max_r + 1` to `h_row - 1` # Extend down to row above horizontal
+          - added_pixel_color: color of vertical_line
+      - condition: vertical_line is entirely below horizontal_line (`v_min_r > h_row`) AND (`h_min_c <= v_col`)
+        action_details:
+          - target: vertical_line modification
+          - added_pixel_location: (`v_min_r - 1`, `v_col`) # Extend up by 1
+          - added_pixel_color: color of vertical_line
+      - condition: OTHERWISE (lines intersect or touch AND `h_min_c <= v_col`)
+        action_details:
+          - target: vertical_line modification
+          - added_pixel_location: (`v_max_row + 1`, `v_col`) # Extend down by 1
+          - added_pixel_color: color of vertical_line
+
+output_specification: A grid identical to the input, except for the pixels added according to the rules. Added pixels must be within grid boundaries.

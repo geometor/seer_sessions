@@ -1,0 +1,69 @@
+task_description: "Flood-fill an enclosed region based on adjacent color leakage across its border."
+
+definitions:
+  - &object_enclosed
+    name: Enclosed Region (R)
+    description: A contiguous region of pixels of a single color (C_inner).
+    properties:
+      - color: C_inner
+      - pixels: Set of (row, col) tuples
+      - status: potentially modified
+  - &object_border
+    name: Border Region (B)
+    description: A contiguous region of pixels of a single color (C_border) that completely surrounds an Enclosed Region (R).
+    properties:
+      - color: C_border
+      - pixels: Set of (row, col) tuples
+      - relationship: surrounds R (all neighbors of R not in R are in B)
+      - status: unchanged
+  - &object_adjacent
+    name: Adjacent Region (A)
+    description: A region of pixels of a single color (C_adjacent), distinct from C_inner and C_border.
+    properties:
+      - color: C_adjacent
+      - pixels: Set of (row, col) tuples
+      - relationship: adjacent to B at a 'leak point'
+      - status: unchanged
+
+rules:
+  - description: Identify enclosed regions and their borders.
+    condition: For each region R (color C_inner), check if all adjacent pixels not in R have the same color C_border. If yes, R is enclosed by B (color C_border).
+  - description: Identify leak points and the adjacent color.
+    condition: If R is enclosed by B, search for a pixel P_border in B. A leak point exists if P_border is adjacent to a pixel P_inner in R AND P_border is adjacent to a pixel P_adjacent of color C_adjacent (where C_adjacent != C_inner and C_border != C_inner).
+    action: Record the color C_adjacent found via the leak point(s).
+  - description: Apply color transformation if a leak occurs.
+    condition: If one or more leak points are found for an enclosed region R, connecting it to an adjacent color C_adjacent via the border B.
+    action: Change the color of all pixels within region R to C_adjacent in the output grid.
+  - description: Preserve colors if no leak occurs or region is not enclosed.
+    condition: If no leak point is found for an enclosed region R, or if a region is not enclosed.
+    action: Copy the pixels of the region unchanged to the output grid.
+
+examples:
+  - example_id: train_1
+    input:
+      objects:
+        - <<: *object_enclosed
+          color: 2 (Red)
+        - <<: *object_border
+          color: 1 (Blue)
+        - <<: *object_adjacent
+          color: 3 (Green)
+    intermediate_findings:
+      - Leak point exists: Yes (e.g., border pixel at (2,5) is Blue, adjacent to Red(2,4) and Green(2,6)).
+      - Adjacent color (C_adjacent): 3 (Green).
+    output_changes:
+      - All pixels of the Red (2) region are changed to Green (3).
+  - example_id: train_2
+    input:
+      objects:
+        - <<: *object_enclosed
+          color: 4 (Yellow)
+        - <<: *object_border
+          color: 8 (Azure)
+        - <<: *object_adjacent
+          color: 6 (Magenta)
+    intermediate_findings:
+      - Leak point exists: Yes (e.g., border pixel at (2,6) is Azure, adjacent to Yellow(2,7) and Magenta(2,5)).
+      - Adjacent color (C_adjacent): 6 (Magenta).
+    output_changes:
+      - All pixels of the Yellow (4) region are changed to Magenta (6).

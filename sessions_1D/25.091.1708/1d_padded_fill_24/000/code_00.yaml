@@ -1,0 +1,42 @@
+task_type: fill_segment
+grid_dimensions:
+  input: variable width, height >= 1 (examples show 1xN)
+  output: same as input
+objects:
+  - type: pixel
+    properties:
+      - color: integer (0-9)
+      - position: (row_index, column_index)
+  - type: segment
+    definition: contiguous sequence of pixels in a row
+    properties:
+      - start_column: index
+      - end_column: index
+      - contained_colors: list of colors within the segment
+relationships:
+  - type: horizontal_pair
+    definition: Two pixels within the same row.
+    properties:
+      - pixel1: (row, col1)
+      - pixel2: (row, col2)
+      - distance: abs(col1 - col2)
+      - intervening_pixels: segment between col1+1 and col2-1
+actions:
+  - name: identify_fillable_pairs
+    inputs: input_row
+    outputs: list of pairs [(col1, col2, color)]
+    condition: |
+      input_row[col1] == input_row[col2] > 0
+      AND all(input_row[k] == 0 for k in range(col1 + 1, col2))
+  - name: fill_segment
+    inputs: output_row, col1, col2, color
+    effect: |
+      For k from col1 to col2 (inclusive):
+        output_row[k] = color
+transformation_logic:
+  - for each row in the input grid:
+      - initialize output_row as a copy of input_row
+      - find all fillable_pairs in input_row
+      - for each (col1, col2, color) in fillable_pairs:
+          - apply fill_segment(output_row, col1, col2, color)
+      - add output_row to the final output grid

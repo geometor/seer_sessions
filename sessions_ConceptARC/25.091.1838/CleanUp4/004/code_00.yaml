@@ -1,0 +1,42 @@
+task_type: grid_transformation
+grid_properties:
+  dimensionality: 2
+  color_space: 0-9 integer map
+  max_size: 30x30
+observed_elements:
+  - type: pixel
+    properties: [color, location]
+  - type: object
+    definition: contiguous block of same-colored non-white pixels (4-connectivity)
+    properties: [color, size (pixel_count), pixels (set of coordinates)]
+relationships:
+  - type: adjacency
+    definition: Orthogonal or diagonal neighboring pixels (8-connectivity)
+    relevance: Used in Rule 1 condition check between azure(8) and green(3) pixels.
+  - type: object_size
+    definition: Number of pixels in a contiguous object.
+    relevance: Used in Rule 2 condition check (>= 10 pixels) and selection.
+transformations:
+  - type: color_change_to_white
+    conditions:
+      - rule_1: pixel is azure(8) OR pixel is green(3) and adjacent (8-conn) to an azure(8) pixel in the input.
+      - rule_2: pixel does not belong to an object with size >= 10 when rule 2 is active.
+  - type: color_change_to_green
+    conditions:
+      - rule_3: pixel is yellow(4)
+  - type: object_filtering
+    conditions:
+      - rule_2: Keep only objects with size >= 10 pixels.
+conditional_rules:
+  - rule: rule_1
+    condition: Presence of azure(8) AND green(3) pixels, with at least one instance of adjacency (8-connectivity) between them.
+    action: Change all azure(8) pixels to white(0). Change all green(3) pixels that were adjacent (8-conn) to any azure(8) pixel in the *original* input grid to white(0). Stop.
+  - rule: rule_2
+    condition: Rule 1 condition is false. Find all distinct contiguous non-white objects (4-connectivity). Count how many have size >= 10. Is the count >= 4?
+    action: Create a new grid initialized to white(0). Copy only the pixels belonging to objects with size >= 10 from the input grid to the new grid, maintaining their original colors and positions. Stop.
+  - rule: rule_3
+    condition: Rule 1 and Rule 2 conditions are false. Presence of yellow(4) pixels.
+    action: Create a copy of the input grid. Change all yellow(4) pixels in the copy to green(3). Stop.
+  - rule: default
+    condition: None of the above rules apply.
+    action: Output the input grid unchanged.

@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom scipy.ndimage import label, find_objects\n\n\"\"\"\nIdentifies 'template' shapes and 'pattern' shapes within the input grid based on a 'placeholder' color. \nThe placeholder color acts as noise within templates and as the background for patterns.\nEach template object has a primary color C1 and contains noise pixels of the placeholder color P.\nEach pattern object has a background of the placeholder color P and contains pattern pixels of color C2.\nTemplates and patterns are identified and sorted based on their top-left corner coordinates (row-major order).\nA specific permutation rule, dependent on the number of template/pattern pairs (N), maps the i-th template to a pattern color from the perm[i]-th pattern.\n- For N=2 pairs, the permutation is [0, 1] (template 0 -> pattern 0 color, template 1 -> pattern 1 color).\n- For N=4 pairs, the permutation is [1, 3, 0, 2] (template 0 -> pattern 1 color, template 1 -> pattern 3 color, template 2 -> pattern 0 color, template 3 -> pattern 2 color).\nFor other N, a default [0, 1, ..., N-1] mapping is assumed.\nThe transformation extracts the subgrid for each template, replaces all pixels of the placeholder color P with the mapped pattern color C2.\nFinally, the modified template subgrids are assembled into an output grid, preserving their original relative spatial arrangement (determined by sorting their top-left coordinates). The output grid size is determined by the grid layout (e.g., 1xN, Nx1, 2x2) and the dimensions of the templates.\n\"\"\"\n\ndef find_contiguous_objects(grid, color):\n    \"\"\"Finds all contiguous objects of a given color.\"\"\"\n    mask = grid == color\n    labeled_array, num_features = label(mask)\n    objects_slices = find_objects(labeled_array)\n    object_details = []\n    if objects_slices:\n        for i, obj_slice in enumerate(objects_slices):\n            # Calculate bounding box\n            bbox = (obj_slice[0].start, obj_slice[1].start,\n                    obj_slice[0].stop, obj_slice[1].stop) # min_r, min_c, max_r, max_c\n            # Extract coordinates relative to the original grid\n            coords = np.argwhere(labeled_array[obj_slice] == (i + 1))\n            abs_coords = coords + np.array([obj_slice[0].start, obj_slice[1].start])\n            \n            object_details.append({\n                'id': i + 1,\n                'color': color,\n                'slice': obj_slice,\n                'bbox': bbox,\n                'coords': abs_coords,\n                'size': len(abs_coords)\n            })\n    return object_details\n\ndef get_subgrid(grid, bbox):\n    \"\"\"Extracts a subgrid based on bounding box.\"\"\"\n    return grid[bbox[0]:bbox[2], bbox[1]:bbox[3]]\n\ndef analyze_grid(input_grid):\n    \"\"\"\n    Analyzes the input grid to identify the placeholder color,\n    template objects, and pattern objects.\n    Returns: placeholder_color, sorted_templates, sorted_patterns\n    \"\"\"\n    colors, counts = np.unique(input_grid, return_counts=True)\n    \n    all_objects_by_color = {}\n    for color in colors:\n        # Exclude color 0 if it's just background, adjust if 0 is meaningful\n        # if color == 0 and counts[colors == 0] > 0.8 * input_grid.size: continue \n        all_objects_by_color[color] = find_contiguous_objects(input_grid, color)\n\n    potential_patterns = [] # {placeholder, pattern_color, bbox}\n    possible_placeholders = {} # {p_candidate: [pattern_colors C2]}\n\n    # 1. Identify potential patterns: regions dominated by P containing single other color C2\n    for p_candidate in colors:\n        if p_candidate not in all_objects_by_color: continue\n        for p_obj_detail in all_objects_by_color[p_candidate]:\n            p_bbox = p_obj_detail['bbox']\n            p_subgrid = get_subgrid(input_grid, p_bbox)\n            subgrid_colors, subgrid_counts = np.unique(p"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 2,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 5978,
+    "candidates_token_count": 1029,
+    "total_token_count": 7007,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 75.566681,
+  "retries": 1
+}

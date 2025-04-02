@@ -1,0 +1,38 @@
+task_context:
+  - Grid Transformation: Modifying pixels based on spatial relationships and color identity.
+  - Color Focus: Operations primarily concern one non-white color per example, determined by the topmost structure.
+  - Background: White pixels (0) act as background and are only modified if explicitly filled by the transformation rule.
+  - Contiguity: The transformation relies on identifying contiguous horizontal segments.
+
+elements:
+  - type: Reference Line
+    description: The first contiguous horizontal segment of a single non-white color found when scanning the input grid top-to-bottom, left-to-right.
+    properties:
+      - color: The single non-white color of the pixels in the segment (let's call this C).
+      - row_index: The row where this segment occurs (let's call this R).
+      - column_range: The start and end column indices (inclusive) of the segment (let's call this [min_col, max_col]).
+  - type: Trigger Pixel
+    description: Any pixel in the input grid located in a row below the Reference Line (row index > R) that has the same color C as the Reference Line.
+    properties:
+      - color: Must be color C.
+      - row_index: Must be greater than R.
+      - column_index: Any column index.
+  - type: Affected Row Segment
+    description: A horizontal segment in the output grid corresponding to a row that contained at least one Trigger Pixel in the input.
+    properties:
+      - color: All pixels in this segment are set to color C.
+      - row_index: Same as the row index of the Trigger Pixel(s) in that input row.
+      - column_range: Spans from min_col to max_col (inclusive), matching the Reference Line's column range.
+
+relationships:
+  - The Reference Line defines the target color (C) and the horizontal boundaries ([min_col, max_col]) for modifications in subsequent rows.
+  - The presence of at least one Trigger Pixel in an input row `r > R` activates the transformation for that row in the output.
+  - The transformation fills the Affected Row Segment in the output grid for the triggered row `r` using color C and column range [min_col, max_col].
+
+actions:
+  - Identify Reference Line: Scan the input grid row by row (top-down), column by column (left-right). Find the first non-white pixel. Identify the contiguous horizontal segment of that same color starting from that pixel. Record its color C, row R, start column min_col, and end column max_col.
+  - Initialize Output: Create a copy of the input grid to serve as the initial output grid.
+  - Scan Below Reference: Iterate through each row `r` of the input grid where `r > R`.
+  - Check for Trigger: For the current input row `r`, determine if any pixel `(r, c)` (for any column `c`) has the color C.
+  - Fill Output Segment: If a Trigger Pixel exists in input row `r`, modify the output grid by setting all pixels from `(r, min_col)` to `(r, max_col)` (inclusive) to color C.
+  - Preserve Others: Pixels in rows R and above, pixels in rows below R that were not triggered, and pixels outside the [min_col, max_col] range in triggered rows (unless they were already part of the fill) retain their original values from the input grid copy.

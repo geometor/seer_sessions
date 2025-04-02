@@ -1,0 +1,81 @@
+```python
+"""
+Transformation Rule:
+
+1.  Initialize the output grid as the same size as the input grid, filled entirely with white pixels (0).
+2.  Locate the single blue pixel (1) in the input grid; note its row (`row_in`) and column (`col_in`). Let the grid width be `grid_width`.
+3.  Count the number of yellow pixels (4) in the first row (row 0) of the input grid (`count_row0`).
+4.  Count the number of yellow pixels (4) in the first column (column 0) of the input grid (`count_col0`).
+5.  Determine the movement direction based on the counts:
+    *   If `count_row0 > 1` (indicating a dominant horizontal line), the direction is East.
+    *   Else if `count_col0 > 0` (indicating a vertical line or potentially a single yellow pixel at `(0,0)` if `count_row0 <= 1`), the direction is North.
+    *   Otherwise, if no yellow pixels are found in row 0 or column 0 (unlikely based on examples), the direction is considered undefined, and the blue pixel might not move (or default behaviour could be defined, but current logic implies North if col 0 has any yellow).
+6.  Calculate the final position (`row_out`, `col_out`) for the blue pixel in the output grid based on the determined direction:
+    *   If the direction is North, the final position is (`0`, `col_in`).
+    *   If the direction is East, the final position is (`row_in`, `grid_width - 1`).
+7.  Place a blue pixel (1) at the calculated final position (`row_out`, `col_out`) in the output grid.
+8.  Return the modified output grid.
+"""
+
+import numpy as np
+
+def find_pixel_location(grid, pixel_value):
+    """Finds the first location (row, col) of a given pixel value."""
+    locations = np.where(grid == pixel_value)
+    if len(locations[0]) > 0:
+        return locations[0][0], locations[1][0]
+    return None # Indicate not found
+
+def transform(input_grid):
+    """
+    Applies the transformation rule to the input grid.
+    Moves the blue pixel North or East based on the orientation of the yellow line
+    in the first row or column.
+    """
+    # Convert input list of lists to a NumPy array for efficient processing
+    input_np = np.array(input_grid, dtype=int)
+    height, width = input_np.shape
+
+    # 1. Initialize the output grid with white pixels (0)
+    output_grid = np.zeros((height, width), dtype=int)
+
+    # 2. Locate the single blue pixel (1)
+    blue_location = find_pixel_location(input_np, 1)
+    if blue_location is None:
+        # Should not happen based on examples, but return empty grid if no blue pixel
+        return output_grid.tolist()
+    row_in, col_in = blue_location
+
+    # 3. Count yellow pixels (4) in the first row
+    count_row0 = np.sum(input_np[0, :] == 4)
+
+    # 4. Count yellow pixels (4) in the first column
+    count_col0 = np.sum(input_np[:, 0] == 4)
+
+    # 5. Determine the movement direction
+    direction = None # Default to None/undefined
+    # If more than one yellow in row 0, it's a horizontal line -> move East
+    if count_row0 > 1:
+        direction = "East"
+    # Otherwise, if there's any yellow in column 0, it's a vertical line -> move North
+    # This handles cases where count_row0 is 0 or 1 (e.g., only grid[0,0] is yellow)
+    elif count_col0 > 0:
+        direction = "North"
+        
+    # 6. Calculate the final position
+    row_out, col_out = row_in, col_in # Default to original position if direction is None
+    if direction == "North":
+        row_out = 0
+        col_out = col_in
+    elif direction == "East":
+        row_out = row_in
+        col_out = width - 1 # Move to the last column (index width - 1)
+
+    # 7. Place the blue pixel (1) at the calculated final position in the output grid
+    # Check bounds just in case, though logic should keep it within grid
+    if 0 <= row_out < height and 0 <= col_out < width:
+        output_grid[row_out, col_out] = 1
+
+    # 8. Return the modified output grid as a list of lists
+    return output_grid.tolist()
+```

@@ -1,0 +1,48 @@
+task_type: pattern_replacement
+grid_dimensionality: 1D (single row)
+input_grid_properties:
+  - rows: 1
+  - columns: variable (32 in examples)
+output_grid_properties:
+  - rows: 1
+  - columns: same as input
+objects:
+  - type: pattern_block
+    description: The first contiguous sequence of 2 or more identical non-white pixels found scanning left-to-right.
+    properties:
+      - color: The color (integer value > 0) of the pixels.
+      - length: The number of pixels (>= 2).
+      - content: The sequence of pixel values (list).
+      - location: Start and end indices in the input row.
+  - type: target_pixel
+    description: A single non-white pixel isolated by white pixels (0) or grid boundaries.
+    properties:
+      - color: The color (integer value > 0). Must match the pattern_block color.
+      - location: The index in the input row.
+      - context: Must have white pixel (0) or boundary to the left and right.
+  - type: background_pixel
+    description: White pixels (value 0).
+actions:
+  - action: find_pattern
+    input: input_row (list of ints)
+    output: pattern_block (content, color, length) or None if not found.
+    details: Scan left-to-right for the first sequence of >= 2 identical non-white pixels.
+  - action: find_targets
+    input: input_row (list of ints), pattern_color (int)
+    output: list of target_pixel indices.
+    details: Identify all single pixels matching pattern_color surrounded by white/boundaries. Exclude pixels that are part of the original pattern_block or any other multi-pixel block.
+  - action: generate_output
+    input: input_row (list of ints), pattern_block, target_indices
+    output: output_row (list of ints)
+    details: 
+      1. Create a copy of the input row.
+      2. For each target_index `i`:
+         a. Calculate the replacement start index: `start = i - floor(pattern_length / 2)`.
+         b. Iterate `k` from 0 to `pattern_length - 1`.
+         c. Calculate the write index: `write_idx = start + k`.
+         d. If `0 <= write_idx < row_length`, update the copied row at `write_idx` with `pattern_content[k]`.
+      3. Return the modified copy.
+relationships:
+  - Replacement occurs only if a pattern_block is found.
+  - Replacement targets must match the pattern_block's color.
+  - Replacement overwrites a segment centered at the target_pixel's location with the pattern_block's content.

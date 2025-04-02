@@ -1,0 +1,48 @@
+task_description: Rearrange elements in a 1xN grid based on adjacent blocks located before a marker pixel.
+grid_dimensionality: 2D (specifically 1xN)
+input_format: List[List[int]] representing a 1xN grid.
+output_format: List[List[int]] representing a 1xN grid.
+objects:
+  - type: marker
+    description: The first occurrence of a maroon (9) pixel in the row.
+    properties:
+      - color: 9
+      - location: Defines the end of the 'transform_region'.
+  - type: transform_region
+    description: The portion of the row *before* the marker pixel.
+  - type: suffix
+    description: The portion of the row including the marker pixel and all subsequent pixels. This part remains unchanged.
+    properties:
+      - content: Sequence of pixels including and after the marker.
+      - location: End of the row.
+  - type: colored_block
+    description: The first contiguous sequence of identical non-white (not 0) pixels within the 'transform_region'.
+    properties:
+      - color: The specific non-white color (e.g., red(2), blue(1), gray(5)).
+      - length: The number of pixels in the block.
+      - start_index: The index within the 'transform_region' where the block begins.
+  - type: white_block
+    description: A contiguous sequence of white (0) pixels immediately following the 'colored_block' within the 'transform_region'. May be empty (length 0).
+    properties:
+      - length: The number of pixels in the block.
+      - start_index: The index within the 'transform_region' where the block begins (immediately after colored_block ends).
+  - type: prefix
+    description: Any pixels within the 'transform_region' that occur *before* the 'colored_block'. Based on examples, these are always white (0).
+    properties:
+      - length: Number of pixels.
+      - content: Sequence of pixels (observed to be white).
+actions:
+  - extract_row: Get the first (and only) row from the input 1xN grid.
+  - identify_marker: Find the index of the first maroon (9) pixel in the extracted row.
+  - partition_row: Divide the row into 'transform_region' (before marker) and 'suffix' (marker and after).
+  - identify_blocks: Within the 'transform_region':
+      - Find the 'colored_block' (first non-white sequence).
+      - Find the 'white_block' immediately following the 'colored_block'.
+      - Identify the 'prefix' (elements before 'colored_block').
+  - rearrange: Construct the new 'transform_region' for the output row by concatenating: 'prefix', then 'white_block', then 'colored_block'.
+  - reconstruct_output: Combine the rearranged 'transform_region' and the unchanged 'suffix' to form the final output row.
+  - format_output: Reshape the final 1D row back into a 1xN 2D grid format (List[List[int]]).
+relationships:
+  - adjacency: The 'white_block' must immediately follow the 'colored_block' to be identified as such.
+  - boundary: The 'marker' defines the right boundary for the rearrangement. The 'suffix' is unchanged.
+  - order: The rearrangement follows the specific order: prefix, white_block, colored_block.

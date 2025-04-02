@@ -1,0 +1,62 @@
+task_description: Fill specific internal white regions (holes) based on boundary color, where the fill rule depends on the set of boundary colors present globally across all filled holes.
+
+elements:
+  - element: grid
+    properties:
+      - background_color: white (0)
+      - dimensions: unchanged between input and output
+
+  - element: object
+    description: Contiguous regions of non-white pixels. In examples, these form shapes with boundaries.
+    properties:
+      - color: Red(2), Yellow(4), Orange(7) observed in examples.
+      - role: Form boundaries that may enclose fillable holes.
+
+  - element: background_white
+    description: White (0) pixels connected to the grid border via 4-way adjacency.
+    properties:
+      - state: Remains white in the output.
+
+  - element: fillable_hole
+    description: A connected component of white (0) pixels that is NOT background_white AND satisfies the fillable condition.
+    properties:
+      - initial_color: white (0)
+      - boundary_color: The single non-white color C adjacent (8-way) to the hole pixels.
+      - fillable_condition: All 8-way neighbors of all pixels within the component are either white pixels belonging to the same component OR pixels of the single boundary_color C.
+      - state_change: Filled with a new color F in the output.
+
+relationships:
+  - relationship: boundary_to_fill_mapping
+    description: The fill color F depends on the boundary color C of the fillable_hole. This mapping itself is conditional on the global set S of boundary colors from *all* fillable_holes found in the grid.
+    conditions:
+      - condition: Global set S = {Red(2), Yellow(4)}
+        mapping: {Red(2): Green(3), Yellow(4): Orange(7)}
+      - condition: Global set S = {Red(2), Yellow(4), Orange(7)}
+        mapping: {Red(2): Orange(7), Yellow(4): Green(3), Orange(7): Green(3)}
+    target_fill_colors: Green(3), Orange(7)
+
+actions:
+  - action: identify_background
+    description: Find all white pixels connected to the border (4-way) and mark them.
+    inputs: input_grid
+    outputs: boolean grid indicating background pixels.
+
+  - action: identify_potential_holes
+    description: Find connected components of white pixels that are not marked as background.
+    inputs: input_grid, background_mask
+    outputs: list of potential_hole_regions (each a list of pixel coordinates).
+
+  - action: filter_fillable_holes
+    description: For each potential_hole_region, check if it meets the fillable_condition (all 8-way neighbors are either internal white or the same single non-white color C). Collect the boundary color C for valid holes.
+    inputs: input_grid, list of potential_hole_regions
+    outputs: list of (fillable_hole_pixels, boundary_color), set of all boundary_colors S found.
+
+  - action: determine_fill_map
+    description: Select the correct boundary_color -> fill_color mapping based on the global set S.
+    inputs: set S
+    outputs: mapping function/dictionary
+
+  - action: fill_holes
+    description: Apply the determined fill color F to each identified fillable_hole_region in the output grid.
+    inputs: input_grid, identified_fillable_holes, fill_map
+    outputs: output_grid

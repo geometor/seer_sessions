@@ -1,0 +1,69 @@
+facts:
+  task_context:
+    grid_dimensionality: 2D # Assumed generalization from 1D examples
+    grid_size: variable, examples are 1x30
+    input_composition: Rows contain white pixels (0) and sequences of non-white pixels. Each non-white color appears multiple times per row, separated by segments of white pixels.
+    output_composition: Similar to input, but specific white segments between pairs of identical non-white pixels are filled with that color based on adjacency and sequence order.
+
+  elements:
+    - object: pixel
+      properties:
+        - color: (0-9)
+        - position: (row, column)
+    - object: row
+      properties:
+        - pixels: ordered list of pixels
+    - object: color_occurrence
+      properties:
+        - color: non-white color C
+        - locations: sorted list of column indices where C appears in a row
+    - object: adjacent_pair
+      properties:
+        - color: non-white color C
+        - indices: (col1, col2) from the sorted list of locations for C
+        - pair_index: the zero-based index 'i' of this pair in the sequence of adjacent pairs for color C in the row (e.g., 0 for the first pair, 1 for the second)
+    - object: segment
+      properties:
+        - start_column: inclusive index (col1 + 1)
+        - end_column: inclusive index (col2 - 1)
+        - row_index: the row the segment belongs to
+        - content: list of pixel colors within the segment in the *input* grid
+
+  relationships:
+    - type: spatial
+      description: Pixels are arranged horizontally in rows.
+    - type: ordering
+      description: Occurrences of the same non-white color within a row can be ordered by their column index.
+    - type: adjacency (in ordered list)
+      description: Pairs of occurrences `(index[i], index[i+1])` from the sorted list of indices for a color are considered adjacent.
+    - type: containment
+      description: A segment of pixels can be contained horizontally between an adjacent pair of non-white pixels.
+    - type: parity
+      description: The index `i` of an adjacent pair determines if it's eligible for filling (even indices).
+
+  actions:
+    - name: identify_color_locations
+      input: row_data, color
+      output: sorted list of column indices where the specified color exists.
+    - name: check_segment_all_white
+      input: row_data, start_col_exclusive, end_col_exclusive
+      output: boolean indicating if all pixels in the input segment `row_data[start_col_exclusive + 1 : end_col_exclusive]` are white (0).
+    - name: fill_segment
+      input: output_grid, row_index, start_col_inclusive, end_col_inclusive, fill_color
+      output: modifies output_grid by setting pixels in the specified column range and row to fill_color.
+
+  transformation:
+    description: Fill alternating horizontal gaps composed entirely of white pixels between adjacent occurrences of the same non-white color.
+    steps:
+      - Create a copy of the input grid to serve as the output grid.
+      - Process each row of the input grid independently.
+      - For the current row:
+        - Find all unique non-white colors `C` present in the input row.
+        - For each unique non-white color `C`:
+          - Get the sorted list of column indices where `C` occurs: `indices = [idx_0, idx_1, ..., idx_n]`.
+          - If `n >= 1` (at least two occurrences exist):
+            - Iterate through the adjacent pairs using index `i` from 0 to `n-1`. Let `col1 = indices[i]` and `col2 = indices[i+1]`.
+            - Check if the segment in the *input* row between `col1` and `col2` (columns `col1 + 1` to `col2 - 1`) contains only white pixels (0).
+            - If the segment is all white AND the pair index `i` is even (`i % 2 == 0`):
+              - In the *output* grid row, set the color of pixels from column `col1 + 1` to `col2 - 1` (inclusive) to `C`.
+      - Return the modified output grid.

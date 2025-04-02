@@ -1,0 +1,39 @@
+task_context:
+  grid_dimensionality: 1D (single row, represented as a 1xN grid)
+  colors_present:
+    - white (0): Background color, target for filling.
+    - yellow (4), orange (7), gray (5): Colors forming the initial block in examples.
+    - magenta (6): A unique marker pixel defining the right boundary for filling.
+    - Other colors: Not observed in training examples but potentially possible for the block color.
+objects:
+  - type: color_block
+    description: The first contiguous sequence of non-white pixels found when scanning from left to right.
+    properties:
+      - color (fill_color): The color of the pixels in this block.
+      - start_index: The index of the leftmost pixel of this block.
+      - end_index (block_end_index): The index of the rightmost pixel of this block.
+  - type: marker_pixel
+    description: A single magenta (6) pixel.
+    properties:
+      - color: Always magenta (6).
+      - index (marker_index): The position (index) of the magenta pixel in the row.
+  - type: fill_zone
+    description: The segment of the row located strictly between the color_block and the marker_pixel.
+    properties:
+      - start_index: block_end_index + 1
+      - end_index: marker_index (exclusive, i.e., up to marker_index - 1)
+      - content: Contains pixels to be potentially modified, specifically white (0) pixels.
+relationships:
+  - type: spatial_ordering
+    description: The color_block appears to the left of the marker_pixel in all examples where modification occurs.
+  - type: condition_for_action
+    description: Filling only occurs if a color_block exists, a marker_pixel exists, and the marker_pixel's index is greater than the block_end_index + 1 (i.e., there is at least one pixel position between them).
+actions:
+  - type: identify_block
+    description: Scan the input row from left to right to find the first non-white pixel. Continue scanning to find the end of the contiguous block of that same color. Record the block's color (`fill_color`) and the index of its last pixel (`block_end_index`).
+  - type: identify_marker
+    description: Scan the input row to find the index of the first occurrence of the magenta (6) pixel (`marker_index`).
+  - type: fill_conditional
+    description: If a block and marker are found and `marker_index > block_end_index + 1`, modify a copy of the input row. Select the slice of the row from index `block_end_index + 1` up to (but not including) `marker_index`. Within this slice, change the color of all pixels that were originally white (0) to `fill_color`. Leave all other pixels in the row unchanged.
+transformation_goal:
+  - Extend the first contiguous non-white color block rightwards by changing the color of the intermediate white pixels to match the block's color, stopping just before the magenta marker pixel. Pixels before the block, the block itself, the marker pixel, and any pixels after the marker remain unchanged.

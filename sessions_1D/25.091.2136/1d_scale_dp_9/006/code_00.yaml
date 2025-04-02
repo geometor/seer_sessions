@@ -1,0 +1,50 @@
+task_context:
+  grid_dimensionality: 1D (single row)
+  grid_size: 1xN (Examples show 1x25, but N can vary)
+  colors_present:
+    - white (0) - background / fillable space
+    - block_color (non-zero, non-magenta) - color of the primary block (e.g., 4, 7, 5)
+    - marker_color (magenta, 6) - boundary marker
+objects:
+  - type: color_block
+    description: The first contiguous sequence of identical non-white, non-magenta pixels encountered when scanning from left to right.
+    properties:
+      - color: The color of the pixels in the block (variable, e.g., 4, 7, 5). Let's call this 'fill_color'.
+      - start_index: The index of the leftmost pixel of this block.
+      - end_index: The index of the rightmost pixel of this block. Let's call this 'block_end_index'.
+      - exists: True if such a block is found.
+  - type: marker_pixel
+    description: The first instance of a magenta (6) pixel encountered when scanning from left to right.
+    properties:
+      - color: magenta (6)
+      - index: The position of this pixel in the row. Let's call this 'marker_index'.
+      - exists: True if a magenta pixel is found.
+  - type: fill_zone
+    description: The sequence of pixels located strictly between the color_block and the marker_pixel.
+    properties:
+      - start_index: block_end_index + 1
+      - end_index: marker_index - 1
+      - exists: True only if both color_block and marker_pixel exist AND marker_index > block_end_index + 1.
+      - length: marker_index - (block_end_index + 1)
+relationships:
+  - type: spatial
+    description: The color_block occurs before the marker_pixel.
+  - type: condition
+    description: A fill operation is performed only if the color_block and marker_pixel both exist and there is at least one pixel position between them (marker_index > block_end_index + 1).
+actions:
+  - type: find
+    description: Locate the first contiguous block of non-white, non-magenta color. Identify its color ('fill_color') and end index ('block_end_index').
+  - type: find
+    description: Locate the first magenta (6) pixel. Identify its index ('marker_index').
+  - type: conditional_fill
+    description: >
+      If both the block and marker are found and marker_index > block_end_index + 1,
+      then iterate through the indices from block_end_index + 1 up to (but not including) marker_index.
+      For each index in this range, if the pixel at that index in the *input* row is white (0),
+      change the color of the corresponding pixel in the *output* row to 'fill_color'.
+      Otherwise, make no changes to the pixels in this zone.
+transformation_goal:
+  - Create an output row by copying the input row.
+  - Identify the first color block and the first magenta marker.
+  - If they exist and are separated by at least one pixel, fill the white pixels strictly between them with the color of the block.
+  - Return the potentially modified row.

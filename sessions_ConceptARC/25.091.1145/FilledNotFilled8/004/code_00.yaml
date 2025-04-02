@@ -1,0 +1,35 @@
+task_description: "Transforms input based on whether non-background pixels form scattered points or a filled diamond defined by specific coordinate bounds."
+grid_elements:
+  - type: background
+    color_value: 0
+    color_name: white
+  - type: shape_pixels
+    color_value: non-zero (e.g., 6/magenta, 3/green)
+    role: Defines or constitutes a diamond shape.
+input_patterns:
+  - type: scattered_points_or_incomplete_diamond
+    description: Non-background pixels do not perfectly match the filled diamond defined by their u=r+c and v=r-c bounds.
+    example: train_1 input
+  - type: filled_diamond
+    description: Non-background pixels form a single connected component exactly matching the set of all pixels (r,c) such that min_u <= r+c <= max_u and min_v <= r-c <= max_v, where mins/maxs are derived from the input pixels, and r+c, r-c have the same parity.
+    example: train_2 input
+transformations:
+  - condition: input pattern is scattered_points_or_incomplete_diamond
+    action: compute and fill diamond based on u,v bounds
+    steps:
+      - Identify the non-background color (C).
+      - Find all pixels with color C (InputPixels).
+      - Calculate the bounds: min_u, max_u, min_v, max_v from InputPixels.
+      - Generate the set of all pixels (r,c) within grid dimensions satisfying min_u <= r+c <= max_u, min_v <= r-c <= max_v, and (r+c)%2 == (r-c)%2 (TheoreticalDiamondPixels).
+      - Output grid: color pixels in TheoreticalDiamondPixels with C, others white.
+  - condition: input pattern is filled_diamond
+    action: extract perimeter of the diamond defined by u,v bounds
+    steps:
+      - Identify the non-background color (C).
+      - Identify the set of input pixels forming the diamond (InputPixels).
+      - Calculate the bounds: min_u, max_u, min_v, max_v from InputPixels.
+      - Generate the set of all pixels (r,c) within grid dimensions satisfying min_u <= r+c <= max_u, min_v <= r-c <= max_v, and (r+c)%2 == (r-c)%2 (TheoreticalDiamondPixels). (This set must equal InputPixels for this condition to be met).
+      - Output grid: Create a white grid. Color a pixel (r,c) with C if (r,c) is in TheoreticalDiamondPixels AND it has at least one 8-directionally adjacent neighbor (nr, nc) such that (nr, nc) is outside the grid OR (nr, nc) is not in TheoreticalDiamondPixels.
+relationships:
+  - The output shape is determined by the diamond defined by the min/max values of (row+col) and (row-col) calculated from the input non-background pixels.
+  - The transformation type (fill vs. hollow) depends on whether the input pixels perfectly match this calculated diamond shape.

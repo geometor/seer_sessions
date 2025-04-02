@@ -1,0 +1,35 @@
+task_description: Identify two distinct non-background colored objects based on their topological connectivity. One object forms a single connected component, while the other forms multiple components. Fill the combined area of both objects with the color of the multi-component object.
+elements:
+  - object: background
+    color_property: white (0)
+    role: static background
+    topology: variable
+  - object: inner_object
+    color_property: varies (red, yellow, magenta in examples)
+    topology: single connected component (using 4-way adjacency)
+    role: part of the area to be filled, color is discarded
+  - object: frame_object
+    color_property: varies (blue, green, orange in examples), distinct from inner_object color.
+    topology: multiple connected components (using 4-way adjacency)
+    role: part of the area to be filled, provides the fill color
+relationships:
+  - type: spatial
+    description: inner_object and frame_object are typically adjacent. Their combined pixels form a larger shape.
+  - type: topological
+    description: The key distinction is the number of connected components for each color's pixels (1 vs >1).
+actions:
+  - action: identify_colors
+    inputs: input_grid
+    outputs: background_color (0), color1, color2
+  - action: count_components
+    inputs: input_grid, color1, color2
+    outputs: components1, components2
+    logic: Use 4-way adjacency to count connected components for pixels of color1 and color2 separately.
+  - action: identify_roles
+    inputs: color1, color2, components1, components2
+    outputs: inner_color, frame_color
+    logic: If components1 == 1 and components2 > 1, then inner_color = color1, frame_color = color2. If components2 == 1 and components1 > 1, then inner_color = color2, frame_color = color1. (Handle edge cases if this condition isn't met).
+  - action: fill_combined_shape
+    inputs: input_grid, inner_color, frame_color
+    outputs: output_grid
+    logic: Create a new grid, initialized with the background color (0). Iterate through the input grid. If a pixel's color is either inner_color or frame_color, set the corresponding output pixel's color to frame_color. Otherwise, keep the background color.

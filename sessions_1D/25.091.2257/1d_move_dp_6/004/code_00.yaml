@@ -1,0 +1,60 @@
+task_type: grid_manipulation_1d_row
+grid_properties:
+  dimensionality: 2D
+  shape: 1 row, variable columns (N)
+components:
+  - type: grid_segment
+    description: The entire input grid (1xN).
+  - type: marker_pixel
+    properties:
+      color: green (3)
+      location: Within the grid row, variable column index.
+      role: separator
+  - type: subsequence_before_marker
+    description: All pixels in the row preceding the green (3) marker column.
+    contains:
+      - type: white_pixels
+        properties:
+          color: white (0)
+          count: variable
+      - type: non_white_pixels
+        properties:
+          color: any color except white (1-9)
+          count: variable
+          relative_order: preserved among non-white pixels
+  - type: subsequence_after_marker
+    description: All pixels in the row following the green (3) marker column.
+    properties:
+      content: unchanged
+      position: maintained relative to the marker and end of the row.
+actions:
+  - action: locate_column
+    target: first green (3) marker pixel in the row
+    output: column_index
+  - action: partition_row
+    target: input grid row
+    based_on: column_index of the green marker
+    outputs:
+      - segment_before: grid columns from 0 to marker_index-1
+      - marker_pixel_value: grid value at marker_index
+      - segment_after: grid columns from marker_index+1 to end
+  - action: separate_and_collect
+    target: segment_before
+    outputs:
+      - collection_1: all white pixels (0) from the segment
+      - collection_2: all non-white pixels (1-9) from the segment (maintaining relative order)
+  - action: concatenate_horizontal
+    axis: 1 (columns)
+    inputs:
+      - collection_1 (as 1xK array)
+      - collection_2 (as 1xL array)
+      - marker_pixel_value (as 1x1 array)
+      - segment_after (as 1xM array)
+    output: final output grid (1xN)
+relationships:
+  - type: positional
+    description: The green pixel's column index divides the grid row into parts.
+  - type: grouping_and_sorting
+    description: Pixels before the marker are grouped by color type (white vs. non-white) in the output, with white pixels coming first.
+  - type: order_preservation
+    description: Relative order of non-white pixels before the marker is kept. Content and position of elements including and after the marker are kept.

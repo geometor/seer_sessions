@@ -1,0 +1,34 @@
+task_type: pattern_replication_1d
+grid_properties:
+  dimensionality: 1 # Effectively 1D (single row)
+  size_constancy: true # Input and output dimensions are identical
+color_properties:
+  background_color: white # 0
+  active_colors: 1 # Only one non-white color per task instance
+  color_constancy: true # The non-white color remains the same between input and output
+components:
+  - role: template_segment
+    element: horizontal_contiguous_block
+    location: first occurrence of non-white color sequence
+    properties:
+      - color: the single non-white color present
+      - length: variable (3 in examples)
+  - role: trigger_pixel
+    element: pixel
+    location: any occurrence of the non-white color *after* the template_segment ends
+    properties:
+      - color: must match the template_segment color
+actions:
+  - name: identify_template
+    inputs: input_row
+    outputs: template_segment (list of colors), template_color (int), end_index_of_template (int)
+    description: Scan the input row from left to right to find the first sequence of connected non-white pixels. Record the sequence, its color, and the index immediately following it.
+  - name: replicate_template
+    inputs: input_row, output_row (initially a copy of input), template_segment, template_color, start_scan_index (end_index_of_template)
+    outputs: modified_output_row
+    description: Iterate through the input row starting from start_scan_index. If a pixel matches the template_color, overwrite the output row starting at that pixel's index with the template_segment. Handle boundary conditions (truncation if template exceeds row end). Advance the scan index past the newly written segment to avoid re-triggering within it.
+constraints:
+  - Operates only on single-row grids (1xN).
+  - Assumes exactly one non-white color exists in the input.
+  - Replication starts exactly at the trigger pixel's index.
+  - Overwrites existing pixels in the output row.

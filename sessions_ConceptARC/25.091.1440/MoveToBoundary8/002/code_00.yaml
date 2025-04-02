@@ -1,0 +1,57 @@
+task_description: Move point objects by a fixed vector, determined by the orientation of a static line object.
+
+elements:
+  - type: static_line
+    description: A single continuous straight line of a non-background color.
+    properties:
+      - color: (variable, e.g., green, red)
+      - orientation: (horizontal or vertical)
+      - position: (row index for horizontal, column index for vertical)
+      - coordinates: (list of (row, col) tuples)
+  - type: moving_points
+    description: Multiple single pixels of the same non-background color, distinct from the static line color.
+    properties:
+      - color: (variable, e.g., yellow, azure)
+      - count: (multiple)
+      - initial_positions: (list of (row, col) tuples)
+
+transformation:
+  - action: identify_objects
+    source: input_grid
+    target: static_line, moving_points
+    steps:
+      - Find all connected components of non-background colors.
+      - Identify the component that forms a continuous straight horizontal or vertical line as 'static_line'.
+      - Identify all single-pixel components of the *other* non-background color as 'moving_points'.
+  - action: determine_line_orientation
+    source: static_line
+    target: orientation
+  - action: calculate_movement_vector
+    source: orientation
+    target: delta_row, delta_col
+    rules:
+      - if: orientation == horizontal
+        delta_row: -5  # Move 5 steps up
+        delta_col: +5  # Move 5 steps right
+      - if: orientation == vertical
+        delta_row: 0   # No vertical movement
+        delta_col: +4  # Move 4 steps right
+  - action: calculate_new_positions
+    inputs: moving_points.initial_positions, delta_row, delta_col
+    for_each: point (r_orig, c_orig) in initial_positions
+    output: (r_orig + delta_row, c_orig + delta_col)
+    target: new_positions
+  - action: construct_output_grid
+    inputs: input_grid_dimensions, static_line.color, static_line.coordinates, moving_points.color, new_positions
+    steps:
+      - Create an empty grid (all background color 0) of the same dimensions as the input.
+      - Draw the static_line onto the grid using its color and coordinates.
+      - For each calculated new_position (new_r, new_c):
+        - If (new_r, new_c) is within the grid boundaries:
+          - Draw the moving_points.color at (new_r, new_c).
+
+assumptions:
+  - Exactly one static line object (horizontal or vertical) exists.
+  - All other non-background pixels belong to a single color and represent the moving points (always single pixels).
+  - The movement vector is constant for all points within a single example and depends only on the line's orientation.
+  - Points always start on one side of the line (below horizontal lines, left of vertical lines in the examples). The movement is always towards/across the line and parallel to it (up/right for horizontal, right/none for vertical).

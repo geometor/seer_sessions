@@ -1,0 +1,51 @@
+task_type: object_manipulation
+grid_dimensions:
+  input: 1xN (Observed: 1x14)
+  output: 1xN (Same as input)
+objects:
+  - id: main_block
+    description: A single contiguous horizontal sequence of identical pixels with color C, where C is not white (0) and not magenta (6).
+    properties:
+      color: Varies (green '3' or orange '7' in examples). Excludes white '0' and magenta '6'.
+      shape: Horizontal line segment.
+      length: Varies.
+      position: Varies in the input.
+  - id: marker
+    description: A single magenta pixel (color 6).
+    properties:
+      color: magenta '6'
+      shape: Single pixel.
+      position: Varies in the input grid row, but its index remains constant between input and output.
+  - id: background
+    description: Pixels filling the rest of the grid.
+    properties:
+      color: white '0'
+actions:
+  - action: identify
+    target: marker
+    output_property: marker_index (column index)
+  - action: identify
+    target: main_block
+    output_properties: [block_color, block_length]
+  - action: calculate_position
+    input_properties: [marker_index, block_length]
+    output_property: target_start_index
+    formula: target_start_index = marker_index - block_length
+  - action: construct_output
+    details: Create a new 1xN grid filled with the background color.
+  - action: place
+    target: marker
+    grid: output
+    position: marker_index
+  - action: place
+    target: main_block (using identified block_color and block_length)
+    grid: output
+    position: Starting at target_start_index, extending for block_length pixels.
+relationships:
+  - type: adjacency (in output)
+    object1: main_block (rightmost pixel)
+    object2: marker
+    details: The rightmost pixel of the main_block is at index `marker_index - 1`.
+  - type: position_invariance
+    object: marker
+    details: The column index of the marker pixel is the same in the input and output grids.

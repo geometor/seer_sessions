@@ -1,0 +1,101 @@
+task_description: Repeat a specific pattern block multiple times, inserting white separators, based on the count and position of blue control pixels.
+
+elements:
+  - element: grid
+    role: input_output
+    attributes:
+      - height
+      - width
+      - pixels
+
+  - element: pixel
+    attributes:
+      - color_value: integer (0-9)
+      - color_name: (white, blue, red, etc.)
+      - position: (row, column)
+
+  - element: object
+    type: pattern_block
+    description: A subgrid extracted from the input, representing the pattern to be repeated. Does not contain blue (1) pixels.
+    attributes:
+      - height
+      - width
+      - content: subgrid of pixels
+
+  - element: object
+    type: control_pixels
+    description: Pixels with the color blue (1) in the input grid.
+    attributes:
+      - color: blue (1)
+      - count: N
+      - position: coordinates list
+
+  - element: object
+    type: separator
+    description: A line (row or column) of white (0) pixels used to separate repetitions of the pattern block.
+    attributes:
+      - color: white (0)
+      - orientation: (row | column)
+      - size: (height or width, matches pattern block dimension)
+
+relationships:
+  - type: determines
+    subject: control_pixels.count (N)
+    object: repetition_count (R)
+    rule: R = N + 1
+
+  - type: determines
+    subject: relative_position(control_pixels, pattern_block)
+    object: repetition_orientation (horizontal | vertical)
+    rule: |
+      If control pixels occupy distinct columns -> horizontal
+      If control pixels occupy distinct rows -> vertical
+
+  - type: determines
+    subject: repetition_orientation
+    object: separator.orientation
+    rule: |
+      If horizontal repetition -> column separator
+      If vertical repetition -> row separator
+
+  - type: determines
+    subject: pattern_block dimensions
+    object: separator dimensions
+    rule: |
+      Column separator height = pattern_block height
+      Row separator width = pattern_block width
+
+actions:
+  - action: identify_control_pixels
+    input: input_grid
+    output: list_of_blue_pixel_coordinates
+
+  - action: identify_pattern_block
+    input: input_grid, control_pixels
+    output: pattern_block_subgrid
+    steps: |
+      Determine if control pixels occupy specific rows or columns.
+      Extract the portion of the grid not occupied by those rows/columns.
+
+  - action: count_control_pixels
+    input: control_pixels
+    output: count (N)
+
+  - action: calculate_repetitions
+    input: count (N)
+    output: repetition_count (R = N + 1)
+
+  - action: determine_orientation
+    input: input_grid, control_pixels, pattern_block
+    output: orientation (horizontal | vertical)
+
+  - action: create_separator
+    input: orientation, pattern_block dimensions
+    output: separator_line (row or column)
+
+  - action: construct_output
+    input: pattern_block, separator, repetition_count (R), orientation
+    output: output_grid
+    steps: |
+      If horizontal: Concatenate Pattern, Separator, Pattern, ... (R times pattern, R-1 times separator) horizontally.
+      If vertical: Concatenate Pattern, Separator, Pattern, ... (R times pattern, R-1 times separator) vertically.

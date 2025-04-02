@@ -1,0 +1,61 @@
+task_type: fill_segment_1d_in_2d_grid
+dimensionality: 2D (processing confined to the first row)
+
+elements:
+  - element: pixel
+    properties:
+      - color: integer (0-9)
+      - position: (row_index, col_index) - relevant row is always 0.
+
+objects:
+  - object: grid_row
+    description: The first (and only) row of the input grid, treated as the primary sequence.
+    properties:
+      - pixels: Ordered sequence of pixel colors in the row.
+      - length: Number of columns in the grid.
+  - object: colored_segment
+    description: A contiguous sequence of pixels of the same non-white color within the grid row.
+  - object: first_colored_pixel
+    description: The leftmost non-white pixel in the grid row.
+    properties:
+      - fill_color: The color of this pixel.
+      - start_col_index: The column index of this pixel.
+  - object: last_colored_pixel
+    description: The rightmost non-white pixel in the grid row.
+    properties:
+      - end_col_index: The column index of this pixel.
+  - object: fill_zone
+    description: The sequence of pixels strictly between the first_colored_pixel and the last_colored_pixel.
+    properties:
+       - start: start_col_index + 1
+       - end: end_col_index - 1
+
+
+relationships:
+  - relationship: spatial
+    description: Relative positioning of pixels along the row.
+    properties:
+      - between: Identifies pixels whose column index is between start_col_index and end_col_index.
+
+actions:
+  - action: find_boundaries_and_color
+    description: Identify the indices and color relevant for the filling operation within the first row.
+    inputs:
+      - input_grid
+    outputs:
+      - fill_color: Color of the first non-white pixel found scanning row 0 from left to right. (-1 if none)
+      - start_col_index: Column index of the first non-white pixel in row 0. (-1 if none)
+      - end_col_index: Column index of the last non-white pixel found scanning row 0 from right to left. (-1 if none)
+  - action: fill_between
+    description: Change the color of specific white pixels within the fill_zone of the first row.
+    inputs:
+      - input_grid
+      - fill_color
+      - start_col_index
+      - end_col_index
+    process: Create a copy of the input grid. Iterate through the columns `j` from `start_col_index + 1` up to (but not including) `end_col_index`. If the pixel at `(0, j)` in the *original* input grid is white (0), change the color of the pixel at `(0, j)` in the *copied* grid to `fill_color`.
+    outputs:
+      - modified_grid
+
+goal:
+  - description: Modify the input grid by filling the white pixels (color 0) located in the first row between the first non-white pixel (from left) and the last non-white pixel (from right), using the color of the first non-white pixel.

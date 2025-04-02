@@ -1,0 +1,48 @@
+task_description: Move the contiguous block of white pixels preceding the single orange pixel to the beginning of the grid.
+
+elements:
+  - type: grid
+    description: A 1xN numpy.ndarray representing a sequence of pixels.
+  - type: pixel
+    value: 7 (orange)
+    role: marker
+    description: A unique pixel used as a reference point. Always occurs exactly once in the grid row.
+  - type: pixel
+    value: 0 (white)
+    role: movable_segment / target_segment / prefix
+    description: Pixels forming segments that are potentially moved or define the insertion point. Specifically targets the segment immediately left of the orange pixel.
+  - type: pixel
+    value: other (non-zero, non-orange)
+    role: context / background
+    description: Pixels forming content blocks that get shifted due to the movement of white pixels.
+
+relationships:
+  - type: adjacency
+    description: The transformation targets a contiguous block of white pixels immediately to the left (in the same row) of the orange pixel.
+  - type: position
+    description: The identified white block is moved from its position before the orange pixel to the absolute start of the grid row.
+
+actions:
+  - action: flatten / access_row
+    target: input grid (numpy.ndarray)
+    result: 1D representation of the pixel sequence.
+  - action: find
+    target: orange pixel (7) within the 1D sequence.
+    method: numpy.where
+    result: index of the orange pixel.
+  - action: find_segment
+    target: contiguous block of white pixels (0)
+    condition: immediately preceding the orange pixel's index in the 1D sequence.
+    method: iterative search backwards from orange_index - 1.
+  - action: extract_segments
+    target: the 1D sequence
+    segments:
+      - white_segment: the identified block of white pixels.
+      - prefix: pixels before the white_segment.
+      - suffix: pixels from the orange pixel onwards.
+  - action: reconstruct
+    target: new 1D sequence
+    order: white_segment + prefix + suffix
+  - action: reshape
+    target: the new 1D sequence
+    result: 1xN numpy.ndarray matching the input format.

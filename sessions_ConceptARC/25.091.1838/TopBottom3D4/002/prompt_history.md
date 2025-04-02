@@ -1,0 +1,271 @@
+
+## train_1
+
+**input:**
+```
+0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+2 2 2 0 0 0 0 0
+2 2 2 0 0 0 0 0
+2 1 1 1 0 0 0 0
+0 1 1 1 0 0 0 0
+0 1 1 1 0 0 0 0
+0 0 0 0 0 0 0 0
+```
+
+
+**output:**
+```
+0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+2 2 2 0 0 0 0 0
+2 2 2 0 0 0 0 0
+1 1 1 0 0 0 0 0
+1 1 1 0 0 0 0 0
+1 1 1 0 0 0 0 0
+0 0 0 0 0 0 0 0
+```
+
+
+## train_2
+
+**input:**
+```
+0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+0 0 0 4 4 4 4 0
+0 0 0 4 4 4 4 0
+0 0 0 4 4 3 3 3
+0 0 0 4 4 3 3 3
+0 0 0 0 0 3 3 3
+```
+
+
+**output:**
+```
+0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+0 0 0 4 4 4 4 0
+0 0 0 4 4 4 4 0
+0 0 0 4 3 3 3 0
+0 0 0 4 3 3 3 0
+0 0 0 0 3 3 3 0
+```
+
+
+## train_3
+
+**input:**
+```
+0 4 4 4 0 0 0 0
+0 4 4 4 0 0 0 0
+0 4 4 4 6 6 6 6
+0 0 0 6 6 6 6 6
+0 0 0 6 6 6 6 6
+0 0 0 6 6 6 6 6
+0 0 0 6 6 6 6 6
+0 0 0 0 0 0 0 0
+```
+
+
+**output:**
+```
+4 4 4 0 0 0 0 0
+4 4 4 0 0 0 0 0
+4 4 4 6 6 6 6 6
+0 0 0 6 6 6 6 6
+0 0 0 6 6 6 6 6
+0 0 0 6 6 6 6 6
+0 0 0 6 6 6 6 6
+0 0 0 0 0 0 0 0
+```
+
+
+## train_4
+
+**input:**
+```
+0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+0 0 5 5 5 0 0 0
+0 0 5 1 5 0 0 0
+0 0 5 5 5 0 0 0
+0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+```
+
+
+**output:**
+```
+0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+0 0 5 5 5 0 0 0
+0 0 1 5 5 0 0 0
+0 0 5 5 5 0 0 0
+0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+```
+
+*   **Perception:**
+    *   The input and output are grids of colored pixels.
+    *   Each input grid contains multiple distinct contiguous regions (objects) of non-white colors.
+    *   In the transformation from input to output, one specific object appears to move exactly one column to the left.
+    *   The other objects in the grid remain in their original positions.
+    *   The pixels where the moving object was originally located become white (background color), unless they are overwritten by the object's new position (if the shift causes overlap with its original footprint).
+    *   The pixels into which the object moves adopt the color of the moving object, overwriting any color previously there.
+    *   Comparing the colors of the objects present in each example, the object that moves is consistently the one with the lowest numerical color value (e.g., blue=1 moves when red=2 is present; green=3 moves when yellow=4 is present; yellow=4 moves when magenta=6 is present).
+
+*   **Facts:**
+    
+```yaml
+    task_elements:
+      - type: grid
+        description: Input and output are 2D grids of pixels with colors represented by integers 0-9.
+      - type: background
+        color_name: white
+        color_value: 0
+        description: The default background color.
+      - type: object
+        description: Contiguous blocks of pixels sharing the same non-white color.
+        properties:
+          - color_name: Varies (e.g., blue, red, green, yellow, gray, magenta)
+          - color_value: Integer from 1 to 9.
+          - shape: Varies (e.g., L-shape, rectangle, single pixel, plus-shape).
+          - position: Location within the grid.
+    transformation:
+      - action: identify_objects
+        description: Find all distinct non-white objects in the input grid.
+      - action: select_object_by_color
+        condition: If multiple objects exist, select the object whose color has the minimum numerical value. If only one object exists, select that object.
+        target: The selected object.
+      - action: shift_object
+        direction: left
+        distance: 1 column
+        target: The selected object identified in the previous step.
+        effect_on_original_position: Pixels become white (0).
+        effect_on_new_position: Pixels take the color of the shifted object, overwriting existing content.
+      - action: preserve_objects
+        target: All non-selected objects.
+        description: Objects not selected for shifting remain unchanged in the output grid.
+      - result: Output grid reflects the shifted object and preserved objects.
+    ```
+
+
+*   **Natural Language Program:**
+    1.  Identify all distinct contiguous objects of non-white color in the input grid. Record the color value and pixel coordinates for each object.
+    2.  Determine the minimum color value among all identified objects.
+    3.  Select the object that corresponds to this minimum color value. This is the "target object".
+    4.  Initialize the output grid as a copy of the input grid.
+    5.  For every pixel belonging to the target object in the input grid, set the corresponding pixel in the output grid to white (0).
+    6.  For every pixel belonging to the target object in the input grid, calculate its new position by subtracting 1 from its column coordinate.
+    7.  If the new column coordinate is valid (greater than or equal to 0), set the pixel at this new position (original row, new column) in the output grid to the color of the target object.
+```python
+import numpy as np
+from collections import deque
+
+"""
+Identify all distinct contiguous non-white objects in the input grid. 
+Find the object with the minimum color value. 
+Shift this selected object one column to the left. 
+The original position of the shifted object becomes white (background color 0). 
+The new position takes the color of the shifted object, overwriting any previous content. 
+All other objects remain unchanged.
+"""
+
+def find_objects(grid):
+    """
+    Finds all contiguous objects of the same non-background color in the grid.
+
+    Args:
+        grid (np.array): The input grid.
+
+    Returns:
+        list: A list of dictionaries, where each dictionary represents an object
+              and contains 'color' (int) and 'coords' (set of (row, col) tuples).
+    """
+    rows, cols = grid.shape
+    visited = np.zeros_like(grid, dtype=bool)
+    objects = []
+
+    for r in range(rows):
+        for c in range(cols):
+            if grid[r, c] != 0 and not visited[r, c]:
+                color = grid[r, c]
+                obj_coords = set()
+                q = deque([(r, c)])
+                visited[r, c] = True
+
+                while q:
+                    row, col = q.popleft()
+                    obj_coords.add((row, col))
+
+                    # Check 4 neighbors (up, down, left, right)
+                    for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+                        nr, nc = row + dr, col + dc
+                        if 0 <= nr < rows and 0 <= nc < cols and \
+                           not visited[nr, nc] and grid[nr, nc] == color:
+                            visited[nr, nc] = True
+                            q.append((nr, nc))
+
+                objects.append({'color': color, 'coords': obj_coords})
+    return objects
+
+def transform(input_grid):
+    """
+    Identifies the object with the minimum color value in the input grid
+    and shifts it one column to the left. Other objects remain stationary.
+
+    Args:
+        input_grid (list): A list of lists representing the input grid.
+
+    Returns:
+        list: A list of lists representing the transformed output grid.
+    """
+    # Convert input to numpy array for easier manipulation
+    grid_np = np.array(input_grid, dtype=int)
+    
+    # Find all non-background objects
+    objects = find_objects(grid_np)
+
+    # If no objects are found, return the original grid
+    if not objects:
+        return input_grid
+
+    # Find the minimum color value among the objects
+    min_color = min(obj['color'] for obj in objects)
+
+    # Find the object(s) with the minimum color
+    # In case of ties, the current find_objects implementation will return them
+    # in scan order. We'll arbitrarily pick the first one found.
+    target_object = None
+    for obj in objects:
+        if obj['color'] == min_color:
+            target_object = obj
+            break # Select the first object found with the minimum color
+
+    # If for some reason no target object was selected (shouldn't happen if objects exist)
+    if target_object is None:
+        return input_grid
+
+    # Initialize output_grid as a copy of the input grid
+    output_grid = grid_np.copy()
+
+    # Step 1: Erase the original position of the target object
+    for r, c in target_object['coords']:
+        output_grid[r, c] = 0 # Set to background color (white)
+
+    # Step 2: Draw the target object at the new, shifted position
+    target_color = target_object['color']
+    for r, c in target_object['coords']:
+        new_c = c - 1
+        # Check if the new position is within the grid boundaries
+        if new_c >= 0:
+            output_grid[r, new_c] = target_color
+
+    # Convert the result back to a list of lists
+    return output_grid.tolist()
+```

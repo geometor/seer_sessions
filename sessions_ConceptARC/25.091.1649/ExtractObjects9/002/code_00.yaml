@@ -1,0 +1,55 @@
+definitions:
+  - object: Background
+    properties:
+      - role: Canvas / Border / Empty Space
+      - color: White (0). Typically surrounds other objects or fills empty areas within them.
+  - object: Frame
+    properties:
+      - role: Container / Outer Layer
+      - color: The primary color of the large object directly enclosing the Inner object(s). (Red=2 in ex1, Green=3 in ex2). Can be identified as the non-Background color touching the outer Background border, or often by sampling near the edge (e.g., grid[1,1] if not Background).
+      - shape: Large, contiguous, forms the immediate surrounding of the Inner object.
+  - object: Inner
+    properties:
+      - role: Target for extraction
+      - color: Any color(s) present within the Frame that are not the Background or Frame color. (Yellow=4 in ex1, Red=2 in ex2).
+      - location: Contained within the Frame object.
+      - pixels: Can include Background-colored pixels (0) as holes within its area.
+  - concept: BoundingBox
+    properties:
+      - definition: The smallest rectangle enclosing all pixels of a specified color or set of colors.
+      - attributes: top_row, bottom_row, left_col, right_col
+
+transformation:
+  - step: Identify Colors
+    actions:
+      - Determine Background color (assumed to be 0).
+      - Determine Frame color (the non-background color forming the large surrounding shape; e.g., check grid[1,1] or other near-border non-background pixels).
+      - Identify Inner object color(s) (all colors present except Background and Frame colors).
+  - step: Locate Inner Object(s)
+    actions:
+      - Find all pixels matching any Inner object color.
+      - Calculate the initial BoundingBox encompassing all these found pixels. Handle the case where no Inner pixels exist.
+  - step: Refine BoundingBox (Trim Frame-only Edges)
+    actions:
+      - Check the bottom-most row within the current BoundingBox in the input grid: if it consists *entirely* of pixels matching the Frame color, shrink the BoundingBox by removing this row (decrement bottom_row). Repeat if necessary.
+      - Check the right-most column similarly: if it consists *entirely* of Frame color pixels, shrink the BoundingBox by removing this column (decrement right_col). Repeat if necessary.
+      - Check the top-most row similarly: if it consists *entirely* of Frame color pixels, shrink the BoundingBox by removing this row (increment top_row). Repeat if necessary.
+      - Check the left-most column similarly: if it consists *entirely* of Frame color pixels, shrink the BoundingBox by removing this column (increment left_col). Repeat if necessary.
+      - Stop refining when a pass makes no changes or the box becomes invalid.
+  - step: Extract Subgrid
+    actions:
+      - Define the Output Grid dimensions based on the final, refined BoundingBox.
+      - Copy the portion of the input grid corresponding to the refined BoundingBox.
+  - step: Apply Color Replacement
+    actions:
+      - Iterate through each pixel in the extracted Output Grid.
+      - If a pixel's color matches the identified Frame color, change its color to the Background color (0).
+      - Otherwise, keep the pixel's original color.
+  - step: Final Output
+    actions:
+      - Return the modified Output Grid.
+
+relationships:
+  - containment: Inner object pixels are found within the area defined by Frame object pixels.
+  - distinctness: Background, Frame, and Inner colors are distinct from each other.
+  - transformation_rule: The core transformation isolates the Inner object's region, potentially trims pure Frame-color edges from this region's bounding box, and then replaces any remaining Frame-color pixels within the final extracted area with the Background color.

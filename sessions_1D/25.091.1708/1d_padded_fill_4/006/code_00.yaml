@@ -1,0 +1,50 @@
+task_description: Fill rows with alternating direction based on row index parity, triggered by the leftmost non-background pixel.
+grid_properties:
+  dimensionality: 2
+  background_color: 0 # white
+  size_preservation: true # Input and output dimensions are identical.
+objects:
+  - type: pixel
+    properties:
+      color: integer (0-9)
+      position: (row_index, column_index)
+  - type: row
+    properties:
+      pixels: list of pixels
+      row_index: integer (0-based)
+      parity: enum (even, odd)
+      contains_non_background_pixel: boolean
+      leftmost_non_background_pixel:
+        exists: boolean
+        position: column_index
+        color: integer (0-9)
+actions:
+  - name: find_leftmost_non_background_pixel
+    inputs: row
+    outputs:
+      - found: boolean
+      - column_index: integer
+      - color: integer
+    description: Iterate through a row from left to right (column 0 upwards) to find the first pixel whose color is not the background color (0).
+  - name: fill_row_segment
+    inputs:
+      - row
+      - start_column_index: integer
+      - end_column_index: integer # Inclusive
+      - fill_color: integer
+    outputs: modified_row
+    description: Change the color of pixels in the row within the specified column range [start_column_index, end_column_index] to the fill_color.
+relationships:
+  - type: conditional_row_modification
+    condition: A row contains at least one non-background pixel.
+    action: The row is modified in the output based on its index parity.
+    details:
+      - if_parity: even
+        trigger: leftmost_non_background_pixel (at column `C`, color `F`)
+        modification: fill_row_segment from column `C` to grid_width-1 with color `F`.
+      - if_parity: odd
+        trigger: leftmost_non_background_pixel (at column `C`, color `F`)
+        modification: fill_row_segment from column 0 to column `C` (inclusive) with color `F`.
+  - type: row_preservation
+    condition: A row contains only background pixels (color 0).
+    action: The row remains unchanged in the output.

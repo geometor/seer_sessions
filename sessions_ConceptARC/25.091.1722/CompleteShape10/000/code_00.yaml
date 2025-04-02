@@ -1,0 +1,64 @@
+task_description: Fill internal background-colored holes within the largest colored object, based on hole size.
+
+elements:
+  - object: grid
+    description: A 2D array of pixels with colors 0-9.
+  - object: background
+    property:
+      color: white (0)
+      role: Surrounds and potentially fills areas within other objects.
+  - object: colored_shape
+    property:
+      color: Any color other than white (0). Green (3) in ex1, Blue (1) in ex2.
+      connectivity: Forms contiguous regions (components).
+      role: The primary element containing potential holes. In these examples, there's one dominant colored shape.
+  - object: hole
+    property:
+      color: white (0)
+      connectivity: Forms contiguous regions.
+      location: Completely surrounded by a single `colored_shape`.
+      relation: Defined by being enclosed within a `colored_shape`. Cannot reach the grid boundary by moving only through `background` pixels.
+      size: Number of pixels in the connected component.
+    identified_in_ex1:
+      - hole_1: size 6, location rows 10-11 / cols 7-9
+      - hole_2: size 2, location row 15 / cols 6-7
+    identified_in_ex2:
+      - hole_1: size 4, location row 7 / cols 8-11
+      - hole_2: size 4, location row 8 / cols 8-11
+
+actions:
+  - action: identify_largest_object
+    input: grid
+    output: the largest connected component of non-background color (main_object), its color (C)
+  - action: identify_internal_holes
+    input: grid, main_object
+    output: a list of connected components of background color fully enclosed by main_object (internal_holes)
+  - action: measure_hole_sizes
+    input: internal_holes
+    output: a list of sizes corresponding to each internal_hole
+  - action: determine_holes_to_fill
+    input: internal_holes, hole_sizes
+    output: a list of internal holes to be filled (fill_holes)
+    logic: Find max_size. Count holes with max_size. If count is 1, fill_holes = all internal_holes except the one with max_size. Else (count is not 1), fill_holes = all internal_holes.
+  - action: fill_holes
+    input: grid, fill_holes, color C
+    output: modified grid where pixels in fill_holes are set to C
+
+relationships:
+  - relation: enclosure
+    subject: colored_shape
+    object: hole
+    description: A hole is spatially enclosed by a colored_shape.
+  - relation: size_comparison
+    subject: hole
+    object: hole
+    description: Holes are compared based on their pixel count (size).
+  - relation: uniqueness
+    subject: largest_hole
+    description: Whether there is exactly one hole with the maximum size among all internal holes.
+
+transformation:
+  rule: Fill all internal background holes within the largest colored object, unless a hole is uniquely the largest among all internal holes, in which case that unique largest hole is not filled.
+  based_on_examples:
+    - ex1: Hole 1 (size 6) is unique largest. Only Hole 2 (size 2) is filled.
+    - ex2: Holes 1 and 2 tie for largest (size 4). No unique largest hole. Both are filled.

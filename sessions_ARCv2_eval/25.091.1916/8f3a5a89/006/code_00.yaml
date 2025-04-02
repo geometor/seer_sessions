@@ -1,0 +1,44 @@
+task_elements:
+  - element: background_passable
+    color: gray (8)
+    role: Defines areas traversable during reachability analysis; transforms based on reachability.
+  - element: barriers_conditional
+    color: blue (1)
+    role: Acts as initial barriers; transforms to gray(8) if adjacent to reachable gray area, otherwise remains blue(1).
+  - element: start_point
+    color: magenta (6)
+    count: 1
+    role: Origin marker for reachability analysis; remains unchanged.
+  - element: background_unreachable
+    color: orange (7)
+    role: Target color for gray(8) pixels not reachable from the start point.
+
+grid_properties:
+  - dimensions: remain_constant
+  - colors_preserved: [magenta (6)] # Some blue(1) may also be preserved
+  - colors_modified: [gray (8), blue (1)]
+  - colors_introduced: [orange (7)]
+  - color_transformations:
+    - gray (8) -> gray (8) # If reachable
+    - gray (8) -> orange (7) # If unreachable
+    - blue (1) -> gray (8) # If adjacent to reachable gray area
+    - blue (1) -> blue (1) # If not adjacent to reachable gray area
+
+transformation:
+  type: conditional_region_coloring_and_barrier_modification
+  based_on: connectivity_from_start_point
+  steps:
+    - step: 1_find_start
+      action: Locate the magenta (6) pixel.
+    - step: 2_find_reachable_gray
+      action: Perform a flood fill (BFS/DFS) starting from the cardinal gray(8) neighbors of the magenta pixel.
+      constraints: The fill only propagates through adjacent gray(8) pixels. Blue(1) pixels block this fill.
+      output: A set 'R' containing the coordinates of all reachable gray(8) pixels.
+    - step: 3_transform_grid
+      action: Create the output grid by iterating through each input pixel (r, c).
+      rules:
+        - if input[r, c] == magenta(6): output[r, c] = magenta(6)
+        - if input[r, c] == gray(8): output[r, c] = gray(8) if (r, c) in R else orange(7)
+        - if input[r, c] == blue(1):
+            - check_adjacency: See if any cardinal neighbor (nr, nc) exists such that input[nr, nc] == gray(8) AND (nr, nc) in R.
+            - output[r, c] = gray(8) if check_adjacency is true, else blue(1)

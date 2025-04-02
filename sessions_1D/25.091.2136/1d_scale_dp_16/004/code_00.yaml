@@ -1,0 +1,52 @@
+task_type: fill_gap_1d
+components:
+  - object: sequence
+    attributes:
+      - type: 1-dimensional_array
+      - element_type: integer (color code 0-9)
+  - object: marker
+    attributes:
+      - type: single_pixel
+      - color: magenta (6)
+      - role: defines the right boundary (exclusive) of the gap to be filled
+      - occurrence: typically one instance per sequence
+  - object: fill_block_source
+    attributes:
+      - type: contiguous_pixels (or single pixel)
+      - color: non-white (any color 1-9)
+      - role: defines the fill color and the left boundary (exclusive) of the gap
+      - location: the last non-white pixel(s) encountered when searching leftwards from the marker's position.
+  - object: gap
+    attributes:
+      - type: sequence_segment
+      - location: the sequence of pixels strictly between the fill_block_source's last pixel and the marker pixel.
+      - initial_color: contains only white (0) pixels in the examples shown
+      - role: area to be modified
+relationships:
+  - type: spatial_sequence
+    description: The fill_block_source occurs before the gap, and the gap occurs before the marker in the sequence. The elements are adjacent or separated only by white pixels.
+actions:
+  - action: locate_marker
+    target: sequence
+    outputs: index of the first magenta (6) pixel.
+  - action: locate_fill_source
+    target: sequence segment before the marker index
+    inputs: marker_index
+    details: Scan backwards from marker_index - 1. The first non-white pixel encountered defines the end index and the color ('fill_color') for the transformation.
+    outputs: block_end_index, fill_color
+  - action: identify_gap
+    target: sequence
+    inputs: block_end_index, marker_index
+    details: The gap comprises indices from block_end_index + 1 up to (but not including) marker_index.
+    outputs: list_of_gap_indices
+  - action: fill_gap
+    target: gap
+    inputs: list_of_gap_indices, fill_color
+    details: Iterate through the identified gap indices. For each index `i` in the gap, if the pixel at that index is white (0), change its color to the 'fill_color'.
+    outputs: modified sequence
+invariants:
+  - The marker pixel (magenta 6) retains its position and color.
+  - All pixels before the `block_end_index` + 1 remain unchanged.
+  - All pixels at or after the `marker_index` remain unchanged.
+  - Only white (0) pixels within the identified gap are modified.
+  - The color used to fill the gap is determined solely by the color of the pixel at `block_end_index`.

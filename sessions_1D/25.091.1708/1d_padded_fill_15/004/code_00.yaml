@@ -1,0 +1,43 @@
+task_type: pairwise_segment_fill
+grid_dimensionality: 1D (single row)
+
+input_features:
+  - property: grid_dimensions
+    value: [1, 51] # Based on consistent examples
+  - property: background_color
+    value: 0 (white)
+  - property: foreground_pixels
+    description: Multiple pixels of a single non-white color C.
+    value_constraint: Exactly one color C != 0 exists in the input row.
+    count_constraint: The number of pixels with color C is always even (6 in all examples).
+    distribution: The pixels appear at distinct column indices.
+
+transformation:
+  - action: initialize_output
+    description: Create an output grid of the same dimensions as the input, filled entirely with the background color (0).
+  - action: identify_foreground_color
+    input: input grid
+    description: Determine the single non-white color C present in the input.
+  - action: locate_foreground_pixels
+    input: input grid, color C
+    description: Find all column indices where color C appears. Store these indices in a list, sorted in ascending order.
+    output: sorted list `indices = [i_1, i_2, i_3, i_4, ..., i_n]` where n is even.
+  - action: define_segments_from_pairs
+    input: sorted list `indices`
+    precondition: The list `indices` must contain an even number of elements (n).
+    description: Group the indices into consecutive pairs `(i_1, i_2)`, `(i_3, i_4)`, ..., `(i_{n-1}, i_n)`. Each pair defines the start and end column of a segment to be filled.
+    output: A list of pairs `segments = [(start_1, end_1), (start_2, end_2), ...]`
+  - action: fill_output_segments
+    input: output grid, list `segments`, color C
+    description: For each pair `(start_col, end_col)` in the `segments` list, set the color of all pixels in the output grid's row from column `start_col` to `end_col` (inclusive) to color C.
+
+output_features:
+  - property: grid_dimensions
+    value: Same as input [1, 51]
+  - property: background_color
+    value: 0 (white)
+  - property: foreground_elements
+    description: One or more disjoint, contiguous horizontal segments of color C.
+    count: The number of segments is half the number of foreground pixels in the input.
+    location: Each segment spans the columns defined by a pair of consecutive foreground pixel indices from the input.
+    color: Same color C as identified in the input.

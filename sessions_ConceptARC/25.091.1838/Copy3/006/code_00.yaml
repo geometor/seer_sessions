@@ -1,0 +1,38 @@
+task_description: Transforms an input grid by copying parts of it based on grid width parity.
+grid_properties:
+  width_parity_dependent: true
+
+rules:
+  - condition: grid_width is even
+    action: mirror_left_half_pixelwise_to_right_half
+    details:
+      - output_initial_state: copy of input grid
+      - split_column: mid = width / 2
+      - source_columns: 0 to mid - 1 (from the output grid itself)
+      - target_columns: mid to width - 1
+      - transformation: output[r, c + mid] = output[r, c] for c in [0, mid-1]
+      - overwrite: true (right half is completely replaced by a copy of the left half)
+
+  - condition: grid_width is odd
+    action: offset_copy_objects_based_on_central_marker
+    marker_object:
+      shape: horizontal 1x2 block
+      color: 6 (magenta)
+      pixels: [[6, 6]]
+    offset_determination:
+      - find_all_instances: marker_object in the input grid.
+      - if_no_marker: return copy of input grid.
+      - calculate_grid_center: ( (height-1)/2, (width-1)/2 )
+      - find_closest_marker: instance whose top-left (r_marker, c_marker) has minimum Euclidean distance to grid_center.
+      - offset_vector: (dr, dc) = (r_marker, c_marker)
+    copy_process:
+      - output_initial_state: copy of input grid
+      - identify_all_source_objects: contiguous non-white pixel groups (using 4-connectivity) in the input grid.
+      - identify_offset_marker_object: the specific object instance corresponding to the closest marker found.
+      - for_each_source_object:
+        - if_object_is_not_offset_marker_object:
+          - for_each_pixel (r_p, c_p) in the object:
+            - calculate_target_coords: (target_r, target_c) = (r_p + dr, c_p + dc)
+            - boundary_check: if 0 <= target_r < height and 0 <= target_c < width:
+              - set_pixel: output_grid[target_r, target_c] = object_color
+        - overwrite: true (copied pixels replace existing content at target locations)

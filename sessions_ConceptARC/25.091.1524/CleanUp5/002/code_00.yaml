@@ -1,0 +1,74 @@
+task_type: grid_transformation
+grid_properties:
+  - dimensions_preserved: True
+  - background_color: White (0)
+objects:
+  - type: pixel
+    colors: [Red (2), Green (3), Yellow (4)] # Non-background colors observed
+    attributes:
+      - position: (row, column)
+      - color: integer value (2, 3, or 4)
+      - neighborhood: 8 adjacent pixels (Moore neighborhood)
+      - isolated: Boolean flag (True if all neighbors are White(0))
+relationships:
+  - type: color_frequency
+    description: Non-background colors have different counts within each input grid.
+    property: count
+  - type: spatial_adjacency
+    description: Pixels have neighbors (up, down, left, right, diagonals).
+    property: Moore neighborhood
+state_variables:
+  - name: distinct_non_background_color_count
+    description: The number of unique non-background colors present in the input grid.
+    value: integer (0, 1, or >1)
+  - name: target_colors
+    description: The set of non-background colors selected for potential removal based on frequency and the number of distinct colors.
+    value: set of integers
+actions:
+  - name: count_distinct_colors
+    description: Count the unique non-background colors in the input grid.
+    inputs: [input_grid]
+    outputs: [distinct_non_background_color_count]
+  - name: identify_target_colors
+    description: >
+      Determine the target color(s) based on frequency and the number of distinct colors.
+      If distinct_non_background_color_count > 1, target_colors are the least frequent non-background color(s).
+      If distinct_non_background_color_count == 1, target_color is the single non-background color present.
+      If distinct_non_background_color_count == 0, target_colors is empty.
+    inputs: [input_grid, distinct_non_background_color_count]
+    outputs: [target_colors]
+  - name: check_isolation
+    description: Determine if a pixel has only White neighbors (applies only when distinct_non_background_color_count == 1).
+    inputs: [pixel_position, input_grid]
+    outputs: [is_isolated]
+  - name: modify_pixel
+    description: Change the color of specific pixels to White based on the transformation rule.
+    inputs: [pixel_position, input_grid, target_colors, distinct_non_background_color_count, is_isolated (optional)]
+    outputs: [modified_pixel_color]
+    condition: >
+      (pixel_color in target_colors) AND
+      ( (distinct_non_background_color_count > 1) OR
+        (distinct_non_background_color_count == 1 AND is_isolated == True) )
+transformation_rule:
+  - description: >
+      Pixels are removed (changed to White) based on their color frequency and neighborhood,
+      conditional on the number of distinct non-background colors present.
+  - input: input_grid
+  - steps:
+      - Count the frequency of each non-background color.
+      - Determine the number of distinct non-background colors (`distinct_count`).
+      - Initialize the output grid as a copy of the input grid.
+      - If `distinct_count` > 1:
+          - Identify the color(s) with the minimum frequency (`target_colors`).
+          - For each pixel in the input grid:
+              - If the pixel's color is in `target_colors`, set the corresponding pixel in the output grid to White (0).
+      - Else if `distinct_count` == 1:
+          - Identify the single non-background color (`target_color`).
+          - For each pixel in the input grid:
+              - If the pixel's color is the `target_color`:
+                  - Check its 8 neighbors in the *input* grid.
+                  - If all neighbors are White (0) (i.e., the pixel is isolated):
+                      - Set the corresponding pixel in the output grid to White (0).
+      - Else (`distinct_count` == 0):
+          - No changes are made to the output grid.
+  - output: output_grid

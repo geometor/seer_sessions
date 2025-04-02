@@ -1,0 +1,44 @@
+task_description: Rearrange blocks of pixels in a 1D array preceding a marker pixel.
+grid_dimensionality: 1D (represented as 1xN 2D grid)
+pixel_colors_used: white(0), blue(1), red(2), gray(5), maroon(9)
+objects:
+  - type: marker
+    description: The first occurrence of a maroon (9) pixel. It defines the boundary for the transformation.
+    properties:
+      - color: 9 (maroon)
+      - index: Location in the array.
+  - type: transform_region
+    description: The sequence of pixels in the input array *before* the marker pixel.
+  - type: suffix
+    description: The sequence of pixels in the input array starting from the marker pixel to the end. This part remains unchanged in the output.
+  - type: prefix
+    description: The contiguous sequence of white (0) pixels at the beginning of the 'transform_region'. Can be empty.
+    location: Starts at index 0 of the 'transform_region'.
+  - type: colored_block
+    description: The first contiguous sequence of identical non-white pixels found within the 'transform_region'.
+    properties:
+      - color: The specific non-white color (e.g., red, blue, gray).
+      - content: The sequence of pixels forming the block.
+    location: Immediately follows the 'prefix'.
+  - type: white_block
+    description: The contiguous sequence of white (0) pixels within the 'transform_region' that immediately follows the 'colored_block'. Can be empty.
+    properties:
+      - content: The sequence of white pixels.
+    location: Immediately follows the 'colored_block'.
+actions:
+  - find_marker: Locate the index of the first maroon (9) pixel.
+  - partition_input: Separate the input array into 'transform_region' (before marker) and 'suffix' (marker and after).
+  - identify_blocks (within transform_region):
+      - Find the 'prefix' (leading white pixels).
+      - Find the 'colored_block' (first non-white sequence after prefix).
+      - Find the 'white_block' (white sequence immediately after colored_block).
+  - reconstruct_transform_region: Create the new 'transform_region' for the output by concatenating: 'prefix' + 'white_block' + 'colored_block'.
+  - form_output: Concatenate the reconstructed 'transform_region' and the original 'suffix'.
+relationships:
+  - spatial: 'prefix', 'colored_block', 'white_block' appear contiguously in that order in the input 'transform_region'.
+  - spatial_output: 'prefix', 'white_block', 'colored_block' appear contiguously in that order in the output 'transform_region'.
+  - boundary: The 'marker' separates the part of the array that is rearranged from the part that is preserved ('suffix').
+invariants:
+  - The 'suffix' part of the array remains unchanged.
+  - The total count of each color within the 'transform_region' remains the same, although their order changes.
+  - The length of the array remains unchanged.

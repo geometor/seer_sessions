@@ -1,0 +1,38 @@
+task_description: Extract a specific object based on its color and connectivity, crop it to its bounding box, and filter out other colors within that box.
+
+definitions:
+  - object: A contiguous group of pixels of the same non-white color. Connectivity is 8-way (includes diagonals).
+  - background: Pixels of color white (0) or non-white pixels forming repeating patterns or multiple separate objects of the same color.
+  - figure: The single non-white object that is targeted for extraction.
+  - target_color: The color of the figure object.
+  - bounding_box: The smallest rectangle enclosing all pixels of the target_color in the input grid.
+
+transformation_steps:
+  - step: Identify the target_color.
+    criteria: The target_color is the unique non-white color C such that all pixels of color C in the input grid form exactly one connected object.
+  - step: Determine the bounding_box of all pixels with the target_color in the input grid.
+    outputs: min_row, max_row, min_col, max_col.
+  - step: Create the output grid.
+    properties:
+      height: max_row - min_row + 1
+      width: max_col - min_col + 1
+  - step: Populate the output grid.
+    logic: For each cell (r, c) in the input grid within the bounding_box (from min_r, min_col to max_r, max_col):
+      - If input[r, c] equals the target_color:
+          output[r - min_r, c - min_col] = target_color
+      - Else:
+          output[r - min_r, c - min_col] = white (0)
+
+examples_analysis:
+  - example: train_1
+    target_color: Green (3) # Forms 1 object, Blue (1) forms 2 objects.
+    bounding_box: rows 3-9, cols 3-9 (size 7x7)
+    output_derivation: Extract input[3:10, 3:10], keep only Green(3), change others to White(0).
+  - example: train_2
+    target_color: Maroon (9) # Forms 1 object, other colors form multiple objects.
+    bounding_box: rows 3-7, cols 3-7 (size 5x5)
+    output_derivation: Extract input[3:8, 3:8], keep only Maroon(9), change others to White(0).
+  - example: train_3
+    target_color: Magenta (6) # Forms 1 object, Yellow (4) forms multiple objects.
+    bounding_box: rows 4-7, cols 4-6 (size 4x3)
+    output_derivation: Extract input[4:8, 4:7], keep only Magenta(6), change others to White(0).

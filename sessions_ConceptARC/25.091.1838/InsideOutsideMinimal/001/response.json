@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom collections import deque\n\n\"\"\"\nIdentifies the largest, hollow, rectangular object (the 'frame') in the input grid.\nIdentifies all other distinct objects.\nRemoves any object that lies entirely within the inner boundaries of the frame, changing its pixels to the background color (white, 0).\nLeaves the frame object and any objects outside the frame unchanged.\n\"\"\"\n\ndef find_objects(grid, background_color=0):\n    \"\"\"\n    Finds all contiguous objects of non-background colors in the grid.\n\n    Args:\n        grid (np.array): The input grid.\n        background_color (int): The color considered background.\n\n    Returns:\n        list: A list of dictionaries, where each dictionary represents an object\n              and contains 'color' (int) and 'coords' (set of (row, col) tuples).\n    \"\"\"\n    rows, cols = grid.shape\n    visited = np.zeros_like(grid, dtype=bool)\n    objects = []\n    \n    for r in range(rows):\n        for c in range(cols):\n            if grid[r, c] != background_color and not visited[r, c]:\n                color = grid[r, c]\n                coords = set()\n                q = deque([(r, c)])\n                visited[r, c] = True\n                \n                while q:\n                    row, col = q.popleft()\n                    coords.add((row, col))\n                    \n                    # Check 4-directional neighbors (can change to 8 if needed)\n                    for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n                        nr, nc = row + dr, col + dc\n                        \n                        if 0 <= nr < rows and 0 <= nc < cols and \\\n                           not visited[nr, nc] and grid[nr, nc] == color:\n                            visited[nr, nc] = True\n                            q.append((nr, nc))\n                            \n                objects.append({'color': color, 'coords': coords})\n                \n    return objects\n\ndef get_bounding_box(coords):\n    \"\"\"\n    Calculates the bounding box of a set of coordinates.\n\n    Args:\n        coords (set): A set of (row, col) tuples.\n\n    Returns:\n        tuple: (min_row, min_col, max_row, max_col) or None if coords is empty.\n    \"\"\"\n    if not coords:\n        return None\n    \n    rows = [r for r, c in coords]\n    cols = [c for r, c in coords]\n    return (min(rows), min(cols), max(rows), max(cols))\n\ndef transform(input_grid):\n    \"\"\"\n    Transforms the input grid by removing objects located entirely inside the largest hollow frame.\n\n    Args:\n        input_grid (list of lists): The input grid.\n\n    Returns:\n        list of lists: The transformed output grid.\n    \"\"\"\n    grid = np.array(input_grid, dtype=int)\n    output_grid = grid.copy()\n    background_color = 0\n\n    # 1. Find all distinct objects in the grid\n    objects = find_objects(grid, background_color)\n\n    if not objects:\n        return output_grid.tolist() # No objects to process\n\n    # 2. Identify the \"frame\" object. Assume it's the one with the most pixels.\n    #    This is a heuristic based on the examples. A more robust method might analyze shape.\n    frame_object = None\n    max_size = -1\n    for obj in objects:\n        if len(obj['coords']) > max_size:\n            max_size = len(obj['coords'])\n            frame_object = obj\n            \n    if frame_object is None:\n         # Should not happen based on examples, but handle defensively\n         return output_grid.tolist() \n\n    frame_coords = frame_object['coords']\n    frame_bbox = get_bounding_box(frame_coords)\n    if frame_bbox is None: # Should not happen if frame_object exists\n        return output_grid.tolist()\n        \n    min_r, min_c, max_r, max_c = frame_bbox\n\n    # 3. Iterate through all other objects\n    for obj in objects:\n        # Skip the frame object itself\n        if obj is frame_object:\n            continue\n\n        obj_coords = obj['coords']\n        is_strictly_inside = True\n\n        # 4. Check if the object is strictly inside the frame's bounding box and not touching the frame\n        for r, c in obj_coords:\n            # Check if pixel is outside the inner area defined by the bounding box\n            if not (min_r < r < max_r and min_c < c < max_c):\n                is_strictly_inside = False\n                break\n            # Optional check: Ensure the pixel isn't part of the frame itself (should be handled by find_objects)\n            # if (r, c) in frame_coords:\n            #     is_strictly_inside = False\n            #     break \n                \n        # 5. If the object is strictly inside, remove it by setting its pixels to background color\n        if is_strictly_inside:\n            for r, c in obj_coords:\n                output_grid[r, c] = background_color\n\n    return output_grid.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 3137,
+    "candidates_token_count": 1242,
+    "total_token_count": 4379,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 27.392377,
+  "retries": 1
+}

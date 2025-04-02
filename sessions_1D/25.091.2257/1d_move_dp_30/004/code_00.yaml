@@ -1,0 +1,60 @@
+InputGrid:
+  Type: 2D List (List of Lists)
+  Dimensions: 1xN (Always a single row)
+  Content: Integer values representing colors (0-9)
+OutputGrid:
+  Type: 2D List (List of Lists)
+  Dimensions: 1xN (Same as input)
+  Content: Transformed integer values
+Objects:
+  - Type: ColorBlock
+    ExistsIn: Input and Output Grids (potentially shifted)
+    Attributes:
+      - Color: Non-white(0), Non-gray(5) pixel value (e.g., 1, 2, 3)
+      - Shape: Contiguous horizontal sequence of identical pixels in the single row
+      - Count: Exactly one per grid row
+  - Type: AnchorPixel
+    ExistsIn: Input and Output Grids (fixed position)
+    Attributes:
+      - Color: Gray(5)
+      - Shape: Single pixel
+      - Count: Exactly one per grid row
+  - Type: SeparatorPixel
+    ExistsIn: Input Grid (potentially displaced in Output)
+    Attributes:
+      - Color: White(0)
+      - Location: Positioned between ColorBlock's right edge and AnchorPixel
+      - Role: Determines the magnitude of the ColorBlock shift
+  - Type: BackgroundPixel
+    ExistsIn: Input and Output Grids
+    Attributes:
+      - Color: White(0)
+      - Location: All other positions not occupied by ColorBlock or AnchorPixel
+Relationships:
+  - Type: Spatial (Input)
+    Objects: [ColorBlock, AnchorPixel]
+    Relation: ColorBlock is to the left of AnchorPixel.
+    Separation: Defined by the count of SeparatorPixels (White(0)) between ColorBlock's rightmost pixel and AnchorPixel.
+Transformation:
+  - Action: Identify
+    Target: AnchorPixel
+    Result: Column index (AnchorIndex)
+  - Action: Identify
+    Target: ColorBlock
+    Result: Color, Start Column Index (BlockStart), End Column Index (BlockEnd)
+  - Action: Count
+    Target: SeparatorPixels
+    Condition: Located between BlockEnd and AnchorIndex
+    Result: SeparationCount
+  - Action: Calculate
+    Inputs: [BlockStart, SeparationCount]
+    Operation: Addition
+    Result: NewBlockStart = BlockStart + SeparationCount
+  - Action: ConstructOutput
+    Steps:
+      1. Create a 1xN grid initialized with White(0).
+      2. Place AnchorPixel at AnchorIndex in the output row.
+      3. Place ColorBlock (using original Color and length) starting at NewBlockStart in the output row.
+Invariant:
+  - AnchorPixel position remains unchanged between Input and Output.
+  - Grid dimensions remain unchanged.

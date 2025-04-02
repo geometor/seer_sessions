@@ -1,0 +1,48 @@
+task_description: Fill the gap of white pixels between a colored object and a green pixel marker within a single row grid.
+
+input_output_shape:
+  dimensionality: 2D
+  shape: Consistent 1xN for input and output within each example pair (e.g., 1x10).
+
+elements:
+  - type: grid
+    description: A 1xN grid of pixels.
+  - type: pixel
+    attributes:
+      - color: Integer (0-9) representing White, Red, Green, Yellow, Azure, etc.
+
+objects:
+  - id: source_pixel
+    description: The rightmost non-White pixel located to the left of the green_marker within the row.
+    attributes:
+      - color: C (varies per example, e.g., 2, 4, 8)
+      - location: Column index `source_col` in row 0. Identified by scanning leftwards from `green_col - 1`.
+  - id: green_marker
+    description: A single pixel with the color Green (3). Assumed unique within the row.
+    attributes:
+      - color: 3
+      - location: Column index `green_col` in row 0.
+  - id: gap
+    description: A contiguous sequence of White (0) pixels.
+    attributes:
+      - color: 0
+      - location: Column indices strictly between `source_col` and `green_col` in row 0. The gap must contain at least one pixel (`green_col > source_col + 1`).
+
+relationships:
+  - type: spatial
+    description: The source_pixel is located to the left of the green_marker. The gap exists between them.
+    entities: [source_pixel, gap, green_marker]
+    constraints:
+      - source_pixel.column < gap.start_column
+      - gap.end_column < green_marker.column
+
+actions:
+  - id: fill_gap
+    description: Change the color of all White pixels within the identified gap to the color of the source_pixel.
+    inputs:
+      - gap pixels (identified by their location between source_pixel and green_marker)
+      - source_pixel.color
+    outputs:
+      - Modified grid where gap pixels have their color changed. Non-white pixels within the gap range, if any, remain unchanged.
+
+goal: Modify the input grid by locating the green_marker and the source_pixel, identifying the white gap between them, and filling this gap with the source_pixel's color. If no green_marker, no source_pixel, or no gap exists, the grid remains unchanged.

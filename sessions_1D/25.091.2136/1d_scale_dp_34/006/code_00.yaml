@@ -1,0 +1,38 @@
+task_type: array_transformation_1d
+components:
+  - type: single_pixel
+    id: boundary_pixel
+    description: The first blue pixel (1) encountered when scanning from left to right.
+    properties:
+      - color: blue (1)
+      - position: (variable, index `blue_idx`)
+  - type: single_pixel
+    id: source_pixel
+    description: The first non-white pixel encountered when scanning leftwards from the position immediately before the boundary_pixel (`blue_idx - 1`).
+    properties:
+      - color: (variable, not white (0), not blue (1))
+      - position: (variable, index `source_end_idx`)
+  - type: contiguous_block
+    id: gap_block
+    description: A sequence of one or more white pixels located immediately between the source_pixel and the boundary_pixel.
+    properties:
+      - color: white (0)
+      - length: (variable, >= 1)
+      - position_start: `source_end_idx + 1`
+      - position_end: `blue_idx - 1` (inclusive)
+relationship:
+  - type: spatial
+    description: The source_pixel, gap_block, and boundary_pixel appear consecutively from left to right. `source_pixel -> gap_block -> boundary_pixel`. The gap_block must contain only white pixels.
+action:
+  - type: replace_color
+    target: gap_block
+    description: Replace the color of all pixels within the gap_block with the color of the source_pixel.
+    condition: The sequence source_pixel, gap_block (all white), boundary_pixel must exist in that order, where source_pixel is not blue and gap_block has length >= 1.
+    effect: The gap_block is filled with the source_pixel's color, effectively extending the influence of the source color up to the boundary_pixel. The boundary_pixel and all other pixels remain unchanged.
+constraints:
+  - Input is a 1xN grid.
+  - The boundary_pixel must exist and not be at index 0.
+  - A source_pixel must exist to the left of the boundary_pixel.
+  - The source_pixel color must not be white (0) or blue (1).
+  - All pixels between the source_pixel and the boundary_pixel must be white (0).
+  - There must be at least one white pixel in the gap (i.e., `blue_idx > source_end_idx + 1`).

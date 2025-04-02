@@ -1,0 +1,52 @@
+task_type: object_manipulation
+grid_dimensionality: 1D
+input_elements:
+  - object_type: Block
+    description: A single contiguous sequence of identical pixels, whose color is not white (0) or green (3).
+    properties:
+      - color: Varies (azure, yellow, magenta).
+      - start_index: The index of the first pixel of the block.
+      - end_index: The index of the last pixel of the block.
+      - length: Number of pixels in the block (end_index - start_index + 1).
+  - object_type: Marker
+    description: A single green (3) pixel.
+    properties:
+      - color: green (3)
+      - index: The position of the marker in the grid.
+  - object_type: Whitespace
+    description: White (0) pixels acting as separators or background.
+    properties:
+      - color: white (0)
+      - location: Can appear before the block, between the block and marker, or after the marker.
+relationships:
+  - type: spatial
+    description: The Block always appears before the Marker in the 1D grid.
+  - type: functional
+    description: The number of Whitespace pixels located strictly between the Block's end_index and the Marker's index determines the transformation rule. Let this count be 'shift_amount'.
+transformation_rule:
+  - action: identify
+    target: The Block. Record its color, start_index, and length.
+  - action: identify
+    target: The Marker. Record its index.
+  - action: identify
+    target: The end_index of the Block.
+  - action: calculate
+    description: Count the number of white (0) pixels between the Block's end_index (exclusive) and the Marker's index (exclusive). This is the 'shift_amount'.
+    formula: shift_amount = count(grid[i] == 0 for i in range(block_end_index + 1, marker_index))
+  - action: create_output_grid
+    description: Create a new 1D grid of the same length as the input, initialized entirely with white (0) pixels.
+  - action: place_block
+    target: The Block identified in the input.
+    destination: The output grid.
+    position: Start placing the block at index `original_start_index + shift_amount`.
+  - action: place_marker
+    target: The Marker identified in the input.
+    destination: The output grid.
+    position: Place the marker at its original index.
+output_elements:
+  - object_type: grid
+    description: A 1D grid of the same size as the input.
+    properties:
+      - Contains the Block, shifted right by 'shift_amount' positions compared to its original start index.
+      - Contains the Marker at its original index.
+      - All other positions are filled with white (0) pixels.

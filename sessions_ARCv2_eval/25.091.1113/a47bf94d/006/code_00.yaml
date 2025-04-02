@@ -1,0 +1,63 @@
+task_context:
+  description: "Transforms specific solid 3x3 squares by hollowing them in place and creating a new, color-swapped 'cross' pattern object at a calculated position."
+  grid_properties:
+    - background_color: 0 (white)
+    - invariant_elements:
+        - shapes of colors other than [1, 2, 3, 4, 6] (e.g., 8, 5, 9)
+        - background pixels (unless overwritten)
+        - pre-existing hollow frames (unless overwritten)
+
+identified_objects:
+  - object_type: "solid_3x3_square"
+    properties:
+      - size: 3x3
+      - solid: true
+      - relevant_colors: [1 (blue), 2 (red), 3 (green), 4 (yellow), 6 (magenta)]
+    actions:
+      - find_all_relevant
+      - identify_color
+      - identify_top_left_location (r, c)
+
+transformations:
+  - step: 1
+    action: "determine_location_rule"
+    input_context: "Locations of all relevant solid_3x3_squares"
+    output: "location_rule_type" ('row_move' or 'column_swap')
+    logic: "If all squares are in r=1, type is 'row_move'. Otherwise, type is 'column_swap'."
+  - step: 2
+    action: "process_each_square"
+    input_object: "solid_3x3_square" at (r, c) with color C
+    sub_steps:
+      - 2a: "in_place_hollowing"
+        target_location: (r, c)
+        output_pattern: "hollow_3x3_frame" (center=0, perimeter=C)
+        details: "Modify the grid at (r,c) to create this pattern."
+      - 2b: "color_swapping"
+        input_color: C
+        rules:
+          - { input: 2 (red), output: 3 (green) }
+          - { input: 3 (green), output: 2 (red) }
+          - { input: 1 (blue), output: 4 (yellow) }
+          - { input: 4 (yellow), output: 1 (blue) }
+          - { input: 6 (magenta), output: 6 (magenta) }
+        output_color: C_partner
+      - 2c: "determine_new_location"
+        input_location: (r, c)
+        input_context: "location_rule_type" from Step 1
+        rules:
+          - condition: "location_rule_type == 'row_move'"
+            output_location: (r_new: 14, c_new: c)
+          - condition: "location_rule_type == 'column_swap' AND c == 2"
+            output_location: (r_new: r, c_new: 15)
+          - condition: "location_rule_type == 'column_swap' AND c == 15"
+            output_location: (r_new: r, c_new: 2)
+            # Assumption: No other columns trigger swap in examples
+        output_location: (r_new, c_new)
+      - 2d: "create_new_cross_pattern"
+        target_location: (r_new, c_new)
+        color: C_partner
+        output_pattern: "cross_3x3_pattern" ( `[[C_partner, 0, C_partner], [0, C_partner, 0], [C_partner, 0, C_partner]]` )
+        details: "Modify the grid at (r_new, c_new) to create this pattern. May overwrite existing pixels."
+
+final_output:
+  composition: "Input grid modified by all applied transformations (hollowing and new cross patterns)."

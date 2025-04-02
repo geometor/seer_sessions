@@ -1,0 +1,55 @@
+task_context:
+  grid_properties:
+    - dimensions_preserved: True # Input and output grids have the same shape.
+    - background_color: white (0) # Unmodified pixels are often white.
+  transformation_type: conditional_row_filling # Rows are modified based on content.
+  uncertainty: # Acknowledging data issues in the prompt/environment.
+    - Output data for examples 2 and 3 in the prompt appears corrupted/duplicated.
+    - Code execution tool environment seems to use incorrect input strings for examples 2 and 3.
+    - Analysis relies on Example 1 and hypothesized corrections for Examples 2 & 3 based on their inputs.
+objects:
+  - type: grid
+    properties:
+      - rows: Integer height
+      - columns: Integer width
+      - pixels: 2D array of integers 0-9
+  - type: row
+    properties:
+      - index: Integer position within the grid
+      - pixels: 1D array of integers 0-9
+  - type: pixel
+    properties:
+      - color: Integer 0-9 (0 is white/background, 1-9 are non-white)
+      - position: Tuple (row_index, column_index)
+  - type: pair_marker # Represents the two pixels defining the fill segment
+    properties:
+       - color: The non-white color of the pair.
+       - indices: Tuple (column_index_1, column_index_2) where index_1 < index_2.
+relationships:
+  - type: horizontal_adjacency
+    description: Pixels within the same row.
+  - type: betweenness
+    description: Pixels in a row located at column indices strictly between the indices of a pair_marker.
+actions:
+  - name: identify_unique_pair_row
+    inputs: row
+    outputs: Optional[pair_marker]
+    description: Analyzes a row to find if there exists exactly one non-white color that appears exactly twice. If found, returns a pair_marker with that color and the column indices of the two pixels. Otherwise, returns None.
+  - name: fill_between_marker
+    inputs: row, pair_marker
+    outputs: modified_row
+    description: Creates a modified version of the input row where all pixels at column indices strictly between the pair_marker's indices are changed to the pair_marker's color. The pixels at the marker indices themselves are unchanged by this specific action (they retain their original color).
+    target_pixels: Primarily background (white 0) pixels, but potentially overwrites other colors if present between the markers (though not observed in valid examples).
+  - name: copy_row
+    inputs: row
+    outputs: identical_row
+    description: Creates an identical copy of the input row.
+transformation_flow:
+  - step: Initialize an output grid as a copy of the input grid.
+  - step: Iterate through each row of the input grid using its index `r`.
+  - step: For the current row, apply `identify_unique_pair_row`.
+  - step: If `identify_unique_pair_row` returns a `pair_marker` (containing color C, index col1, index col2):
+      - Apply `fill_between_marker` to the corresponding row `r` in the *output* grid, using the identified `pair_marker`. Specifically, set `output_grid[r, col1 + 1 : col2]` to color C.
+  - step: If `identify_unique_pair_row` returns None:
+      - The corresponding row `r` in the output grid remains unchanged (because it started as a copy).
+  - step: Return the completed output grid.

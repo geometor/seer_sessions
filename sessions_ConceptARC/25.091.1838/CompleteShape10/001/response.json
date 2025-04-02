@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom collections import deque\n\n\"\"\"\nFill internal holes within the largest non-background object with the object's color.\n\n1. Identify the background color (most frequent color, typically white/0).\n2. Find all contiguous objects of non-background colors.\n3. Identify the largest object among them based on pixel count.\n4. Determine the color of this largest object (the 'fill color').\n5. Identify all background pixels that are 'internal' to this largest object. \n   A background pixel is internal if it cannot reach the grid boundary by moving only through other background pixels.\n6. Create the output grid by copying the input grid.\n7. Fill the identified internal background pixels in the output grid with the 'fill color'.\n\"\"\"\n\ndef _find_objects(grid, background_color):\n    \"\"\"Finds all contiguous objects of non-background colors.\"\"\"\n    rows, cols = grid.shape\n    visited = np.zeros_like(grid, dtype=bool)\n    objects = []\n\n    for r in range(rows):\n        for c in range(cols):\n            if grid[r, c] != background_color and not visited[r, c]:\n                obj_color = grid[r, c]\n                current_object_pixels = []\n                q = deque([(r, c)])\n                visited[r, c] = True\n                \n                while q:\n                    row, col = q.popleft()\n                    current_object_pixels.append((row, col))\n                    \n                    # Check 4 neighbors (up, down, left, right)\n                    for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n                        nr, nc = row + dr, col + dc\n                        if 0 <= nr < rows and 0 <= nc < cols and \\\n                           not visited[nr, nc] and grid[nr, nc] == obj_color:\n                            visited[nr, nc] = True\n                            q.append((nr, nc))\n                            \n                if current_object_pixels:\n                    objects.append({\n                        'color': obj_color,\n                        'pixels': set(current_object_pixels), # Use set for faster lookup\n                        'size': len(current_object_pixels)\n                    })\n                    \n    return objects\n\ndef transform(input_grid):\n    \"\"\"\n    Fills internal holes within the largest non-background object with the object's color.\n    \"\"\"\n    input_np = np.array(input_grid, dtype=int)\n    rows, cols = input_np.shape\n    output_grid = np.copy(input_np)\n\n    # 1. Identify background color (assume 0 based on examples, could calculate most frequent)\n    background_color = 0\n    # More robustly:\n    # colors, counts = np.unique(input_np, return_counts=True)\n    # background_color = colors[np.argmax(counts)]\n\n\n    # 2. Find all non-background objects\n    objects = _find_objects(input_np, background_color)\n\n    # Handle case where there are no non-background objects\n    if not objects:\n        return output_grid.tolist() \n\n    # 3. Identify the largest object\n    largest_object = max(objects, key=lambda obj: obj['size'])\n    fill_color = largest_object['color']\n    largest_object_pixels = largest_object['pixels']\n\n    # 4. Identify internal background pixels using BFS from the border\n    # Mark all background pixels reachable from the border as 'external'\n    external_background = np.zeros_like(input_np, dtype=bool)\n    q = deque()\n\n    # Add all border background pixels to the queue\n    for r in range(rows):\n        for c in [0, cols - 1]: # First and last column\n            if input_np[r, c] == background_color and not external_background[r, c]:\n                external_background[r, c] = True\n                q.append((r, c))\n    for c in range(cols):\n         for r in [0, rows - 1]: # First and last row\n            if input_np[r, c] == background_color and not external_background[r, c]:\n                external_background[r, c] = True\n                q.append((r, c))\n\n    # Perform BFS to find all reachable background pixels\n    while q:\n        r, c = q.popleft()\n        for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n            nr, nc = r + dr, c + dc\n            if 0 <= nr < rows and 0 <= nc < cols and \\\n               not external_background[nr, nc] and \\\n               input_np[nr, nc] == background_color:\n                external_background[nr, nc] = True\n                q.append((nr, nc))\n\n    # 5. Fill internal holes\n    # Iterate through the grid. If a pixel is background color and NOT marked as external,\n    # it's an internal hole relative to *something*. We only care about holes\n    # fully enclosed by the *largest* object, but the definition of 'internal' \n    # (cannot reach border via background) effectively captures this for this problem type.\n    # A background pixel not reachable from the border must be enclosed. Given the problem\n    # structure (one main object with holes), these enclosed pixels must be within that main object.\n    for r in range(rows):\n        for c in range(cols):\n            if input_np[r, c] == background_color and not external_background[r, c]:\n                # This pixel is an internal background pixel. Fill it with the largest object's color.\n                output_grid[r, c] = fill_color\n\n    return output_grid.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 4067,
+    "candidates_token_count": 1354,
+    "total_token_count": 5421,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 21.417688,
+  "retries": 1
+}

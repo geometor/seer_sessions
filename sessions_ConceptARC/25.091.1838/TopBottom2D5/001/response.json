@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom scipy.ndimage import label, find_objects\n\n\"\"\"\nIdentifies all distinct non-background objects in the input grid. \nDetermines the top-most row index for each object. \nFinds the maximum of these top-most row indices (representing the lowest starting position on the grid).\nConstructs an output grid containing only the object(s) whose top-most row index matches this maximum value, preserving their original colors and positions.\n\"\"\"\n\ndef find_all_objects(grid):\n    \"\"\"\n    Finds all connected components of non-background colors.\n\n    Args:\n        grid (np.array): The input grid.\n\n    Returns:\n        tuple: A labeled array where each object has a unique integer ID, \n               and the number of features (objects) found. Returns (None, 0) if no objects.\n    \"\"\"\n    background_color = 0\n    data = grid != background_color # Mask of non-background pixels\n    labeled_array, num_features = label(data)\n    if num_features == 0:\n        return None, 0\n    return labeled_array, num_features\n\ndef get_object_properties(labeled_array, num_features):\n    \"\"\"\n    Calculates properties like bounding box slices and top row index for each object.\n\n    Args:\n        labeled_array (np.array): The array with labeled objects.\n        num_features (int): The number of objects found.\n\n    Returns:\n        list: A list of dictionaries, each containing 'id', 'slices', and 'top_row' for an object.\n              Returns an empty list if num_features is 0.\n    \"\"\"\n    if num_features == 0 or labeled_array is None:\n        return []\n        \n    object_slices = find_objects(labeled_array)\n    properties = []\n    for i in range(num_features):\n        obj_id = i + 1\n        slices = object_slices[i]\n        # Calculate the actual minimum row index within the bounding box for this specific object\n        obj_mask = labeled_array == obj_id\n        rows, _ = np.where(obj_mask)\n        min_row = np.min(rows) # This is the true top row of the object pixels\n        \n        properties.append({\n            'id': obj_id,\n            'slices': slices,\n            'top_row': min_row # Use the actual minimum row of the object's pixels\n        })\n    return properties\n\ndef transform(input_grid):\n    \"\"\"\n    Filters the input grid to keep only the object(s) starting at the lowest row index.\n\n    Args:\n        input_grid (np.array): A 2D numpy array representing the input grid.\n\n    Returns:\n        np.array: A 2D numpy array representing the output grid.\n    \"\"\"\n    # Initialize output_grid with the background color\n    output_grid = np.zeros_like(input_grid)\n    background_color = 0 # Assuming 0 is the standard background\n\n    # Find all distinct objects (connected components of non-background colors)\n    labeled_array, num_features = find_all_objects(input_grid)\n\n    # If no objects are found, return the empty grid\n    if num_features == 0:\n        return output_grid\n\n    # Get properties (including top row) for each object\n    object_props = get_object_properties(labeled_array, num_features)\n\n    # Find the lowest starting row index among all objects\n    # The top row index is the minimum row index for an object's pixels.\n    # We want the object(s) whose top row index is the largest (closest to the bottom).\n    lowest_start_row = -1\n    for prop in object_props:\n        if prop['top_row'] > lowest_start_row:\n            lowest_start_row = prop['top_row']\n\n    # Identify objects that start at the lowest row\n    objects_to_keep_ids = [prop['id'] for prop in object_props if prop['top_row'] == lowest_start_row]\n\n    # Construct the output grid by copying only the selected objects\n    for r in range(input_grid.shape[0]):\n        for c in range(input_grid.shape[1]):\n            label_id = labeled_array[r, c]\n            if label_id in objects_to_keep_ids:\n                output_grid[r, c] = input_grid[r, c]\n\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 3118,
+    "candidates_token_count": 1039,
+    "total_token_count": 4157,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 17.910474,
+  "retries": 1
+}

@@ -1,0 +1,35 @@
+task_type: object_copying
+grid_properties:
+  width_parity_dependent: true
+
+rules:
+  - condition: grid_width is even
+    action: mirror_left_half_to_right
+    details:
+      - split_column: width / 2
+      - source_columns: 0 to (width / 2) - 1
+      - target_columns: (width / 2) to width - 1
+      - transformation: output[r][c + width/2] = input[r][c]
+      - overwrite: true (right half is completely replaced)
+
+  - condition: grid_width is odd
+    action: offset_copy_based_on_marker
+    marker_object:
+      shape: horizontal 1x2 block
+      color: 6 (magenta)
+      pixels: [[6, 6]]
+    offset_determination:
+      - find_all_instances: marker_object
+      - calculate_grid_center: ( (height-1)/2, (width-1)/2 )
+      - find_closest_marker: instance whose top-left (r_marker, c_marker) has minimum Euclidean distance to grid_center
+      - offset_vector: (dr, dc) = (r_marker, c_marker)
+    copy_process:
+      - identify_all_source_objects: contiguous non-white pixel groups
+      - exclude_object: the marker object used for offset determination
+      - for_each_included_object:
+        - source_location: top-left (r_obj, c_obj)
+        - target_location: top-left (r_obj + dr, c_obj + dc)
+        - copy_pixels: for each pixel (r_p, c_p) in the object, place its color at (r_p + dr, c_p + dc) in the output
+        - boundary_check: only place pixels if target coordinates are within grid bounds (0 <= row < height, 0 <= col < width)
+        - overwrite: true (copied pixels replace existing content at target locations)
+    initial_state: output grid starts as a copy of the input grid

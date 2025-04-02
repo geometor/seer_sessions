@@ -1,0 +1,49 @@
+task_elements:
+  - element: grid
+    attributes: [input, output, 2D, colored_pixels]
+  - element: pixel
+    attributes: [color_value_0_to_9]
+  - element: signal_pixels
+    value: 1 # Blue
+    role: control_information
+    properties:
+      - count (N): Determines repetition frequency.
+      - location: Defines the payload boundary (left/top) and repetition orientation (horizontal/vertical).
+  - element: payload_grid
+    description: The sub-grid identified for repetition. It's the portion of the input grid spatially distinct from the signal_pixels (either to the left or above).
+    attributes: [sub_grid, variable_color, variable_shape]
+  - element: separator
+    value: 0 # White
+    role: delimiter_between_repetitions
+    properties:
+      - shape: Either a single column (height of payload) or a single row (width of payload).
+      - orientation: Matches the repetition direction.
+actions:
+  - action: identify_signal
+    inputs: [input_grid]
+    outputs: [signal_pixels_location, signal_pixels_count (N), repetition_orientation]
+    criteria: Find blue (1) pixels. Determine their collective bounding box and location relative to the rest of the grid content.
+  - action: identify_payload
+    inputs: [input_grid, signal_pixels_location]
+    outputs: [payload_grid]
+    criteria: Extract the sub-grid that does not contain the signal pixels (based on location - left or above).
+  - action: determine_repetition_count
+    inputs: [signal_pixels_count (N), repetition_orientation]
+    outputs: [total_repetitions (R)]
+    logic: If orientation is horizontal, R = N + 1. If orientation is vertical, R = N.
+  - action: determine_separator
+    inputs: [payload_grid, repetition_orientation]
+    outputs: [separator_grid]
+    logic: Create a grid of white (0) pixels. If orientation is horizontal, separator is a column with payload's height. If orientation is vertical, separator is a row with payload's width.
+  - action: construct_output
+    inputs: [payload_grid, separator_grid, total_repetitions (R), repetition_orientation]
+    outputs: [output_grid]
+    logic: Concatenate R copies of the payload_grid, interleaved with R-1 copies of the separator_grid, either horizontally or vertically based on orientation.
+relationships:
+  - relationship: spatial_separation
+    between: [payload_grid, signal_pixels]
+    description: The payload and signal pixels occupy distinct regions of the input grid (e.g., payload left, signal right; payload top, signal bottom).
+  - relationship: control
+    subject: signal_pixels
+    object: output_grid_structure
+    description: The count and arrangement of signal pixels dictate the repetition count, direction, and separation pattern in the output.

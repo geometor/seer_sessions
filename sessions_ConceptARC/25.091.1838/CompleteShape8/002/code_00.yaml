@@ -1,0 +1,57 @@
+task_elements:
+  - type: background
+    color: white (0)
+    role: canvas
+  - type: object_group
+    properties:
+      - color: various (non-white, non-gray, e.g., yellow(4), magenta(6), orange(7))
+      - pixels: potentially scattered clusters of pixels of the same color
+    role: defines_bounding_box
+  - type: object
+    properties:
+      - color: gray (5)
+      - shape: arbitrary
+    role: ignored_element / noise
+
+actions:
+  - action: initialize_grid
+    output: grid filled with background color (white, 0) matching input dimensions.
+  - action: identify_target_colors
+    input: input_grid
+    output: set of unique colors, excluding white (0) and gray (5).
+  - action: find_pixels_for_color
+    input: input_grid, target_color
+    output: coordinates of all pixels matching target_color.
+  - action: calculate_bounding_box
+    input: set of pixel coordinates for a single target color
+    output: minimum and maximum row and column indices (min_r, max_r, min_c, max_c)
+    description: Determine the smallest rectangle enclosing all input pixels of that specific target color.
+  - action: fill_rectangle
+    input: output_grid, bounding_box_coordinates, target_color
+    output: modified output_grid
+    description: Fill the specified rectangular area in the output grid with the target color.
+  - action: filter_remove
+    input: object
+    condition: color is gray (5)
+    description: Gray objects/pixels are ignored in the transformation process.
+
+relationships:
+  - relation: input_color_group_to_output_rectangle
+    description: For each non-white, non-gray color present in the input, all pixels of that color collectively define a bounding box. The corresponding area in the output grid is filled entirely with that color.
+  - relation: independence_of_colors
+    description: The bounding box calculation and filling process is performed independently for each target color.
+
+flow:
+  - step: Initialize an output grid with the same dimensions as the input, filled with white (0).
+  - step: Identify all unique colors in the input grid, excluding white (0) and gray (5).
+  - step: For each identified unique color (target_color):
+      - Find all pixels (coordinates) in the input grid that have the target_color.
+      - If any pixels are found:
+          - Calculate the overall bounding box (min_r, max_r, min_c, max_c) containing all these pixels.
+          - Fill the rectangular area defined by this bounding box in the output grid with the target_color.
+  - step: Return the final output grid.
+
+discrepancy_note:
+  - The rule described above perfectly matches the transformation for train_1.
+  - Applying this rule to train_2 produces an output grid (shown as "Transformed Output 2 (based on BBox rule)" in the metrics) that differs from the "Provided Expected Output 2".
+  - We proceed assuming the "fill overall bounding box" rule is the intended transformation for the task.

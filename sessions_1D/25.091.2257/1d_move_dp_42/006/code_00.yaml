@@ -1,0 +1,63 @@
+task_description: "Rearrange segments of a 1D pixel array based on a marker pixel."
+elements:
+  - type: array
+    description: "A 1D array of pixel colors (integers 0-9)."
+  - type: pixel
+    color: white (0)
+    role: background / gap_filler
+  - type: pixel
+    color: magenta (6)
+    role: marker
+    properties:
+      - "Acts as a fixed reference point for rearrangement."
+      - "Expected to appear exactly once."
+  - type: segment
+    identifier: prefix
+    description: "Contiguous sequence of pixels from the start of the array up to the beginning of the payload block."
+    properties:
+      - "Can be empty."
+      - "Maintains its position relative to the start of the array in the output."
+  - type: segment
+    identifier: payload_block
+    description: "The first contiguous sequence of non-background (non-zero) pixels found when scanning from the start of the array towards the marker."
+    properties:
+      - "Must appear before the marker pixel."
+      - "Its position changes in the output."
+  - type: segment
+    identifier: gap_block
+    description: "Contiguous sequence of pixels located strictly between the end of the payload_block and the marker pixel."
+    properties:
+      - "Consists solely of background pixels (0) in the examples."
+      - "Its length can be zero or more."
+      - "Its position changes in the output."
+  - type: segment
+    identifier: suffix
+    description: "Contiguous sequence of pixels from the position immediately after the marker pixel to the end of the array."
+    properties:
+      - "Can be empty."
+      - "Maintains its position relative to the marker pixel in the output."
+
+actions:
+  - action: locate
+    target: marker pixel (6)
+    result: marker_index
+  - action: locate
+    target: payload_block
+    condition: "Scan array from index 0 up to (but not including) marker_index."
+    result: payload_start_index, payload_end_index, payload_pixels
+    constraints:
+        - "Find the *first* contiguous block of non-zero pixels."
+  - action: identify_segments
+    inputs: input_array, marker_index, payload_start_index, payload_end_index
+    results:
+      - prefix_pixels: input_array[0 : payload_start_index]
+      - gap_pixels: input_array[payload_end_index + 1 : marker_index]
+      - marker_pixel: input_array[marker_index]
+      - suffix_pixels: input_array[marker_index + 1 : end]
+  - action: construct_output
+    description: "Assemble the output array by concatenating segments in a new order."
+    order: prefix_pixels + gap_pixels + payload_pixels + marker_pixel + suffix_pixels
+
+conditions:
+  - "If no marker pixel (6) is found, the input array is returned unchanged."
+  - "If no payload_block (non-zero segment before the marker) is found, the input array is returned unchanged."

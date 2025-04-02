@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\nIdentify objects by color. Find the color with exactly two objects (anchors) and the color with exactly one object (mobile). Determine the spatial offset between the first anchor (top-leftmost) and the mobile object. Apply this same offset to the second anchor to find the target location. Copy the mobile object to the target location in the output grid, leaving the rest of the input grid unchanged.\n\"\"\"\n\nimport numpy as np\nfrom collections import defaultdict\n\ndef find_objects(grid):\n    \"\"\"\n    Finds all contiguous objects of the same color in the grid.\n    \n    Args:\n        grid (np.ndarray): The input grid.\n\n    Returns:\n        list: A list of dictionaries, each representing an object with keys:\n              'color' (int): The color of the object.\n              'pixels' (set): A set of (row, col) tuples for the object's pixels.\n              'bbox' (tuple): The bounding box (min_row, min_col, max_row, max_col).\n    \"\"\"\n    rows, cols = grid.shape\n    visited = np.zeros_like(grid, dtype=bool)\n    objects = []\n\n    for r in range(rows):\n        for c in range(cols):\n            if not visited[r, c] and grid[r, c] != 0: # 0 is background\n                color = grid[r, c]\n                obj_pixels = set()\n                q = [(r, c)]\n                visited[r, c] = True\n                min_r, min_c = r, c\n                max_r, max_c = r, c\n\n                while q:\n                    row, col = q.pop(0)\n                    obj_pixels.add((row, col))\n                    min_r = min(min_r, row)\n                    min_c = min(min_c, col)\n                    max_r = max(max_r, row)\n                    max_c = max(max_c, col)\n\n                    # Check neighbors (4-connectivity)\n                    for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n                        nr, nc = row + dr, col + dc\n                        if 0 <= nr < rows and 0 <= nc < cols and \\\n                           not visited[nr, nc] and grid[nr, nc] == color:\n                            visited[nr, nc] = True\n                            q.append((nr, nc))\n\n                objects.append({\n                    'color': color,\n                    'pixels': obj_pixels,\n                    'bbox': (min_r, min_c, max_r, max_c)\n                })\n    return objects\n\ndef transform(input_grid):\n    \"\"\"\n    Applies the transformation rule: Copy a single object based on its relative\n    position to a pair of anchor objects.\n\n    Args:\n        input_grid (np.ndarray): The input 2D array representing the grid.\n\n    Returns:\n        np.ndarray: The transformed 2D array.\n    \"\"\"\n    \n    # 1. Find all objects in the input grid\n    objects = find_objects(input_grid)\n\n    # 2. Categorize objects by color and count them\n    objects_by_color = defaultdict(list)\n    for obj in objects:\n        objects_by_color[obj['color']].append(obj)\n\n    anchor_color = None\n    mobile_color = None\n    anchor_objects = []\n    mobile_object = None\n\n    # 3. Find Anchor Pair and Mobile Object\n    for color, obj_list in objects_by_color.items():\n        if len(obj_list) == 2:\n            anchor_color = color\n            anchor_objects = obj_list\n        elif len(obj_list) == 1:\n            mobile_color = color\n            mobile_object = obj_list[0]\n\n    # Check if we found the required objects\n    if anchor_color is None or mobile_color is None:\n        # If the pattern doesn't match (e.g., different counts), return the input unchanged\n        # or handle as an error, depending on desired behavior. \n        # For now, return a copy of the input.\n        return np.copy(input_grid) \n\n    # 4. Order Anchors (Anchor1 is top-leftmost)\n    anchor1 = min(anchor_objects, key=lambda obj: (obj['bbox'][0], obj['bbox'][1]))\n    anchor2 = max(anchor_objects, key=lambda obj: (obj['bbox'][0], obj['bbox'][1]))\n\n    # 5. Calculate Offset\n    mob_r0, mob_c0, _, _ = mobile_object['bbox']\n    anc1_r0, anc1_c0, _, _ = anchor1['bbox']\n    delta_row = mob_r0 - anc1_r0\n    delta_col = mob_c0 - anc1_c0\n\n    # 6. Determine Copy Position\n    anc2_r0, anc2_c0, _, _ = anchor2['bbox']\n    copy_target_r0 = anc2_r0 + delta_row\n    copy_target_c0 = anc2_c0 + delta_col\n    \n    # 7. Generate Output: Start with a copy of the input\n    output_grid = np.copy(input_grid)\n    rows, cols = output_grid.shape\n\n    # 8. Copy the mobile object's pixels to the target location\n    mobile_color = mobile_object['color']\n    for r_pix, c_pix in mobile_object['pixels']:\n        # Calculate pixel position relative to the mobile object's top-left\n        relative_r = r_pix - mob_r0\n        relative_c = c_pix - mob_c0\n        \n        # Calculate the target pixel position in the output grid\n        target_r = copy_target_r0 + relative_r\n        target_c = copy_target_c0 + relative_c\n\n        # Ensure the target position is within bounds before drawing\n        if 0 <= target_r < rows and 0 <= target_c < cols:\n            output_grid[target_r, target_c] = mobile_color\n\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 3623,
+    "candidates_token_count": 1441,
+    "total_token_count": 5064,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 17.395818,
+  "retries": 1
+}

@@ -1,0 +1,37 @@
+task_type: filtering
+grid_properties:
+  - dimensions: consistent_input_output # Input and output grids have the same height and width
+input_elements:
+  - type: background
+    color: white (0)
+  - type: pixel_group
+    color: variable # Multiple non-white colors exist (e.g., green, yellow, azure, magenta)
+    frequency: variable # Different colors appear with different frequencies
+output_elements:
+  - type: background
+    color: white (0)
+  - type: pixel_group
+    color: subset_of_input # Only some non-white colors from the input may remain
+    location: filtered_by_dominant_color_bbox # Pixels remaining are spatially constrained
+transformation:
+  - action: identify_dominant_color
+    criteria: most_frequent_non_white_pixel_count
+    input: input_grid
+    output: dominant_color_value
+  - action: find_bounding_box
+    input: locations_of_dominant_color_pixels
+    output: min_row, max_row, min_col, max_col
+  - action: filter_pixels
+    input: input_grid, dominant_color_value, bounding_box
+    output: output_grid
+    rule: |
+      Keep only input pixels that meet all conditions:
+      1. Color is not white (0).
+      2. Color is not the dominant_color_value.
+      3. Pixel location (row, col) is within the bounding_box (inclusive).
+    otherwise: Pixel becomes white (0) in the output.
+relationships:
+  - type: spatial_containment
+    description: Pixels retained in the output must lie within the bounding box defined by the most frequent color in the input.
+  - type: color_exclusion
+    description: The most frequent color itself is always excluded from the output.

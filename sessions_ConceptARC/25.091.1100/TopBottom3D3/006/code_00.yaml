@@ -1,0 +1,58 @@
+task_description: Identify two distinct non-background colored objects. Distinguish them based on connected components (4-way adjacency). One color ('inner_color') forms a single connected component, while the other ('frame_color') forms multiple disconnected components. Create an output grid where the area covered by the union of both input shapes is filled entirely with the 'frame_color'. All other pixels are background (0).
+
+elements:
+  - object: background
+    color_property: white (0)
+    role: static background
+  - object: shape_A
+    color_property: non-zero color (C1)
+    topology: forms N connected components (N>=1)
+    role: candidate for inner or frame
+  - object: shape_B
+    color_property: non-zero color (C2), different from C1
+    topology: forms M connected components (M>=1)
+    role: candidate for inner or frame
+  - object: inner_shape
+    source_element: shape_A or shape_B
+    condition: The shape whose color forms exactly ONE connected component in the input grid.
+    role: identifies pixels to be replaced/included in the union.
+  - object: frame_shape
+    source_element: shape_A or shape_B
+    condition: The shape whose color forms MORE THAN ONE connected component in the input grid.
+    role: determines the fill color for the output shape union.
+
+relationships:
+  - type: spatial_union
+    description: The output shape occupies the exact pixel coordinates covered by EITHER the inner_shape OR the frame_shape in the input grid.
+  - type: color_assignment
+    description: All pixels within the spatial union in the output grid are assigned the color of the frame_shape. Pixels outside the union are assigned the background color (0).
+
+actions:
+  - action: identify_colors
+    inputs: input_grid
+    outputs: background_color (0), color1, color2
+  - action: count_components
+    inputs: input_grid, color
+    outputs: component_count
+    method: Use 4-way adjacency labelling for the given color.
+  - action: determine_roles
+    inputs: color1, color2, component_count1, component_count2
+    outputs: inner_color, frame_color
+    logic: >
+      If count1=1 and count2>1, then inner=color1, frame=color2.
+      If count2=1 and count1>1, then inner=color2, frame=color1.
+      (Handle cases where this condition isn't met, e.g., both 1, both >1, or only one color present).
+  - action: find_shape_union
+    inputs: input_grid, inner_color, frame_color
+    outputs: set_of_union_coordinates
+    logic: Find all (row, col) where input_grid[row, col] is inner_color or frame_color.
+  - action: create_output
+    inputs: grid_dimensions, set_of_union_coordinates, frame_color, background_color(0)
+    outputs: output_grid
+    logic: >
+      Initialize an output grid of the same dimensions with background_color.
+      For each coordinate in set_of_union_coordinates, set the output grid pixel to frame_color.
+
+derived_properties:
+  - component_count: The number of distinct, non-adjacent groups of pixels for a single color.
+  - shape_union_mask: A boolean grid indicating pixels belonging to either the inner or frame color.

@@ -1,0 +1,54 @@
+task_description: Fill the empty space (white pixels) enclosed by an outer boundary shape (container) with the color of the shape(s) found inside that boundary.
+
+elements:
+  - object: container_shape
+    description: The shape forming the outermost boundary of the non-white pattern. Identified by its color appearing on the bounding box of all non-white pixels, or by touching the grid edges if padding allows.
+    properties:
+      - color: The color forming the boundary (container_color). Varies (Green, Yellow, Magenta).
+      - pixels: The set of all pixels having the container_color.
+  - object: inner_shape
+    description: A shape located spatially inside the container_shape, whose color does not typically touch the grid edges or the bounding box of all non-white pixels.
+    properties:
+      - color: The color used for filling (fill_color). Varies (Red, Gray, Orange).
+      - pixels: The set of pixels forming the inner object. Used to find a starting point for the fill.
+  - object: fill_region
+    description: The region of white pixels spatially enclosed by the container_shape.
+    properties:
+      - color: Initially white (0). Becomes fill_color in the output.
+      - location: Inside the container_shape boundary.
+  - object: background
+    description: White pixels outside the container_shape.
+    properties:
+      - color: white (0). Remains unchanged.
+
+relationships:
+  - type: boundary
+    from: container_shape
+    to: fill_region
+    description: The container_shape pixels define the outer limit for the fill_region.
+  - type: source_color
+    from: inner_shape
+    to: fill_region
+    description: The color of the inner_shape determines the color the fill_region becomes.
+
+actions:
+  - action: identify_colors_roles
+    input: input_grid
+    output: container_color, fill_color, inner_shape_pixels
+    description: Determine which color forms the outer boundary (container) and which is enclosed (inner, providing fill color). Heuristics like edge-touching or bounding box perimeter analysis might be needed. Find the pixels of the inner shape.
+  - action: conditional_flood_fill
+    input: input_grid, container_color, fill_color, inner_shape_pixels
+    output: output_grid
+    description: >
+      Initialize output_grid as a copy of input_grid.
+      Select a starting pixel from inner_shape_pixels.
+      Perform a flood fill (e.g., BFS) starting from this pixel.
+      The fill propagates through pixels whose original color is NOT container_color.
+      Only pixels whose original color is white (0) are recolored to fill_color in the output_grid.
+      The fill stops at pixels whose original color IS container_color.
+
+output_grid_composition:
+  - Pixels matching container_color in the input remain unchanged.
+  - Pixels matching inner_color (fill_color) in the input remain unchanged.
+  - White pixels inside the container boundary are changed to fill_color.
+  - White pixels outside the container boundary remain unchanged.

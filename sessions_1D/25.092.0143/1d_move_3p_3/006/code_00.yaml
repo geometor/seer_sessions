@@ -1,0 +1,42 @@
+task_type: object_transformation
+grid_dimensionality: 2D # Input/Output are technically 2D grids (list of lists)
+grid_shape_input: [1, N] # Specifically 1 row, N columns (N=30 in examples)
+grid_shape_output: [1, N] # Same shape as input
+components:
+  - object: colored_block
+    count: 1
+    properties:
+      - shape: contiguous_horizontal_segment
+      - color: non-white (value > 0)
+      - background_contrast: True (distinct from background)
+      - location: defined by start_index and end_index (exclusive) within the single row
+      - size: length (end_index - start_index) varies between examples
+  - object: background
+    count: 1
+    properties:
+      - shape: remaining_pixels_in_row
+      - color: white (value 0)
+actions:
+  - name: extract_row
+    target: input_grid
+    details: The single row of pixels is extracted from the input list[list[int]].
+  - name: find_object_properties
+    target: colored_block (within the extracted row)
+    details: Determine the start_index, end_index, length, and color of the block.
+  - name: initialize_output_row
+    details: Create a new row of the same length as the input row, filled with the background color (white).
+  - name: calculate_new_position
+    target: colored_block
+    details: New start_index = original start_index + 3.
+  - name: place_object
+    target: output_row
+    source: colored_block
+    details: Copy the pixels of the colored_block (using its original color and length) into the output row starting at the calculated new_start_index, respecting the row boundaries (clipping if necessary).
+  - name: format_output
+    target: output_row
+    details: Wrap the final output row in a list to match the required list[list[int]] format.
+constraints:
+  - The input grid always contains exactly one row.
+  - The input row always contains exactly one contiguous block of non-white color.
+  - The shift distance is always +3 positions horizontally.
+  - The color and length of the block are preserved, subject to boundary clipping.

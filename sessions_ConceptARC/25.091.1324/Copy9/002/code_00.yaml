@@ -1,0 +1,53 @@
+elements:
+  - role: grid
+    description: A 2D array of pixels with integer values 0-9 representing colors.
+  - role: object
+    description: A contiguous block of pixels (including diagonals) of the same non-white color.
+    properties:
+      - color: The color value (1-9) of the pixels in the object.
+      - size: The number of pixels comprising the object.
+      - shape: The spatial arrangement of the pixels, defined by the set of their coordinates.
+      - position: The set of coordinates {(r1, c1), (r2, c2), ...} occupied by the object's pixels.
+      - bounding_box: The smallest rectangle (min_row, min_col, max_row, max_col) enclosing the object.
+      - center_offset: The row and column offset (dr, dc) from the top-left of the bounding box to its calculated center pixel (using floor division for dimensions).
+  - role: marker_pixel
+    description: An object with a size of exactly one pixel.
+    relationship: Corresponds to a source object of the same color, marking the target center for placement.
+  - role: source_object
+    description: The largest object (by pixel count) of a specific color, excluding any marker pixels of that color. Must have size > 1.
+    relationship: Its shape is copied and centered onto the location of a marker pixel of the same color.
+
+actions:
+  - name: identify_objects_by_color
+    description: Find all distinct contiguous objects for each non-white color in the input grid. Record their color, coordinates, and size.
+  - name: classify_objects
+    description: For each color present, group objects into single-pixel markers and potential source objects (size > 1).
+  - name: find_marker_and_largest_source
+    description: For each color, check if there is exactly one marker pixel and at least one potential source object. If so, identify the coordinate of the marker and the set of coordinates for the largest source object.
+  - name: calculate_source_properties
+    description: For the identified largest source object, determine its bounding box and calculate the center offset (dr, dc) relative to the bounding box's top-left corner.
+  - name: calculate_placement_origin
+    description: Determine the target top-left coordinate (target_r, target_c) on the output grid where the bounding box of the source object *would* start if its center offset pixel were placed directly onto the marker pixel's coordinate. `target_r = marker_r - center_offset_r`, `target_c = marker_c - center_offset_c`.
+  - name: copy_source_shape
+    description: Iterate through *only* the actual coordinates {(src_r, src_c)} belonging to the largest source object. For each coordinate, calculate its relative position (rel_r, rel_c) within the source's bounding box (`rel_r = src_r - src_min_r`, `rel_c = src_c - src_min_c`). Calculate the final target coordinate on the output grid (`final_r = target_r + rel_r`, `final_c = target_c + rel_c`).
+  - name: place_pixels
+    description: Place the source object's color at each calculated `(final_r, final_c)` on the output grid, provided the coordinate is within the grid boundaries. This overwrites any existing pixel, including the original marker. Pixels *not* part of the source object shape are *not* drawn, even if they fall within the conceptual placed bounding box.
+  - name: preserve_others
+    description: Pixels in the initial grid that are not overwritten by the `place_pixels` action remain unchanged in the output grid.
+
+flow:
+  - Initialize the output grid as a copy of the input grid.
+  - Identify all colored objects and classify them by color.
+  - For each color:
+    - Check if the criteria (1 marker, >=1 source) are met.
+    - If yes:
+      - Identify the marker coordinate (marker_r, marker_c).
+      - Identify the largest source object (set of source coordinates).
+      - Calculate source bounding box (src_min_r, src_min_c, ...).
+      - Calculate source center offset (center_offset_r, center_offset_c).
+      - Calculate placement origin (target_r, target_c).
+      - For each pixel (src_r, src_c) *in the largest source object's set of coordinates*:
+        - Calculate its relative position (rel_r, rel_c).
+        - Calculate its final target position (final_r, final_c).
+        - If (final_r, final_c) is within grid bounds, set `output_grid[final_r, final_c] = color`.
+  - Return the modified output grid.

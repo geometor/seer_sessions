@@ -1,0 +1,41 @@
+task_type: pattern_replacement
+grid_dimensionality: 1D (single row)
+grid_size: Fixed length of 33 for all examples.
+colors:
+  - background: white (0)
+  - foreground: variable (magenta=6, orange=7, maroon=9), exactly one per grid.
+objects:
+  - type: pixel
+    properties:
+      - color: Either background (0) or foreground (C).
+      - index: Position within the 1D grid.
+  - type: pattern
+    properties:
+      - pattern_type: isolated_foreground
+      - sequence: [white(0), foreground(C), white(0)]
+      - location: indices [i-1, i, i+1]
+  - type: pattern
+    properties:
+      - pattern_type: foreground_block
+      - sequence: [foreground(C), foreground(C), foreground(C)]
+      - location: indices [i-1, i, i+1] (after transformation)
+input_features:
+  - Contains exactly one foreground color 'C'.
+  - May contain one or more instances of the 'isolated_foreground' pattern.
+  - May contain contiguous blocks of the foreground color.
+output_features:
+  - Instances of the 'isolated_foreground' pattern are replaced by the 'foreground_block' pattern.
+  - All other pixels remain unchanged from the input.
+transformation:
+  - name: expand_isolated_pixel
+  - description: Replaces a sequence [white(0), foreground(C), white(0)] at indices [i-1, i, i+1] with [foreground(C), foreground(C), foreground(C)] at the same indices.
+  - input_pattern: [0, C, 0]
+  - output_pattern: [C, C, C]
+  - condition: The pattern must occur within the grid boundaries (i.e., index `i` must be between 1 and length-2, inclusive).
+  - scope: Operates horizontally on adjacent pixels. Applied simultaneously to all occurrences based on the *original* input state.
+relationship: horizontal_adjacency
+invariance:
+  - grid_length (remains 33)
+  - color_palette (uses only white and the original foreground color)
+  - positions and colors of pixels not part of an 'isolated_foreground' pattern.
+implementation_note: It is crucial to perform modifications on a *copy* of the input grid and return the modified copy, rather than modifying the input grid in place or returning the original input grid.

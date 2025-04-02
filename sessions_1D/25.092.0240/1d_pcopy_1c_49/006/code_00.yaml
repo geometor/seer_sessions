@@ -1,0 +1,57 @@
+task_type: pattern_replacement_1D
+grid_dimensionality: 1D (represented as 1xN 2D list)
+grid_size: fixed at 1x32 for all examples
+
+elements:
+  - element: background
+    color: white (0)
+    role: default fill, part of template and target patterns
+
+  - element: template_pattern_marker
+    description: A fixed sequence [0, C, C, C] at the start of the grid (indices 0-3), where C is a non-background color.
+    properties:
+      - location: indices [0, 1, 2, 3]
+      - structure: [background, active_color, active_color, active_color]
+      - color_C: The non-background color (e.g., azure '8', magenta '6') varies per task instance but is consistent within the pattern.
+    role: Defines the 'active_color' (C) for the transformation and remains unchanged in the output.
+
+  - element: target_sequence
+    description: A sequence [0, C, 0] found elsewhere in the grid.
+    properties:
+      - location: variable, must occur at index `i` where `i > 3`.
+      - structure: [background, active_color, background]
+      - color_C: Must match the 'active_color' defined by the template_pattern_marker.
+    role: Identifies locations for replacement.
+
+  - element: replacement_sequence
+    description: The sequence that replaces a target_sequence.
+    properties:
+      - structure: [active_color, active_color, active_color]
+      - color_C: Same as the 'active_color'.
+    role: The output pattern applied at target locations.
+
+actions:
+  - action: identify_active_color
+    input: input_grid
+    condition: Check if grid[0][0]==0 and grid[0][1]==grid[0][2]==grid[0][3] != 0.
+    output: active_color C = grid[0][1]
+    fallback: If condition fails, return input unchanged.
+
+  - action: find_and_replace
+    input: input_grid, active_color C
+    output: modified_grid
+    process:
+      1. Create a mutable copy of the input grid row.
+      2. Iterate through the input row indices `i` from 1 up to `width - 2`.
+      3. If `i > 3` AND input_row[i] == C AND input_row[i-1] == 0 AND input_row[i+1] == 0:
+         - This identifies a target_sequence centered at `i`.
+         - Modify the copied row: Set index `i-1` to C, index `i` to C, index `i+1` to C.
+      4. Return the modified row wrapped in a list.
+
+relationships:
+  - relationship: color_consistency
+    between: [template_pattern_marker, target_sequence, replacement_sequence]
+    details: The non-background color 'C' must be the same across the template marker, the target sequence center, and the replacement sequence.
+  - relationship: positional_exclusion
+    between: [template_pattern_marker, target_sequence]
+    details: Target sequences cannot overlap with the initial template pattern marker (target center index `i` must be > 3).

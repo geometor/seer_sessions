@@ -1,0 +1,83 @@
+# Common Properties
+grid_dimensions:
+  - input_height == output_height
+  - input_width == output_width
+background_color: 0 # white
+
+# Objects and Their Properties
+objects:
+  - type: horizontal_line
+    description: A contiguous sequence of one or more pixels of the same non-white color in a single row.
+    properties:
+      - color (line_color)
+      - row_index (line_row)
+      - start_column_index (start_col)
+      - end_column_index (end_col)
+      - length (end_col - start_col + 1)
+      - midpoint_column_index (floor((start_col + end_col) / 2))
+  - type: marker_pixel_candidate
+    description: A non-white pixel located in the row directly above a horizontal_line, within the horizontal span (start_col to end_col) of that line.
+    properties:
+      - color (candidate_marker_color)
+      - position (candidate_marker_pos = (line_row - 1, col))
+        where start_col <= col <= end_col
+  - type: unique_marker_pixel
+    description: A marker_pixel_candidate that is the *only* non-white pixel found in the row above the associated horizontal_line, within its horizontal span.
+    properties:
+      - color (marker_color) # Inherited from candidate
+      - position (marker_pos) # Inherited from candidate
+  - type: vertical_line_output
+    description: A vertical line segment, 3 pixels high, created in the output if a unique_marker_pixel is found for a horizontal_line.
+    properties:
+      - color (derived from marker_color)
+      - column_index (derived from horizontal_line midpoint_column_index)
+      - top_row_index (line_row - 1)
+      - center_row_index (line_row)
+      - bottom_row_index (line_row + 1)
+
+# Relationships and Actions
+transformation:
+  - action: initialize
+    target: output grid
+    value: copy of input grid
+  - action: find_all
+    target: horizontal_line objects in the input grid.
+  - action: for_each
+    target: identified horizontal_line
+    sub_actions:
+      - action: find_all_and_count
+        target: marker_pixel_candidate(s)
+        condition: located at row (line_row - 1) between columns start_col and end_col (inclusive).
+        outputs:
+          - candidate_markers (list of {'color': color, 'pos': (row, col)})
+          - num_candidates (count of candidate_markers)
+      - action: check_condition
+        condition: num_candidates == 1
+        if_true:
+          - action: extract_properties
+            source: the single element in candidate_markers
+            outputs:
+              - marker_color
+              - marker_pos
+          - action: calculate
+            input: start_col, end_col
+            operation: floor((start_col + end_col) / 2)
+            outputs:
+              - midpoint_col
+          - action: draw_vertical_line
+            target: output grid
+            parameters:
+              - column: midpoint_col
+              - top_row: line_row - 1
+              - center_row: line_row
+              - bottom_row: line_row + 1
+              - color: marker_color
+            effect: Overwrites existing pixels at these three locations (checking grid boundaries).
+          - action: set_pixel
+            target: output grid
+            parameters:
+              - position: marker_pos
+              - color: 0 # white (background color)
+            effect: Overwrites the pixel at the original marker location.
+  - action: preserve
+    target: All pixels from the initial output grid copy remain unchanged unless modified by the draw_vertical_line or set_pixel actions.

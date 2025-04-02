@@ -1,0 +1,55 @@
+task_description: "Conditionally change a single magenta pixel to white based on the colors of the two closest enclosing objects found by exploring outwards through adjacent background."
+
+elements:
+  - element: grid
+    description: "A 2D array of pixels (0-9)."
+  - element: pixel
+    properties:
+      - color: integer value 0-9
+      - position: (row, column)
+  - element: background
+    value: 0 (white)
+  - element: object
+    description: "A contiguous block of pixels of the same non-background color."
+    properties:
+      - color: The object's color.
+      - pixels: Set of (row, column) coordinates.
+  - element: target_pixel
+    identifier: "The unique pixel with color 6 (magenta)."
+    properties:
+      - color: 6
+      - position: P
+  - element: enclosure
+    description: "Defined by proximity search through background."
+    properties:
+      - C_inner: Color of the first non-background, non-target object encountered via BFS from background adjacent to P.
+      - C_outer: Color of the first non-background object (not C_inner, not target) encountered via BFS from background adjacent to the C_inner object.
+
+transformation:
+  - action: locate_target
+    input: grid
+    output: position P or None
+    condition: "Exactly one pixel with color 6 exists."
+  - action: find_inner_color
+    input: grid, P
+    output: C_inner or None
+    method: "BFS outwards from background neighbor of P, searching only background (0). Return color of first non-0, non-6 pixel hit."
+    condition: "An adjacent background pixel exists, and BFS finds a valid C_inner before hitting grid boundary."
+  - action: find_outer_color
+    input: grid, C_inner
+    output: C_outer or None
+    method: "BFS outwards from background neighbor of any C_inner pixel, searching only background (0). Return color of first non-0 pixel hit whose color is not C_inner and not 6."
+    condition: "An adjacent background pixel exists for C_inner object, and BFS finds a valid C_outer before hitting grid boundary."
+  - action: evaluate_condition
+    input: C_inner, C_outer
+    output: boolean (condition_met)
+    condition: "(C_inner == 4 AND C_outer == 2) OR (C_inner == 1 AND C_outer == 3)"
+  - action: apply_change
+    input: grid, P
+    output: modified_grid
+    condition: "condition_met is true."
+    effect: "Change color of pixel P to 0."
+  - action: no_change
+    input: grid
+    output: grid
+    condition: "Any of the previous steps failed (target not unique, no adjacent background, BFS hit boundary, colors not found, condition_met is false)."

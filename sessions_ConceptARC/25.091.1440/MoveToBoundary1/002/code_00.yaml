@@ -1,0 +1,61 @@
+task_description: Move a blue object away from a red line. The distance moved is equal to the number of background cells separating the blue object's bounding box from the red line.
+elements:
+  - object: background
+    color: white (0)
+    role: static_canvas
+  - object: primary_shape
+    color: blue (1)
+    role: movable_object
+    properties:
+      - shape: variable
+      - contiguity: contiguous block of blue pixels
+  - object: constraint_line
+    color: red (2)
+    role: static_constraint
+    properties:
+      - shape: straight line (vertical or horizontal)
+      - contiguity: contiguous block of red pixels
+relationships:
+  - type: spatial
+    description: The blue object is positioned relative to the red line (left/right or above/below), separated by a gap of background cells.
+  - type: interaction
+    description: The red line dictates the movement (direction and distance) of the blue object.
+actions:
+  - action: identify_objects
+    inputs: [input_grid]
+    outputs: [blue_object_pixels, red_object_pixels]
+  - action: determine_line_properties
+    inputs: [red_object_pixels]
+    outputs: [orientation (vertical/horizontal), line_coordinate (col index or row index)]
+  - action: determine_object_bounding_box
+    inputs: [blue_object_pixels]
+    outputs: [min_row, min_col, max_row, max_col]
+  - action: calculate_gap_width
+    inputs: [blue_object_bounding_box, line_orientation, line_coordinate]
+    outputs: [gap_width]
+    logic:
+      - if line is vertical (at red_col):
+        - if red_col > max_col (line right of object): gap = red_col - max_col - 1
+        - if red_col < min_col (line left of object): gap = min_col - red_col - 1
+      - if line is horizontal (at red_row):
+        - if red_row > max_row (line below object): gap = red_row - max_row - 1
+        - if red_row < min_r (line above object): gap = min_row - red_row - 1
+  - action: calculate_shift_vector
+    inputs: [blue_object_bounding_box, line_orientation, line_coordinate, gap_width]
+    outputs: [shift_vector (dx, dy)]
+    logic:
+      - if line is vertical (at red_col):
+        - determine relative position (e.g., using blue bounding box center vs red_col)
+        - if blue is left of line: dx = gap_width, dy = 0
+        - if blue is right of line: dx = -gap_width, dy = 0
+      - if line is horizontal (at red_row):
+        - determine relative position (e.g., using blue bounding box center vs red_row)
+        - if blue is above line: dx = 0, dy = gap_width
+        - if blue is below line: dx = 0, dy = -gap_width
+  - action: apply_shift
+    inputs: [input_grid, blue_object_pixels, red_object_pixels, shift_vector]
+    outputs: [output_grid]
+    logic:
+      - Create a new grid, identical in size to the input grid and initially filled with the background color (white, 0).
+      - For each blue pixel at coordinate `(row, col)` in the input grid, calculate the new coordinate `(new_row, new_col) = (row + dy, col + dx)`. If `(new_row, new_col)` is within grid bounds, place a blue pixel there in the output grid.
+      - Copy the red line from the input grid to the output grid at its original position (overwriting any blue pixels that might have landed there, although this shouldn't happen based on task logic).

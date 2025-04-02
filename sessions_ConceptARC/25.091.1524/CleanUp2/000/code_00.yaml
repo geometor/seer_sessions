@@ -1,0 +1,72 @@
+elements:
+  - role: grid
+    description: A 2D array of pixels, representing the input and output states.
+    properties:
+      - height: Integer number of rows.
+      - width: Integer number of columns.
+      - pixels: Collection of pixel objects.
+      - color_frequencies: A map of color values to their counts in the grid.
+
+  - role: pixel
+    description: A single cell within the grid.
+    properties:
+      - position: Coordinates (row, column).
+      - color: An integer value from 0 to 9.
+      - neighbours: Set of cardinally adjacent pixels (up, down, left, right).
+
+  - role: noise_pixel
+    description: A pixel whose color is one of the least frequent colors present in the entire input grid.
+    properties:
+      - color: Belongs to the set of minimum frequency colors.
+
+  - role: non_noise_pixel
+    description: A pixel whose color is *not* one of the least frequent colors in the input grid.
+
+process:
+  - action: identify_noise_colors
+    description: Calculate the frequency of each color in the input grid and identify the color(s) with the minimum frequency (count > 0).
+    inputs:
+      - input_grid
+    outputs:
+      - set_of_noise_colors
+
+  - action: analyze_neighborhood
+    description: For a given noise pixel, find its cardinal neighbors and filter out any neighbors that are also noise pixels.
+    inputs:
+      - noise_pixel
+      - input_grid
+      - set_of_noise_colors
+    outputs:
+      - set_of_non_noise_neighbors
+
+  - action: determine_replacement_color
+    description: >
+      Based on the non-noise neighbors of a noise pixel, determine the color that
+      should replace the noise pixel. This is the most frequent color among the
+      non-noise neighbors. If there's a tie in frequency, the color with the
+      highest numerical value among the tied colors is chosen.
+    inputs:
+      - set_of_non_noise_neighbors
+    outputs:
+      - replacement_color
+
+  - action: replace_pixel_color
+    description: Update the color of a specific pixel in a target grid (initially a copy of the input grid).
+    inputs:
+      - pixel_to_replace
+      - replacement_color
+      - target_grid
+    outputs:
+      - updated_target_grid
+
+transformation:
+  - goal: Transform the input grid into the output grid by replacing noise pixels.
+  - steps:
+      - Create a copy of the input grid (target_grid).
+      - Perform `identify_noise_colors` on the input grid.
+      - Iterate through each pixel in the input grid.
+      - If the current pixel is a `noise_pixel` (its color is in the `set_of_noise_colors`):
+          - Perform `analyze_neighborhood` for this pixel.
+          - Perform `determine_replacement_color` using the resulting non-noise neighbors.
+          - Perform `replace_pixel_color` on the `target_grid` at the current pixel's position using the determined `replacement_color`.
+      - Return the final `target_grid`.

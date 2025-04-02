@@ -1,0 +1,99 @@
+
+## train_1
+
+**input:**
+```
+1 1 1 1 1 1
+0 0 0 0 0 0
+1 1 1 1 1 1
+0 0 0 0 0 0
+1 1 1 1 1 1
+0 0 0 0 0 0
+```
+
+
+**output:**
+```
+5 5 5 5 5 5
+0 0 0 0 0 0
+1 1 1 1 1 1
+0 0 0 0 0 0
+1 1 1 1 1 1
+0 0 0 0 0 0
+```
+
+
+## train_2
+
+**input:**
+```
+2 0 0 2 0 0
+0 2 0 0 2 0
+0 0 2 0 0 2
+2 0 0 2 0 0
+0 2 0 0 2 0
+0 0 2 0 0 2
+```
+
+
+**output:**
+```
+2 0 0 5 0 0
+0 2 0 0 5 0
+0 0 2 0 0 5
+2 0 0 2 0 0
+0 2 0 0 2 0
+0 0 2 0 0 2
+```
+
+
+## train_3
+
+**input:**
+```
+0 4 0 4 0 4
+4 4 0 4 0 4
+0 0 0 4 0 4
+4 4 4 4 0 4
+0 0 0 0 0 4
+4 4 4 4 4 4
+```
+
+
+**output:**
+```
+0 5 0 4 0 4
+5 5 0 4 0 4
+0 0 0 4 0 4
+4 4 4 4 0 4
+0 0 0 0 0 4
+4 4 4 4 4 4
+```
+
+
+## train_4
+
+**input:**
+```
+0 8 8 8 0 0
+8 8 0 0 0 8
+0 0 0 8 8 8
+0 8 8 8 0 0
+8 8 0 0 0 8
+0 0 0 8 8 8
+```
+
+
+**output:**
+```
+0 5 5 5 0 0
+5 5 0 0 0 8
+0 0 0 8 8 8
+0 8 8 8 0 0
+8 8 0 0 0 8
+0 0 0 8 8 8
+```
+
+## Perception
+
+The task involves transforming an input grid into an output grid of the same dimensions. The transformation selectively changes the color of one specific object within the grid to

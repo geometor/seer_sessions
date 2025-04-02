@@ -1,0 +1,38 @@
+task_type: pattern_replication_1d_grid
+grid_properties:
+  dimensionality: 2D
+  shape: 1xN (single row, variable width)
+  data_structure: list[list[int]]
+components:
+  - role: background
+    element: pixel
+    color: white # 0
+    properties: static, unless overwritten
+  - role: template_segment
+    element: contiguous_horizontal_sequence
+    color: variable (yellow, green, red in examples), must be non-white
+    location: first occurrence in the row
+    properties:
+      - defines the pattern to be replicated
+      - defines the trigger color
+  - role: trigger_pixel
+    element: pixel
+    color: same as template_segment color
+    location: occurs after the template_segment in the row
+    properties:
+      - signals where replication should start
+actions:
+  - name: identify_template
+    inputs: input_grid (1xN)
+    outputs: template_segment (list[int]), segment_color (int), end_column_index (int)
+    description: Scan the first (only) row from left (column 0). Find the first non-white pixel. Identify the contiguous sequence of pixels with this same color. Record this sequence as the template, its color, and the column index immediately after it.
+  - name: replicate_template
+    inputs: input_grid (1xN), output_grid (1xN, copy of input), template_segment, segment_color, end_column_index
+    outputs: modified_output_grid
+    description: Iterate through the columns of the first row of the input_grid, starting from end_column_index. If a pixel at column `i` matches the segment_color (trigger_pixel), overwrite the pixels in the output_grid's first row, starting at column `i`, with the template_segment. Handle boundary conditions (only copy the portion of the template that fits within the grid width).
+constraints:
+  - only one non-white color per input grid
+  - replication starts exactly at the trigger_pixel's column index
+  - replication overwrites existing pixels in the output grid
+  - replication uses the template_segment found *before* any modifications
+  - processing is strictly horizontal within the single row

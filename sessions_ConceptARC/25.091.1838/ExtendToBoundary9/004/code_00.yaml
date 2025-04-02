@@ -1,0 +1,60 @@
+task_description: Fill the empty space (white pixels) inside a container shape with the color of the single inner shape found within it, preserving both original shapes. Assumes exactly two non-white colors are present and relevant.
+
+elements:
+  - object: container_shape
+    description: A contiguous shape of a single color that encloses another shape. It defines the boundary for the fill operation.
+    properties:
+      - color: `container_color` (Determined by role identification logic).
+      - pixels: Set of coordinates forming the container.
+  - object: inner_shape
+    description: A contiguous shape of a single color located spatially inside the container_shape. Its color is used for filling.
+    properties:
+      - color: `fill_color` (Determined by role identification logic).
+      - pixels: Set of coordinates forming the inner shape (`inner_shape_pixels`). Must contain at least one pixel (`start_pixel`).
+  - object: background
+    description: Pixels with value 0 (white).
+    properties:
+      - color: white (0)
+
+role_identification_logic:
+  - inputs: grid
+  - process:
+      1. Find all unique non-white colors (`c1`, `c2`, ...) and their pixel coordinates.
+      2. If exactly two non-white colors exist (`c1`, `c2`):
+         - Check if `c1` has pixels touching the absolute grid boundary (row 0/max or col 0/max). Let result be `c1_touches_edge`.
+         - Check if `c2` has pixels touching the absolute grid boundary. Let result be `c2_touches_edge`.
+         - If `c1_touches_edge` is true and `c2_touches_edge` is false: `container_color = c1`, `fill_color = c2`.
+         - Else if `c1_touches_edge` is false and `c2_touches_edge` is true: `container_color = c2`, `fill_color = c1`.
+         - Else if `c1_touches_edge` is false and `c2_touches_edge` is false: Compare pixel counts. If `count(c1) > count(c2)`, `container_color = c1`, `fill_color = c2`. Otherwise, `container_color = c2`, `fill_color = c1`.
+         - Else (both touch edge): Role determination fails based on current logic.
+      3. If the number of non-white colors is not two: Role determination fails based on current logic.
+  - outputs: `container_color`, `fill_color`, `inner_shape_pixels` (pixels of `fill_color`).
+
+actions:
+  - action: conditional_flood_fill
+    input: input_grid, container_color, fill_color, inner_shape_pixels
+    output: output_grid
+    description:
+      1. Initialize `output_grid` as a copy of `input_grid`.
+      2. Select one `start_pixel` from `inner_shape_pixels`.
+      3. Initialize a queue for BFS with `start_pixel`.
+      4. Initialize a `visited` set with all `inner_shape_pixels`.
+      5. While the queue is not empty:
+         - Dequeue current pixel (`r`, `c`).
+         - For each neighbor (`nr`, `nc`) (up, down, left, right):
+           - If `(nr, nc)` is within grid bounds AND `(nr, nc)` is not in `visited`:
+             - Get the neighbor's color in the *input_grid* (`original_neighbor_color`).
+             - If `original_neighbor_color` is NOT `container_color`:
+               - Add `(nr, nc)` to `visited`.
+               - If `original_neighbor_color` is white (0):
+                 - Set `output_grid[nr, nc]` to `fill_color`.
+               # Add neighbor to the queue regardless of its original color (as long as it's not the container color)
+               # to allow fill to propagate through other potential small inner shapes if they existed.
+               - Add `(nr, nc)` to the queue.
+             # (Implicitly: if neighbor is container_color, do not visit or queue from it)
+
+output_grid_composition:
+  - Pixels from the original `container_shape`.
+  - Pixels from the original `inner_shape`.
+  - White pixels inside the `container_shape` (reachable from `inner_shape` without crossing `container_shape`) replaced by `fill_color`.
+  - White pixels outside the `container_shape` remain white.

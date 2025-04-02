@@ -1,0 +1,52 @@
+task_description: Translate one object towards another until they are adjacent.
+
+elements:
+  - role: background
+    color: white (0)
+    properties: Fills the grid where objects are not present. Remains unchanged.
+  - role: object
+    count: 2 per example
+    properties:
+      - Contiguous block of non-white pixels.
+      - Can be the same or different colors.
+      - One object is designated 'mobile', the other 'stationary'.
+  - role: mobile_object
+    source: The smaller of the two objects (by area or pixel count).
+    action: Translated towards the stationary object.
+    properties: Retains its shape and color.
+  - role: stationary_object
+    source: The larger of the two objects.
+    action: Remains in its original position.
+    properties: Retains its shape and color.
+
+relationships:
+  - type: spatial
+    description: Objects are initially separated by some distance horizontally and/or vertically.
+  - type: interaction
+    description: The mobile object moves towards the stationary object along the primary axis of separation (the axis with the greater distance between their bounding boxes).
+    termination_condition: The movement stops when the mobile object's edge is exactly one pixel away from the stationary object's edge along the axis of movement. No overlap occurs.
+
+transformation:
+  - action: identify_objects
+    inputs: input_grid
+    outputs: background_color, list_of_objects
+  - action: determine_roles
+    inputs: list_of_objects
+    outputs: mobile_object, stationary_object
+    logic: The object with the smaller bounding box area (or fewer pixels) is mobile.
+  - action: determine_movement_axis_and_direction
+    inputs: mobile_object, stationary_object
+    outputs: axis (horizontal/vertical), direction (+1 or -1)
+    logic: >
+      Calculate horizontal distance (min_col_stationary - max_col_mobile - 1 or min_col_mobile - max_col_stationary - 1)
+      and vertical distance (min_row_stationary - max_row_mobile - 1 or min_row_mobile - max_row_stationary - 1).
+      The axis with the larger positive distance is the movement axis.
+      The direction is towards the stationary object along that axis.
+  - action: calculate_translation_distance
+    inputs: mobile_object, stationary_object, axis, direction
+    outputs: translation_distance
+    logic: The distance is the separation along the movement axis minus 1 (to ensure adjacency).
+  - action: apply_translation
+    inputs: input_grid, mobile_object, stationary_object, axis, direction, translation_distance
+    outputs: output_grid
+    logic: Create the output grid by placing the stationary object in its original location and the mobile object translated by the calculated distance along the determined axis and direction. The background remains the same.

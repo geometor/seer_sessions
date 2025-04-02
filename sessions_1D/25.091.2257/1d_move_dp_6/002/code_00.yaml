@@ -1,0 +1,58 @@
+task_type: array_manipulation
+input_output_type: 1D numpy array of integers (pixels)
+components:
+  - type: marker_pixel
+    properties:
+      color: green (3)
+      role: partition_point
+      occurrence: typically one instance per array
+  - type: pre_marker_segment
+    description: The subarray of pixels preceding the green marker.
+    contains:
+      - type: white_pixels
+        properties:
+          color: white (0)
+      - type: non_white_pixels
+        properties:
+          color: any color except white (1-9)
+          relative_order: preserved among themselves
+  - type: post_marker_segment
+    description: The subarray of pixels following the green marker.
+    properties:
+      content_and_order: unchanged
+actions:
+  - action: find_index
+    target: green marker pixel (3)
+    using: numpy.where
+  - action: partition_array
+    target: input array
+    based_on: index of the green marker
+    outputs:
+      - pre_marker_segment
+      - marker_pixel (value 3)
+      - post_marker_segment
+  - action: filter_and_collect
+    target: pre_marker_segment
+    condition_1: pixel value is white (0)
+    condition_2: pixel value is non-white (!= 0)
+    using: numpy boolean indexing
+    outputs:
+      - array_of_white_pixels
+      - array_of_non_white_pixels (maintaining relative order)
+  - action: concatenate_arrays
+    inputs:
+      - array_of_white_pixels
+      - array_of_non_white_pixels
+      - marker_pixel (as a single-element array or list)
+      - post_marker_segment
+    using: numpy.concatenate
+    output: final output array
+relationships:
+  - type: positional_separation
+    description: The green pixel divides the array into functionally distinct parts.
+  - type: sorting_grouping
+    description: Pixels in the pre-marker segment are grouped based on being white or non-white. White pixels are moved to the start of this segment.
+  - type: order_preservation
+    description: |-
+      The relative order of non-white pixels within the pre-marker segment is preserved.
+      The content and order of the post-marker segment are preserved.

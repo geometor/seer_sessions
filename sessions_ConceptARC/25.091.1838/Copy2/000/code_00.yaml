@@ -1,0 +1,103 @@
+task_description: "Copy a 'pattern' object into the hollow interior of a 'frame' object."
+
+example_train_1:
+  input_features:
+    - object_id: 1
+      type: pattern
+      colors: [red, yellow]
+      shape_description: "Red cross with yellow center"
+      location: top-left area
+      bounding_box: &pattern1_bbox # Anchor for reuse
+        rows: [1, 3]
+        cols: [1, 3]
+    - object_id: 2
+      type: frame
+      colors: [azure]
+      shape_description: "Hollow azure rectangle"
+      location: bottom-right area
+      bounding_box:
+        rows: [5, 9]
+        cols: [3, 7]
+      enclosed_area: # The white space inside the frame
+        top_left_coord: &frame1_inner_tl [6, 4]
+        rows: [6, 8]
+        cols: [4, 6]
+  output_features:
+    - object_id: 1 # Original pattern remains
+      type: pattern
+      colors: [red, yellow]
+      location: top-left area
+    - object_id: 2 # Original frame remains
+      type: frame
+      colors: [azure]
+      location: bottom-right area
+    - object_id: 3 # Copied pattern
+      type: pattern_copy
+      source_object_id: 1
+      colors: [red, yellow]
+      location: inside frame object (object_id 2)
+      placement_rule: "Top-left of pattern bounding box aligned with top-left of frame's enclosed area."
+      bounding_box_in_output:
+        top_left_coord: *frame1_inner_tl # Use alias
+        rows: [6, 8]
+        cols: [4, 6]
+  actions:
+    - action: identify_objects
+      inputs: input_grid
+      outputs: [pattern_object, frame_object]
+      criteria:
+        frame: "Contiguous non-background object enclosing a background region."
+        pattern: "The other contiguous non-background object."
+    - action: locate_regions
+      inputs: [pattern_object, frame_object]
+      outputs: [pattern_bbox, frame_inner_top_left]
+    - action: copy_paste
+      inputs: [input_grid, pattern_object, pattern_bbox, frame_inner_top_left]
+      outputs: output_grid
+      details: "Copy pixels from pattern_object (relative to pattern_bbox top-left) to output_grid (relative to frame_inner_top_left), overwriting the background inside the frame."
+
+example_train_2:
+  input_features:
+    - object_id: 1
+      type: pattern
+      colors: [magenta, blue]
+      shape_description: "Magenta diamond/cross with blue center"
+      location: top-left area
+      bounding_box: &pattern2_bbox
+        rows: [1, 4]
+        cols: [2, 5]
+    - object_id: 2
+      type: frame
+      colors: [azure]
+      shape_description: "Hollow azure rectangle"
+      location: bottom-right area
+      bounding_box:
+        rows: [6, 12]
+        cols: [7, 13]
+      enclosed_area:
+        top_left_coord: &frame2_inner_tl [7, 8]
+        rows: [7, 11]
+        cols: [8, 12]
+  output_features:
+    - object_id: 1 # Original pattern remains
+      type: pattern
+      colors: [magenta, blue]
+      location: top-left area
+    - object_id: 2 # Original frame remains
+      type: frame
+      colors: [azure]
+      location: bottom-right area
+    - object_id: 3 # Copied pattern
+      type: pattern_copy
+      source_object_id: 1
+      colors: [magenta, blue]
+      location: inside frame object (object_id 2)
+      placement_rule: "Top-left of pattern bounding box aligned with top-left of frame's enclosed area."
+      bounding_box_in_output:
+        top_left_coord: *frame2_inner_tl # Use alias
+        rows: [7, 11] # Adjusted based on pattern size
+        cols: [8, 11] # Adjusted based on pattern size
+  actions: # Actions are conceptually the same as example 1
+    - action: identify_objects
+    - action: locate_regions
+    - action: copy_paste

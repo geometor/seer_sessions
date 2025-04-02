@@ -1,0 +1,68 @@
+task_description: Duplicate a composite structure (container + enclosed objects) to a new location determined by an external 'orphan' object that resembles one of the enclosed objects.
+
+definitions:
+  - object: A contiguous block of non-white pixels with a specific color, coordinates, and bounding box.
+  - bounding_box (bbox): The smallest rectangle (min_r, min_c, max_r, max_c) enclosing all pixels of an object.
+  - is_inclusively_enclosed: Condition where object B's bbox is fully within or touching the edges of object A's bbox (A.min_r <= B.min_r, A.min_c <= B.min_c, A.max_r >= B.max_r, A.max_c >= B.max_c), and A and B are distinct objects.
+  - container: An object (C) whose bbox inclusively encloses the bbox of at least one other object (I) of a *different* color. (Assumption: A single primary container exists).
+  - contained_object: An object (I) whose bbox is inclusively enclosed by the container's (C) bbox.
+  - orphan_object: An object (O) that is neither the container nor a contained object.
+  - primary_orphan: The orphan object (O_p) used to determine the copy location. It typically shares characteristics (like color) with a contained object. (Assumption: A single primary orphan exists and dictates placement).
+  - pattern_to_copy: The rectangular region of the input grid defined by the container's bounding box, including the container and all contained objects within that box.
+  - target_location: The top-left coordinate (target_row, target_col) where the pattern_to_copy will be pasted.
+
+steps:
+  - step: 1
+    action: identify_all_objects
+    description: Find all distinct objects in the input grid, recording their color, coordinates, and bounding box.
+  - step: 2
+    action: find_potential_containers
+    description: Identify objects whose bounding boxes inclusively enclose the bounding box of at least one other object of a different color.
+  - step: 3
+    action: select_container
+    description: From the potential containers, select the definitive container (C). (Rule: If only one exists, select it. If multiple, potentially the one enclosing the most objects or with the largest area - examples suggest only one clear container).
+  - step: 4
+    action: identify_contained_objects
+    description: Identify all objects (I) whose bounding boxes are inclusively enclosed by the selected container's (C) bounding box.
+  - step: 5
+    action: identify_orphan_objects
+    description: Identify all objects (O) that are not the container (C) and not contained (I).
+  - step: 6
+    action: select_primary_orphan
+    description: From the orphan objects (O), select the primary orphan (O_p) that dictates placement. (Rule: Often matches the color of a contained object. Assume the first such object found, or the only orphan if just one exists).
+  - step: 7
+    action: calculate_target_location
+    inputs:
+      - container_bbox
+      - primary_orphan_bbox
+    description: >
+      Determine the target (target_row, target_col) for the copy.
+      If the primary orphan is below the container: target_row = orphan.min_r - 2, target_col = container.min_c.
+      If the primary orphan is to the right of the container: target_row = container.min_r, target_col = orphan.min_c - 2.
+      (Add logic for above/left if needed based on future examples).
+  - step: 8
+    action: prepare_output_grid
+    inputs:
+      - input_grid
+    description: Create a copy of the input grid.
+  - step: 9
+    action: remove_all_orphans
+    inputs:
+      - output_grid
+      - orphan_objects_list
+    description: Set the pixels of *all* identified orphan objects (O) in the output grid to white (0).
+  - step: 10
+    action: extract_pattern
+    inputs:
+      - input_grid
+      - container_bbox
+    description: Copy the rectangular subgrid defined by the container's bounding box from the original input grid.
+  - step: 11
+    action: place_pattern
+    inputs:
+      - output_grid
+      - pattern_to_copy
+      - target_location
+    description: Paste the extracted pattern onto the output grid at the target location, overwriting existing pixels and handling boundary clipping.
+
+final_output: The modified output grid.

@@ -1,0 +1,67 @@
+task_description: Shift a contiguous block of color horizontally rightward within a single-row grid towards a stationary marker pixel. The magnitude of the shift is determined by the count of background pixels situated strictly between the block's right edge and the marker pixel.
+
+elements:
+  - element: grid
+    description: A 2D NumPy array representing a single row of pixels (shape 1xN).
+    properties:
+      - rows: 1
+      - columns: Variable (e.g., 26 in examples)
+  - element: background
+    properties:
+      - color: white (0)
+      - role: Fills empty space, defines separation distance for shifting.
+  - element: main_block
+    properties:
+      - color: Any color other than white (0) or azure (8).
+      - shape: A single contiguous horizontal block within the row.
+      - role: The object being moved rightward.
+      - location: Always appears to the left of the marker pixel in the input.
+  - element: marker
+    properties:
+      - color: azure (8)
+      - count: Exactly one instance per grid.
+      - role: A stationary reference point; the shift target and distance determinant.
+      - location: Always appears to the right of the main_block in the input.
+
+transformation:
+  - action: identify
+    target: background pixel color (0)
+  - action: identify
+    target: marker pixel color (8)
+  - action: locate
+    target: marker pixel
+    output: marker_index (column index)
+  - action: locate
+    target: main_block
+    constraints: Contiguous run of pixels that are not background (0) and not marker (8), located to the left of marker_index.
+    outputs:
+      - block_color
+      - block_start_index (column index)
+      - block_end_index (column index)
+  - action: calculate_distance
+    inputs:
+      - grid row
+      - block_end_index
+      - marker_index
+      - background_color
+    method: Count the number of background pixels in the grid row at column indices strictly greater than block_end_index and strictly less than marker_index.
+    output: shift_distance
+  - action: shift_block
+    target: main_block
+    parameters:
+      - direction: Right
+      - distance: shift_distance
+    process:
+      - Create a copy of the input grid for the output.
+      - For i from 0 to shift_distance - 1:
+        - Set the pixel at output_grid[0, block_start_index + i] to background_color (0).
+        - Set the pixel at output_grid[0, block_end_index + 1 + i] to block_color.
+  - action: return
+    target: modified output grid
+
+assumptions:
+  - Input is always a 2D NumPy array with shape (1, N).
+  - There is exactly one marker pixel (8).
+  - There is exactly one contiguous main_block (color != 0 and != 8) located entirely to the left of the marker.
+  - The space between the block and the marker contains only background pixels (0) or is empty.
+  - There is enough space (filled with background pixels) to the right of the original block to accommodate the shift without overwriting the marker.

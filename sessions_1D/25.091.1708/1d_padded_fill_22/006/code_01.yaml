@@ -1,0 +1,48 @@
+task_description: Fill the horizontal gap between pairs of identical non-white pixels found within the same row.
+
+grid_properties:
+  - background_color: 0 (white)
+  - dimensions_preserved: Yes, input and output grids have the same height and width.
+  - structure: Input contains pairs of non-white pixels on the same row, separated by white pixels.
+
+objects:
+  - type: pixel_pair
+    description: Two pixels acting as endpoints for a fill action.
+    properties:
+      - color: non-white (value > 0)
+      - same_color: The two pixels in the pair must have the identical non-white color.
+      - location: Both pixels must reside in the same row.
+      - uniqueness_per_row_color: For any given row, there is at most one pair of any specific non-white color. (Observed in examples).
+      - separation: Separated horizontally by one or more white pixels.
+
+actions:
+  - name: identify_row_pairs
+    inputs: input_row
+    outputs: list of identified pixel pairs (col1, col2, color) for that row
+    description: Iterate through the row, find all non-white pixels. Group their column indices by color. Identify colors that appear exactly twice.
+
+  - name: fill_horizontal_segment
+    inputs:
+      - grid: output_grid (initially a copy of input)
+      - row: row index
+      - start_col_exclusive: column index of the leftmost pixel of the pair
+      - end_col_exclusive: column index of the rightmost pixel of the pair
+      - color: color of the pixel pair
+    outputs: modified_output_grid
+    description: Change the color of pixels in the specified row, for columns `c` where `start_col_exclusive < c < end_col_exclusive`, to the specified color.
+
+relationships:
+  - type: spatial
+    description: Pixel pairs define the start and end points of a horizontal segment within a row.
+  - type: operational
+    description: The identification of a valid pair triggers the fill action for the segment between them.
+
+transformation_flow:
+  - step: 1. Create a copy of the input grid to serve as the output grid.
+  - step: 2. Iterate through each row of the input grid (let the row index be `r`).
+  - step: 3. Within row `r`, find all non-white pixels and group their column indices by color.
+  - step: 4. For each color `c` found in row `r`:
+        a. Check if exactly two pixels of color `c` exist at columns `col1` and `col2`.
+        b. If yes, determine the left endpoint `min_col = min(col1, col2)` and right endpoint `max_col = max(col1, col2)`.
+        c. Fill the segment in the output grid: For each column `c_fill` from `min_col + 1` up to (but not including) `max_col`, set the pixel at `(r, c_fill)` to color `c`.
+  - step: 5. Return the final modified output grid.

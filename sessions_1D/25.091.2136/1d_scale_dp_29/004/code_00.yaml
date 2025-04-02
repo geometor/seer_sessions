@@ -1,0 +1,51 @@
+task_description: Fill the contiguous sequence of white pixels located between the rightmost non-white/non-green pixel and the first green pixel to its right, using the color of that non-white pixel.
+
+elements:
+  - type: grid
+    dimensionality: 1D (row)
+  - type: pixel
+    attributes:
+      - color: Integer (0-9), representing white, green, or a source color.
+
+objects:
+  - id: green_marker
+    description: The first pixel with Green color (3) found when scanning the row.
+    attributes:
+      - color: 3
+      - index: green_index
+  - id: source_pixel
+    description: The rightmost pixel to the left of the green_marker that is not White (0). Its color defines the fill color.
+    attributes:
+      - color: source_color (non-0, non-3)
+      - index: source_index
+  - id: gap
+    description: A contiguous sequence of one or more White (0) pixels.
+    attributes:
+      - color: 0
+      - location: Spans indices from source_index + 1 to green_index - 1.
+      - condition: Must exist (i.e., green_index > source_index + 1).
+
+relationships:
+  - type: spatial
+    description: The source_pixel is located to the left of the gap, and the gap is located to the left of the green_marker.
+    entities: [source_pixel, gap, green_marker]
+    constraints:
+      - source_index < (source_index + 1)
+      - (green_index - 1) < green_index
+      - source_index < green_index
+
+actions:
+  - id: fill_gap_with_source_color
+    description: Change the color of all White pixels within the gap to the source_color.
+    inputs:
+      - gap_indices: list of indices from source_index + 1 to green_index - 1
+      - source_color: color of the source_pixel
+    preconditions:
+      - A green_marker exists.
+      - A source_pixel exists to the left of the green_marker.
+      - A gap exists between the source_pixel and green_marker (green_index > source_index + 1).
+      - All pixels within the gap indices are initially White (0).
+    outputs:
+      - Modified grid where pixels at gap_indices now have source_color.
+
+goal: Modify the input row by identifying the green_marker, finding the source_pixel to its left, and filling the intervening white gap with the source_color. If any conditions (existence of green, source, or gap; gap being white) are not met, the grid remains unchanged.

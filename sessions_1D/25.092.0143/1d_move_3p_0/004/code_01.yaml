@@ -1,0 +1,49 @@
+task_type: transformation
+grid_dimensionality: 1D # Input and output are single rows, potentially different lengths
+objects:
+  - type: contiguous_block
+    properties:
+      - color: non-white (constant within an example: 2, 7, or 8)
+      - role: primary_object
+      - attributes:
+        - input_start_index (S_in)
+        - input_length (L_in)
+  - type: background
+    properties:
+      - color: white (0)
+      - role: fills_space
+input_properties:
+  - name: input_row_length (N_in)
+output_properties:
+  - name: output_row_length (N_out)
+  - name: output_block_start_index (S_out)
+  - name: output_block_length (L_out)
+actions:
+  - name: identify_block
+    inputs: input_row
+    outputs: block_color (C), S_in, L_in, N_in
+  - name: calculate_output_parameters
+    inputs: S_in, L_in, N_in
+    outputs: S_out, L_out, N_out
+    logic:
+      - S_out = S_in + 3
+      - L_out = L_in - 1 if S_in == 0 else L_in
+      - E_out = S_out + L_out - 1 # Calculate hypothetical end index
+      - N_out = N_in - 1 if E_out < (N_in - 2) else N_in
+  - name: construct_output
+    inputs: N_out, C, S_out, L_out, background_color (0)
+    outputs: output_row
+    logic: Create a row of background_color with length N_out. Place the block (C, L_out) starting at S_out, respecting the bounds [0, N_out-1].
+relationships:
+  - type: conditional_length_change
+    object: contiguous_block
+    condition: input_start_index == 0
+    effect: output_block_length = input_block_length - 1
+  - type: conditional_length_change
+    object: grid
+    condition: (shifted_block_end_index) < (input_row_length - 2)
+    effect: output_row_length = input_row_length - 1
+  - type: spatial_shift
+    object: contiguous_block
+    direction: right
+    magnitude: 3 positions

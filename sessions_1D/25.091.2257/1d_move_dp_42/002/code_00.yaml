@@ -1,0 +1,84 @@
+task_description: "Shift the first contiguous block of non-background pixels found before a magenta marker rightwards, placing it immediately before the marker. The background pixels originally between this block and the marker fill the space vacated by the block."
+elements:
+  - type: array
+    description: "A 1D array of pixel colors representing the input and output grids."
+  - type: pixel
+    color: white (0)
+    role: background
+    description: "Represents empty space. Blocks of this color may be moved."
+  - type: pixel
+    color: magenta (6)
+    role: marker/anchor
+    description: "A single pixel acting as a fixed reference point for the transformation."
+    properties:
+      - "Appears exactly once in each array."
+      - "Defines the right boundary for the payload block's final position."
+      - "Its absolute position can change between examples, but relative position to suffix elements is maintained."
+  - type: object
+    identifier: payload_block
+    description: "The first contiguous sequence of non-white (0), non-magenta (6) pixels encountered when scanning the input array from left to right, up to the marker pixel."
+    properties:
+      - "Identified by color != 0 and color != 6."
+      - "Variable length and color."
+      - "Is moved in the transformation."
+      - "Exists entirely before the marker pixel in the input."
+  - type: object
+    identifier: gap_block
+    description: "The contiguous sequence of white (0) pixels located between the end of the payload_block and the marker pixel in the input array."
+    properties:
+      - "Composed exclusively of white (0) pixels."
+      - "Its length determines the distance the payload_block effectively shifts."
+      - "Can be empty (length 0) if the payload_block is immediately before the marker."
+      - "Is moved to the original starting position of the payload_block."
+  - type: object
+    identifier: prefix_block
+    description: "The sequence of pixels from the start of the input array up to the beginning of the payload_block."
+    properties:
+      - "Can be empty."
+      - "Remains at the beginning of the output array."
+      - "Content is unchanged."
+  - type: object
+    identifier: suffix_block
+    description: "The sequence of pixels from the position immediately after the marker pixel to the end of the input array."
+    properties:
+      - "Can be empty."
+      - "Remains at the end of the output array (after the marker)."
+      - "Content is unchanged."
+actions:
+  - action: find
+    target: magenta (6) pixel
+    result: marker_index
+  - action: find
+    target: payload_block (first non-0, non-6 contiguous block before marker_index)
+    result: payload_pixels, payload_start_index, payload_end_index
+  - action: slice
+    target: input_array
+    parameters: start=0, end=payload_start_index
+    result: prefix_block_pixels
+  - action: slice
+    target: input_array
+    parameters: start=payload_end_index + 1, end=marker_index
+    result: gap_block_pixels
+  - action: slice
+    target: input_array
+    parameters: start=marker_index + 1, end=end_of_array
+    result: suffix_block_pixels
+  - action: construct_output
+    description: "Assemble the output array by concatenating the identified blocks in a new order."
+    order:
+      - prefix_block_pixels
+      - gap_block_pixels
+      - payload_pixels
+      - magenta (6) pixel
+      - suffix_block_pixels
+relationships:
+  - type: spatial_adjacency
+    description: "In the input, the sequence is potentially prefix, payload, gap, marker, suffix."
+  - type: spatial_adjacency
+    description: "In the output, the sequence becomes prefix, gap, payload, marker, suffix."
+  - type: movement
+    description: "The payload_block moves rightwards."
+  - type: movement
+    description: "The gap_block moves leftwards to the original start position of the payload_block."
+  - type: fixed_position
+    description: "The prefix_block, marker pixel, and suffix_block maintain their relative order and content, though their absolute indices may shift due to the rearrangement of payload and gap."

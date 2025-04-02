@@ -1,0 +1,69 @@
+task_description: "Shift the first contiguous block of non-background pixels found before a marker pixel rightwards, swapping its position with the contiguous block of background pixels immediately following it."
+elements:
+  - type: array
+    description: "A 1D array of pixel colors."
+    identifier: input_array
+  - type: pixel
+    color: white (0)
+    role: background/empty_space
+  - type: pixel
+    color: magenta (6)
+    role: marker/anchor
+    properties:
+      - "Appears once in each array."
+      - "Defines the right boundary for the search area."
+      - "Its position relative to the suffix remains fixed."
+  - type: segment
+    description: "Pixels from the start of the array up to the beginning of the first non-background block."
+    identifier: prefix
+    properties:
+      - "Can be empty."
+      - "Contains only background pixels (0)."
+      - "Remains at the beginning of the output array."
+  - type: object # Changed from 'object' to segment for consistency
+    description: "The first contiguous block of pixels with colors other than white (0), located before the marker pixel."
+    identifier: payload_block
+    properties:
+      - "Can be of various non-background colors."
+      - "Can be of various lengths."
+      - "Must exist before the marker for transformation to occur."
+  - type: segment
+    description: "A contiguous block of white (0) pixels located between the end of the payload_block and the marker pixel."
+    identifier: gap_block
+    properties:
+      - "Can be of various lengths (including zero)."
+      - "Contains only background pixels (0)."
+  - type: segment
+    description: "Pixels located after the marker pixel."
+    identifier: suffix
+    properties:
+      - "Can be empty."
+      - "Can contain any color."
+      - "Remains at the end of the output array."
+actions:
+  - action: locate
+    target: marker pixel (6)
+    result: marker_index
+  - action: locate
+    target: payload_block (first non-zero block before marker_index)
+    result: payload_start_index, payload_end_index, payload_pixels
+  - action: identify
+    input: input_array, payload_start_index
+    result: prefix_pixels (input_array[0 : payload_start_index])
+  - action: identify
+    input: input_array, payload_end_index, marker_index
+    result: gap_pixels (input_array[payload_end_index + 1 : marker_index])
+  - action: identify
+    input: input_array, marker_index
+    result: suffix_pixels (input_array[marker_index + 1 : end])
+  - action: construct
+    target: output_array
+    components: [prefix_pixels, gap_pixels, payload_pixels, marker_pixel (6), suffix_pixels]
+    order: specified
+relationships:
+  - type: spatial
+    description: "In the input, the order is potentially [prefix] [payload_block] [gap_block] [marker] [suffix]."
+  - type: spatial
+    description: "In the output, the order becomes [prefix] [gap_block] [payload_block] [marker] [suffix]."
+  - type: conditional
+    description: "If no payload_block is found before the marker, the input array is returned unchanged."

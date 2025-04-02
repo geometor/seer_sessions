@@ -1,0 +1,46 @@
+elements:
+  - role: grid
+    description: A 2D array of pixels with integer values 0-9 representing colors. Background is white (0).
+  - role: object
+    description: A contiguous block of pixels of the same non-white color (connected horizontally, vertically, or diagonally).
+    properties:
+      - color: The color value (1-9) of the pixels in the object.
+      - size: The number of pixels comprising the object.
+      - coordinates: A set of (row, col) tuples for each pixel in the object.
+      - bounding_box: The smallest rectangle (min_row, min_col, max_row, max_col) enclosing the object's coordinates.
+  - role: marker_pixel
+    description: An object with a size of exactly one pixel.
+    condition: For a given color, there must be exactly one marker pixel present in the input grid for the transformation related to that color to occur.
+  - role: source_object
+    description: An object with a size greater than one pixel.
+    condition: For a given color, there must be at least one source object present. The transformation uses the source object with the maximum pixel count (largest size).
+  - role: source_region
+    description: The rectangular area extracted from the input grid defined by the bounding box coordinates of the selected largest source object. This region includes all pixels within the bounding box, potentially including background (0) or other colors.
+
+actions:
+  - name: identify_objects_by_color
+    description: Find all distinct contiguous objects (8-way connectivity) for each non-white color in the input grid.
+  - name: filter_by_conditions
+    description: For each color, check if there is exactly one object of size 1 (the marker) and at least one object of size > 1 (potential sources). Proceed only for colors meeting these conditions.
+  - name: select_largest_source
+    description: For a qualifying color, identify the potential source object with the maximum number of pixels.
+  - name: determine_source_region
+    description: Calculate the bounding box of the selected largest source object and extract the corresponding rectangular region (the source_region) from the input grid.
+  - name: calculate_placement_anchor
+    description: Determine the coordinate of the marker pixel. Calculate the center of the source_region's bounding box (using floor division). Compute the top-left anchor coordinate for pasting the source_region so its center aligns precisely with the marker pixel coordinate.
+  - name: paste_region
+    description: Copy the source_region onto the output grid, starting at the calculated placement_anchor coordinate. Overwrite all pixels in the destination area corresponding to the dimensions of the source_region. Handle boundary conditions (do not write outside the grid).
+
+flow:
+  - Initialize the output grid as a copy of the input grid.
+  - Identify all colored objects, grouped by color.
+  - For each unique color present:
+    - Check if the conditions are met: exactly one single-pixel marker and one or more multi-pixel source objects exist for this color.
+    - If conditions are met:
+      - Select the source object with the largest pixel count.
+      - Determine the bounding box of this largest source object.
+      - Extract the rectangular region (source_region) corresponding to this bounding box from the input grid.
+      - Get the coordinates of the marker pixel.
+      - Calculate the placement anchor (top-left coordinate) required to center the source_region on the marker pixel.
+      - Paste the source_region onto the output grid at the anchor coordinates, overwriting existing pixels within the pasted area and respecting grid boundaries.
+  - Return the final modified output grid.

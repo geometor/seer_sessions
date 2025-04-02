@@ -1,0 +1,61 @@
+task_description: Fill isolated white regions (holes) based on a conditional boundary color mapping.
+
+definitions:
+  - definition: background_white
+    criteria: White (0) pixels connected to the grid border via a 4-way adjacent path of white pixels.
+  - definition: hole_candidate
+    criteria: A connected component of white (0) pixels where none are background_white.
+  - definition: fillable_hole
+    criteria:
+      - Is a hole_candidate.
+      - All non-white pixels adjacent (8-way) to any pixel in the hole_candidate have the same single color C (the boundary_color).
+      - No pixel in the hole_candidate is adjacent (8-way) to any background_white pixel.
+
+elements:
+  - element: grid
+    properties:
+      - background_color: white (0) exists as background_white and potential holes.
+      - dimensions: unchanged between input and output.
+
+  - element: object
+    description: Contiguous regions of non-white pixels (e.g., Red(2), Yellow(4), Orange(7)).
+    properties:
+      - role: Can form boundaries around white regions.
+
+  - element: fillable_hole
+    description: A region meeting the criteria defined above.
+    properties:
+      - initial_color: white (0)
+      - boundary_color: The single color C surrounding the region.
+      - state_change: Filled with a new color F in the output.
+
+relationships:
+  - relationship: boundary_to_fill_mapping
+    description: The fill color F depends on the boundary color C of a fillable_hole. This mapping itself depends on the global set S of all boundary_colors found across *all* fillable_holes in the grid.
+    conditions:
+      - condition: Global set of fillable_hole boundary colors S = {Red(2), Yellow(4)}
+        mapping: {Red(2): Green(3), Yellow(4): Orange(7)}
+      - condition: Global set of fillable_hole boundary colors S = {Red(2), Yellow(4), Orange(7)}
+        mapping: {Red(2): Orange(7), Yellow(4): Green(3), Orange(7): Green(3)}
+    target_fill_colors: Green(3), Orange(7)
+
+actions:
+  - action: identify_background_and_holes
+    description: Differentiate background_white pixels from hole_candidate pixels using BFS/connectivity checks.
+    inputs: input_grid
+    outputs: map of background pixels, list of hole_candidate components (pixel lists).
+
+  - action: filter_fillable_holes
+    description: Apply criteria (single boundary color, no adjacency to background) to identify fillable_holes from hole_candidates.
+    inputs: input_grid, background_map, hole_candidates
+    outputs: list of (fillable_hole_pixels, boundary_color), set S of all boundary_colors found.
+
+  - action: determine_fill_map
+    description: Select the correct boundary_color -> fill_color mapping based on the global set S.
+    inputs: set S
+    outputs: mapping function/dictionary
+
+  - action: fill_regions
+    description: Apply the determined fill color to each identified fillable_hole in the output grid.
+    inputs: input_grid, identified_fillable_holes, fill_map
+    outputs: output_grid

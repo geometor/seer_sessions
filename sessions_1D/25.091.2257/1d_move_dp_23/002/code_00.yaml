@@ -1,0 +1,62 @@
+task_description: Within the first row of a 2D grid, shift a colored block rightwards to become adjacent to a fixed red anchor pixel, moving the intermediate white space to the left of the block.
+grid_dimensionality: 2D (but transformation logic applies only to the first row)
+relevant_colors:
+  - background: white (0)
+  - anchor: red (2)
+  - movable: green (3), yellow (4) # Any color other than white or red seems possible
+objects:
+  - id: target_row
+    description: The first row (index 0) of the input grid.
+  - id: colored_block
+    description: A contiguous sequence of identical pixels within the target_row, where the color is not white (0) or red (2).
+    properties:
+      - color: The specific color of the block (e.g., green, yellow).
+      - pixels: The list of pixel values in the block.
+      - start_index: The starting column index of the block in the target_row.
+      - end_index: The ending column index of the block in the target_row.
+  - id: red_anchor
+    description: A single pixel with the color red (2) within the target_row.
+    properties:
+      - index: The column index of the red pixel in the target_row.
+  - id: separating_pixels
+    description: White (0) pixels located between the colored_block and the red_anchor in the target_row.
+    properties:
+      - count: The number of these white pixels.
+  - id: leading_background
+    description: White (0) pixels located before the colored_block in the target_row.
+  - id: trailing_background
+    description: White (0) pixels located after the red_anchor in the target_row.
+  - id: other_rows
+    description: Any rows in the input grid below the first row (index > 0).
+relationships:
+  - type: spatial
+    description: In the target_row of the input, the colored_block is to the left of the red_anchor, potentially separated by separating_pixels.
+  - type: transformation
+    description: In the target_row of the output, the colored_block is immediately adjacent to the left of the red_anchor. The separating_pixels are moved to be immediately adjacent to the left of the colored_block. Leading and trailing background pixels maintain their relative positions at the start and end of the row. Other_rows remain unchanged.
+actions:
+  - action: extract
+    target: target_row
+    input: input_grid
+    output: first row as a 1D list or array.
+  - action: identify
+    target: colored_block, red_anchor (within target_row)
+    description: Locate the start/end indices of the colored_block and the index of the red_anchor within the extracted row.
+  - action: count
+    target: separating_pixels (within target_row)
+    input: indices of colored_block end and red_anchor
+    output: number of white pixels between them (shift_amount).
+  - action: extract
+    target: leading_background, trailing_background (within target_row)
+  - action: construct_transformed_row
+    description: Assemble the transformed target_row by concatenating elements in the new order.
+    order:
+      1. leading_background
+      2. shift_amount number of white (0) pixels
+      3. colored_block pixels
+      4. red_anchor (pixel value 2)
+      5. trailing_background
+  - action: construct_output_grid
+    description: Create the final output grid.
+    steps:
+      1. Place the construct_transformed_row as the first row.
+      2. Append all other_rows from the original input grid unchanged.

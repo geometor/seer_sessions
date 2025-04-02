@@ -1,0 +1,44 @@
+task_type: conditional object duplication and placement
+
+input_features:
+  - connected_components: Contiguous blocks of same-colored, non-white pixels. Found using 4-connectivity.
+  - background: White pixels (value 0).
+  - bounding_boxes: Calculated for each connected_component.
+  - composition:
+      # Step 1: Identify the core structure based on bounding box hierarchy
+      - frame_component: The single connected_component with the largest bounding_box area.
+      - composite_region: The bounding_box of the frame_component.
+      # Step 2: Define the object to be copied
+      - enclosed_components: All connected_components (other than the frame_component) whose bounding_boxes are entirely within the composite_region.
+      - composite_object_pixels: The set of coordinates belonging to the frame_component OR any enclosed_component.
+      - composite_object_bbox: The minimal bounding_box containing all composite_object_pixels.
+      - composite_pattern: The actual pixel values from the input grid at the composite_object_pixels locations, arranged within the composite_object_bbox (relative coordinates).
+      # Step 3: Identify the object determining the duplication direction
+      - secondary_components: All connected_components whose bounding_boxes are entirely outside the composite_region.
+      - determining_secondary_object: The secondary_component with the largest bounding_box area. (Assumption: one is clearly largest or uniquely present).
+
+relationships:
+  - containment: enclosed_components' bounding_boxes are inside the composite_region.
+  - separation: secondary_components' bounding_boxes are outside the composite_region.
+  - relative_position: The spatial relationship (predominantly horizontal or vertical separation) between the determining_secondary_object's bounding_box and the composite_object_bbox.
+
+actions:
+  - find_connected_components: Identify all separate blocks of same-colored pixels. Calculate their bounding boxes and areas.
+  - select_frame_component: Find the component with the maximum bounding_box area. Define its bounding_box as the composite_region.
+  - identify_enclosed_components: Filter components to find those fully inside the composite_region.
+  - define_composite_object: Combine coordinates of frame_component and enclosed_components. Calculate the combined bounding_box. Extract the pixel pattern within this box.
+  - identify_secondary_components: Filter components to find those fully outside the composite_region.
+  - select_determining_secondary: Find the secondary_component with the maximum bounding_box area.
+  - determine_duplication_axis_and_gap:
+      - Compare composite_object_bbox and determining_secondary_object's bounding_box.
+      - If horizontal distance (between centers or edges) is greater, axis is horizontal, gap = 2 columns.
+      - Else (vertical distance is greater or equal), axis is vertical, gap = 1 row.
+  - generate_output: Create an empty grid (background color 0).
+  - place_original_composite: Draw the composite_pattern at the composite_object_bbox's top-left corner.
+  - calculate_copy_position: Determine the top-left corner for the copy based on axis and gap.
+  - place_copied_composite: Draw the composite_pattern at the calculated copy position.
+
+output_features:
+  - grid: Same dimensions as the input grid.
+  - content: Contains two identical instances of the composite_pattern, separated by the determined gap along the determined axis.
+  - background: White pixels (value 0) fill the rest of the grid.

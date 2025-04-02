@@ -1,0 +1,38 @@
+task_type: pattern_replacement_1D
+grid_dimensionality: 1D (single row, variable length)
+objects:
+  - type: pattern_block
+    description: The first contiguous horizontal sequence of 2 or more identical non-white pixels found when scanning left-to-right in the input row.
+    properties:
+      - color: The integer color value (1-9) of the pixels in the block.
+      - length: The number of pixels in the block (>= 2).
+      - content: The sequence of pixel values (e.g., [7, 7, 7]).
+      - location: Start and end indices within the row (informative, not directly used by replacement logic after identification).
+  - type: target_pixel
+    description: An individual non-white pixel in the input row identified for replacement.
+    properties:
+      - color: Must match the color of the pattern_block.
+      - position: The index `i` of the pixel in the row.
+      - isolation: Must be surrounded by white pixels (0) or grid boundaries. (Pixel at `i-1` is 0 or boundary) AND (Pixel at `i+1` is 0 or boundary).
+  - type: background_pixel
+    description: White pixels (value 0).
+actions:
+  - action: copy_input_to_output
+    input: input_grid row
+    output: output_grid row (mutable copy)
+  - action: find_pattern
+    input: input_grid row
+    output: pattern_block (content, color, length) or none found status.
+    details: Scan left-to-right for the first sequence length >= 2 of identical non-white pixels.
+  - action: find_targets
+    input: input_grid row, pattern_color
+    output: list of integer indices representing target_pixel positions.
+    details: Scan input row for pixels matching pattern_color that meet the isolation criteria.
+  - action: replace_targets_with_pattern
+    input: output_grid row, target_positions list, pattern_block (content, length)
+    output: modified_output_grid row
+    details: For each target index `i` in the list, calculate the replacement start index `s = i - floor(pattern_length / 2)`. Overwrite the segment of the output_grid row starting at `s` with the `pattern_content`, respecting grid boundaries (indices 0 to length-1).
+relationships:
+  - Replacement trigger: A target_pixel's color must match the pattern_block's color.
+  - Exclusion: Pixels within the identified pattern_block are not considered target_pixels, even if they meet color/isolation criteria relative to the outside of the block (this is implicitly handled by the isolation check needing neighbors to be white/boundary).
+  - Replacement positioning: The pattern is placed such that it's centered horizontally around the original target_pixel's index.

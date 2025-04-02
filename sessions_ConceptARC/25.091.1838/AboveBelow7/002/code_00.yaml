@@ -1,0 +1,50 @@
+task_type: object_reordering
+
+elements:
+  - role: background
+    properties:
+      color: white
+      value: 0
+  - role: color_group
+    description: A collection of all pixels sharing the same non-background color. Acts as a single unit for transformation.
+    properties:
+      color: any non-white color (e.g., yellow, green, red, azure)
+      value: 1-9
+      shape: Can be contiguous or non-contiguous.
+      pixels: List of (row, col) coordinates.
+      vertical_extent: Defined by the minimum (min_row) and maximum (max_row) row indices occupied by pixels of this color.
+      horizontal_position: The horizontal placement defined by the column coordinates of its pixels. Remains unchanged.
+      height: Calculated as max_row - min_row + 1.
+      original_min_row: The min_row in the input grid. Used for positioning in the output.
+
+relationships:
+  - type: vertical_ordering
+    description: Color groups are ordered vertically based on their original min_row.
+    between: [color_group, color_group]
+  - type: vertical_gap
+    description: The number of background rows separating the max_row of one group and the min_row of the next group below it in the original vertical order. Calculated as `next_group.min_row - current_group.max_row - 1`.
+    between: [color_group, color_group]
+
+actions:
+  - name: identify_color_groups
+    input: input_grid
+    output: list of color_groups with their properties (color, pixels, min_row, max_row, height)
+  - name: determine_original_vertical_order_and_gaps
+    input: list of color_groups
+    output:
+      - ordered list of color_groups (top to bottom based on original min_row)
+      - list of vertical_gaps between consecutive groups in this order
+  - name: construct_output_grid
+    input: input_grid_dimensions, original_order, original_gaps
+    output: output_grid
+    description: Creates the output grid by placing the color groups in reversed vertical order.
+      1. Create an empty grid (background color).
+      2. Reverse the original order of groups.
+      3. Reverse the list of original gaps.
+      4. Determine the target top row for the *first* group in the reversed sequence: this is simply the `original_min_row` of that specific group.
+      5. Iterate through the reversed group list:
+         a. Calculate the vertical shift needed for the current group: `shift = current_target_row - group.original_min_row`.
+         b. Place all pixels of the current group onto the output grid at `(original_row + shift, original_column)`.
+         c. Update the `current_target_row` for the *next* group by adding the current group's `height`. If there is a corresponding gap for this position in the reversed gap list, add `gap + 1` to the `current_target_row`.
+
+goal: Reverse the vertical stacking order of the distinct color groups found in the input grid. The internal structure and horizontal position of each group must be preserved. The vertical gaps originally present between adjacent groups must also be preserved between the newly adjacent groups in the reversed order. The absolute vertical position of the resulting block is determined by placing the group that moves to the top at its original starting row.

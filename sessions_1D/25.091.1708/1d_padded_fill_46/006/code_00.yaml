@@ -1,0 +1,36 @@
+task_context:
+  grid_dimensionality: 2D
+  grid_size_constancy: True # Input and output grids have the same dimensions (assumed 6x14).
+  background_color: 0 # white
+
+row_processing:
+  dependency: Independent # Each row is processed based only on its own content.
+  condition: Identify rows containing exactly two non-white pixels where both pixels have the same color value (C).
+  action_if_condition_met:
+    - Identify the column indices (c1, c2) of the two matching non-white pixels.
+    - Determine the start column index: start_col = min(c1, c2).
+    - Determine the end column index: end_col = max(c1, c2).
+    - Fill all pixels in the current row from start_col to end_col (inclusive) with color C.
+  action_if_condition_not_met: Copy the row from the input to the output without change.
+
+objects:
+  - type: Pixel_Pair
+    description: Two pixels within the same row that meet the processing condition.
+    properties:
+      - color: non-white (value C > 0)
+      - count_per_row: Exactly 2
+      - color_consistency: Both pixels must have the same color C.
+      - arrangement: Located within the same row, separated by zero or more white (0) pixels.
+  - type: Horizontal_Line_Segment
+    description: A contiguous sequence of pixels of the same non-white color along a single row in the output.
+    origin: Created by filling the space between a Pixel_Pair (inclusive of the pair pixels).
+
+transformation:
+  type: Conditional Row Fill
+  input: Input grid
+  output: Output grid (same dimensions)
+  steps:
+    - Iterate through each row of the input grid.
+    - Analyze the row for the presence of a Pixel_Pair.
+    - If a Pixel_Pair is found, generate a Horizontal_Line_Segment in the corresponding row of the output grid by filling between the pair's columns with their color.
+    - Otherwise, copy the input row directly to the output grid row.

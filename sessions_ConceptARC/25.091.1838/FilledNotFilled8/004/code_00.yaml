@@ -1,0 +1,36 @@
+task_description: Transforms grid based on non-background pixel connectivity.
+
+constants:
+  background_color: 0 # white
+  adjacency: 8 # 8-way including diagonals
+
+input_properties:
+  - grid: 2D array of integers (colors)
+  - non_background_pixels: All pixels with color != background_color
+  - unique_color: The single color value of all non_background_pixels (assumption based on examples)
+  - coordinates: List of (row, col) tuples for non_background_pixels
+
+derived_properties:
+  - connectivity: Number of connected components formed by non_background_pixels using specified adjacency.
+
+logic_branches:
+  - condition: connectivity == 1
+    action: Outline Extraction
+      - description: Identify boundary pixels of the single component. A pixel is boundary if it is adjacent (using specified adjacency) to a background_color pixel or the grid edge.
+      - output_grid: Contains only the boundary pixels with their original unique_color, rest is background_color.
+  - condition: connectivity > 1
+    action: Convex Hull Filling
+      - description: Calculate the convex hull polygon enclosing all non_background_pixel coordinates. Fill the area inside and on the boundary of this hull.
+      - prerequisites: Requires a method to calculate convex hull (e.g., from scipy.spatial) and fill a polygon (e.g., point-in-polygon test).
+      - output_grid: Contains pixels inside or on the hull boundary colored with unique_color, rest is background_color.
+      - fallback (if < 3 points or hull fails): Color only the original non_background_pixels.
+
+example_1_specifics:
+  input_color: 6 # magenta
+  input_connectivity: 9 (> 1)
+  applied_action: Convex Hull Filling
+
+example_2_specifics:
+  input_color: 3 # green
+  input_connectivity: 1
+  applied_action: Outline Extraction

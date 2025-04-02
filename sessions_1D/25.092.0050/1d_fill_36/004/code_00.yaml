@@ -1,0 +1,45 @@
+task_description: "Fill the horizontal segment between two identical non-white pixels in a single-row grid."
+grid_properties:
+  - type: "input"
+    dimensionality: 2 # Specifically 1xN
+    shape: "(1, N)" # N varies, e.g., (1, 13)
+    content_constraints:
+      - "Contains exactly one row."
+      - "Contains exactly two non-white pixels (value > 0)."
+      - "The two non-white pixels must have the same color value."
+      - "All other pixels are white (value 0)."
+  - type: "output"
+    dimensionality: 2
+    shape: "Same as input (1, N)"
+    content_constraints:
+      - "Contains exactly one row."
+      - "Pixels outside the filled segment are white (value 0)."
+      - "Pixels within the filled segment (inclusive of boundaries) have the same color as the input boundary pixels."
+objects:
+  - name: "Boundary Pixels"
+    type: "pair"
+    count: 1 # per input grid
+    properties:
+      - color: "non-white (value > 0), same for both pixels"
+      - location: "Specific column indices within the single row"
+      - role: "Define the start index, end index, and fill color for the transformation."
+  - name: "Segment To Fill"
+    type: "horizontal span"
+    count: 1 # per grid
+    properties:
+      - location: "Indices from min(boundary_indices) to max(boundary_indices), inclusive."
+      - initial_state: "Contains the two boundary pixels and potentially white pixels in between."
+      - final_state: "All pixels within the span have the same color as the boundary pixels."
+transformation:
+  - step: 1
+    action: "Identify Boundaries"
+    condition: "Input grid has 1 row, exactly 2 non-white pixels, and these 2 pixels have the same color."
+    input: "Input grid (1xN)"
+    output: "Boundary pixel color (fill_color), start index (min_idx), end index (max_idx)."
+    on_failure: "Return input grid unchanged."
+  - step: 2
+    action: "Fill Segment"
+    condition: "Boundaries successfully identified."
+    input: "Input grid, fill_color, min_idx, max_idx."
+    process: "Create a copy of the input grid. Iterate from min_idx to max_idx (inclusive). Set the pixel color at each index in the copied grid's row to fill_color."
+    output: "Modified grid with the segment filled."

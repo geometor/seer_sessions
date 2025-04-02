@@ -1,0 +1,49 @@
+task_description: Fill the empty space (white pixels) inside a container shape with the color of the single object found within it, preserving the original shapes.
+
+elements:
+  - object: container_shape
+    description: The shape that defines the boundary for the fill. Identified as the non-white shape that either touches the grid edge or is the larger of two non-edge-touching shapes.
+    properties:
+      - color: Varies per example (green, yellow, magenta). Referred to as `container_color`.
+      - structure: Forms a boundary, not necessarily solid or hollow in the traditional sense, but defines an interior region.
+  - object: inner_shape
+    description: The non-white shape located spatially inside the container_shape. Its color determines the fill color.
+    properties:
+      - color: Varies per example (red, gray, orange). Referred to as `fill_color`.
+      - structure: A connected block of color.
+      - location: Spatially inside the region bounded by the `container_shape`. Assumed to be the shape whose color does not match `container_color`.
+  - object: background
+    description: The empty space in the grid.
+    properties:
+      - color: white (0).
+
+relationships:
+  - type: containment
+    description: The `container_shape` pixels define a region that encloses the `inner_shape` pixels and some `background` pixels.
+  - type: adjacency
+    description: Pixels are connected orthogonally (up, down, left, right).
+
+actions:
+  - action: identify_roles
+    input: input_grid
+    output: container_color, fill_color, inner_shape_pixels
+    description: >
+      Determine the two non-white colors. Identify the `container_color` (touches edge, or larger if neither touches edge)
+      and the `fill_color` (the other color). Collect the coordinates of the `inner_shape` (pixels matching `fill_color`).
+      Return an error if roles are ambiguous (e.g., not exactly two colors, both touch edge).
+  - action: conditional_flood_fill
+    input: input_grid, output_grid_copy, container_color, fill_color, inner_shape_pixels
+    output: modified_output_grid
+    description: >
+      Perform a Breadth-First Search (BFS) starting from a pixel of the `inner_shape`.
+      The search explores adjacent pixels (up, down, left, right).
+      The search queue expands through pixels whose original color is *not* `container_color`.
+      If an explored pixel's original color in the `input_grid` was white (0), its color in the `output_grid_copy` is changed to `fill_color`.
+      Pixels matching the `container_color` act as barriers and are not traversed.
+      Pixels originally matching the `fill_color` are traversed but their color is not changed.
+
+output_grid_composition:
+  - Retain the `container_shape` pixels from the input.
+  - Retain the `inner_shape` pixels from the input.
+  - Replace white pixels reachable from the `inner_shape` without crossing the `container_shape` boundary with the `fill_color`.
+  - Retain white pixels outside the `container_shape` boundary.

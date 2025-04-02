@@ -1,0 +1,65 @@
+task_elements:
+  - element: Grid
+    description: A 2D array of pixels with colors 0-9. Black (0) is the background.
+  - element: Object
+    description: A contiguous region of pixels sharing the same non-black color (Outer Color). Connectivity is defined by 4-way adjacency (up, down, left, right).
+    properties:
+      - OuterColor: The integer color value (1-9) of the object's pixels.
+      - Pixels: The set of (row, column) coordinates comprising the object.
+  - element: SpecialColor
+    description: The single, unique color present anywhere in the input grid that is NEITHER Black (0) NOR the OuterColor of any identified Object. If zero such colors exist, or if more than one such color exists, the SpecialColor is defined as Black (0).
+    relationship: Derived by comparing the set of all unique colors in the grid against the set of identified OuterColors and the background color (0).
+  - element: SetOfOuterColors
+    description: The unique collection of Outer Colors from all objects identified in the input grid.
+    properties:
+      - UniqueColors: Set of distinct integer Outer Colors.
+      - SortedColors: List of UniqueColors sorted numerically in ascending order.
+      - SmallestColor: The minimum color value in UniqueColors.
+      - SecondSmallestColor: The second minimum color value in UniqueColors (defined only if at least two unique Outer Colors exist).
+
+actions:
+  - action: IdentifyObjects
+    description: Find all distinct connected components (using 4-way adjacency) of non-black pixels in the input grid.
+    inputs: Input Grid (numpy array)
+    outputs: List of Objects (each represented as a dictionary with 'color' and 'pixels' keys).
+  - action: IdentifySpecialColor
+    description: Determine the Special Color.
+    inputs: Input Grid (numpy array), Set of Outer Colors (from identified objects)
+    outputs: SpecialColor (integer value).
+    logic: |
+      1. Get all unique color values present in the Input Grid.
+      2. Create a set difference: UniqueGridColors - SetOfOuterColors - {0}.
+      3. If the resulting set contains exactly one element, that element is the SpecialColor.
+      4. Otherwise, the SpecialColor is 0.
+  - action: SelectColorToRemove
+    description: Determine which Outer Color identifies the objects to be removed based on the SpecialColor.
+    inputs: SpecialColor (integer), Sorted List of Outer Colors
+    outputs: ColorToRemove (integer value, or None if no removal occurs).
+    logic: |
+      If SpecialColor is 0:
+        If Sorted List of Outer Colors has 2 or more elements, return the second element (index 1).
+        Else, return None.
+      If SpecialColor is not 0:
+        If Sorted List of Outer Colors has 1 or more elements, return the first element (index 0).
+        Else, return None.
+  - action: GenerateOutputGrid
+    description: Create the final output grid by removing objects of the selected color from the input grid.
+    inputs: Input Grid (numpy array), List of Objects, ColorToRemove (integer or None)
+    outputs: Output Grid (numpy array, convertible to list of lists).
+    logic: |
+      1. Create a deep copy of the Input Grid.
+      2. If ColorToRemove is None, return the copied grid as is.
+      3. If ColorToRemove is not None:
+         Iterate through the List of Objects.
+         For each object where object['color'] equals ColorToRemove:
+           Iterate through each (row, column) coordinate in object['pixels'].
+           Set the value at that (row, column) in the copied grid to 0 (Black).
+      4. Return the modified copied grid.
+
+relationships:
+  - relationship: RemovalCriteria
+    description: The choice of which object color to remove is determined by whether the SpecialColor is Black (0) or non-Black, combined with the sorted order of the OuterColors.
+    entities: SpecialColor, SetOfOuterColors, ColorToRemove
+  - relationship: GridModification
+    description: The transformation produces the output by selectively erasing specific objects (changing their pixels to Black) from the input grid, leaving all other pixels untouched.
+    entities: Input Grid, Objects, ColorToRemove, Output Grid

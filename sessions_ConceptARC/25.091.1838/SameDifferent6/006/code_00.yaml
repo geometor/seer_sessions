@@ -1,0 +1,55 @@
+task_elements:
+  - element: Grid
+    description: A 2D array of pixels (0-9). Black (0) is the background.
+  - element: PrimaryObject
+    description: A contiguous region of non-black pixels sharing the same color (Outer Color). Excludes singletons or small groups of the 'Special Color'.
+    properties:
+      - OuterColor: The main color of the object's pixels.
+      - Pixels: The coordinates of the pixels comprising the object.
+  - element: SpecialColor
+    description: The single color that is spatially associated (e.g., inside, adjacent) with all Primary Objects but is different from their Outer Colors. Can be Black (0).
+    identification: Found by observing the common non-Outer Color within or adjacent to all Primary Objects.
+  - element: SetOfOuterColors
+    description: The unique collection of Outer Colors of all Primary Objects.
+    properties:
+      - UniqueColors: List of distinct Outer Colors.
+      - SortedColors: UniqueColors sorted numerically.
+
+actions:
+  - action: IdentifyPrimaryObjects
+    description: Find all significant contiguous components of non-black pixels, potentially filtering by size or complexity to exclude simple 'Special Color' pixels.
+    inputs: Input Grid
+    outputs: List of PrimaryObjects (with OuterColor and Pixels).
+  - action: IdentifySpecialColor
+    description: Determine the single color commonly associated spatially with all Primary Objects.
+    inputs: Input Grid, List of PrimaryObjects
+    outputs: SpecialColor value.
+  - action: SelectColorToRemove
+    description: Choose which Outer Color objects should be removed based on the SpecialColor and the sorted list of Outer Colors.
+    inputs: SpecialColor, Sorted List of Outer Colors
+    outputs: ColorToRemove.
+    logic: |
+      If SpecialColor is Black (0), ColorToRemove is the second element in Sorted List of Outer Colors (if >= 2 elements exist).
+      If SpecialColor is not Black (0), ColorToRemove is the first element (minimum) in Sorted List of Outer Colors (if >= 1 element exists).
+      If the condition cannot be met (e.g., not enough elements), no color is removed.
+  - action: RemoveTargetedPixels
+    description: Modify the grid by setting specific pixels to Black (0).
+    inputs: Input Grid, ColorToRemove, SpecialColor, List of PrimaryObjects
+    outputs: Output Grid.
+    logic: |
+      1. Create a copy of the input grid.
+      2. Identify all pixels belonging to PrimaryObjects whose OuterColor matches ColorToRemove ('object_pixels_to_remove').
+      3. Identify all pixels in the original grid that have the SpecialColor ('special_pixels').
+      4. Find the subset of 'special_pixels' where each pixel is adjacent (8-way) to at least one pixel in 'object_pixels_to_remove' ('adjacent_special_pixels_to_remove').
+      5. In the copied grid, set all pixels in 'object_pixels_to_remove' to Black (0).
+      6. In the copied grid, set all pixels in 'adjacent_special_pixels_to_remove' to Black (0).
+      7. Return the modified grid.
+
+relationships:
+  - relationship: RemovalCondition
+    description: The Outer Color chosen for removal depends on the Special Color and the numeric order of Outer Colors.
+    entities: SpecialColor, SetOfOuterColors, ColorToRemove
+  - relationship: PixelRemovalScope
+    description: Removing an object entails removing both its own pixels and any adjacent Special Color pixels.
+    entities: PrimaryObject (with ColorToRemove), SpecialColor, Pixels (to set to 0)
+    details: Adjacency uses 8-connectivity.

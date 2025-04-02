@@ -1,0 +1,61 @@
+task_type: pattern_replacement
+grid_dimensionality: 1D # or 1xN 2D grid
+
+elements:
+  - element: background
+    color: white (0)
+    role: fills most of the grid
+
+  - element: template_pattern
+    description: A sequence of three identical non-white pixels found near the start of the input grid.
+    properties:
+      - location: fixed, starts at index 1 (columns 1, 2, 3)
+      - size: 3 pixels wide
+      - color: consistent within the pattern (e.g., all azure '8' or all magenta '6')
+      - count: 1 per input grid
+    role: defines the pattern to be copied
+
+  - element: target_pixel
+    description: Isolated single pixels matching the color of the template_pattern.
+    properties:
+      - location: variable, occurs after the template_pattern
+      - size: 1 pixel
+      - color: same as template_pattern
+      - context: must be surrounded by background pixels (white '0') horizontally.
+      - count: one or more per input grid
+    role: marks locations for pattern insertion
+
+actions:
+  - action: identify_template
+    input: input_grid
+    output: template_pattern (value and color)
+    condition: located at indices [1, 2, 3]
+
+  - action: identify_targets
+    input: input_grid
+    output: list of target_pixel locations (indices)
+    condition: pixels match template_pattern color and are isolated (index > 3, input[index-1]==0, input[index+1]==0)
+
+  - action: copy_paste_pattern
+    source: template_pattern
+    destination_grid: output_grid (initially a copy of input_grid)
+    targets: identified target_pixel locations
+    process: For each target location `i`, overwrite the output grid at indices `[i-1, i, i+1]` with the `template_pattern`.
+    centering: The middle pixel of the copied pattern aligns with the original target_pixel location.
+
+relationships:
+  - relationship: color_match
+    between: [template_pattern, target_pixel]
+    details: The color of the target_pixels must be the same as the color of the pixels in the template_pattern.
+  - relationship: positional
+    between: [template_pattern, target_pixel]
+    details: Target pixels always appear later in the grid than the template pattern.
+  - relationship: isolation
+    element: target_pixel
+    details: Target pixels are horizontally adjacent only to background pixels.
+
+output_construction:
+  - step: Initialize the output grid as a copy of the input grid.
+  - step: Identify the template pattern (color C, pattern CCC) at indices 1, 2, 3.
+  - step: Find all indices `i` where the input grid has value C, and input[i-1] and input[i+1] are 0.
+  - step: For each such index `i`, modify the output grid by setting output[i-1]=C, output[i]=C, output[i+1]=C.

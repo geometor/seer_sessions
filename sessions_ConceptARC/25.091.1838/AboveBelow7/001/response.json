@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom collections import defaultdict\n\n\"\"\"\nIdentifies distinct groups of pixels based on their non-background color.\nReverses the vertical order of these color groups while maintaining their internal structure, \nhorizontal position, and the vertical spacing that originally existed between them.\n\nWorkflow:\n1. Find all unique non-background colors and the coordinates of pixels for each color.\n2. For each color group, determine its vertical bounding box (min_row, max_row).\n3. Store information about each group: color, pixel coordinates, min_row, max_row, height.\n4. Sort the groups based on their original top row (min_row).\n5. Calculate the vertical gaps between consecutive groups in the original sorted order.\n6. Determine the starting row for the first group in the output (which is the original starting row of the topmost group).\n7. Create a new grid filled with the background color.\n8. Reverse the order of the sorted groups list.\n9. Reverse the order of the calculated gaps list.\n10. Iterate through the reversed groups list:\n    a. Calculate the vertical shift required to move the group from its original position to its new target position. The target position depends on the accumulated height of previously placed groups and the gaps between them.\n    b. Apply the shift to each pixel coordinate of the current group and draw it onto the output grid.\n    c. Update the target starting row for the next group by adding the current group's height and the corresponding gap (if any).\n11. Return the modified grid.\n\"\"\"\n\ndef find_color_groups(grid):\n    \"\"\"Finds all pixels belonging to each non-background color.\"\"\"\n    color_coords = defaultdict(list)\n    rows, cols = grid.shape\n    unique_colors = []\n    for r in range(rows):\n        for c in range(cols):\n            color = grid[r, c]\n            if color != 0: # 0 is background (white)\n                color_coords[color].append((r, c))\n                if color not in unique_colors:\n                    unique_colors.append(color)\n    return color_coords, unique_colors\n\ndef get_group_properties(coords):\n    \"\"\"Calculates bounding box and height for a list of coordinates.\"\"\"\n    if not coords:\n        return None\n    rows = [r for r, c in coords]\n    min_row = min(rows)\n    max_row = max(rows)\n    height = max_row - min_row + 1\n    return {'min_row': min_row, 'max_row': max_row, 'height': height}\n\ndef transform(input_grid):\n    \"\"\"\n    Reverses the vertical order of color groups in the grid.\n    \"\"\"\n    input_grid = np.array(input_grid)\n    rows, cols = input_grid.shape\n    \n    # Initialize output_grid with background color\n    output_grid = np.zeros_like(input_grid)\n\n    # 1. Find color groups and their pixels\n    color_coords, unique_colors = find_color_groups(input_grid)\n\n    if not unique_colors:\n        # If no non-background colors, return the original grid\n        return input_grid.tolist()\n\n    # 2. & 3. Get properties for each group\n    groups = []\n    for color in unique_colors:\n        coords = color_coords[color]\n        properties = get_group_properties(coords)\n        if properties:\n            groups.append({\n                'color': color,\n                'pixels': coords,\n                'min_row': properties['min_row'],\n                'max_row': properties['max_row'],\n                'height': properties['height']\n            })\n\n    # 4. Sort groups by original vertical position (top to bottom)\n    groups.sort(key=lambda g: g['min_row'])\n\n    # Store original min_row for shift calculation later\n    for group in groups:\n        group['original_min_row'] = group['min_row']\n\n    # 5. Calculate original vertical gaps between consecutive groups\n    gaps = []\n    if len(groups) > 1:\n        for i in range(len(groups) - 1):\n            gap = groups[i+1]['min_row'] - groups[i]['max_row'] - 1\n            gaps.append(gap)\n\n    # 6. Determine the overall starting row (topmost row of the topmost object)\n    original_start_row = groups[0]['min_row'] if groups else 0\n\n    # 8. Reverse the order of groups\n    groups.reverse()\n\n    # 9. Reverse the order of gaps\n    gaps.reverse()\n\n    # 10. Place groups onto the output grid in the new order\n    current_target_row = original_start_row\n    for i, group in enumerate(groups):\n        # a. Calculate vertical shift\n        shift = current_target_row - group['original_min_row']\n\n        # b. Apply shift and draw pixels\n        for r, c in group['pixels']:\n            new_r = r + shift\n            # Ensure the pixel stays within grid bounds (shouldn't be necessary if logic is correct, but safe)\n            if 0 <= new_r < rows:\n                output_grid[new_r, c] = group['color']\n\n        # c. Update target row for the next group\n        current_target_row += group['height']\n        if i < len(gaps): # If there's a gap after this group\n            current_target_row += gaps[i]\n            \n    return output_grid.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 3593,
+    "candidates_token_count": 1290,
+    "total_token_count": 4883,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 28.770647,
+  "retries": 1
+}

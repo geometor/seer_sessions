@@ -1,0 +1,55 @@
+task_type: pattern_replacement
+grid_dimensionality: 2D (specifically 1xN in examples)
+grid_size:
+  rows: 1 (observed in examples)
+  columns: 33 (observed in examples)
+  invariance: grid dimensions remain unchanged
+colors:
+  - background: white (0)
+  - foreground: variable (magenta=6, orange=7, maroon=9 in examples), determined per grid
+objects:
+  - type: grid
+    properties:
+      - height
+      - width
+      - pixels
+  - type: pixel
+    properties:
+      - color
+      - row_index
+      - column_index
+      - left_neighbor_color (at [row, col-1])
+      - right_neighbor_color (at [row, col+1])
+  - type: pattern
+    properties:
+      - type: isolated_foreground_pixel
+      - definition: A foreground pixel `C` located at `[r, c]` such that pixels at `[r, c-1]` and `[r, c+1]` are background (white, 0).
+      - representation: `[0, C, 0]` horizontally within a row.
+      - location: Identified by the central pixel's coordinates `[r, c]`.
+input_features:
+  - A single row grid.
+  - Contains background (white) pixels and pixels of one other foreground color `C`.
+  - May contain instances of the `[0, C, 0]` pattern horizontally.
+  - May contain contiguous blocks (e.g., `[C, C, C]`) of the foreground color.
+output_features:
+  - Grid dimensions are identical to the input.
+  - Locations that matched the `[0, C, 0]` pattern in the input are replaced by `[C, C, C]` in the output.
+  - All other pixels retain their original color from the input.
+transformation:
+  - name: expand_isolated_horizontal_pixels
+  - description: Replaces horizontal sequences of `[0, C, 0]` with `[C, C, C]` within the grid's row, where `C` is the unique foreground color.
+  - inputs: input_grid (2D list/array)
+  - outputs: output_grid (2D list/array)
+  - steps:
+      1. Create a copy of the input grid.
+      2. Determine the unique foreground color `C`.
+      3. Iterate through the single row of the input grid (assuming 1 row based on examples).
+      4. For each column index `c` from 1 to width-2:
+         a. Check if `input_grid[0][c-1] == 0`, `input_grid[0][c] == C`, and `input_grid[0][c+1] == 0`.
+         b. If true, update the copied grid: `output_grid[0][c-1] = C`, `output_grid[0][c] = C`, `output_grid[0][c+1] = C`.
+      5. Return the modified copy.
+relationship: horizontal_adjacency (within the row)
+invariance:
+  - grid_size (height and width)
+  - background_pixels not directly adjacent left/right to an isolated foreground pixel
+  - foreground pixels not part of the `[0, C, 0]` pattern

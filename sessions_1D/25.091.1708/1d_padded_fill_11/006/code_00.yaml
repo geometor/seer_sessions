@@ -1,0 +1,53 @@
+task_context:
+  grid_properties:
+    - dimensions_preserved: True # Input and output grids have the same height and width.
+    - background_color: white (0) # White pixels act as the background.
+  transformation_type: row_based_conditional_filling # Transformation operates independently on each row based on a condition.
+objects:
+  - type: pixel
+    properties:
+      - color: non-white (1-9) or white (0)
+      - position: (row_index, column_index)
+  - type: row
+    properties:
+      - content: sequence of pixels (1D array)
+      - identified_feature: A unique pair of identical non-white pixels.
+relationships:
+  - type: horizontal_adjacency
+    description: Pixels located within the same row.
+  - type: betweenness
+    description: Pixels located horizontally strictly between two specific pixels in the same row.
+  - type: identity
+    description: Two pixels having the same non-white color value.
+  - type: count
+    description: Number of occurrences of each non-white color within a row.
+actions:
+  - name: analyze_row_pixels
+    inputs: row
+    outputs: analysis_result {color: [index1, index2, ...], ...}
+    description: Find all non-white pixels in the row and group their column indices by color.
+  - name: check_condition
+    inputs: analysis_result
+    outputs: condition_met (boolean), target_color (int), indices (tuple[int, int]) or None
+    description: Determine if exactly one color appears exactly twice in the row. If yes, return the color and the sorted indices of the pair.
+  - name: fill_segment
+    inputs: row, target_color, indices (col1, col2)
+    outputs: modified_row
+    description: Change the color of pixels in the row from index `col1 + 1` up to `col2 - 1` (exclusive) to `target_color`. Only applied if `col1 + 1 < col2`.
+    target_pixels: Any pixel (typically white/background) between the identified pair.
+  - name: copy_row
+    inputs: row
+    outputs: identical_row
+    description: Return the row unmodified.
+transformation_flow:
+  - step: Create a copy of the input grid to serve as the output grid.
+  - step: Iterate through each row of the input grid using its index `r`.
+  - step: For each row `r`:
+    a. Apply `analyze_row_pixels` to get the color map and indices.
+    b. Apply `check_condition` to the analysis result.
+    c. **If** `condition_met` is True:
+        i. Retrieve `target_color`, `col1`, `col2` from the result.
+        ii. Apply `fill_segment` to the corresponding row `r` in the *output grid* using `target_color`, `col1`, `col2`.
+    d. **Else** (condition_met is False):
+        i. No action is needed (the row in the output grid remains as the original copied row).
+  - step: Return the final output grid.

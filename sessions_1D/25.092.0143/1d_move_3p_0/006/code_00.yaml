@@ -1,0 +1,60 @@
+task_type: transformation
+grid_dimensionality: 1D # Input and output are single rows
+input_object_properties:
+  - name: input_row
+    attributes:
+      length: N_in
+  - name: primary_block
+    type: contiguous_block
+    attributes:
+      color: C (non-white)
+      start_index: S_in
+      length: L_in
+  - name: background
+    type: area
+    attributes:
+      color: white (0)
+output_object_properties:
+  - name: output_row
+    attributes:
+      length: N_out
+  - name: transformed_block
+    type: contiguous_block
+    attributes:
+      color: C # same as input block color
+      start_index: S_out
+      length: L_out
+  - name: background
+    type: area
+    attributes:
+      color: white (0)
+actions:
+  - name: identify_input_block
+    inputs: input_row
+    outputs: C, S_in, L_in, N_in
+  - name: calculate_output_parameters
+    inputs: S_in, L_in, N_in
+    parameters: shift_amount (constant: 3)
+    outputs: S_out, L_out, N_out
+    logic:
+      - S_out = S_in + shift_amount
+      - IF S_in == 0 THEN L_out = L_in - 1 ELSE L_out = L_in
+      - L_out = max(0, L_out) # Ensure length is not negative
+      - N_out = N_in # Output row length is same as input
+  - name: construct_output
+    inputs: N_out, C, S_out, L_out
+    outputs: output_row
+    logic: Create a row of length N_out filled with white (0). Place the block (C, L_out) at S_out, respecting row boundaries.
+relationships:
+  - type: conditional_transformation
+    conditions:
+      - property: primary_block.start_index == 0
+        consequences:
+          - transformed_block.length = primary_block.length - 1
+      - property: primary_block.start_index > 0
+        consequences:
+          - transformed_block.length = primary_block.length
+    common_rules:
+      - transformed_block.start_index = primary_block.start_index + 3
+      - output_row.length = input_row.length
+      - transformed_block.color = primary_block.color

@@ -1,0 +1,43 @@
+task_description: Retain the largest green object and any other object whose vertical extent (all rows it occupies) is fully contained within the vertical extent of the largest green object.
+
+elements:
+  - role: background
+    color: white (0)
+  - role: objects
+    description: Contiguous blocks of non-white pixels.
+    properties:
+      - color: integer (1-9)
+      - pixels: list of (row, col) tuples
+      - size: count of pixels
+      - is_green: boolean (color == 3)
+      - is_largest_green: boolean (largest size among green objects, determined during transformation)
+      - min_row: minimum row index occupied by the object's pixels
+      - max_row: maximum row index occupied by the object's pixels
+
+transformation:
+  - step: 1
+    action: Identify all distinct objects in the input grid. For each object, determine its color, pixels, size, min_row, and max_row.
+  - step: 2
+    action: Filter the identified objects to find all green objects (color == 3).
+  - step: 3
+    condition: If no green objects exist.
+    action: Return an output grid of the same dimensions as the input, filled entirely with the background color (white, 0).
+  - step: 4
+    condition: If green objects exist.
+    action: Identify the green object with the maximum size ('largest_green_object'). Handle ties deterministically (e.g., select the first one encountered during the object finding process).
+  - step: 5
+    action: Determine the minimum row ('min_ref_row') and maximum row ('max_ref_row') occupied by the 'largest_green_object'.
+  - step: 6
+    action: Create a new output grid of the same dimensions as the input, initialized entirely with the background color (white, 0).
+  - step: 7
+    action: Iterate through all objects identified in Step 1.
+    condition: Check if the current object meets the keep criteria: (is the 'largest_green_object') OR (its 'min_row' >= 'min_ref_row' AND its 'max_row' <= 'max_ref_row').
+    effect: If the condition is true, iterate through the object's 'pixels' and set the corresponding (row, col) in the output grid to the object's 'color'.
+  - step: 8
+    action: Return the final output grid.
+
+relationships:
+  - type: vertical_containment
+    description: An object 'A' is vertically contained by object 'B' if A.min_row >= B.min_row and A.max_row <= B.max_row.
+  - type: selection_criterion
+    description: Objects are kept (drawn onto the output grid) if they are the largest green object OR if they are vertically contained within the largest green object's row range. Objects not meeting this criterion are implicitly removed because the output grid starts blank.

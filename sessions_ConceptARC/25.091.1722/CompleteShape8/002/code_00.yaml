@@ -1,0 +1,34 @@
+task_description: Transform groups of colored pixels into single 3x3 squares based on their overall bounding box, ignoring gray pixels.
+
+grid_properties:
+  - dimensions: Input and output grids share the same height and width.
+  - background_color: white (0)
+
+object_types:
+  - type: color_group
+    description: All pixels of a specific color in the input grid, excluding white (0) and gray (5). Considered as a single unit for transformation.
+    properties:
+      - color: The specific color of the group (e.g., yellow, magenta, orange).
+      - pixels: List of (row, col) coordinates of all pixels of this color.
+      - overall_bounding_box: The smallest rectangle containing all pixels of this color group.
+        properties:
+          - top_left_corner: (min_row, min_col) coordinate encompassing all pixels of the color.
+    transformation: Replaced by a single 3x3 square of the group's color in the output. The square's top-left corner aligns with the overall bounding box's top-left corner calculated from all pixels of that color.
+  - type: ignored_color_group
+    description: All gray (5) pixels in the input grid.
+    transformation: Removed entirely in the output, replaced by the background color (white).
+  - type: background
+    description: White (0) pixels.
+    transformation: Remains white, unless overwritten by a transformed color_group's 3x3 square.
+
+actions:
+  - identify_colors: Find all distinct colors present in the input grid, excluding white (0) and gray (5).
+  - group_pixels_by_color: For each identified target color, collect all (row, col) coordinates where that color appears.
+  - calculate_overall_bounding_box: For each color group, determine the bounding box encompassing all its pixels and identify the top-left corner coordinate (min_row, min_col).
+  - generate_output_square: For each target color group, create a 3x3 square of its color.
+  - place_output_square: Position the generated 3x3 square onto an initially white output grid, using the calculated overall top-left corner for that color group as the anchor point.
+
+relationships:
+  - Each target color (non-white, non-gray) present in the input maps to exactly one 3x3 square of that same color in the output.
+  - The position of the output square for a given color is determined by the top-left coordinate of the bounding box containing *all* pixels of that color in the input.
+  - Gray pixels (ignored_color_group) have no corresponding output; they are replaced by the background.

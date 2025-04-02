@@ -1,0 +1,63 @@
+task_description: "Conditionally change a single magenta pixel to white based on the colors of its two innermost enclosing objects."
+
+elements:
+  - element: grid
+    description: "A 2D array of pixels representing colors 0-9."
+  - element: pixel
+    properties:
+      - color: integer value 0-9
+      - position: (row, column) coordinates
+  - element: background
+    value: 0 (white)
+    description: "The default color filling empty space."
+  - element: object
+    description: "A contiguous block of pixels of the same non-background color."
+    properties:
+      - color: The color of the pixels in the object.
+      - pixels: Set of (row, column) coordinates belonging to the object.
+  - element: target_pixel
+    description: "The specific pixel being evaluated for transformation."
+    properties:
+      - color: 6 (magenta)
+      - uniqueness: Must be exactly one such pixel in the grid.
+  - element: container_relationship
+    description: "How one object encloses another or a pixel."
+    determination_method: "Flood Fill (BFS)"
+    steps:
+      - step: "Containment Check 1 (Pixel -> Inner Object)"
+        start_point: target_pixel position
+        traversable_colors: {0 (white), 6 (magenta)}
+        boundary_condition: "Fill MUST NOT reach grid boundary."
+        output: adjacent_pixels_1 (pixels neighboring the filled area but not traversable)
+        container_color_derivation: "C_inner is the single unique non-background color present in adjacent_pixels_1. If zero or multiple colors, containment fails."
+      - step: "Containment Check 2 (Inner Object -> Outer Object)"
+        start_point: Any pixel belonging to C_inner that was identified in adjacent_pixels_1.
+        traversable_colors: {0 (white), C_inner}
+        boundary_condition: "Fill MUST NOT reach grid boundary."
+        output: adjacent_pixels_2 (pixels neighboring the filled area but not traversable)
+        container_color_derivation: "C_outer is the single unique non-background color present in adjacent_pixels_2. If zero or multiple colors, containment fails."
+
+transformation:
+  - action: locate
+    target: target_pixel (magenta, 6)
+    condition: "Exactly one magenta pixel must exist."
+    failure_action: "Return input grid unchanged."
+  - action: determine_inner_container
+    method: "Containment Check 1 (see container_relationship)"
+    outputs: C_inner
+    failure_action: "Return input grid unchanged."
+  - action: determine_outer_container
+    method: "Containment Check 2 (see container_relationship)"
+    inputs: C_inner
+    outputs: C_outer
+    failure_action: "Return input grid unchanged."
+  - action: evaluate_condition
+    condition: "(C_inner == 4 (yellow) AND C_outer == 2 (red)) OR (C_inner == 1 (blue) AND C_outer == 3 (green))"
+  - action: apply_change
+    condition: "evaluate_condition is true."
+    effect: "Create copy of input grid, change target_pixel color to 0 (white), return copy."
+  - action: no_change
+    condition: "evaluate_condition is false."
+    effect: "Return input grid unchanged."
+
+implementation_note: "Previous code attempt failed to correctly derive C_inner and C_outer in some cases (Examples 2, 4), indicating potential issues in the flood fill's identification of adjacent boundary pixels or the interpretation thereof. Careful implementation of the 'container_color_derivation' step is crucial."

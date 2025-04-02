@@ -1,0 +1,66 @@
+task_description: Fill small (size 1 or 2) enclosed white regions within non-white objects using the object's color.
+
+elements:
+  - element: grid
+    description: A 2D array of pixels (0-9 colors).
+    properties:
+      - shape: (height, width), e.g., 8x8.
+      - background_color: white (0).
+
+  - element: object
+    description: A contiguous region of pixels of the same non-white color.
+    properties:
+      - color: non-white integer (1-9).
+      - can_enclose: May surround regions of white pixels.
+
+  - element: external_white
+    description: White (0) pixels connected to the grid border via adjacent white pixels.
+    properties:
+      - color: 0
+      - status: Unchanged by the transformation.
+
+  - element: internal_white_region (hole)
+    description: A contiguous region of white (0) pixels not connected to the border via white pixels (i.e., enclosed).
+    properties:
+      - color: 0 (in input)
+      - size: Count of pixels in the region.
+      - enclosure_color: The color of the adjacent non-white pixels.
+
+actions:
+  - action: identify_connectivity_to_border
+    description: Determine which white pixels are part of the 'external_white' set using a search from border white pixels.
+    input: input grid
+    output: set of coordinates for external white pixels
+
+  - action: segment_internal_white_regions
+    description: Find distinct contiguous regions of white pixels that are not 'external_white'.
+    input: input grid, set of external white pixel coordinates
+    output: list of regions, where each region has a list of its pixel coordinates.
+
+  - action: analyze_internal_region
+    description: For a given internal region, calculate its size and determine the color of the enclosing object.
+    input: list of region pixel coordinates, input grid
+    output: region size (integer), enclosure color (integer)
+
+  - action: conditional_fill
+    description: Fill an internal region with its enclosure color only if its size meets the criteria.
+    input: output grid, region pixel coordinates, region size, enclosure color
+    condition: region size is 1 or 2.
+    output: potentially modified output grid
+
+transformation_rule:
+  - Find all distinct contiguous regions of white pixels.
+  - Separate regions into 'external' (connected to border) and 'internal' (enclosed).
+  - For each 'internal' region:
+    - Calculate its size (number of pixels).
+    - Determine the color of the adjacent non-white pixels ('enclosure_color').
+    - If the size is 1 or 2, change the color of all pixels in that region to the 'enclosure_color'.
+  - Leave 'external' regions and 'internal' regions with size > 2 unchanged.
+
+relationships:
+  - relation: connectivity (adjacency)
+    description: Defines contiguous regions and connection to the border (up, down, left, right neighbors).
+  - relation: enclosure
+    description: Non-white pixels surrounding white pixels, preventing connection to the border.
+  - relation: size_threshold
+    description: The transformation (filling) depends on the size of the enclosed region (<= 2).

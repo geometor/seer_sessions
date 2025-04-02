@@ -1,0 +1,48 @@
+task_description: Keep only the target-colored pixels that are located inside the region defined by the boundary-colored shape. Replace everything else, including the boundary shape itself, with the background color (white, 0).
+
+elements:
+  - object: Grid
+    properties:
+      - type: 2D array
+      - pixels: contain color values (0-9)
+      - dimensions: consistent between input and output
+
+  - object: Background
+    properties:
+      - color: white (0)
+      - role: fills most of the output grid and areas outside the boundary in the input
+
+  - object: Boundary Shape
+    properties:
+      - color: The non-background color with the highest pixel count in the input grid (heuristic).
+      - shape: forms a connected or semi-connected structure that acts as a barrier.
+      - role: defines an 'inside' and 'outside' region; prevents flood fill propagation.
+      - persistence: removed in the output (replaced by background).
+
+  - object: Target Points
+    properties:
+      - color: Any non-background color that is *not* the boundary color.
+      - shape: typically individual pixels or small clusters.
+      - location: scattered across the grid.
+      - role: points to be selectively kept or removed.
+      - persistence: kept only if located 'inside' the boundary region, otherwise removed.
+
+relationships:
+  - type: containment
+    description: Target points are classified as either 'inside' or 'outside' the region defined by the Boundary Shape. 'Outside' is defined by reachability from the border background.
+  - type: transformation_rule
+    description: The output grid retains only the 'inside' Target Points at their original locations, set against the Background color. The Boundary Shape and 'outside' Target Points are replaced by the Background color.
+
+determination_of_inside:
+  - method: Flood Fill Inversion from Background Border
+    steps:
+      - Identify Background (0), Boundary (most frequent non-0), and Target (other non-0) colors.
+      - Create a boolean grid `is_outside` of the same size as the input, initialized to `false`.
+      - Initialize a queue with the coordinates of all Background-colored (0) pixels located on the outermost border of the input grid. Mark these initial coordinates as `true` in `is_outside`.
+      - While the queue is not empty:
+        - Dequeue a coordinate `(r, c)`.
+        - For each neighbor `(nr, nc)` (adjacent horizontally or vertically):
+          - If `(nr, nc)` is within bounds, is *not* the Boundary Color, and `is_outside[nr, nc]` is `false`:
+            - Mark `is_outside[nr, nc]` as `true`.
+            - Enqueue `(nr, nc)`.
+      - A Target Point at `(r, c)` is considered 'inside' if `is_outside[r, c]` is `false`.

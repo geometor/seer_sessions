@@ -1,0 +1,48 @@
+task_description: Fill the empty background space inside an outer boundary shape with the color of a distinct inner shape, preserving both original shapes.
+
+elements:
+  - role: background
+    properties:
+      color: white (0)
+      ubiquitous: True
+  - role: outer_frame
+    properties:
+      color: variable (non-white)
+      shape: variable (forms a closed boundary)
+      connectivity: Forms a single connected object using 8-way adjacency (including diagonals).
+      encloses_inner: True
+  - role: inner_object
+    properties:
+      color: variable (non-white), distinct from outer_frame color
+      shape: variable
+      location: fully contained within the spatial region enclosed by the outer_frame
+      connectivity: Forms a single connected object (8-way adjacency assumed, though 4-way often sufficient).
+  - role: fill_area
+    properties:
+      location: strictly inside the outer_frame, excluding pixels of the outer_frame and inner_object.
+      initial_color: white (0)
+      final_color: same as inner_object color
+
+relationships:
+  - type: containment
+    subject: inner_object
+    object: outer_frame
+    description: The inner_object is located within the spatial region defined and enclosed by the outer_frame.
+  - type: source_for_fill
+    subject: inner_object
+    object: fill_area
+    description: The color of the inner_object determines the color used to fill the fill_area.
+
+actions:
+  - action: identify_objects
+    input: input grid
+    output: outer_frame object, inner_object object
+    description: Find all distinct connected non-white objects using 8-way adjacency. Identify the object that encloses the other as the outer_frame, and the enclosed one as the inner_object. This typically involves finding exactly two such objects and checking bounding box containment.
+  - action: identify_interior_background_region
+    input: input grid
+    output: set of coordinates for the interior background pixels
+    description: Determine the pixels that are white (0) AND are enclosed by the outer_frame. This is achieved by performing a flood fill starting from all background pixels on the grid's border; any background pixel *not* reached by this flood fill is considered interior background.
+  - action: fill_interior_background
+    input: input grid, interior_background_region coordinates, inner_object color
+    output: output grid
+    description: Create a copy of the input grid. For each coordinate in the interior_background_region, change the pixel color in the copied grid to the inner_object's color. Leave all other pixels (outer_frame, inner_object, exterior background) unchanged.

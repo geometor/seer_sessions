@@ -1,0 +1,64 @@
+task_type: drawing_completion
+background_color: 0 # white
+elements:
+  - role: reference_structure
+    description: A pattern of non-background pixels forming a line (solid or dashed).
+    properties:
+      - color: Varies (gray, orange, green)
+      - shape: Line-like (vertical, horizontal, diagonal)
+      - count: Multiple pixels
+      - derived_properties:
+          - coordinates: List of (row, col) tuples for each pixel.
+          - occupied_rows: Set of unique row indices.
+          - occupied_cols: Set of unique column indices.
+          - orientation: Vertical, Horizontal, or Diagonal.
+  - role: marker_pixel
+    description: A single non-background pixel, often isolated or distinct by color. If all non-background pixels share the same color, it's the one most distinct spatially (e.g., lowest and rightmost).
+    properties:
+      - color: Varies (yellow, orange, red)
+      - shape: Single pixel
+      - count: 1
+      - derived_properties:
+          - position: (row, col) tuple.
+          - color_value: Integer color value.
+transformation:
+  action: draw_path
+  properties:
+    color: Determined by marker_pixel.color_value.
+    start_point: Determined by reference orientation and marker position.
+    end_point: Determined by reference orientation and marker position.
+    path_type: Determined by reference orientation.
+rules_by_orientation:
+  - orientation: Vertical
+    reference_column: The column index of the vertical reference structure pixels.
+    marker_row: The row index of the marker pixel.
+    marker_column: The column index of the marker pixel.
+    path_type: Horizontal line.
+    start_column: reference_column + 1.
+    end_column: marker_column (inclusive).
+    row: marker_row.
+  - orientation: Horizontal
+    reference_row: The row index of the horizontal reference structure pixels.
+    marker_row: The row index of the marker pixel.
+    marker_column: The column index of the marker pixel.
+    path_type: Vertical line.
+    start_row: reference_row + 1.
+    end_row: marker_row (inclusive).
+    column: marker_column.
+  - orientation: Diagonal
+    reference_rows: Set of row indices occupied by reference pixels.
+    reference_cols: Set of column indices occupied by reference pixels.
+    marker_position: (row, col) of the marker pixel.
+    path_type: Diagonal line segment.
+    direction: (dr, dc) determined by the relative position of the marker to the approximate center of the reference structure.
+    path_generation:
+      - Initialize current_pos = (marker_row + dr, marker_col + dc).
+      - Loop:
+          - Check bounds: If current_pos is outside grid, stop.
+          - Check stop condition: If current_pos.row is in reference_rows OR current_pos.col is in reference_cols:
+              - Draw pixel at current_pos using marker_color.
+              - Stop loop.
+          - Else (not stopped):
+              - Draw pixel at current_pos using marker_color.
+              - Update current_pos = (current_pos.row + dr, current_pos.col + dc).
+              - Continue loop.

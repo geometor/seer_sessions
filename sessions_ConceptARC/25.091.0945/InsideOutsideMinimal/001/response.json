@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom scipy.ndimage import label, find_objects\n\n\"\"\"\nIdentify the largest hollow rectangular object (the \"frame\") in the input grid. \nIdentify all other distinct objects (content objects) in the grid.\nFor each content object, determine if it lies entirely within the inner area bounded by the frame.\nCreate the output grid by copying the input grid.\nIn the output grid, change the color of all pixels belonging to content objects strictly inside the frame \nto the background color (white/0). Leave the frame and objects outside the frame unchanged.\n\"\"\"\n\ndef find_largest_object(grid):\n    \"\"\"Finds the object (connected component of non-background pixels)\n       with the most pixels. Returns its color, coordinates, and count.\n    \"\"\"\n    unique_colors = np.unique(grid[grid != 0])\n    if len(unique_colors) == 0:\n        return -1, None, 0 # No non-background objects\n\n    largest_object_coords = None\n    largest_object_color = -1\n    max_pixels = 0\n\n    for color in unique_colors:\n        # Find connected components for the current color\n        labeled_array, num_labels = label(grid == color)\n        if num_labels > 0:\n            # Iterate through each component found for this color\n            for i in range(1, num_labels + 1):\n                coords = np.argwhere(labeled_array == i)\n                num_pixels = len(coords)\n                # Check if this component is the largest found so far\n                if num_pixels > max_pixels:\n                    max_pixels = num_pixels\n                    largest_object_color = color\n                    largest_object_coords = coords\n                    \n    return largest_object_color, largest_object_coords, max_pixels\n\ndef get_bounding_box(coords):\n    \"\"\"Calculates the bounding box (min_row, min_col, max_row, max_col) for a set of coordinates.\"\"\"\n    if coords is None or len(coords) == 0:\n        return None\n    min_row, min_col = np.min(coords, axis=0)\n    max_row, max_col = np.max(coords, axis=0)\n    return min_row, min_col, max_row, max_col\n\n\ndef transform(input_grid):\n    \"\"\"\n    Removes objects located strictly inside the largest hollow rectangular frame.\n\n    1. Identifies the largest connected non-background object, assuming it's the frame.\n    2. Determines the bounding box of this frame.\n    3. Iterates through the pixels *inside* the frame's bounding box.\n    4. If an inside pixel belongs to an object other than the frame (i.e., its color is not the frame color\n       and not the background color 0), it changes that pixel's color to background (0).\n    5. Returns the modified grid.\n    \"\"\"\n    output_grid = np.copy(input_grid)\n    height, width = input_grid.shape\n    background_color = 0\n\n    # Find the largest object, assumed to be the frame\n    frame_color, frame_coords, _ = find_largest_object(input_grid)\n\n    # If no frame is found (e.g., grid is all background or empty), return original\n    if frame_color == -1 or frame_coords is None:\n        return output_grid\n\n    # Get the bounding box of the frame\n    frame_bbox = get_bounding_box(frame_coords)\n    if frame_bbox is None:\n         return output_grid # Should not happen if frame_coords is not None, but safe check\n        \n    min_row, min_col, max_row, max_col = frame_bbox\n\n    # Define the inner region (strictly inside the frame's bounding box)\n    # Loop ranges exclude the max values, so max_row and max_col work directly\n    inner_min_row = min_row + 1\n    inner_max_row = max_row \n    inner_min_col = min_col + 1\n    inner_max_col = max_col\n\n    # Iterate through the pixels within the inner region\n    for r in range(inner_min_row, inner_max_row):\n        for c in range(inner_min_col, inner_max_col):\n            # Check boundaries just in case, though ranges should handle this\n            if 0 <= r < height and 0 <= c < width:\n                pixel_color = input_grid[r, c]\n                # If the pixel is inside the bounds and is NOT the frame color and NOT background,\n                # set it to background color in the output.\n                if pixel_color != frame_color and pixel_color != background_color:\n                    output_grid[r, c] = background_color\n\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 3048,
+    "candidates_token_count": 1116,
+    "total_token_count": 4164,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 27.019428,
+  "retries": 1
+}

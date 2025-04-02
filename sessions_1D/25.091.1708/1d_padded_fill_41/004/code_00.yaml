@@ -1,0 +1,43 @@
+task_type: grid_transformation
+grid_properties:
+  - background_color: 0 (white)
+  - dimensions_vary: true # Seen 7x9 and 8x9
+global_analysis:
+  - identify: all non_white_pixels in the input grid
+  - calculate: max_col_overall = maximum column index among all non_white_pixels. (If no non-white pixels, output is all white).
+processing_granularity: row-wise # Each row processed independently using global max_col_overall
+objects:
+  - type: pixel
+    attributes:
+      - color: integer 0-9
+      - position: (row_index, column_index)
+  - type: non_white_pixel
+    description: A pixel with color > 0.
+    attributes:
+      - color
+      - position
+row_analysis:
+  - identify: non_white_pixels_in_row
+    properties:
+      - locations: list of (column_index, color) pairs
+      - count: number of non_white_pixels
+      - leftmost_pixel: pixel with minimum column_index (if count > 0)
+transformation_rule:
+  - scope: per_row
+  - requires: max_col_overall from global analysis
+  - conditions:
+      - if: grid contains no non_white_pixels
+        action: output_grid = input_grid (all white)
+      - else: # process row by row
+          - if: row_count == 0
+            action: output_row = input_row (all white)
+          - if: row_count == 1
+            action:
+              - get: color C and column index Col of the single non_white_pixel
+              - fill: output_row from Col to max_col_overall (inclusive) with C
+              - keep: output_row outside [Col, max_col_overall] as white
+          - if: row_count > 1
+            action:
+              - get: color C and column index MinCol of leftmost_pixel in the row
+              - fill: output_row from MinCol to max_col_overall (inclusive) with C
+              - keep: output_row outside [MinCol, max_col_overall] as white

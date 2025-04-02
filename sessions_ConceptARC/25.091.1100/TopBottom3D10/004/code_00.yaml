@@ -1,0 +1,69 @@
+task_description: "Flood-fill an enclosed region with an adjacent color if a 'leak point' exists on the border."
+
+definitions:
+  - &object_inner
+    name: Inner Region (R_inner)
+    description: A contiguous region of pixels of a single color (C_inner).
+    properties:
+      - color: C_inner
+      - pixels: Set of (row, col) tuples
+      - status: potentially modified to C_adjacent
+  - &object_border
+    name: Border Region (B)
+    description: A set of pixels, all of the same color (C_border), that are immediately adjacent to R_inner and collectively surround it. C_border must be different from C_inner.
+    properties:
+      - color: C_border
+      - pixels: Set of (row, col) tuples
+      - relationship: all neighbors of R_inner not in R_inner belong to B.
+      - status: unchanged
+  - &object_adjacent
+    name: Adjacent Color Source (Pixel P_adjacent)
+    description: A pixel adjacent to a pixel in the Border Region (B).
+    properties:
+      - color: C_adjacent (where C_adjacent != C_inner and C_adjacent != C_border and C_adjacent != 0 (background))
+      - pixel: (row, col) tuple
+      - relationship: adjacent to a specific pixel P_border in B.
+      - status: unchanged
+
+rules:
+  - description: Identify potential inner regions and their immediate neighbors.
+    action: For each contiguous region R_inner (color C_inner) found in the input grid:
+      - Find all unique pixels P_neighbor adjacent (non-diagonal) to any pixel in R_inner, where P_neighbor is not in R_inner.
+      - Collect the set of coordinates {P_neighbor} and the set of colors {C_neighbor} for these neighbors.
+  - description: Check for single-color enclosure.
+    condition: If the set {C_neighbor} contains exactly one color (C_border) AND C_border is not equal to C_inner.
+    action: Identify R_inner as an 'enclosed region' and the set {P_neighbor} as the 'border region' B.
+  - description: Detect leak point and determine adjacent color.
+    condition: If R_inner is enclosed by B (color C_border):
+      - Iterate through each pixel P_border in B.
+      - Check if P_border is adjacent to *any* pixel P_inner in R_inner (this is guaranteed by how B was found, but good for clarity).
+      - Check if P_border is also adjacent to *any* pixel P_adjacent whose color C_adjacent satisfies (C_adjacent != C_inner AND C_adjacent != C_border AND C_adjacent != 0).
+    action: If such a P_border and corresponding C_adjacent are found:
+      - Store C_adjacent as the 'leaking color'.
+      - Stop searching for leak points for this R_inner (assume first found leak dictates the change).
+  - description: Apply flood fill transformation.
+    condition: If a 'leaking color' (C_adjacent) was found for an enclosed region R_inner.
+    action: In the output grid, change the color of all pixels corresponding to R_inner to C_adjacent.
+  - description: Preserve pixels otherwise.
+    condition: If a region is not enclosed, or if it is enclosed but no 'leaking color' is found.
+    action: Copy the pixels of the region unchanged to the output grid.
+
+examples:
+  - example_id: train_1
+    input_analysis:
+      - R_inner: Region of Red (2)
+      - B: Border of Blue (1) pixels immediately surrounding R_inner.
+      - Enclosed: Yes (Border is single color 1, different from inner 2).
+      - Leak Point Search: Find a Blue(1) pixel in B (e.g., at (2,5)) adjacent to Red(2) (e.g., (2,4)) AND adjacent to Green(3) (e.g., (2,6)). (Note: 3 != 2, 3 != 1, 3 != 0).
+      - Leaking Color: Green (3).
+    output_changes:
+      - All pixels of the original Red (2) region R_inner are changed to Green (3).
+  - example_id: train_2
+    input_analysis:
+      - R_inner: Region of Yellow (4)
+      - B: Border of Azure (8) pixels immediately surrounding R_inner.
+      - Enclosed: Yes (Border is single color 8, different from inner 4).
+      - Leak Point Search: Find an Azure(8) pixel in B (e.g., at (2,6)) adjacent to Yellow(4) (e.g., (2,7)) AND adjacent to Magenta(6) (e.g., (2,5)). (Note: 6 != 4, 6 != 8, 6 != 0).
+      - Leaking Color: Magenta (6).
+    output_changes:
+      - All pixels of the original Yellow (4) region R_inner are changed to Magenta (6).

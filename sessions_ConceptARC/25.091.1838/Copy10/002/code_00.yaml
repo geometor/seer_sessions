@@ -1,0 +1,60 @@
+task_description: Identify a 'container' structure, 'contained' objects, and an 'orphan' structure. Remove the orphan structure and copy the container structure (including its contained objects) to a new location determined by the orphan's position, leaving a 2-pixel gap.
+
+definitions:
+  - object: A contiguous block of non-white pixels of the same color.
+  - object_group: A collection of all objects of the same color.
+  - bounding_box: The smallest rectangle enclosing all pixels of an object or an object group (min_r, min_c, max_r, max_c).
+  - container_group: The object group whose combined bounding box encloses the combined bounding box of at least one other object group. Uses inclusive enclosure check (edges can touch). If multiple qualify, potentially the one with the largest area or enclosing the most objects.
+  - contained_object: An object whose color differs from the container group's color and whose bounding box is enclosed (inclusively) by the container group's combined bounding box.
+  - orphan_group: An object group that is not the container group and has no objects contained within the container group. Assume one primary orphan group dictates placement.
+  - container_structure_pattern: The rectangular region of the original input grid defined by the container group's combined bounding box. This includes the container group's objects and any contained objects within that region.
+
+steps:
+  - step: 1
+    action: identify_objects_and_groups
+    description: Find all distinct objects. Group them by color and calculate the combined bounding box for each group.
+  - step: 2
+    action: identify_container_group
+    description: Determine the container group by finding the color group whose combined bounding box encloses the combined bounding box of another group. Use inclusive boundary check. Resolve ties if necessary (e.g., largest area).
+  - step: 3
+    action: identify_contained_objects
+    description: Identify all objects belonging to other color groups whose bounding boxes are inclusively inside the container group's combined bounding box.
+  - step: 4
+    action: identify_orphan_group
+    description: Identify the color group that is neither the container nor contains any objects identified as 'contained'.
+  - step: 5
+    action: calculate_copy_location
+    inputs:
+      - container_group_bounding_box
+      - orphan_group_bounding_box
+    description: >
+      Determine the top-left coordinates (target_row, target_col) for placing the copy.
+      Let c_bbox = container_group_bounding_box and o_bbox = orphan_group_bounding_box.
+      If orphan group is primarily below container group (o_bbox.min_r > c_bbox.max_r):
+        target_row = o_bbox.min_r - 2
+        target_col = c_bbox.min_c
+      If orphan group is primarily right of container group (o_bbox.min_c > c_bbox.max_c):
+        target_row = c_bbox.min_r
+        target_col = o_bbox.min_c - 2
+      (Add other directions like left/above if needed based on future examples).
+  - step: 6
+    action: prepare_output_grid
+    inputs:
+      - input_grid
+      - orphan_group_objects
+    description: Create a copy of the input grid. Set all pixels belonging to any object in the orphan group to white (0).
+  - step: 7
+    action: extract_pattern_to_copy
+    inputs:
+      - input_grid
+      - container_group_bounding_box
+    description: Extract the subgrid defined by the container group's combined bounding box from the original input grid.
+  - step: 8
+    action: place_copy
+    inputs:
+      - output_grid
+      - pattern_to_copy
+      - target_location (target_row, target_col)
+    description: Paste the extracted subgrid (pattern_to_copy) onto the output grid starting at the calculated target location, overwriting existing pixels.
+
+final_output: The modified output grid after removing the orphan group and placing the copy.

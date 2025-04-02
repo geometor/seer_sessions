@@ -1,0 +1,78 @@
+task_elements:
+  - description: Grid properties
+    properties:
+      - grid_size_input: 16x16 (consistent across examples)
+      - grid_size_output: 16x16 (same as input)
+      - background_color: azure (8)
+      - fill_color: red (2)
+  - description: Objects in input
+    objects:
+      - object: Background
+        color: azure (8)
+        role: defines exterior and potentially interior spaces
+        counts: # Example specific
+            - example: 1, count: 230
+            - example: 2, count: 228
+      - object: Boundary Pixels
+        color: yellow (4) in example 1, green (3) in example 2
+        role: form closed loops, define enclosed regions
+        properties:
+          - appear contiguous or connected (adjacency includes diagonal based on visual inspection)
+          - separate interior background regions from exterior background regions
+        counts: # Example specific
+            - example: 1 (color 4), count: 26
+            - example: 2 (color 3), count: 28
+  - description: Objects in output
+    objects:
+      - object: Exterior Background
+        color: azure (8)
+        role: unchanged background pixels connected to the grid border
+        counts: # Example specific
+            - example: 1, count: 192 (230 input - 38 filled)
+            - example: 2, count: 132 (228 input - 96 filled)
+      - object: Boundary Pixels
+        color: yellow (4) or green (3)
+        role: unchanged from input
+        counts: # Example specific
+            - example: 1 (color 4), count: 26
+            - example: 2 (color 3), count: 28
+      - object: Filled Pixels
+        color: red (2)
+        role: represent background pixels from input that were enclosed by boundary pixels
+        counts: # Example specific
+            - example: 1, count: 38
+            - example: 2, count: 96
+  - description: Transformation action
+    action:
+      - name: identify_exterior_background
+        steps:
+          - Identify the background color (azure 8).
+          - Find all background pixels located on the grid's border (rows 0 and max, columns 0 and max).
+          - Perform a flood fill (using 4-way adjacency) starting from *all* these border background pixels simultaneously.
+          - Mark all background pixels reachable from the border.
+      - name: fill_interior_background
+        target: Background pixels *not* marked in the previous step.
+        result: Change the color of these target pixels to red (2).
+        precondition: The pixel must have the background color (azure 8) in the input.
+  - description: Relationships
+    relationship:
+      - type: Preservation
+        element1: Input Boundary Pixels
+        element2: Output Boundary Pixels
+        detail: Pixels retain their original color and location.
+      - type: Preservation
+        element1: Input Exterior Background Pixels
+        element2: Output Exterior Background Pixels
+        detail: Background pixels connected to the border remain azure (8).
+      - type: Transformation
+        element1: Input Interior Background Pixels
+        element2: Output Filled Pixels
+        detail: Background pixels *not* connected to the border are changed to red (2).
+      - type: Adjacency (connectivity)
+        element1: Background pixels
+        element2: Background pixels
+        detail: Background pixels are considered connected if they share an edge (4-way adjacency: up, down, left, right). Used for flood fill.
+      - type: Containment
+        element1: Boundary Pixel Loops
+        element2: Filled Red (2) Regions
+        detail: The red regions are located spatially inside the areas enclosed by the boundary loops and consist of pixels that were originally background color.

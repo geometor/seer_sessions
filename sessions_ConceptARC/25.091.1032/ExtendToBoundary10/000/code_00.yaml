@@ -1,0 +1,41 @@
+elements:
+  - color: 0
+    name: white
+    role: background
+    property: fillable_area
+  - color: 4
+    name: yellow
+    role: boundary_structure
+    property: static
+    observation: Forms shapes, defines limits for filling. The largest connected component seems to be the primary boundary. Internal parts might be ignored by the fill.
+  - color: 7
+    name: orange
+    role: seed_and_fill
+    property: dynamic
+    observation: Initiates filling process. Final fill color.
+
+grid_properties:
+  - size: variable height and width
+
+transformation:
+  - name: ray_cast_fill
+    input_elements:
+      - seed_pixels (orange)
+      - boundary_structure (yellow)
+      - background (white)
+    output_elements:
+      - filled_pixels (orange)
+      - original_boundary_structure (yellow)
+      - remaining_background (white)
+    process:
+      - step: Identify the largest connected component of boundary (yellow) pixels.
+      - step: Determine the row-wise bounding box [min_row, max_row] of this component.
+      - step: For each seed (orange) pixel at (r, c):
+          - determine_direction: Check if `r` is within [min_row, max_row]. If yes, direction=horizontal. Else, direction=vertical.
+          - ray_cast: From (r, c), cast rays in both directions along the determined axis.
+          - fill: Change all white pixels along the ray paths to orange until a pixel from the largest boundary component or grid edge is hit. Ensure (r,c) is orange.
+    notes: The fill process seems to treat only the pixels of the largest yellow component as stopping points, ignoring other yellow pixels or potentially other orange pixels created by the fill process itself.
+
+examples_summary:
+  - train_1: Seed row is inside boundary bbox rows -> horizontal fill.
+  - train_2: Seed rows are outside boundary bbox rows -> vertical fill. Fill ignores internal yellow line, stops at top boundary.

@@ -1,0 +1,48 @@
+task_type: conditional_object_copying
+grid_properties:
+  width_parity_dependent: true
+
+rules:
+  - condition: grid_width is even
+    action: copy_left_half_objects_to_right_half
+    details:
+      - source_region_cols: 0 to (width / 2) - 1
+      - target_region_cols: (width / 2) to width - 1
+      - offset_vector: (dr, dc) = (0, width / 2)
+      - identify_source_objects: find all distinct non-white connected objects within the source_region_cols
+      - copy_process:
+        - start_with: output grid = copy of input grid
+        - for_each_source_object:
+          - for_each_pixel (r_p, c_p) in the object:
+            - calculate_target_coords: (target_r, target_c) = (r_p + dr, c_p + dc)
+            - boundary_check: if 0 <= target_r < height and target_region_cols_start <= target_c < width:
+              - update_output: output_grid[target_r, target_c] = object_color
+        - overwrite: true (copied pixels replace existing content in the target region)
+
+  - condition: grid_width is odd
+    action: offset_copy_based_on_central_marker
+    marker_object:
+      shape: horizontal 1x2 block
+      color: 6 (magenta)
+      pixels: [[6, 6]]
+    offset_determination:
+      - find_all_instances: marker_object in the entire grid
+      - handle_no_marker: if no instances found, return input grid unchanged
+      - calculate_grid_center: ( (height-1)/2, (width-1)/2 )
+      - find_closest_marker: instance whose top-left (r_marker, c_marker) has minimum Euclidean distance to grid_center
+      - offset_vector: (dr, dc) = (r_marker, c_marker)
+    copy_process:
+      - start_with: output grid = copy of input grid
+      - identify_all_source_objects: find all distinct non-white connected objects in the entire input grid
+      - exclude_object: the specific marker object instance used for offset determination (identified by its top-left coord and shape/color)
+      - for_each_included_object:
+        - for_each_pixel (r_p, c_p) in the object:
+          - calculate_target_coords: (target_r, target_c) = (r_p + dr, c_p + dc)
+          - boundary_check: if 0 <= target_r < height and 0 <= target_c < width:
+            - update_output: output_grid[target_r, target_c] = object_color
+        - overwrite: true (copied pixels replace existing content at target locations)
+
+object_definition:
+  - type: connected component
+  - connectivity: 4-way (horizontal/vertical)
+  - colors: non-zero (ignore white/0)

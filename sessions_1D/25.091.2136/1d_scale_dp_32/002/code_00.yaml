@@ -1,0 +1,53 @@
+task_type: grid_transformation
+grid_dimensionality: 1D (single row, may be represented as 1xN)
+grid_size: variable length (up to 30)
+input_features:
+  - object_type: contiguous_block
+    identifier: single contiguous sequence of pixels with the same color, excluding white (0) and green (3)
+    color: any color except 0 (white) or 3 (green)
+    properties: [start_index, end_index, color_value]
+    quantity: 1
+  - object_type: boundary_marker
+    identifier: single pixel with green color (3)
+    color: 3 (green)
+    properties: [index]
+    quantity: 1
+  - object_type: fill_area
+    identifier: sequence of white (0) pixels located between the contiguous_block and the boundary_marker
+    color: 0 (white)
+    properties: [start_index, end_index]
+    quantity: 0 or 1 (can be empty if block is adjacent to marker)
+  - object_type: background
+    identifier: all other pixels
+    color: typically 0 (white), but can include other colors if they are outside the block-marker region
+    properties: [index, color_value]
+    quantity: variable
+relationships:
+  - type: spatial_ordering
+    description: The contiguous_block always appears entirely to the left of the boundary_marker.
+  - type: separation
+    description: The fill_area (if present) consists only of white (0) pixels and is located immediately after the contiguous_block and immediately before the boundary_marker.
+actions:
+  - action: locate_block
+    input: input_grid
+    output: block_color, block_end_index
+    description: Find the single contiguous block of non-white, non-green color and determine its color and the index of its last pixel.
+  - action: locate_marker
+    input: input_grid
+    output: marker_index
+    description: Find the index of the single green (3) pixel.
+  - action: fill_gap
+    input: input_grid, block_color, block_end_index, marker_index
+    output: modified_grid
+    condition: marker_index > block_end_index + 1
+    description: Change the color of all pixels from index `block_end_index + 1` up to (but not including) `marker_index` to `block_color`.
+output_features:
+  - object_type: extended_block
+    description: The original block, potentially extended rightward to fill the gap.
+    properties: [original_start_index, new_end_index = marker_index - 1, color_value = original_block_color]
+  - object_type: boundary_marker
+    description: Unchanged from the input.
+    properties: [index, color=3]
+  - object_type: background
+    description: Unchanged from the input.
+    properties: [index, color_value]

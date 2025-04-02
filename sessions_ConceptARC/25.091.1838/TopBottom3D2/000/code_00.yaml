@@ -1,0 +1,62 @@
+task_description: Identify intersecting horizontal and vertical lines of solid colors (excluding white background) and remove specific vertical lines based on the count of horizontal lines.
+
+elements:
+  - type: grid
+    properties:
+      - size: constant (7x7 in examples, potentially variable)
+      - background_color: white (0)
+  - type: horizontal_line
+    properties:
+      - color: Any non-white color (e.g., green, blue, magenta)
+      - extent: Spans the full width of the grid
+      - composition: Consists only of the line color and potentially the background color (white) within its row(s).
+      - count: The number of rows representing these lines is significant (1, 2, or 3 in examples).
+  - type: vertical_line
+    properties:
+      - color: Any non-white color, different from the horizontal line color (e.g., red, yellow, maroon)
+      - extent: Spans the full height of the grid
+      - composition: Consists only of the line color and potentially the background color (white) within its column(s).
+      - location: Identified by column index.
+      - intersects: Must intersect with the identified horizontal lines.
+
+relationships:
+  - type: intersection
+    between:
+      - horizontal_line
+      - vertical_line
+    description: Pixels exist where a horizontal line row and a vertical line column meet. The color of these pixels matches the vertical line color in the examples.
+
+actions:
+  - action: identify
+    target: horizontal_lines
+    criteria: Rows containing only white (0) and one other consistent color (Color H).
+    outputs:
+      - count: Number of such horizontal lines (H_count).
+      - color: The specific color (Color H).
+  - action: identify
+    target: vertical_lines
+    criteria: Columns containing only white (0) and one other consistent color (Color V), where Color V is different from Color H and intersects the identified horizontal lines.
+    outputs:
+      - indices: List of column indices where these vertical lines occur.
+      - color: The specific color (Color V).
+  - action: select_target
+    target: vertical_lines
+    based_on: H_count (count of horizontal lines)
+    rule:
+      - if H_count == 3: select the middle column index/indices.
+      - if H_count == 2: select the leftmost column index.
+      - if H_count == 1: select the rightmost column index.
+  - action: modify_grid
+    target: input_grid
+    operation: change_color
+    location: Pixels within the selected target vertical column(s) that match Color V.
+    new_color: white (0)
+    result: output_grid
+
+constants:
+  - background_color: white (0)
+
+derived_properties:
+  - H_count: Count of unique horizontal lines of a single color (Color H).
+  - V_indices: List of column indices for vertical lines of a single color (Color V) intersecting Color H lines.
+  - target_indices: Subset of V_indices selected based on H_count.

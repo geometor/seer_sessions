@@ -1,0 +1,47 @@
+task_type: line_drawing_completion
+grid_dimensionality: 1D (represented as a 1xN grid, N=45 in examples)
+input_features:
+  - A single row of pixels.
+  - Primarily white (0) background.
+  - Contains an even number (6 in examples) of non-white pixels.
+  - All non-white pixels share the same color (e.g., yellow, magenta, azure).
+  - These non-white pixels appear as ordered pairs along the row.
+  - The pixels between the members of each pair are initially white (0).
+output_features:
+  - Same dimensions as the input grid (1xN).
+  - The original non-white pixels remain in their positions.
+  - The white pixels located between the start and end pixel of each identified pair are changed to the color of that pair.
+objects:
+  - type: pixel
+    properties:
+      - color: (white=0, or a single other color per grid)
+      - position: (index within the 1D grid row)
+  - type: pixel_pair
+    properties:
+      - color: (non-white color, same for both pixels)
+      - location: (index_start, index_end) derived from the sequential order of non-white pixels.
+      - separation: (pixels between index_start and index_end are initially white)
+    count: 3 pairs per input example shown.
+  - type: filled_segment
+    properties:
+      - color: (color of the corresponding pixel_pair)
+      - location: (range of indices from index_start to index_end, inclusive)
+    relationship: Represents the state of the segment defined by a pixel_pair in the output grid.
+actions:
+  - name: identify_non_white_pixels
+    inputs: input_grid_row (1D list/sequence)
+    outputs: list_of_indices, non_white_color
+    description: Find all indices where the pixel color is not white (0). Record the color.
+  - name: pair_indices
+    inputs: list_of_indices
+    outputs: list_of_index_pairs [(start1, end1), (start2, end2), ...]
+    description: Group the sorted indices into consecutive pairs (index 0 with 1, 2 with 3, etc.).
+  - name: fill_segments
+    inputs: input_grid, list_of_index_pairs, non_white_color
+    outputs: output_grid
+    description: Create a mutable copy of the input grid. For each index pair (start, end), set the color of all pixels in the output grid's row from index 'start' to 'end' (inclusive) to the 'non_white_color'.
+constraints:
+  - Input grid is 1xN.
+  - Input contains an even number of non-white pixels.
+  - All non-white pixels in the input share the same color.
+  - The pixels between paired non-white pixels are initially white.

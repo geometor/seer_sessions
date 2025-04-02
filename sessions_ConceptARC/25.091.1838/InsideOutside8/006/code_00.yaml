@@ -1,0 +1,50 @@
+task_description: Identify a boundary shape and target pixels within an input grid. Keep only the target pixels that are located 'inside' the region enclosed by the boundary shape. Replace the boundary shape and all 'outside' pixels with the background color.
+
+elements:
+  - object: Grid
+    properties:
+      - type: 2D array of integers (colors)
+      - role: Input and Output structure
+      - dimensions: Constant between input and output for a given example
+
+  - object: Background Color
+    properties:
+      - value: 0 (white)
+      - role: Fills empty space and the final output grid background
+
+  - object: Boundary Color
+    properties:
+      - determination: The non-background color with the highest pixel count in the input grid.
+      - role: Forms a shape that delineates 'inside' and 'outside' regions. Acts as a barrier for the flood fill.
+      - persistence: Removed in the output grid (replaced by background color).
+
+  - object: Target Color(s)
+    properties:
+      - determination: Any non-background color that is not the boundary color.
+      - role: Pixels to be potentially kept in the output.
+      - persistence: Kept only if located in the 'inside' region, otherwise replaced by background color.
+
+regions:
+  - region: Outside
+    properties:
+      - determination: All pixels reachable from any border pixel via adjacent steps (up, down, left, right) without crossing a pixel of the Boundary Color.
+      - includes: Border pixels that are not the boundary color, and all connected non-boundary pixels reachable from them.
+  - region: Inside
+    properties:
+      - determination: All pixels in the grid that are not part of the Boundary Color and are not in the 'Outside' region.
+
+actions:
+  - action: Identify Colors
+    inputs: input_grid
+    outputs: background_color, boundary_color, target_colors
+    description: Count pixel occurrences to find the most frequent non-background color (boundary) and others (targets).
+
+  - action: Determine Outside Region (Flood Fill)
+    inputs: input_grid, boundary_color
+    outputs: boolean_grid_is_outside
+    description: Perform a flood fill (BFS) starting from all border pixels that are not the boundary color. Mark all reachable pixels (without crossing the boundary color) as 'true' in the boolean grid.
+
+  - action: Generate Output Grid
+    inputs: input_grid, target_colors, boolean_grid_is_outside, background_color
+    outputs: output_grid
+    description: Create an output grid filled with the background color. Iterate through the input grid. If a pixel `(r, c)` contains a target color and `boolean_grid_is_outside[r][c]` is false, set `output_grid[r][c]` to that target color.

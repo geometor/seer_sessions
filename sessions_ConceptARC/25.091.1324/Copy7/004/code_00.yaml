@@ -1,0 +1,46 @@
+task_description: Copy a pattern from a source object to a target object.
+
+definitions:
+  background_color: 0 (white)
+  object: A connected component of non-background pixels (using 8-way connectivity).
+  source_object: The object with the smallest minimum column index (leftmost).
+  target_object: The object with the largest minimum column index (rightmost). In cases with more than two objects, it's assumed to be the one furthest right based on min_col.
+  source_frame_color: The most frequent non-background color within the source_object.
+  pattern_color: The numerically smallest non-background color within the source_object that is *not* the source_frame_color. If only one non-background color exists, there is no pattern.
+  pattern_pixels: The set of coordinates `(r, c)` within the source_object where the pixel color equals the pattern_color.
+  translation_vector: A horizontal shift `(0, delta_c)`, where `delta_c = target_object.min_col - source_object.min_col`.
+  target_bounding_box: The rectangle defined by `target_object.min_row`, `target_object.max_row`, `target_object.min_col`, `target_object.max_col`.
+
+transformation:
+  - Identify all distinct objects in the input grid.
+  - If less than two objects exist, return the input grid unchanged.
+  - Determine the source_object (leftmost) and target_object (rightmost based on min_col).
+  - Determine the source_frame_color and pattern_color from the source_object.
+  - If no pattern_color can be determined (e.g., only one color in source), return the input grid unchanged.
+  - Identify all pattern_pixels in the source_object.
+  - Calculate the translation_vector.
+  - Create a copy of the input grid for the output.
+  - For each pattern_pixel `(r_s, c_s)`:
+    - Calculate the potential target coordinate `(target_r, target_c) = (r_s, c_s + delta_c)`.
+    - Check if `(target_r, target_c)` is within the grid bounds.
+    - Check if `(target_r, target_c)` falls within the target_bounding_box.
+    - If both checks pass, set the pixel color at `(target_r, target_c)` in the output grid to the pattern_color, overwriting the original color.
+  - Return the modified output grid.
+
+example_1_details:
+  source_object: Magenta (6) / Green (3) object on left. min_col=0.
+  target_object: Orange (7) object on right. min_col=7.
+  source_frame_color: 6 (Magenta)
+  pattern_color: 3 (Green)
+  translation_vector: (0, 7)
+  target_bounding_box: rows 0-5, cols 7-12.
+  pattern_pixels_copied_to: (0,8), (1,9), (2,10), (3,11), (4,12) - Note: (1,9), (2,10), (3,11) were originally background (0) but are within the target bounding box.
+
+example_2_details:
+  source_object: Yellow (4) / Blue (1) object on left. min_col=0.
+  target_object: Red (2) object on right. min_col=7.
+  source_frame_color: 4 (Yellow)
+  pattern_color: 1 (Blue)
+  translation_vector: (0, 7)
+  target_bounding_box: rows 3-5, cols 7-9.
+  pattern_pixels_copied_to: (3,9), (4,8), (5,7). All these locations were originally Red (2) and within the target bounding box.

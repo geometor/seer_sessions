@@ -1,0 +1,79 @@
+# Define the standard 5x3 pixel patterns for the letters
+# (Relative coordinates (row, col) from top-left origin)
+LetterPatterns:
+  H: [[0,0], [1,0], [2,0], [3,0], [4,0], [0,2], [1,2], [2,2], [3,2], [4,2], [2,1]]
+  E: [[0,0], [1,0], [2,0], [3,0], [4,0], [0,1], [0,2], [2,1], [2,2], [4,1], [4,2]]
+  L: [[0,0], [1,0], [2,0], [3,0], [4,0], [4,1], [4,2]]
+  MirroredL: [[0,2], [1,2], [2,2], [3,2], [4,2], [4,1], [4,0]]
+
+# Define mapping from identified small object types to letters
+# (Based on analysis of the three examples)
+SmallObjectToLetterMap:
+  - ObjectType: "Red frame, Azure center" # Example 1, Object 1
+    Letter: E
+  - ObjectType: "Green frame, Red center" # Example 1, Object 2
+    Letter: H
+  - ObjectType: "Solid Azure square" # Example 1, Object 3
+    Letter: L
+    Mirrored: True # Special flag for this object type
+  - ObjectType: "Red frame, Yellow center/pattern" # Example 2, Objects 1 & 2 (assume they map uniquely despite similarity)
+    Letter: H # Tentative assignment for first matching rect
+    Letter: E # Tentative assignment for second matching rect
+  - ObjectType: "Green cross" # Example 3, Object 1
+    Letter: L
+  - ObjectType: "Azure complex shape" # Example 3, Object 2
+    Letter: L
+
+Elements:
+  - Type: Grid
+    Properties:
+      - BackgroundColor: The most frequent color not part of large framed rectangles or small objects.
+  - Type: LargeFramedRectangle
+    Properties:
+      - FrameColor: Color of the 1-pixel border.
+      - FillColor: Color of the solid inner area.
+      - Location: Bounding box coordinates.
+  - Type: SmallObject
+    Properties:
+      - ObjectColor: The primary or outer color.
+      - InnerDetails: Pattern or color(s) inside the object.
+      - Location: Bounding box coordinates.
+      - ObjectType: A classification based on shape/color pattern (e.g., "Red frame, Azure center", "Green cross").
+
+Actions:
+  - Action: Identify
+    Target: BackgroundColor, LargeFramedRectangles, SmallObjects
+  - Action: Classify
+    Target: SmallObjects (assign ObjectType)
+  - Action: Create
+    Target: Output grid (filled with BackgroundColor)
+  - Action: Copy
+    Source: FrameColor pixels of LargeFramedRectangles
+    Destination: Output grid
+  - Action: Fill
+    Target: Inner area of frames in Output grid
+    Color: FillColor of the corresponding LargeFramedRectangle
+  - Action: Match
+    Source: FillColor of each LargeFramedRectangle
+    Target: ObjectColor of SmallObjects
+    Result: A pairing between each LargeFramedRectangle and one SmallObject.
+  - Action: SelectPattern
+    BasedOn: The ObjectType of the matched SmallObject (using SmallObjectToLetterMap)
+    Result: Letter pattern (H, E, L) and Mirrored flag.
+  - Action: DrawPattern
+    Target: FillColor area within the frame on the Output grid
+    Pattern: Selected letter pattern
+    Color: FrameColor of the LargeFramedRectangle
+    Offset: (row + 1, col + 1) from the top-left of the FillColor area.
+  - Action: DrawMirroredPattern (Conditional)
+    Condition: Mirrored flag is True for the selected pattern.
+    Target: FillColor area within the frame on the Output grid
+    Pattern: Mirrored version of the selected letter pattern
+    Color: FrameColor of the LargeFramedRectangle
+    Offset: (row + 1, col + 1 + pattern_width + 1) from the top-left of the FillColor area.
+
+Relationships:
+  - Each LargeFramedRectangle in the input corresponds to a modified region in the output.
+  - Each SmallObject in the input is removed in the output.
+  - Each LargeFramedRectangle is implicitly linked to one SmallObject via matching the rectangle's FillColor to the object's ObjectColor.
+  - The type of the linked SmallObject determines the letter pattern drawn within the LargeFramedRectangle's fill area.

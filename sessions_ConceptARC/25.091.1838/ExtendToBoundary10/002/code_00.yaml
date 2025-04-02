@@ -1,0 +1,48 @@
+elements:
+  - object: boundary
+    attributes:
+      color: yellow (4)
+      shape: defines a rectangular area, potentially with complex/hollow features within.
+      role: defines the region for potential modification and determines trigger pixel relevance.
+  - object: boundary_bounding_box
+    attributes:
+      coordinates: (min_row, max_row, min_col, max_col) derived from boundary pixels.
+      role: used to determine if triggers are outside and to define the span of the fill operation.
+  - object: trigger_pixel
+    attributes:
+      color: orange (7)
+      location: outside the boundary_bounding_box
+      role: determines the axis (row or column) and color for modification.
+  - object: target_pixel
+    attributes:
+      location: lies on the axis defined by a trigger_pixel and within the span defined by the boundary_bounding_box perpendicular to that axis.
+      original_color: any color except boundary color (yellow, 4).
+      role: pixel to be modified.
+relationships:
+  - type: spatial
+    from: trigger_pixel
+    to: boundary_bounding_box
+    details: The trigger pixel's position relative to the box (left/right vs. above/below) determines the axis (row vs. column) of modification. Trigger must be outside the box.
+actions:
+  - name: copy_grid
+    input: input_grid
+    output: output_grid (initially identical)
+  - name: find_boundary_pixels
+    input: input_grid
+    output: coordinates of all yellow (4) pixels.
+  - name: calculate_bounding_box
+    input: boundary_pixel_coordinates
+    output: min_row, max_row, min_col, max_col
+  - name: find_trigger_pixels
+    input: input_grid
+    output: list of coordinates of orange (7) pixels.
+  - name: filter_relevant_triggers
+    input: trigger_pixel_coordinates, boundary_bounding_box
+    output: list of coordinates of trigger pixels located outside the bounding box.
+  - name: determine_modification_axis_and_range
+    input: relevant_trigger_coordinate, boundary_bounding_box
+    output: axis_type ('row' or 'column'), axis_index (row or column number), range_indices (min/max column or row indices from bounding box).
+  - name: modify_along_axis
+    input: output_grid, input_grid, axis_type, axis_index, range_indices, boundary_color, trigger_color
+    output: modified_output_grid
+    details: Iterate through the specified range along the specified axis. For each pixel coordinate, if the color in the *input_grid* at that coordinate is NOT the boundary_color, set the color in the *output_grid* at that coordinate to the trigger_color.

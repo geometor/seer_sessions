@@ -1,0 +1,60 @@
+task_description: Extract a specific rectangular object from the input grid.
+
+elements:
+  - element: grid
+    description: A 2D array of pixels (color values 0-9).
+  - element: background
+    property: color
+    value: white (0) # Typically
+    description: The dominant color, often surrounding other elements.
+  - element: object
+    property: location
+    value: Contiguous group of non-background pixels.
+    property: color
+    value: variable (non-background)
+    property: shape
+    value: variable
+    property: bounding_box
+    value: (min_r, min_c, max_r, max_c) enclosing the object pixels.
+    property: area
+    value: calculated from bounding box (width * height).
+  - element: perfect_rectangle_object
+    description: An object forming a geometrically perfect rectangle, either solid or hollow.
+    relationship: subset of 'object'
+    property: type
+    value: solid OR hollow
+    attribute_check:
+      - type: solid
+        condition: All pixels within the object's bounding box match the object's color.
+      - type: hollow
+        condition: |
+          Object's bounding box width and height are both greater than 2.
+          All pixels within the bounding box that are ON the border must belong to the object and match its color.
+          All pixels within the bounding box that are strictly INSIDE the border must match the background color.
+
+transformation:
+  input: grid
+  output: subgrid (cropped view of the selected perfect_rectangle_object)
+  steps:
+    - identify: background color (assume 0 if not otherwise obvious).
+    - find: all contiguous non-background objects and their properties (color, coords, bbox).
+    - filter: identify which objects are 'perfect_rectangle_object' (checking both solid and hollow conditions accurately).
+    - classify: label each perfect rectangle as 'solid' or 'hollow'.
+    - selection_logic:
+        - gather: list of all perfect rectangles.
+        - count: number of 'hollow' perfect rectangles.
+        - condition: if count of hollow rectangles is exactly 1
+          action: select the single hollow rectangle.
+        - condition: else (count is 0 or > 1)
+          action:
+            - consider: all perfect rectangles (both solid and hollow).
+            - calculate: bounding box area for each.
+            - determine: median area among them.
+            - filter: keep only rectangles with the median area.
+            - condition: if exactly one rectangle remains
+              action: select that rectangle.
+            - condition: else (multiple rectangles remain)
+              action:
+                - determine: median color index among the remaining rectangles.
+                - select: the rectangle with the median color index (if tie, use first found or lower index).
+    - final_step: extract the selected perfect rectangle object by cropping the input grid to its bounding box.

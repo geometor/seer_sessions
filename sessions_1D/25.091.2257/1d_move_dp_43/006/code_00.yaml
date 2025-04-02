@@ -1,0 +1,59 @@
+task_type: rearrangement_1d
+grid_dimensionality: 1D
+input_elements:
+  - object_type: colored_block
+    description: A single contiguous sequence of pixels of the same color, where the color is not white (0) or green (3). Assumed to be unique per input grid.
+    properties:
+      - color: The specific color of the block (e.g., azure, yellow, magenta).
+      - start_index: The 0-based index where the block begins.
+      - end_index: The 0-based index where the block ends.
+      - length: The number of pixels in the block.
+  - object_type: marker
+    description: A single green (3) pixel. Assumed to be unique per input grid.
+    properties:
+      - color: green (3)
+      - index: The 0-based index of the marker pixel.
+  - object_type: whitespace
+    description: White (0) pixels located between the colored_block and the marker.
+    properties:
+      - color: white (0)
+      - location: Indices strictly greater than `colored_block.end_index` and strictly less than `marker.index`.
+      - count: The number of such white pixels. This count determines the shift distance.
+  - object_type: background
+    description: All other white (0) pixels.
+    properties:
+      - color: white (0)
+      - location: Indices before `colored_block.start_index`, or at/after `marker.index`.
+relationships:
+  - type: spatial
+    description: The colored_block appears before the marker in the 1D grid. There may be whitespace pixels between them.
+  - type: functional
+    description: The count of whitespace pixels between the block and the marker determines how far the block is shifted to the right in the output.
+transformation:
+  - action: identify
+    target: colored_block
+    details: Record its color, start_index, end_index, and length.
+  - action: identify
+    target: marker
+    details: Record its index.
+  - action: calculate
+    variable: shift_distance
+    description: Count the number of white (0) pixels where `colored_block.end_index < index < marker.index`.
+  - action: calculate
+    variable: new_block_start_index
+    formula: `colored_block.start_index + shift_distance`
+  - action: create_output_grid
+    description: Create a new 1D grid of the same length as the input, initialized entirely with white (0) pixels.
+  - action: place_block
+    target: output_grid
+    description: Copy the pixels of the identified `colored_block` (using its color and length) into the `output_grid`, starting at the `new_block_start_index`.
+  - action: place_marker
+    target: output_grid
+    description: Set the pixel at the original `marker.index` in the `output_grid` to green (3).
+output_elements:
+  - object_type: grid
+    description: A 1D grid of the same size as the input.
+    properties:
+      - Contains the `colored_block` shifted right by `shift_distance`.
+      - Contains the `marker` at its original `index`.
+      - All other pixels are white (0).

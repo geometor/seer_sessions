@@ -1,0 +1,35 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "Okay, let's break down this task.\n\n## Perception of Elements\n\n1.  **Input/Output Relationship:** The output grid is largely identical to the input grid, with a specific, localized change.\n2.  **Key Structures:** Both examples feature distinct regions (objects) of color. A recurring pattern is a smaller region completely surrounded by a \"frame\" or \"border\" region of a different color. There's also usually a third distinct color region adjacent to this frame.\n    *   *Example 1:* A red (2) rectangle inside a blue (1) frame, with a green (3) shape nearby touching the frame.\n    *   *Example 2:* A yellow (4) rectangle inside an azure (8) frame, with a magenta (6) shape nearby touching the frame.\n3.  **Transformation Focus:** The change occurs *inside* the enclosed region (the red area in Ex1, the yellow area in Ex2).\n4.  **Nature of Change:** The color of the enclosed region is entirely replaced by the color of the *third* region that touches the frame from the outside, adjacent to the enclosed region. It looks like the adjacent color \"leaks\" or \"floods\" into the enclosed area through specific points on the border.\n5.  **Mechanism:** The trigger for the color change seems to be the existence of a pixel on the border (frame) that is simultaneously adjacent to the inner color, the border color itself, *and* the external adjacent color. Let's call this a \"leak point\". If such a point exists, the inner region's color changes to the external adjacent color.\n\n## YAML Fact Documentation\n\n"
+          },
+          {
+            "text": "```yaml\ntask_description: \"Flood-fill an enclosed region based on adjacent color leakage across its border.\"\n\ndefinitions:\n  - &object_enclosed\n    name: Enclosed Region (R)\n    description: A contiguous region of pixels of a single color (C_inner).\n    properties:\n      - color: C_inner\n      - pixels: Set of (row, col) tuples\n      - status: potentially modified\n  - &object_border\n    name: Border Region (B)\n    description: A contiguous region of pixels of a single color (C_border) that completely surrounds an Enclosed Region (R).\n    properties:\n      - color: C_border\n      - pixels: Set of (row, col) tuples\n      - relationship: surrounds R (all neighbors of R not in R are in B)\n      - status: unchanged\n  - &object_adjacent\n    name: Adjacent Region (A)\n    description: A region of pixels of a single color (C_adjacent), distinct from C_inner and C_border.\n    properties:\n      - color: C_adjacent\n      - pixels: Set of (row, col) tuples\n      - relationship: adjacent to B at a 'leak point'\n      - status: unchanged\n\nrules:\n  - description: Identify enclosed regions and their borders.\n    condition: For each region R (color C_inner), check if all adjacent pixels not in R have the same color C_border. If yes, R is enclosed by B (color C_border).\n  - description: Identify leak points and the adjacent color.\n    condition: If R is enclosed by B, search for a pixel P_border in B. A leak point exists if P_border is adjacent to a pixel P_inner in R AND P_border is adjacent to a pixel P_adjacent of color C_adjacent (where C_adjacent != C_inner and C_border != C_inner).\n    action: Record the color C_adjacent found via the leak point(s).\n  - description: Apply color transformation if a leak occurs.\n    condition: If one or more leak points are found for an enclosed region R, connecting it to an adjacent color C_adjacent via the border B.\n    action: Change the color of all pixels within region R to C_adjacent in the output grid.\n  - description: Preserve colors if no leak occurs or region is not enclosed.\n    condition: If no leak point is found for an enclosed region R, or if a region is not enclosed.\n    action: Copy the pixels of the region unchanged to the output grid.\n\nexamples:\n  - example_id: train_1\n    input:\n      objects:\n        - <<: *object_enclosed\n          color: 2 (Red)\n        - <<: *object_border\n          color: 1 (Blue)\n        - <<: *object_adjacent\n          color: 3 (Green)\n    intermediate_findings:\n      - Leak point exists: Yes (e.g., border pixel at (2,5) is Blue, adjacent to Red(2,4) and Green(2,6)).\n      - Adjacent color (C_adjacent): 3 (Green).\n    output_changes:\n      - All pixels of the Red (2) region are changed to Green (3).\n  - example_id: train_2\n    input:\n      objects:\n        - <<: *object_enclosed\n          color: 4 (Yellow)\n        - <<: *object_border\n          color: 8 (Azure)\n        - <<: *object_adjacent\n          color: 6 (Magenta)\n    intermediate_findings:\n      - Leak point exists: Yes (e.g., border pixel at (2,6) is Azure, adjacent to Yellow(2,7) and Magenta(2,5)).\n      - Adjacent color (C_adjacent): 6 (Magenta).\n    output_changes:\n      - All pixels of the Yellow (4) region are changed to Magenta (6).\n\n```"
+          },
+          {
+            "text": "\n\n## Natural Language Program\n\n1.  Initialize the output grid as a copy of the input grid.\n2.  Find all distinct contiguous regions (objects) of pixels in the input grid.\n3.  For each region `R` with color `C_inner`:\n    a.  Check if `R` is fully enclosed. To do this, examine all pixels `P_neighbor` that are adjacent (horizontally or vertically) to any pixel in `R` but are not part of `R`. If all such `P_neighbor` pixels have the same single color `C_border` (where `C_border` is different from `C_inner`), then `R` is enclosed by a border region `B` of color `C_border`.\n    b.  If `R` is enclosed by `B`:\n        i.  Initialize a flag `leak_found` to false and `adjacent_color` to null.\n        ii. Search for a \"leak point\": Iterate through each pixel `P_border` belonging to the border region `B`. Check if `P_border` has at least one neighbor `P_inner` in region `R` AND at least one neighbor `P_adjacent` whose color `C_adjacent` is neither `C_inner` nor `C_border`.\n        iii. If such a `P_border` is found: Set `leak_found` to true, store the color `C_adjacent` in `adjacent_color`, and break the search for leak points (assuming only one adjacent color leaks per region).\n        iv. If `leak_found` is true after checking all border pixels: Modify the output grid by changing the color of all pixels corresponding to region `R` to the determined `adjacent_color`.\n4.  Return the final output grid."
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 2935,
+    "candidates_token_count": 6189,
+    "total_token_count": 9124,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 59.664868,
+  "retries": 1
+}

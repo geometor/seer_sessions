@@ -1,0 +1,53 @@
+task_elements:
+  - element: Grid
+    description: A 2D array of pixels with colors 0-9. Black (0) is the background.
+  - element: Object
+    description: A contiguous region of pixels sharing the same non-black color (Outer Color) forming a distinct shape.
+    properties:
+      - OuterColor: The primary color of the object's pixels.
+      - Pixels: The set of coordinates {(r, c), ...} belonging to this specific object.
+  - element: OuterColors
+    description: The set of unique colors corresponding to the identified Objects.
+  - element: SpecialColor
+    description: The unique color present in the input grid that is neither black (0) nor one of the OuterColors. If no such unique color exists, this value is 0.
+  - element: ColorToRemove
+    description: The OuterColor selected for object removal based on the SpecialColor and the sorted list of OuterColors.
+
+actions:
+  - action: IdentifyObjects
+    description: Find all distinct Objects (contiguous non-black shapes) in the input grid and record their OuterColor and Pixels.
+    inputs: Input Grid
+    outputs: List of Objects, Set of OuterColors.
+  - action: IdentifySpecialColor
+    description: Determine the unique color in the grid that is not black (0) and not in the set of OuterColors.
+    inputs: Input Grid, Set of OuterColors
+    outputs: SpecialColor value.
+  - action: SelectColorToRemove
+    description: Choose which OuterColor objects should be removed.
+    inputs: SpecialColor, Sorted List of OuterColors
+    outputs: ColorToRemove.
+    logic: |
+      Sort the OuterColors numerically.
+      If SpecialColor is 0:
+        If there are 2 or more OuterColors, ColorToRemove is the second color in the sorted list.
+        Else, no color is removed (or set ColorToRemove to an invalid value like -1).
+      If SpecialColor is not 0:
+        If there is at least 1 OuterColor, ColorToRemove is the first color (minimum) in the sorted list.
+        Else, no color is removed.
+  - action: FilterObjectsAndReconstruct
+    description: Create the output grid containing only the pixels of objects not marked for removal.
+    inputs: Input Grid Dimensions, List of Objects, ColorToRemove
+    outputs: Output Grid.
+    logic: |
+      Create an output grid of the same size as the input, filled with Black (0).
+      Iterate through the identified Objects.
+      If an object's OuterColor is NOT ColorToRemove:
+        Copy all pixels belonging to this object (using its stored Pixels set) from their original input color to the corresponding positions in the output grid.
+
+relationships:
+  - relationship: RemovalRule
+    description: The selection of which object color to remove depends on the existence and value of the SpecialColor relative to the set of OuterColors.
+    entities: SpecialColor, OuterColors, ColorToRemove
+  - relationship: Reconstruction
+    description: The output grid is built by selectively preserving only the pixels of the objects that were not chosen for removal.
+    entities: Objects, ColorToRemove, Output Grid

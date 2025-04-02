@@ -1,0 +1,57 @@
+task_type: array_manipulation
+dimensionality: pseudo-1D # Input/output are 1xN grids, but processed row by row (effectively 1D).
+input_format: List containing a single list of integers (e.g., [[pixel1, pixel2, ...]])
+output_format: List containing a single list of integers (e.g., [[pixel1, pixel2, ...]])
+objects:
+  - object: row_data
+    description: The single list of pixels representing the row contained within the input grid.
+    properties:
+      - pixels: A list of integers (0-9) representing pixel colors.
+      - length: The number of pixels in the row.
+  - object: fill_block
+    description: >
+      A contiguous sequence of identical pixels within the row_data.
+      Its color must not be white (0) or azure (8).
+      Assumed unique per input row based on examples.
+    properties:
+      - color: The single color shared by all pixels in the block.
+      - start_index: The index of the first pixel of the block within the row_data.
+      - end_index: The index of the last pixel of the block within the row_data.
+  - object: boundary_pixel
+    description: >
+      An azure (8) pixel within the row_data located at an index strictly greater
+      than the fill_block's end_index. The first such pixel encountered after
+      the block is the relevant boundary.
+    properties:
+      - color: azure (8).
+      - index: The position of this pixel in the row_data.
+  - object: fill_gap
+    description: >
+      The sequence of pixel positions located strictly between the end of the
+      fill_block and the boundary_pixel.
+    properties:
+      - location: Indices range from (fill_block.end_index + 1) up to (boundary_pixel.index - 1).
+actions:
+  - action: identify_elements
+    description: >
+      Scan the row_data to find the fill_block and the subsequent boundary_pixel.
+    steps:
+      - Find the first pixel that is not white(0) or azure(8). This marks the start of the fill_block.
+      - Continue scanning to find the end of this contiguous block of the same color (end_fill_index). Note the color (fill_color).
+      - Scan from end_fill_index + 1 onwards to find the first azure(8) pixel (azure_index).
+  - action: fill_color
+    description: >
+      Modify the pixels located within the identified fill_gap.
+    target: Pixels in row_data at indices within the fill_gap location range.
+    details: Change the color of each targeted pixel to the fill_color identified from the fill_block.
+relationships:
+  - relationship: sequence
+    description: >
+      Within the row_data, the elements appear in the order:
+      [optional prefix pixels] -> fill_block -> fill_gap -> boundary_pixel -> [optional suffix pixels].
+invariants:
+  - The grid structure (1xN) remains unchanged.
+  - Pixels before the fill_block's start_index are unchanged.
+  - The pixels originally part of the fill_block retain their color (fill_color).
+  - The boundary_pixel retains its color (azure) and position.
+  - Pixels after the boundary_pixel's index are unchanged.

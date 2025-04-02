@@ -1,0 +1,48 @@
+task_description: Fill the horizontal gap between pairs of same-colored pixels within each row.
+
+grid_properties:
+  - dimensions_preserved: Yes, input and output grids have identical dimensions (3x21 in examples).
+  - background_color: 0 (white) is the predominant color and is not involved in pairing or filling.
+  - colors_preserved: No new colors are introduced. The fill color matches the pair color.
+
+objects:
+  - type: Pixel Pair
+    definition: Exactly two pixels of the same non-white color located within the same row.
+    properties:
+      - color: Must be non-white (value 1-9).
+      - count_per_row_per_color: Must be exactly 2 for the transformation to apply for that color in that row.
+      - row_constraint: Both pixels must be in the same row index.
+      - separation: Must be separated by at least one pixel (otherwise, the gap to fill is empty). The separating pixels in the input are white (0).
+
+actions:
+  - name: Identify Pairs
+    description: For each row, group the column indices of non-white pixels by their color. Filter these groups to keep only those containing exactly two column indices.
+    inputs: input_grid
+    outputs: List of pairs, where each pair is represented by (row_index, color, col1, col2).
+  
+  - name: Fill Gap
+    description: For each identified pair (row_index, color, col1, col2), modify the output grid by setting the color of pixels in the specified row, at column indices strictly between col1 and col2, to the pair's color.
+    inputs: output_grid (initialized as copy of input), list_of_pairs
+    outputs: modified_output_grid
+
+relationships:
+  - type: Horizontal Alignment
+    description: The pair identification and filling action operate strictly horizontally within each row.
+  - type: Color Matching
+    description: The color used to fill the gap is determined by, and identical to, the color of the identified pixel pair.
+
+transformation_flow:
+  - step: 1. Create an exact copy of the input grid; this will be the output grid.
+  - step: 2. Process each row of the grid independently.
+  - step: 3. For the current row, find all non-white pixels and record their color and column index.
+  - step: 4. Group these recorded pixels by color.
+  - step: 5. Examine each color group for the current row. If a group contains exactly two column indices (col_A, col_B):
+      a. Identify the color (`fill_color`) of this pair.
+      b. Determine the leftmost column index (`left_col = min(col_A, col_B)`) and the rightmost column index (`right_col = max(col_A, col_B)`).
+      c. Iterate through the columns `c` from `left_col + 1` up to (but not including) `right_col`.
+      d. For each column `c` in this range, set the pixel in the output grid at the current row and column `c` to `fill_color`.
+  - step: 6. After iterating through all rows and all color pairs within them, return the modified output grid.
+
+uncertainties:
+  - Behavior if more than one pair of the *same* color exists in a single row (e.g., `3 0 3 0 0 3 0 3`) is not defined by the examples. The current logic assumes this doesn't happen or requires exactly two occurrences total for filling.
+  - Behavior if multiple pairs of *different* colors exist in a row (e.g., `4 0 4 0 0 2 0 2`) is handled correctly by the logic (each pair is processed independently).

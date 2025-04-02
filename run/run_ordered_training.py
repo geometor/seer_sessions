@@ -13,7 +13,7 @@ def run():
 
     #  tasks = Tasks("../../_ARC-AGI-2/data/training")
     #  tasks = Tasks("../../_ConceptARC/corpus/Copy")
-    tasks = Tasks("tasks/ARC/evaluation")
+    tasks = Tasks("../tasks/ARC/evaluation")
     #  tasks = Tasks("tasks/ARC/training").get_ordered_by_train_count()
     #  tasks = list(reversed(tasks))
 

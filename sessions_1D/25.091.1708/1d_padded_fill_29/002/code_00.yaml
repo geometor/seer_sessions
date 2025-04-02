@@ -1,0 +1,56 @@
+task_description: Fill segments in a 1D array between sequential pairs of pixels of the same non-background color.
+
+grid_properties: # Note: Applying 'grid' terminology loosely to the 1D array context
+  - representation: 1D array (flattened sequence)
+  - background_color: 0 (white)
+  - length_preserved: Yes, input and output arrays have the same length.
+
+objects:
+  - type: pixel
+    properties:
+      - color: Can be background (0) or an 'active' color (e.g., 3, 6).
+      - index: Position within the 1D array.
+  - type: active_pixel_group
+    description: All pixels in the input array having the same non-background color.
+    properties:
+      - color: The common color of the pixels.
+      - indices: A list of indices where pixels of this color occur.
+      - count: The number of pixels in the group.
+  - type: sequential_pair
+    description: Two pixels identified by taking consecutive indices from a sorted list of indices within an active_pixel_group, provided the group has an even count. (e.g., 1st and 2nd index, 3rd and 4th index, etc.).
+    properties:
+      - color: The color of the pair.
+      - start_index: The index of the first pixel in the pair.
+      - end_index: The index of the second pixel in the pair.
+  - type: filled_segment
+    description: A continuous sequence of pixels in the output array corresponding to a sequential_pair in the input.
+    properties:
+      - color: The color of the segment, matching the color of the input sequential_pair.
+      - start_index: The starting index of the segment (matches start_index of the pair).
+      - end_index: The ending index of the segment (matches end_index of the pair).
+
+actions:
+  - name: identify_and_group_pixels
+    description: Scan the input 1D array to find all non-background pixels and group their indices by color.
+    inputs:
+      - input_array
+    outputs:
+      - map_of_color_to_list_of_indices
+  - name: fill_segments_for_pairs
+    description: For each color group with an even number of pixels, sort the indices, form sequential pairs, and fill the corresponding segments in the output array with the group's color.
+    inputs:
+      - map_of_color_to_list_of_indices
+      - output_array (initially a copy of input_array)
+    outputs:
+      - modified_output_array
+
+relationships:
+  - type: mapping
+    description: Each sequential_pair identified in the input array maps directly to a filled_segment in the output array. The segment spans inclusively between the pair's start_index and end_index.
+  - type: condition
+    description: Filling only occurs for active_pixel_groups with an even number of pixels. Pixels in groups with odd counts, and background pixels not falling within a filled_segment, remain unchanged from the input.
+
+assumptions:
+  - The input is processed as a 1D array.
+  - Only non-background colors that appear an even number of times trigger the filling action.
+  - The pairing is done sequentially on the sorted indices for each color (1st with 2nd, 3rd with 4th, etc.).

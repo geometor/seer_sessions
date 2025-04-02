@@ -1,0 +1,46 @@
+elements:
+  - color: 0
+    name: white
+    role: background
+    property: fillable_area
+  - color: 4
+    name: yellow
+    role: boundary_structure
+    property: static
+    observation: Forms shapes. The largest connected component acts as the primary boundary for fills. Other yellow pixels are ignored by the fill process.
+  - color: 7
+    name: orange
+    role: seed_and_fill
+    property: dynamic
+    observation: Initiates filling process. Final fill color.
+
+grid_properties:
+  - size: variable height and width
+
+transformation:
+  - name: directional_ray_cast_fill
+    input_elements:
+      - seed_pixels (orange)
+      - boundary_structure_pixels (yellow)
+      - background (white)
+    output_elements:
+      - filled_pixels (orange)
+      - original_boundary_structure (yellow)
+      - remaining_background (white)
+    process:
+      - step: Create a copy of the input grid for the output.
+      - step: Identify all yellow (4) pixels. Determine the largest connected component (using 4-way adjacency) - this is the 'main boundary'. Store the coordinates of these main boundary pixels.
+      - step: If a main boundary exists, calculate its minimum and maximum row indices (`min_row`, `max_row`). If no boundary exists, treat as if fill is unbounded (or handle as error/edge case if necessary, though examples suggest boundary exists).
+      - step: Identify all orange (7) 'seed' pixels in the input grid.
+      - step: For each seed pixel at (r, c):
+          - determine_fill_behavior:
+              - Check if a main boundary exists and if the seed row `r` is within its span: `min_row <= r <= max_row`.
+              - If YES (Horizontal Fill Case):
+                  - Ray cast left from `(r, c-1)`: Fill white (0) pixels in the *output grid* with orange (7) until a main boundary pixel or grid edge is hit at column `j`.
+                  - Ray cast right from `(r, c+1)`: Fill white (0) pixels in the *output grid* with orange (7) until a main boundary pixel or grid edge is hit at column `j`.
+              - If NO (Vertical Fill Case):
+                  - If `r < min_row` (seed is above boundary): Ray cast *downwards* from `(r+1, c)`. Fill white (0) pixels in the *output grid* with orange (7) until a main boundary pixel or grid edge is hit at row `i`.
+                  - If `r > max_row` (seed is below boundary): Ray cast *upwards* from `(r-1, c)`. Fill white (0) pixels in the *output grid* with orange (7) until a main boundary pixel or grid edge is hit at row `i`.
+                  - (Implicit: If no boundary exists, this case might default to vertical fill in both directions, or requires specific handling).
+          - Ensure the seed pixel location `(r, c)` itself is orange (7) in the output grid.
+    notes: The fill process checks against the original input grid's state for white pixels but writes to the output grid. The stopping condition depends only on the coordinates identified as belonging to the *largest* yellow component. Fill proceeds along a straight line (row or column).

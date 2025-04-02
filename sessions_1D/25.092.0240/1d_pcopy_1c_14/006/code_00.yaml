@@ -1,0 +1,34 @@
+task_type: object_transformation
+grid_dimensionality: 2D (processing is row-independent)
+background_color: white (0)
+scope: row-wise
+objects:
+  - type: contiguous_horizontal_block
+    color: non-white (varies per row and example)
+    properties:
+      - size (pixel count / width)
+      - position (start_column, end_column)
+      - color
+relationships:
+  - within_row:
+      - pattern_object: The object with the largest size (width) in that row. (Assumption: unique largest object exists per row with relevant objects).
+      - target_objects: Objects consisting of a single pixel (size=1) with the same color as the row's pattern_object.
+actions:
+  - for_each: row in the input grid:
+      - identify: Find all contiguous non-white horizontal blocks (objects) in the row.
+      - if: objects exist in the row:
+          - identify: Determine the pattern_object (largest by size/width). Record its color and pixel sequence.
+          - identify: Find all target_objects (size=1, same color as pattern). Record their column indices.
+          - create: a copy of the current row for modification.
+          - for_each: target_object in the row:
+              - calculate: the placement range for the pattern sequence, centered on the target_object's column index.
+              - clip: the placement range and the corresponding pattern sequence segment to fit within the row boundaries.
+              - replace: the pixels in the copied row within the calculated destination range with the (potentially clipped) pattern sequence.
+      - else: keep the original row unmodified.
+  - construct: the output grid from the processed (or original) rows.
+constraints:
+  - Transformation is contained strictly within each row.
+  - Only single-pixel objects matching the pattern's color are replaced.
+  - The original pattern object itself is not explicitly preserved; it can be overwritten if a target replacement overlaps its position.
+  - If multiple objects share the maximum size in a row, the behavior is undefined by these examples (assume one is chosen, e.g., the first encountered).
+  - If no non-white objects exist in a row, the row remains unchanged.

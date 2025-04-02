@@ -1,0 +1,56 @@
+task_description: Copy a pattern from a source object to a target object, overwriting only pixels belonging to the target object.
+
+definitions:
+  background_color: 0 (white)
+  object: A connected group of pixels with colors other than the background_color. Connectivity is 8-way (includes diagonals).
+  source_object: The object with the smallest minimum column index (leftmost).
+  target_object: The object with the largest minimum column index (rightmost).
+  source_frame_color: The most frequent non-background color within the source_object.
+  pattern_color: The numerically smallest non-background color within the source_object that is different from the source_frame_color.
+  pattern_pixels: The set of coordinates within the source_object that contain the pattern_color.
+  target_pixels: The set of coordinates belonging to the target_object.
+  translation_vector: A horizontal shift calculated as (target_object.min_col - source_object.min_col).
+
+transformation_steps:
+  1. Identify all distinct objects in the input grid.
+  2. If fewer than two objects exist, return the input grid unchanged.
+  3. Determine the source_object and target_object based on horizontal position.
+  4. Identify the source_frame_color and pattern_color within the source_object.
+  5. If no distinct pattern_color exists (e.g., only one non-background color in source), return the input grid unchanged.
+  6. Identify the pattern_pixels within the source_object.
+  7. Calculate the translation_vector.
+  8. Create a copy of the input grid for the output.
+  9. For each coordinate (r_s, c_s) in pattern_pixels:
+     a. Calculate the potential target coordinate: (target_r, target_c) = (r_s, c_s + translation_vector).
+     b. Check if (target_r, target_c) is within the grid boundaries.
+     c. Check if (target_r, target_c) is present in the set of target_pixels.
+     d. If both checks (b and c) are true, update the output grid at (target_r, target_c) with the pattern_color.
+  10. Return the modified output grid.
+
+example_1_specifics:
+  source_object: Left magenta(6)/green(3) object. min_col=0.
+  target_object: Right orange(7) object. min_col=7. # NOTE: The code metrics show issues here! Let's re-run manually focusing on labels.
+    # Manual check: The target object seems to be the orange frame only.
+    # The green pixel at (2,3) in the input is part of the *source* object. Let's rerun metrics focusing on labels.
+    # Running code again with label printout... (See next tool call)
+  source_frame_color: 6 (magenta)
+  pattern_color: 3 (green)
+  pattern_pixels: [(0,1), (1,2), (2,3), (3,4), (4,5)]
+  translation_vector: 7 - 0 = 7
+  target_pixels: Coordinates of the orange(7) frame.
+  overwrite_rule_check: The translated coordinate for (2,3) is (2, 10). The input grid at (2,10) is white(0). Since white(0) pixels are not part of the labeled target_object (orange frame), the pattern color (green) should *not* be placed at (2,10) according to the refined rule. *However*, the expected output *does* place green(3) at (2,10). This contradicts the refined rule derived from the bounding box failure.
+
+example_2_specifics:
+  source_object: Left yellow(4)/blue(1) object. min_col=0.
+  target_object: Right red(2) object. min_col=7.
+  source_frame_color: 4 (yellow)
+  pattern_color: 1 (blue)
+  pattern_pixels: [(1,4), (2,3), (3,2), (4,1), (5,0)]
+  translation_vector: 7 - 0 = 7
+  target_pixels: Coordinates of the red(2) object.
+  overwrite_rule_check: All translated pattern coordinates fall onto existing red(2) pixels within the target object. The overwrite rule (check if target coord is in target_pixels) works correctly here.
+
+discrepancy:
+  The analysis of example 1 reveals a contradiction. The bounding box check failed because it would have incorrectly placed the pattern color at (2,10). Checking against the actual target object pixels *also* fails, as (2,10) isn't part of the orange frame object, yet the expected output requires the pattern color there. This suggests the rule might be simpler: copy the pattern translated, overwriting *anything* at the target location, as long as the target location is within the grid bounds. Let's re-evaluate based on this simpler hypothesis.
+
+simplified_overwrite_rule: Copy the pattern pixels, translated horizontally. If the translated coordinate (target_r, target_c) is within the grid bounds, overwrite the pixel at that location in the output grid with the pattern_color, regardless of what was originally there or whether it belonged to the 'target object'.

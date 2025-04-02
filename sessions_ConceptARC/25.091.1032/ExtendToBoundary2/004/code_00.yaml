@@ -1,0 +1,54 @@
+task_elements:
+  - background:
+      color: white (0)
+      role: occupies the area outside frames.
+  - frames:
+      description: Hollow rectangular shapes made of a single, non-white color.
+      properties:
+        - color: varies (green, yellow, magenta, orange, etc.)
+        - shape: hollow rectangle
+        - count: one or more per grid
+        - relationship: Can be nested.
+      role: Define boundaries or containers.
+  - seed_pixel:
+      description: A single pixel located inside the innermost frame, distinguished by having a unique color count of 1 within the grid (excluding background).
+      properties:
+        - color: unique, different from background and frame colors (red, blue, azure in examples).
+        - count: exactly one per grid.
+        - location: (seed_row, seed_col) within the vertical and horizontal bounds of the innermost frame.
+      role: Determines the column to modify and the fill color.
+  - innermost_frame:
+      description: The frame object that most tightly encloses the seed_pixel. Its relevant parts are the pixels directly above and below the seed_pixel in the same column.
+      properties:
+        - top_boundary_pixel: The non-background pixel found by searching upwards from (seed_row - 1, seed_col). Its row is top_boundary_row.
+        - bottom_boundary_pixel: The non-background pixel found by searching downwards from (seed_row + 1, seed_col). Its row is bottom_boundary_row.
+      role: Defines the vertical boundaries for the fill operation.
+
+transformation:
+  - action: copy_input
+    inputs: input_grid
+    outputs: output_grid
+  - action: identify_seed_pixel
+    inputs: input_grid
+    description: Find the pixel (seed_row, seed_col) with a color that appears exactly once (excluding background color 0). Record its color (seed_color).
+    outputs: seed_row, seed_col, seed_color
+  - action: find_vertical_boundaries
+    inputs: input_grid, seed_row, seed_col
+    description: >
+      Search upwards from (seed_row - 1, seed_col) to find the first non-background pixel; record its row as top_boundary_row.
+      Search downwards from (seed_row + 1, seed_col) to find the first non-background pixel; record its row as bottom_boundary_row.
+    outputs: top_boundary_row, bottom_boundary_row
+  - action: fill_column_segment
+    inputs: output_grid, seed_col, top_boundary_row, bottom_boundary_row, seed_color
+    description: >
+      Iterate through rows from top_boundary_row + 1 up to (but not including) bottom_boundary_row.
+      For each row 'r' in this range, set the pixel color at (r, seed_col) in the output_grid to seed_color.
+    outputs: modified_output_grid
+
+output_grid:
+  description: A copy of the input grid where the column containing the seed pixel has been partially filled.
+  properties:
+    - Identical to the input grid except for the filled column segment.
+    - The filled segment uses the seed_color.
+    - The filled segment is in the column seed_col.
+    - The filled segment starts at row top_boundary_row + 1 and ends at row bottom_boundary_row - 1 (inclusive).

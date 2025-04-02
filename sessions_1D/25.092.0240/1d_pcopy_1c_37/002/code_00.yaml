@@ -1,0 +1,45 @@
+task_description: Construct an output row by placing a 3-pixel pattern based on positions identified in the input row.
+elements:
+  - object: grid_row
+    property:
+      - type: 1D sequence of pixels (represented as a 1xN 2D array)
+      - background_color: white (0)
+      - primary_color: a single non-white color (varies per example)
+  - object: pattern_block
+    property:
+      - composition: three consecutive pixels of the primary_color
+      - source: identified as the first occurrence within the input grid_row
+      - role: template for placement in the output
+  - object: target_pixel
+    property:
+      - type: single pixel
+      - color: same as primary_color
+      - context: must not be adjacent (horizontally) to another pixel of the primary_color in the input grid_row
+      - location: appears after the pattern_block in the input grid_row
+      - role: indicates a position in the output grid_row where the pattern_block should be placed
+actions:
+  - name: identify_primary_color
+    input: input_grid_row
+    output: the non-white color present
+  - name: find_pattern_block
+    input: input_grid_row, primary_color
+    output:
+      - block: the sequence of three primary_color pixels
+      - start_index: the starting position (index) of the block in the input_grid_row
+  - name: find_target_indices
+    input: input_grid_row, primary_color, pattern_block_end_index
+    output: list of indices corresponding to the start of each target_pixel found after the pattern_block
+  - name: generate_output_grid
+    based_on: input_grid_row_shape, pattern_block, pattern_start_index, target_indices
+    steps:
+      - Initialize an output grid_row of the same dimensions as the input, filled with the background_color (white/0).
+      - Copy the pattern_block into the output grid_row, starting at the pattern_start_index.
+      - For each index in target_indices:
+        - Copy the pattern_block into the output grid_row, starting at that index (overwriting existing values).
+relationships:
+  - type: spatial
+    description: The pattern_block always appears before the target_pixels in the input row.
+  - type: identity
+    description: The color composing the pattern_block and the target_pixels is the same (primary_color).
+  - type: transformation
+    description: The output is constructed not by modifying the input, but by selectively placing the pattern_block onto a blank grid. The initial pattern_block maintains its position, and additional copies are placed corresponding to the locations of single target_pixels found later in the input.

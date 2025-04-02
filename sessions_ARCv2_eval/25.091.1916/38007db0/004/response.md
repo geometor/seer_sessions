@@ -1,0 +1,1 @@
+Error: Response finished normally (STOP) but text could not be accessed. Detail: Invalid operation: The `response.text` quick accessor requires the response to contain a valid `Part`, but none were returned. The candidate's [finish_reason](https://ai.google.dev/api/generate-content#finishreason) is 1.

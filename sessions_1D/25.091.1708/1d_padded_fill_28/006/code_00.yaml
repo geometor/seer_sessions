@@ -1,0 +1,63 @@
+task_description: Identify the single non-background color, determine its bounding box, and fill that entire rectangular area in the output grid with the same color.
+
+elements:
+  - element: grid
+    description: A 2D array of pixels (0-9). Input and output grids have the same dimensions.
+  - element: background_pixel
+    value: 0
+    color: white
+    description: The pixel color filling most of the grid area, not part of the primary shape.
+  - element: foreground_pixel
+    description: The single pixel color present in the input grid that is not the background color. Its value varies (gray, green, magenta in examples).
+    properties:
+      - count_in_input: Always 6 pixels in the training examples.
+      - count_in_output: Varies depending on the bounding box size (9, 12, 15 pixels in examples).
+      - structure_in_input: Forms two distinct vertical lines of height 3 in the training examples.
+  - element: bounding_box
+    description: The smallest rectangle enclosing all foreground pixels in the input grid.
+    properties:
+      - min_row: Minimum row index containing a foreground pixel.
+      - max_row: Maximum row index containing a foreground pixel.
+      - min_col: Minimum column index containing a foreground pixel.
+      - max_col: Maximum column index containing a foreground pixel.
+      - height: (max_row - min_row + 1). Always 3 in training examples.
+      - width: (max_col - min_col + 1). Varies (3, 4, 5 in training examples).
+      - area: height * width. Varies (9, 12, 15 in training examples).
+  - element: filled_rectangle
+    description: The rectangular area in the output grid corresponding to the input's bounding box, filled entirely with the foreground color.
+    properties:
+      - color: Same as the foreground color from the input.
+      - bounds: Same min/max row/column indices as the calculated bounding_box.
+      - pixel_count: Equal to the area of the bounding_box.
+
+relationships:
+  - type: defines
+    subject: foreground_pixels_in_input
+    object: bounding_box
+    description: The locations (row, column indices) of all foreground pixels in the input grid define the minimum bounding box.
+  - type: transforms_to
+    subject: input_grid
+    object: output_grid
+    description: The input grid is transformed into the output grid by applying the fill action.
+  - type: fills
+    subject: transformation_rule
+    object: bounding_box_region_in_output
+    description: The transformation rule identifies the foreground color and fills its bounding box region in the output grid with that color.
+  - type: preserves
+    subject: transformation_rule
+    object: grid_dimensions
+    description: The output grid has the same height and width as the input grid.
+  - type: preserves
+    subject: transformation_rule
+    object: background_pixels_outside_bounding_box
+    description: All pixels outside the calculated bounding box retain the background color (0) in the output.
+
+actions:
+  - action: identify_foreground_color
+    description: Scan the input grid to find the single color value `C` that is not 0.
+  - action: determine_bounding_box
+    description: Find the minimum and maximum row and column indices (`min_row`, `max_row`, `min_col`, `max_col`) occupied by pixels of color `C` in the input grid.
+  - action: create_output_grid
+    description: Initialize an output grid of the same dimensions as the input, filled entirely with the background color (0).
+  - action: fill_bounding_box
+    description: Change the color of all pixels within the output grid from row `min_row` to `max_row` (inclusive) and column `min_col` to `max_col` (inclusive) to the identified foreground color `C`.

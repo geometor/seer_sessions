@@ -1,0 +1,65 @@
+elements:
+  - object: grid
+    role: input
+    attributes:
+      - colors: multiple distinct colors present.
+      - background_color: the most frequent color (typically white/0).
+      - target_color: the most frequent color excluding the background color.
+      - target_pixels: locations of pixels matching the target_color.
+      - target_components: connected groups (8-way adjacency) of target_pixels.
+        properties:
+          - size: number of pixels in the component.
+          - singletons: components with size = 1.
+          - valid_components: components with size > 1.
+  - object: grid
+    role: output
+    attributes:
+      - colors: consists only of the background_color and the target_color.
+      - shape: derived from the input grid's target_pixels.
+      - dimensions: same as the input grid.
+
+transformations:
+  - action: determine_colors
+    input: input grid
+    output: background_color, target_color
+    description: Find the most frequent color (background) and the most frequent non-background color (target).
+  - action: find_target_components
+    input: input grid, target_color
+    output: list of components (groups of coordinates) of target_color pixels.
+    attributes:
+      - connectivity: 8-way adjacency.
+  - action: filter_small_components
+    input: list of target_components
+    output: list of valid_components (size > 1), list of all pixels in valid_components.
+    description: Separate components with size > 1 from those with size = 1. Collect coordinates of all pixels belonging to valid_components.
+  - action: calculate_bounding_box
+    input: list of valid_component pixels
+    output: coordinates (min_row, max_row, min_col, max_col) or None
+    description: Find the minimum bounding rectangle enclosing all provided pixel coordinates. Returns None if the input list is empty.
+  - action: create_intermediate_grid
+    input: grid dimensions, background_color, target_color, bounding_box
+    output: intermediate grid
+    description: Create a grid filled with background_color. If a bounding_box exists, fill the area defined by the bounding_box with the target_color.
+  - action: apply_background_mask
+    input: intermediate_grid, input_grid, bounding_box, background_color
+    output: modified intermediate_grid
+    description: Iterate through the pixels within the bounding_box. If the corresponding pixel in the input_grid is the background_color, set the pixel in the intermediate_grid to the background_color.
+  - action: find_intermediate_components
+    input: modified intermediate_grid, target_color
+    output: list of components (groups of coordinates) of target_color pixels in the modified grid.
+    attributes:
+      - connectivity: 8-way adjacency.
+  - action: remove_final_singletons
+    input: modified intermediate_grid, list of intermediate_components, background_color
+    output: final output grid
+    description: Create a copy of the modified_intermediate_grid. Identify components from the intermediate_components list that have a size of 1. Change the color of these singleton pixels in the copied grid to the background_color.
+  - action: handle_no_valid_components
+    input: grid dimensions, background_color
+    output: final output grid
+    description: If no valid_components (size > 1) were found in the input grid, create an output grid filled entirely with the background_color.
+
+relationships:
+  - The final output grid's content depends on the spatial arrangement and connectivity of the target_color pixels in the input grid, specifically components larger than one pixel.
+  - The bounding box is determined solely by the pixels belonging to these larger components.
+  - The shape within the bounding box is initially filled with the target color but then gets "masked" or "punched through" by the background pixels from the original input grid's corresponding locations.
+  - A final filtering step removes any target color pixels that become isolated (singleton components) *after* the background masking step.

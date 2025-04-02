@@ -1,0 +1,53 @@
+task_description: Isolate and keep only the target-colored pixels that belong to connected regions of non-boundary-colored pixels which do not touch the grid border. All other pixels, including the boundary color itself and target pixels in regions connected to the border, become background color.
+
+elements:
+  - object: Grid
+    properties:
+      - type: 2D array
+      - pixels: contain color values (0-9)
+      - dimensions: consistent between input and output (H x W)
+
+  - object: Background
+    properties:
+      - color: white (0)
+      - role: fills the output grid except for 'inside' target pixels
+
+  - object: Boundary Color
+    properties:
+      - determination: the non-background (non-0) color with the highest frequency in the input grid
+      - role: acts as a barrier separating potential 'inside' regions from the 'outside'
+      - persistence: removed in the output (becomes background color)
+
+  - object: Target Color(s)
+    properties:
+      - determination: all non-background colors that are not the boundary color
+      - role: pixels to be potentially kept in the output
+      - persistence: kept only if they belong to a component of non-boundary pixels disconnected from the grid border
+
+  - object: Connected Component
+    properties:
+      - definition: a set of pixels connected horizontally or vertically
+      - constraint: all pixels within the component must NOT have the boundary color
+      - property: border_touching (boolean) - true if any pixel in the component is located at row 0, row H-1, col 0, or col W-1
+
+relationships:
+  - type: connectivity
+    description: Pixels are connected if adjacent horizontally or vertically.
+  - type: containment (implicit)
+    description: A target pixel is 'inside' if its connected component of non-boundary pixels is not border_touching.
+  - type: transformation_rule
+    description: Create an output grid filled with the background color. Find all connected components of non-boundary pixels. For each component that is *not* border_touching, identify all target-colored pixels within it and place them at their original coordinates in the output grid.
+
+actions:
+  - action: identify_colors
+    inputs: input_grid
+    outputs: background_color, boundary_color, target_colors
+    description: Count pixel frequencies to determine boundary (most frequent non-0) and target (other non-0) colors.
+  - action: find_connected_components
+    inputs: input_grid, boundary_color
+    outputs: list of components, where each component notes if it touches the border and lists its target pixels
+    description: Use BFS or DFS starting from unvisited non-boundary pixels to find connected components, tracking border contact and contained target pixels.
+  - action: filter_and_render
+    inputs: output_grid_dimensions, background_color, components_data
+    outputs: final_output_grid
+    description: Create a background grid. For each component that is *not* border-touching, place its associated target pixels onto the output grid.

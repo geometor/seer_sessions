@@ -1,0 +1,63 @@
+task_description: Identify primary horizontal and vertical structures based on dominant colors in rows and columns, respectively. Remove specific vertical structures based on the count of horizontal structures.
+
+elements:
+  - type: grid
+    properties:
+      - background_color: white (0)
+      - contains: two primary non-background colors interacting.
+  - type: horizontal_structure
+    properties:
+      - identifier: H_Color (the color that is dominant in these rows)
+      - location: Rows where H_Color is the most frequent non-background color.
+      - count: H_Count (number of rows dominated by H_Color).
+  - type: vertical_structure
+    properties:
+      - identifier: V_Color (the color that is dominant in these columns)
+      - location: Columns where V_Color is the most frequent non-background color. Identified by V_Indices.
+      - relationship: Intersects with horizontal_structures. V_Color is different from H_Color.
+
+relationships:
+  - type: dominance
+    between: color, row/column
+    description: A color dominates a row/column if it's the most frequent non-background color within that row/column.
+  - type: role_assignment
+    criteria: The modification affects vertical structures.
+    assigns:
+      - V_Color: The color dominating the columns structure(s) targeted for modification.
+      - H_Color: The other primary non-background color, dominating the row structure(s).
+
+actions:
+  - action: identify_colors
+    target: grid
+    outputs: H_Color, V_Color (the two non-background colors).
+  - action: identify_structures
+    target: grid
+    criteria: Color dominance within rows and columns.
+    outputs:
+      - H_Count: Count of rows dominated by H_Color.
+      - V_Indices: List of column indices dominated by V_Color.
+  - action: select_target
+    target: vertical_structures (represented by V_Indices)
+    based_on: H_Count
+    rule:
+      - if H_Count >= 3: select the middle index from V_Indices (index at position len(V_Indices)//2).
+      - if H_Count == 2: select the minimum (leftmost) index from V_Indices.
+      - if H_Count == 1: select the maximum (rightmost) index from V_Indices.
+    outputs: target_indices (list of column indices to modify).
+  - action: modify_grid
+    target: input_grid
+    operation: change_color
+    location: Pixels within the columns specified by target_indices.
+    condition: Only change pixels whose current color is V_Color.
+    new_color: white (0)
+    result: output_grid
+
+constants:
+  - background_color: white (0)
+
+derived_properties:
+  - H_Color: Dominant color in horizontal structures.
+  - V_Color: Dominant color in vertical structures.
+  - H_Count: Number of rows dominated by H_Color.
+  - V_Indices: Sorted list of column indices dominated by V_Color.
+  - target_indices: Subset of V_Indices selected for modification.

@@ -1,0 +1,61 @@
+task_description: Move a colored block within a single-row grid rightwards until it touches a target pixel in the same row.
+
+elements:
+  - object: Grid
+    attributes:
+      - type: 2D NumPy array
+      - shape: (1, N) - Always a single row.
+  - object: Background
+    color: white (0)
+    role: Fills empty space within the row.
+  - object: Movable Block
+    attributes:
+      - location: Within the single row of the grid.
+      - color: Varies (red(2) or magenta(6) in examples)
+      - shape: Contiguous horizontal line segment within the row.
+      - count: Exactly one per input grid.
+      - definition: A contiguous sequence of pixels within the row that are not background (0) and not target (7).
+  - object: Target Pixel
+    attributes:
+      - location: Within the single row of the grid.
+      - color: orange (7)
+      - count: Exactly one per input grid.
+      - role: Acts as a fixed endpoint for the movement within the row.
+
+relationships:
+  - type: Adjacency
+    description: In the output grid's row, the rightmost pixel of the Movable Block is immediately to the left of the Target Pixel.
+  - type: Spatial Constraint
+    description: The Target Pixel's column position within the row is fixed from input to output. Pixels to the right of the Target Pixel within the row are also fixed.
+
+actions:
+  - action: Access Row
+    target: The first (and only) row of the input grid.
+  - action: Identify
+    context: Within the accessed row.
+    target: Background color (0), Target Pixel (7), Movable Block (non-0, non-7 contiguous sequence).
+  - action: Calculate
+    context: Within the accessed row.
+    target: Column index of Target Pixel (target_index).
+    target: Length of Movable Block (block_length).
+    result: Destination start column index for Movable Block (target_index - block_length).
+  - action: Move
+    context: Within the accessed row.
+    object: Movable Block
+    direction: Right
+    termination_condition: Right edge of Movable Block is adjacent to the left edge of Target Pixel.
+  - action: Reconstruct
+    steps:
+      - Create an output row of the same length as the input row.
+      - Fill with background color up to the calculated destination start column index.
+      - Place the Movable Block (original color, original length) starting at the destination start column index.
+      - Place the Target Pixel at its original column index.
+      - Copy pixels from the input row located after the Target Pixel (from target_index + 1 onwards) to the output row.
+      - Format the final output as a 2D grid (list containing the single output row or a 2D NumPy array).
+
+assumptions:
+  - Input is a 2D grid with exactly one row.
+  - Exactly one Target Pixel (7) exists in the row.
+  - Exactly one Movable Block (contiguous non-0, non-7 color) exists in the row.
+  - Background is white (0).
+  - The Movable Block can always fit to the left of the Target Pixel in the output row.

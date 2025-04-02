@@ -1,0 +1,56 @@
+task_type: transformation
+grid_dimensionality: pseudo-1D # Input is conceptually 1D, potentially passed as (1, N) array. Output is 1D (N or N-1 length).
+objects:
+  - type: contiguous_block
+    properties:
+      - color: non-white (2, 7, 8)
+      - role: primary_object
+      - location: defined by start_index and length
+  - type: background
+    properties:
+      - color: white (0)
+      - role: fills_space
+input_processing:
+  - name: ensure_1D
+    logic: If input grid is 2D with shape (1, N), extract the first row to get a 1D array of length N. Otherwise, assume input is already 1D. Let the length of the resulting 1D row be 'input_row_length'.
+actions:
+  - name: identify_block
+    inputs: input_row (1D)
+    outputs: block_color, block_start_index, block_length
+  - name: calculate_new_block_properties
+    inputs: block_start_index, block_length
+    parameters: shift_amount (constant: 3)
+    outputs: new_start_index, output_block_length
+    logic: |
+      new_start_index = block_start_index + 3
+      if block_start_index == 0:
+        output_block_length = block_length - 1
+      else:
+        output_block_length = block_length
+  - name: determine_output_length
+    inputs: input_row_length, new_start_index, output_block_length
+    outputs: output_row_length
+    logic: |
+      # Calculate the 0-based index of the last cell the new block would occupy
+      new_end_index = new_start_index + output_block_length - 1
+      # Check if the block's end position reaches or exceeds the second-to-last cell of the input row
+      if new_end_index < (input_row_length - 1):
+        output_row_length = input_row_length - 1 # Truncate the row
+      else:
+        output_row_length = input_row_length # Keep original length
+  - name: construct_output
+    inputs: output_row_length, background_color, block_color, new_start_index, output_block_length
+    outputs: output_row
+    logic: Create a 1D row of background_color with the calculated 'output_row_length'. Place the block (using 'block_color' and 'output_block_length') starting at 'new_start_index'. Clip placement to output row bounds if necessary (though logic implies it should fit).
+relationships:
+  - type: spatial_shift
+    object: contiguous_block
+    direction: right
+    magnitude: 3 positions
+  - type: length_adjustment
+    object: contiguous_block
+    condition: The block's start index in the input is 0.
+    effect: The block's length in the output is reduced by 1.
+  - type: output_size_adjustment
+    condition: The calculated end index of the shifted block (considering potential length adjustment) falls before the second-to-last position of the original input row.
+    effect: The output row's length is 1 less than the input row's length.

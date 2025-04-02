@@ -1,0 +1,72 @@
+task_elements:
+  - type: background
+    color: white (0)
+    role: canvas
+  - type: object_pixels
+    properties:
+      - color: non-white (0), non-gray (5)
+      - count: number of pixels of this color in the input
+    role: source_elements
+  - type: object
+    properties:
+      - color: gray (5)
+    role: ignored_element
+
+actions:
+  - action: identify_colors
+    description: Find all unique colors in the input, excluding white (0) and gray (5).
+  - action: group_pixels_by_color
+    input: input_grid, color
+    output: list of coordinates [(r1, c1), (r2, c2), ...]
+    description: Find all pixels of a specific color.
+  - action: count_pixels
+    input: list of coordinates
+    output: integer count
+  - action: check_condition
+    input: pixel count
+    condition: count == 2
+    outputs: [apply_pattern, apply_bounding_box]
+  - action: calculate_bounding_box
+    input: list of coordinates
+    output: min_r, max_r, min_c, max_c
+  - action: apply_bounding_box_fill
+    input: output_grid, bounding_box, color
+    description: Fill the rectangle defined by the bounding box with the color.
+  - action: apply_fixed_pattern
+    input: output_grid, list_of_2_coords, color
+    description: >
+      Calculate the top-left corner (min_r, min_c) of the 2x2 (or larger)
+      bounding box containing the two input pixels. Place a specific 6-pixel
+      pattern relative to this (min_r, min_c) anchor point using the color.
+      The relative coordinates are (0,0), (0,2), (1,1), (2,0), (2,1), (2,2).
+  - action: filter_remove
+    input: object
+    condition: color is gray (5)
+    description: Gray objects are removed or ignored.
+
+relationships:
+  - relation: conditional_transformation
+    description: >
+      The transformation applied depends on the number of input pixels for a color.
+      If count is 2, apply the fixed pattern. If count is 1 or >2, apply bounding box fill.
+  - relation: pattern_anchor
+    description: >
+      The 6-pixel pattern is placed relative to the top-left corner (minimum row, minimum column)
+      of the bounding box containing the two source pixels.
+  - relation: grid_initialization
+    description: The output grid starts as white with the same dimensions as the input.
+
+flow:
+  - step: Initialize an empty (white) output grid matching input dimensions.
+  - step: Identify all unique colors in the input, excluding white (0) and gray (5).
+  - step: For each identified unique color:
+      - Find all pixels `(r, c)` of this color in the input. Let the set of coordinates be `S`.
+      - Count the number of pixels in `S` (let `count = |S|`).
+      - If `count == 2`:
+          - Determine the minimum row (`min_r`) and minimum column (`min_c`) among the coordinates in `S`.
+          - Define the relative pattern coordinates: `P = [(0,0), (0,2), (1,1), (2,0), (2,1), (2,2)]`.
+          - For each `(dr, dc)` in `P`, set the pixel at `(min_r + dr, min_c + dc)` in the output grid to the current color (checking grid bounds).
+      - Else (`count == 1` or `count > 2`):
+          - If `count > 0`, determine the bounding box (`min_r`, `max_r`, `min_c`, `max_c`) for the coordinates in `S`.
+          - Fill this bounding box area (`output_grid[min_r : max_r + 1, min_c : max_c + 1]`) in the output grid with the current color.
+  - step: The final output grid is the result of these operations.

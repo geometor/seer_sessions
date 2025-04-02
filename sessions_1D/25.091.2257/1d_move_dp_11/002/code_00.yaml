@@ -1,0 +1,40 @@
+task_description: Rearrange elements in a 1D grid by moving a colored block adjacent to a fixed marker pixel.
+grid_dimensionality: 1D (single row)
+objects:
+  - type: background
+    color: white (0)
+    count: variable
+  - type: colored_block
+    color: Any color C where C != white (0) and C != magenta (6)
+    shape: contiguous horizontal sequence of pixels of color C
+    count: 1
+    properties:
+      - Located somewhere to the left of the marker_pixel in the input.
+      - Its relative position to the marker_pixel changes in the output.
+      - Defined by its color (C), start_index, and length.
+  - type: marker_pixel
+    color: magenta (6)
+    shape: single pixel
+    count: 1
+    properties:
+      - Its index remains constant between the input and output grid.
+relationships:
+  - type: spatial
+    description: In the input, the colored_block is separated from the marker_pixel by zero or more white (0) pixels. (Revised: Example 2 shows they *can* be adjacent initially, although previous examples had space. Let's assume zero or more white pixels). Correction: Rereading example 2 input `...3 0 0 0 0 6`, there *are* white pixels between. My initial observation was correct. Let's keep: In the input, the colored_block is separated from the marker_pixel by one or more white pixels.
+  - type: spatial
+    description: In the output, the rightmost pixel of the colored_block is at the index immediately preceding the marker_pixel's index (marker_pixel_index - 1).
+actions:
+  - action: locate_marker
+    target: marker_pixel
+    details: Find the index (`marker_idx`) of the magenta (6) pixel.
+  - action: locate_block
+    target: colored_block
+    details: Find the start index (`block_start_idx`), length (`block_len`), and color (`block_color`) of the first contiguous sequence of pixels whose color is not white (0) and not magenta (6).
+  - action: calculate_new_position
+    target: colored_block
+    details: Calculate the target start index for the block in the output grid as `new_start_idx = marker_idx - block_len`.
+  - action: generate_output_grid
+    details:
+      - Create a new grid (or modify a copy of the input) of the same dimensions, initially matching the input grid.
+      - Set the pixels in the original block's location (from `block_start_idx` for `block_len` pixels) to white (0).
+      - Set the pixels starting at `new_start_idx` for `block_len` pixels to `block_color`. Ensure the marker pixel (at `marker_idx`) retains its color (6), even if overwritten during the previous steps (though the logic prevents this if the block is always left). Re-placing the marker pixel explicitly ensures its persistence: Set the pixel at `marker_idx` to magenta (6).

@@ -1,0 +1,46 @@
+task_type: sequence_manipulation
+dimensionality: 1D
+input_type: list_of_integers (pixels)
+output_type: list_of_integers (pixels)
+objects:
+  - type: pixel_sequence
+    description: A 1D sequence of pixels represented by integers 0-9.
+  - type: contiguous_block
+    properties:
+      - color: non_white (C1, value 1-9)
+      - start_index: index of the first pixel in the block
+      - end_index: index of the last pixel in the block
+    identification: The first sequence of one or more identical non-white pixels encountered when scanning from left to right.
+  - type: target_pixel
+    properties:
+      - color: non_white (C2, value 1-9)
+      - index: position in the sequence (index_C2)
+    identification: The first non-white pixel encountered after the end of the contiguous_block (C1).
+  - type: gap_region
+    properties:
+      - start_index: end_index of C1 + 1
+      - end_index: index_C2 - 1
+      - content: sequence of pixels between C1 and C2.
+    identification: The sequence of pixels located strictly between the end of the first non-white block (C1) and the next non-white pixel (C2).
+actions:
+  - name: find_first_block
+    inputs: pixel_sequence
+    outputs: block_color (C1), block_end_index
+    description: Scan sequence left-to-right to find the first pixel != 0. Identify its color (C1) and the end index of the contiguous block of this color.
+  - name: find_next_pixel
+    inputs: pixel_sequence, start_search_index (block_end_index + 1)
+    outputs: pixel_index (index_C2)
+    description: Scan sequence starting from start_search_index to find the index of the first pixel != 0.
+  - name: check_gap_content
+    inputs: pixel_sequence, gap_start_index, gap_end_index
+    outputs: is_all_white (boolean)
+    description: Verify if all pixels within the gap region (from gap_start_index to gap_end_index, inclusive) have the color white (0).
+  - name: fill_gap
+    inputs: pixel_sequence, gap_start_index, gap_end_index, fill_color (C1)
+    outputs: modified_pixel_sequence
+    condition: is_all_white is true for the gap region.
+    effect: Change the color of all pixels within the gap region to the fill_color (C1).
+constraints:
+  - If no initial non-white block is found, the sequence is unchanged.
+  - If no second non-white pixel is found after the first block, the sequence is unchanged.
+  - If the gap between the block and the next pixel does not exist (i.e., they are adjacent) or contains any non-white pixels, the sequence is unchanged.

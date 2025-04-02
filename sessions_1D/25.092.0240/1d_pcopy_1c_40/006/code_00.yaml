@@ -1,0 +1,49 @@
+task_type: pattern_replication_1d
+input_format: 
+  type: 2D grid (represented as NumPy array)
+  shape: 1xN (single row)
+  colors: 0 (white) for background, one other color (variable) for pattern elements.
+output_format:
+  type: 2D grid (represented as NumPy array or list of lists)
+  shape: 1xN (same as input)
+components:
+  - role: background
+    element: pixel
+    color: white (0)
+    properties: occupies space unless overwritten.
+  - role: template_segment
+    element: contiguous_horizontal_sequence
+    color: non-white (variable, e.g., yellow, green, red)
+    location: first occurrence in the row.
+    properties: 
+      - defines the pattern to be replicated.
+      - has a specific color and length.
+  - role: trigger_pixel
+    element: pixel
+    color: same as template_segment
+    location: any occurrence after the template_segment ends.
+    properties:
+      - marks the starting position for replication.
+actions:
+  - name: initialize_output
+    inputs: input_grid (NumPy array)
+    outputs: output_grid (copy of input_grid, potentially converted to list of lists)
+    description: Create a modifiable copy of the input grid. Ensure it's in a format suitable for element-wise manipulation (e.g., list of lists).
+  - name: identify_template
+    inputs: input_row (list or 1D array)
+    outputs: template_segment (list), segment_color (int), end_index_of_template (int)
+    description: Scan the input row from left to right to find the first contiguous sequence of non-white pixels. Record the sequence, its color, and the index immediately following it.
+  - name: replicate_template
+    inputs: input_row (list or 1D array), output_row (list), template_segment (list), segment_color (int), scan_start_index (int)
+    outputs: modified_output_row (list)
+    description: Iterate through the input row starting from `scan_start_index`. If a pixel matching `segment_color` is found at index `i`, copy the `template_segment` into the `output_row` starting at index `i`. Handle boundary conditions (truncate if template exceeds row length). Advance the scan index past the copied segment to avoid re-triggering.
+  - name: finalize_output
+    inputs: modified_output_grid (list of lists)
+    outputs: final_output_grid (list of lists or NumPy array, matching expected type)
+    description: Ensure the output grid is in the required format (likely list of lists for ARC).
+constraints:
+  - Input is always 1xN.
+  - Only one non-white color exists per task instance.
+  - Replication overwrites existing pixels in the output.
+  - Replication scan starts *after* the identified template segment.
+data_handling: Must correctly handle NumPy array inputs, particularly during validation and element access/modification. Conversion to list of lists is a viable strategy.

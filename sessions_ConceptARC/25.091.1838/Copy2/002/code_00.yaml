@@ -1,0 +1,52 @@
+task_description: "Copy a 'pattern' object into the hollow interior of a 'frame' object, aligning the top-left of the pattern's bounding box with the top-left of the frame's interior space."
+
+input_grid_properties:
+  - contains_exactly_two_distinct_non_background_objects
+  - background_color: white (0)
+
+object_definitions:
+  - object: A contiguous group of non-background pixels (colors 1-9), connected cardinally (up, down, left, right). An object can be composed of multiple colors. Represented by the set of its pixel coordinates.
+  - frame_object:
+      criteria:
+        - Is one of the two objects in the grid.
+        - Is monochromatic (composed of only one color across all its pixels).
+        - Encloses a rectangular region composed entirely of the background color (white, 0). The enclosed region must have a height and width of at least 1.
+      properties:
+        - pixels: Set[Tuple[int, int]] # Coordinates of the frame pixels.
+        - color: int # The single color of the frame.
+        - inner_area_top_left: Tuple[int, int] # (row, col) of the top-left background pixel within the enclosed region.
+  - pattern_object:
+      criteria:
+        - Is the non-frame object among the two objects in the grid.
+      properties:
+        - pixels: Set[Tuple[int, int]] # Coordinates of the pattern pixels.
+        - colors: Set[int] # Set of one or more colors present in the pattern.
+        - bounding_box_top_left: Tuple[int, int] # (row, col) of the top-left corner of the pattern's bounding box.
+
+actions:
+  - action: identify_objects_and_roles
+    inputs: input_grid
+    outputs: [frame_details, pattern_details] # Dictionaries containing properties
+    steps:
+      - Find all distinct contiguous non-background objects (expect 2). Each object is defined by the set of its pixel coordinates.
+      - For each object: determine the set of colors it contains. Check if it encloses a purely background rectangular area.
+      - Identify the unique object that is monochromatic AND encloses a background area as the 'frame'.
+      - Identify the other object as the 'pattern'.
+      - Extract required properties: frame's `inner_area_top_left`, pattern's `pixels`, pattern's `bounding_box_top_left`.
+  - action: copy_paste_pattern
+    inputs: [input_grid, frame_inner_area_top_left, pattern_pixels, pattern_bounding_box_top_left]
+    outputs: output_grid
+    details:
+      - Create a copy of the input grid (output_grid).
+      - Let `(pat_min_r, pat_min_c) = pattern_bounding_box_top_left`.
+      - Let `(frame_inner_r, frame_inner_c) = frame_inner_area_top_left`.
+      - For each pixel coordinate `(r, c)` in `pattern_pixels`:
+        - Calculate relative offset: `dr = r - pat_min_r`, `dc = c - pat_min_c`.
+        - Calculate target coordinate: `tr = frame_inner_r + dr`, `tc = frame_inner_c + dc`.
+        - Get color from input: `color = input_grid[r][c]`.
+        - Update output grid: `output_grid[tr][tc] = color`.
+
+output_grid_properties:
+  - Identical to the input grid, except for the pixels within the frame's original hollow area.
+  - The frame's hollow area is filled with a copy of the pattern object, preserving the pattern's internal structure and colors relative to its bounding box.
+  - The placement is aligned: the pixel corresponding to the top-left of the pattern's bounding box is placed at the top-left of the frame's hollow area.

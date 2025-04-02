@@ -1,0 +1,37 @@
+task_description: Replicates an initial color pattern over specific locations later in the row.
+grid_properties:
+  dimensionality: 2D, but processing logic focuses on the single row present.
+  shape: Input and Output shapes are identical, typically (1, N).
+  background_color: white (0)
+objects:
+  - type: pattern_block
+    description: The first contiguous horizontal sequence of non-white pixels in the row.
+    properties:
+      color: The single non-white color used in the example (e.g., azure, orange, magenta). Consistent within an example.
+      shape: Horizontal line segment.
+      length: Variable (3 pixels in training examples).
+      location: Starts at the first non-white pixel index.
+  - type: marker_pixel
+    description: Isolated single pixels matching the color of the pattern_block.
+    properties:
+      color: Same as pattern_block color.
+      location: Appears at indices greater than the end index of the pattern_block.
+actions:
+  - name: identify_pattern_and_markers
+    inputs: input_grid (specifically, the first row)
+    outputs: pattern_color, pattern_sequence, pattern_length, list_of_marker_indices, scan_start_index
+    description: Find the first sequence of connected non-white pixels (pattern_block). Record its color, sequence, and length. Determine the index immediately following the pattern (scan_start_index). Scan the row from scan_start_index onwards to find indices of single pixels matching the pattern_color (marker_indices).
+  - name: replicate_pattern_at_markers
+    inputs: input_grid, pattern_sequence, pattern_length, list_of_marker_indices
+    outputs: output_grid
+    description: Create a copy of the input grid. For each marker_index in the list, calculate the replacement start index as `marker_index - 1`. Replace the slice of the output grid's first row starting at `replacement_start_index` and of length `pattern_length` with the `pattern_sequence`. Ensure the replacement respects grid boundaries (does not write past the end of the row). The output grid retains the original dimensions.
+relationships:
+  - type: color_match
+    entities: [pattern_block, marker_pixel]
+    description: Marker pixels must have the same color as the pattern block.
+  - type: spatial_order
+    entities: [pattern_block, marker_pixel]
+    description: Marker pixels appear later in the row (at higher indices) than the pattern block.
+  - type: replacement_trigger
+    entities: [marker_pixel, pattern_block]
+    description: The presence of a marker_pixel triggers the replication of the pattern_block into the output grid, starting one position *before* the marker_pixel's index.

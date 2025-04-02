@@ -1,0 +1,39 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom collections import deque\n\n\"\"\"\nTransforms the input grid by identifying a 'container' shape and an 'inner' shape. \nIt then fills the empty space (white pixels, value 0) enclosed within the container \nshape with the color of the inner shape. The original container and inner shapes \nretain their colors and positions.\n\nThe process involves:\n1. Identifying all distinct non-white objects (connected components) in the grid.\n2. Determining which object is the 'container' (typically the largest by pixel count or bounding box).\n3. Determining which object(s) are 'inner' (located inside the container).\n4. Extracting the color of an inner object to use as the fill color.\n5. Performing a flood fill starting from a pixel of the inner object. The fill propagates through white pixels but stops at the boundary defined by the container's color. Only white pixels encountered during the fill are changed to the fill color.\n\"\"\"\n\ndef find_connected_components(grid):\n    \"\"\"\n    Finds all connected components of non-background (non-zero) pixels.\n\n    Args:\n        grid (np.array): The input grid.\n\n    Returns:\n        list: A list of tuples, where each tuple contains:\n              (color, set_of_coordinates).\n    \"\"\"\n    rows, cols = grid.shape\n    visited = set()\n    components = []\n\n    for r in range(rows):\n        for c in range(cols):\n            if grid[r, c] != 0 and (r, c) not in visited:\n                color = grid[r, c]\n                component_coords = set()\n                q = deque([(r, c)])\n                visited.add((r, c))\n                \n                while q:\n                    row, col = q.popleft()\n                    if grid[row, col] == color: # Only expand within the same color for this component definition\n                        component_coords.add((row, col))\n                        for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n                            nr, nc = row + dr, col + dc\n                            if 0 <= nr < rows and 0 <= nc < cols and \\\n                               grid[nr, nc] == color and (nr, nc) not in visited:\n                                visited.add((nr, nc))\n                                q.append((nr, nc))\n                                \n                if component_coords:\n                   components.append((color, component_coords))\n\n    return components\n\ndef get_bounding_box(coords):\n    \"\"\"Calculates the bounding box of a set of coordinates.\"\"\"\n    if not coords:\n        return None\n    min_r = min(r for r, c in coords)\n    max_r = max(r for r, c in coords)\n    min_c = min(c for r, c in coords)\n    max_c = max(c for r, c in coords)\n    return (min_r, min_c, max_r, max_c)\n\ndef transform(input_grid):\n    \"\"\"\n    Applies the flood fill transformation based on container and inner shapes.\n\n    Args:\n        input_grid (list of lists): The input grid.\n\n    Returns:\n        list of lists: The transformed output grid.\n    \"\"\"\n    grid = np.array(input_grid, dtype=int)\n    output_grid = grid.copy()\n    rows, cols = grid.shape\n\n    # 1. Find all non-white connected components\n    components = find_connected_components(grid)\n\n    if len(components) < 2:\n        # Not enough components to determine container and inner shape\n        return output_grid.tolist() \n\n    # 2. Identify container and inner shape(s)\n    # Assume container is the largest component by pixel count\n    components.sort(key=lambda x: len(x[1]), reverse=True)\n    \n    container_color, container_coords = components[0]\n    \n    # Assume the next largest (or the only other one if just 2) is the inner shape\n    # More robust logic might be needed if multiple inner shapes or complex layouts exist\n    inner_shape_candidates = [comp for comp in components[1:]]\n    \n    if not inner_shape_candidates:\n         return output_grid.tolist() # No inner shape found\n\n    # For simplicity, use the first candidate as the primary inner shape\n    # In these examples, there's only one distinct inner color/shape.\n    fill_color, inner_coords = inner_shape_candidates[0] \n    \n    # Get a starting pixel from the inner shape for the flood fill\n    if not inner_coords:\n        return output_grid.tolist() # Inner shape is empty? Should not happen with find_connected_components logic\n        \n    start_pixel = next(iter(inner_coords)) # Get an arbitrary pixel from the inner shape set\n\n    # 3. Perform conditional flood fill\n    q = deque([start_pixel])\n    visited_fill = set() \n    # We start fill from *within* an inner object, so add its coords initially\n    # to prevent overwriting the inner object itself if it touches white pixels\n    visited_fill.update(inner_coords) \n    # Add container coords to prevent filling over the container itself if it has internal gaps\n    visited_fill.update(container_coords) \n\n\n    while q:\n        r, c = q.popleft()\n\n        # Process neighbors\n        for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n            nr, nc = r + dr, c + dc\n\n            # Check bounds\n            if not (0 <= nr < rows and 0 <= nc < cols):\n                continue\n\n            # Check if already visited or part of the container boundary\n            if (nr, nc) in visited_fill:\n                 continue\n            \n            # Check if it's part of the container boundary in the original grid\n            if grid[nr, nc] == container_color:\n                 visited_fill.add((nr,nc)) # Mark container pixel as visited but don't queue\n                 continue\n\n            # If it's a white pixel, color it and add to queue\n            if grid[nr, nc] == 0:\n                output_grid[nr, nc] = fill_color\n                visited_fill.add((nr, nc))\n                q.append((nr, nc))\n            # If it's part of another inner object (same or different color), \n            # mark visited and add to queue to explore from there too.\n            elif grid[nr,nc] != 0 and grid[nr, nc] != container_color:\n                 visited_fill.add((nr, nc))\n                 q.append((nr,nc))\n\n\n    return output_grid.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "citation_metadata": {
+        "citation_sources": [
+          {
+            "start_index": 6818,
+            "end_index": 6983,
+            "uri": "https://github.com/Rijgersberg/advent-of-code-2020",
+            "license_": ""
+          }
+        ]
+      },
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 5008,
+    "candidates_token_count": 1562,
+    "total_token_count": 6570,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 25.871474,
+  "retries": 1
+}

@@ -1,0 +1,40 @@
+task_type: array_transformation_1d
+input_format: List[List[int]] (1 row, N columns)
+output_format: List[List[int]] (1 row, N columns)
+components:
+  - type: target_pixel
+    id: boundary_pixel
+    description: The first occurrence of a blue pixel (1) when scanning from left to right.
+    properties:
+      - color: blue (1)
+      - required: true (if not present, no transformation occurs)
+      - position: index `blue_idx`
+  - type: contiguous_block
+    id: gap_block
+    description: A sequence of one or more white pixels (0) located immediately to the left of the boundary_pixel.
+    properties:
+      - color: white (0)
+      - length: (variable, >= 1)
+      - position: ends at index `blue_idx - 1`, starts at `gap_start_idx`
+      - required: true (if no such gap exists, no transformation occurs)
+  - type: source_pixel
+    id: color_source
+    description: The single pixel located immediately to the left of the gap_block.
+    properties:
+      - color: (variable, must not be white(0) or blue(1))
+      - position: index `gap_start_idx - 1`
+      - required: true (must exist and have a valid color, otherwise no transformation occurs)
+relationship:
+  - type: spatial_sequence
+    description: The required pattern is `... -> color_source -> gap_block -> boundary_pixel -> ...` appearing consecutively.
+action:
+  - type: fill_color
+    target: gap_block
+    description: Replace the color of all pixels within the gap_block with the color of the color_source pixel.
+    condition: The full sequence (color_source with valid color, gap_block, boundary_pixel) must be identified.
+    effect: The gap_block's pixels change color. All other pixels remain unchanged.
+constraints:
+  - The transformation only applies if the specific sequence is found.
+  - Only the first occurrence of the blue pixel matters.
+  - The gap must contain only white pixels and be immediately left of the blue pixel.
+  - The pixel left of the gap must exist and be neither white nor blue.

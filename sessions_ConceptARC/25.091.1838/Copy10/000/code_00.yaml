@@ -1,0 +1,58 @@
+task_description: Copy a 'container' object and its 'contained' objects to a new location determined by an 'orphan' object, replacing the orphan object.
+
+definitions:
+  - object: A contiguous block of non-white pixels.
+  - bounding_box: The smallest rectangle enclosing all pixels of an object.
+  - container: An object whose bounding box fully encloses the bounding box(es) of one or more other objects. (In these examples, it's the object enclosing the most others).
+  - contained_object: An object whose bounding box is fully within the bounding box of the container.
+  - orphan_object: An object that is neither the container nor a contained object. (Assume one primary orphan determines placement).
+
+steps:
+  - step: 1
+    action: identify_objects
+    description: Find all distinct objects (contiguous non-white pixels) and their bounding boxes in the input grid.
+  - step: 2
+    action: identify_container
+    description: Determine which object is the container by finding the object whose bounding box encloses the most other objects' bounding boxes.
+  - step: 3
+    action: identify_contained
+    description: Identify all objects whose bounding boxes are fully within the container's bounding box.
+  - step: 4
+    action: identify_orphan
+    description: Identify the object(s) that are neither the container nor contained. Assume a single primary orphan dictates placement.
+  - step: 5
+    action: calculate_copy_location
+    inputs:
+      - container_bounding_box
+      - orphan_bounding_box
+    description: >
+      Determine the top-left coordinates (target_row, target_col) for placing the copy of the container.
+      Find the axis of greatest separation between the container and orphan bounding boxes.
+      If horizontal separation (orphan is right of container):
+        target_row = container.top
+        target_col = orphan.left - 2
+      If vertical separation (orphan is below container):
+        target_row = orphan.top - 2
+        target_col = container.left
+      (Adjust logic if orphan is left/above container, though not seen in examples).
+  - step: 6
+    action: prepare_output_grid
+    inputs:
+      - input_grid
+      - orphan_object
+    description: Create a copy of the input grid. Set all pixels belonging to the orphan object to white (0).
+  - step: 7
+    action: extract_pattern_to_copy
+    inputs:
+      - input_grid
+      - container_bounding_box
+    description: Extract the subgrid defined by the container's bounding box from the original input grid (this includes the container and all contained objects).
+  - step: 8
+    action: place_copy
+    inputs:
+      - output_grid
+      - pattern_to_copy
+      - target_location (target_row, target_col)
+    description: Paste the extracted subgrid (pattern_to_copy) onto the output grid starting at the calculated target location, overwriting existing pixels.
+
+final_output: The modified output grid after removing the orphan and placing the copy.

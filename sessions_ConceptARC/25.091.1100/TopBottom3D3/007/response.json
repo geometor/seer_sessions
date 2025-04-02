@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom scipy.ndimage import label\n\n\"\"\"\nThe transformation identifies two distinct non-background colors in the input grid.\nIt distinguishes these colors based on the number of connected components each color forms (using 4-way adjacency).\nOne color ('inner_color') forms exactly one connected component, while the other ('frame_color') forms multiple disconnected components.\nThe output grid is created by taking the union of the pixels occupied by both the inner_color and frame_color in the input grid, \nand filling this combined area entirely with the 'frame_color'. Background pixels (0) remain unchanged.\n\"\"\"\n\ndef count_components(grid, color):\n    \"\"\"Counts the number of 4-way connected components for a given color.\"\"\"\n    # Create a binary mask where True indicates the target color\n    mask = grid == color\n    # Define the structure for 4-way connectivity (N, S, E, W neighbors)\n    # [[0,1,0],\n    #  [1,1,1],\n    #  [0,1,0]] allows connections up, down, left, right\n    structure = np.array([[0, 1, 0],\n                          [1, 1, 1],\n                          [0, 1, 0]], dtype=bool)\n    # Label connected components based on the mask and structure\n    labeled_array, num_features = label(mask, structure=structure)\n    return num_features\n\ndef transform(input_grid):\n    \"\"\"\n    Transforms the input grid based on connected components of colors.\n\n    Args:\n        input_grid (list[list[int]]): The input grid.\n\n    Returns:\n        list[list[int]]: The transformed output grid.\n    \"\"\"\n    # Convert input list of lists to numpy array for efficient processing\n    grid = np.array(input_grid, dtype=np.int8)\n    rows, cols = grid.shape\n\n    # 1. Identify the two distinct non-background colors\n    unique_colors = np.unique(grid)\n    non_background_colors = [color for color in unique_colors if color != 0]\n\n    # Expect exactly two non-background colors based on examples\n    if len(non_background_colors) != 2:\n        # If not two colors, the pattern is different, return the original grid\n        # (or handle error as appropriate for the broader system)\n        return input_grid\n\n    color_A = non_background_colors[0]\n    color_B = non_background_colors[1]\n\n    # 2. Count connected components for each color\n    components_A = count_components(grid, color_A)\n    components_B = count_components(grid, color_B)\n\n    # 3. Determine the inner_color (1 component) and frame_color (>1 component)\n    inner_color = -1\n    frame_color = -1\n\n    if components_A == 1 and components_B > 1:\n        inner_color = color_A\n        frame_color = color_B\n    elif components_B == 1 and components_A > 1:\n        inner_color = color_B\n        frame_color = color_A\n    else:\n        # If component counts don't match the 1 vs >1 pattern (e.g., both 1, both >1),\n        # the input doesn't fit the assumed structure. Return original grid.\n        return input_grid\n\n    # 4. Initialize the output grid with background color (0)\n    output_grid = np.zeros_like(grid, dtype=np.int8)\n\n    # 5. Identify all pixel coordinates belonging to the union of the two shapes\n    # Create boolean masks for each color\n    mask_inner = (grid == inner_color)\n    mask_frame = (grid == frame_color)\n    # Combine masks to find the union\n    union_mask = mask_inner | mask_frame\n\n    # 6. Fill the union area in the output grid with the frame_color\n    output_grid[union_mask] = frame_color\n\n    # 7. Return the completed output grid as list of lists\n    return output_grid.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 15622,
+    "candidates_token_count": 954,
+    "total_token_count": 16576,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 13.196191,
+  "retries": 1
+}
