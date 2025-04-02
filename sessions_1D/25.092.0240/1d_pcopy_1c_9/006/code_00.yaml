@@ -1,0 +1,73 @@
+task_description: Replace isolated pixels of a specific color with the first encountered contiguous horizontal segment of that same color, centering the segment on the isolated pixel's position. Assumes input is a single row.
+
+elements:
+  - element_type: grid
+    properties:
+      - description: Input and output are 1D grids (single row) of the same width.
+      - background_color: white (0)
+
+  - element_type: object
+    description: Pattern Segment
+    properties:
+      - identification: The first contiguous horizontal sequence of non-white pixels found when scanning left-to-right.
+      - color: The single non-white color making up the segment (e.g., red, magenta, yellow).
+      - shape: A horizontal sequence of pixels (e.g., [color, color, color]). Length can vary in principle, but is 3 in examples.
+      - role: Template for replacement.
+      - persistence: The original pattern segment in the input remains unchanged in the output.
+
+  - element_type: object
+    description: Target Pixel
+    properties:
+      - identification: A single non-white pixel located *outside* the original Pattern Segment's position.
+      - color: Must match the color of the Pattern Segment.
+      - isolation: Must be horizontally isolated (left and right neighbors are white (0) or grid boundary).
+      - role: Marks the center location for replacement action.
+
+actions:
+  - action_type: find
+    description: Locate the Pattern Segment (first non-white contiguous horizontal block) and its properties.
+    inputs:
+      - input grid row
+    outputs:
+      - pattern_segment (list of pixel values)
+      - pattern_color (integer)
+      - pattern_length (integer)
+      - pattern_start_index (integer)
+      - pattern_end_index (integer, exclusive)
+
+  - action_type: find
+    description: Locate all Target Pixels (isolated pixels matching pattern_color, outside the original pattern location).
+    inputs:
+      - input grid row
+      - pattern_color
+      - pattern_start_index
+      - pattern_end_index
+    outputs:
+      - list_of_target_indices (column indices)
+
+  - action_type: copy_replace
+    description: Create a copy of the input row and replace segments based on target locations.
+    details: For each target_index 'c', place a copy of the pattern_segment onto the output row, centered horizontally at 'c'. The placement starts at column 'c - floor(pattern_length / 2)' and overwrites 'pattern_length' pixels. Boundary conditions apply (placement stops at grid edges).
+    inputs:
+      - target_indices
+      - pattern_segment
+      - pattern_length
+      - input grid row (used as base for output copy)
+    outputs:
+      - output grid row
+
+relationships:
+  - type: color_match
+    description: Target Pixels must have the same color as the Pattern Segment.
+  - type: spatial
+    description: Target Pixels are defined by horizontal isolation.
+  - type: exclusion
+    description: Pixels within the original Pattern Segment cannot be Target Pixels.
+  - type: transformation
+    description: Target Pixels trigger a centered replacement using the Pattern Segment.
+
+invariants:
+  - The original Pattern Segment's location and pixels remain unchanged in the output.
+  - White (0) pixels remain unchanged unless overwritten by a replacement action.
+  - Non-white pixels that are neither part of the original Pattern Segment nor designated Target Pixels remain unchanged.
+  - Grid dimensions remain the same.
