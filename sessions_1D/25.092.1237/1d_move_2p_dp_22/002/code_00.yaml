@@ -1,0 +1,57 @@
+task_type: array_transformation_1d
+grid_dimensionality: 1D # Explicitly 1 row
+grid_size_input: [1, 14] # Consistent across examples
+grid_size_output: [1, 14] # Same size as input
+input_composition:
+  - object: main_block
+    count: 1
+  - object: marker_pixel
+    count: 1
+  - object: background_pixels
+    count: variable (fills remaining space)
+output_composition:
+  - object: shifted_structure
+    count: 1
+  - object: background_pixels
+    count: variable (fills remaining space)
+objects:
+  - id: main_block
+    description: A contiguous horizontal sequence of identical pixels.
+    properties:
+      color: Any color except white (0) and maroon (9).
+      contiguity: True (horizontal)
+      location_relative_to_marker: Appears strictly before the marker_pixel in the input row.
+  - id: marker_pixel
+    description: A single maroon (9) pixel.
+    properties:
+      color: maroon (9)
+      count: 1
+  - id: background_pixels
+    description: White (0) pixels used as padding or filler.
+    properties:
+      color: white (0)
+  - id: shifted_structure
+    description: The structure formed in the output by concatenating the main_block and marker_pixel, then shifting.
+    properties:
+      composition: Pixels from main_block followed immediately by the marker_pixel.
+      location: Starts at `main_block_start_index + 2` in the output row.
+relationships:
+  - type: spatial_separation_input
+    object1: main_block
+    object2: marker_pixel
+    details: May be separated by zero or more background_pixels (white) in the input.
+  - type: spatial_adjacency_output
+    object1: main_block_pixels (within shifted_structure)
+    object2: marker_pixel (within shifted_structure)
+    details: The last pixel of the main_block is immediately followed by the marker_pixel in the output's shifted_structure.
+actions:
+  - id: identify_objects
+    description: Locate the main_block (start index, pixels) and the marker_pixel (index) in the input row.
+  - id: create_combined_sequence
+    description: Form a new sequence by taking the pixels of the main_block and appending the marker_pixel (9).
+  - id: calculate_target_position
+    description: Determine the starting index for the combined sequence in the output row.
+    formula: output_start_index = input_main_block_start_index + 2
+  - id: construct_output_row
+    description: Create the output row (same length as input) initialized with background_pixels (white). Place the combined_sequence starting at the calculated target_position. Overwrite initial background pixels as needed. Ensure sequence placement respects row boundaries (truncates if necessary, though not observed in examples).
+data_type_handling_note: The implementation should preferably use NumPy arrays for grid representation and manipulation to avoid potential type conflicts with the testing environment.

@@ -1,0 +1,57 @@
+objects:
+  - name: input_structure
+    properties:
+      - type: numpy.ndarray (likely)
+      - shape: (1, N) where N is the sequence length (e.g., 12)
+      - contains: A single sequence of integers (digits 0-9).
+      - note: The actual data to be processed is the 1D sequence contained within this structure.
+  - name: input_sequence
+    properties:
+      - type: list_of_integers (derived from input_structure)
+      - length: fixed (N)
+      - elements: digits 0-9
+  - name: output_sequence
+    properties:
+      - type: list_of_integers
+      - length: N (same as input_sequence)
+      - elements: digits 0-9
+  - name: core_sequence
+    properties:
+      - type: list_of_integers
+      - derived_from: input_sequence
+      - definition: The contiguous subsequence starting from the first non-zero digit and ending at the last non-zero digit in the input_sequence.
+      - exists: Only if input_sequence contains at least one non-zero digit.
+
+actions:
+  - name: extract_1d_sequence
+    inputs: input_structure
+    outputs: input_sequence
+    description: Extract the primary 1D list of integers from the input structure (e.g., get the first row if input is a 1xN array).
+  - name: identify_core_boundaries
+    inputs: input_sequence
+    outputs: first_nonzero_index, last_nonzero_index
+    description: Find the indices of the first and last non-zero digits. Handle the case where no non-zero digits exist (return None, None).
+  - name: extract_core_sequence
+    inputs: input_sequence, first_nonzero_index, last_nonzero_index
+    outputs: core_sequence
+    description: Extract the subsequence between the identified boundaries (inclusive). Returns an empty list if boundaries are None.
+  - name: calculate_shift
+    inputs: first_nonzero_index
+    outputs: output_start_index
+    description: Determine the starting index for the core_sequence in the output. Calculated as max(0, first_nonzero_index - 2). Defaults to 0 if first_nonzero_index is None.
+  - name: construct_output
+    inputs: core_sequence, output_start_index, original_length
+    outputs: output_sequence
+    description: Create the output sequence by placing leading zeros (count = output_start_index), followed by the core_sequence, and finally padding with trailing zeros to match the original_length. If no core_sequence exists (input was all zeros), the output is identical to the input_sequence.
+
+relationships:
+  - type: length_conservation
+    entities: [input_sequence, output_sequence]
+    description: The output_sequence always has the same length as the input_sequence.
+  - type: element_preservation
+    entities: [input_sequence, core_sequence, output_sequence]
+    description: The non-zero digits and their relative order within the core_sequence are preserved in the output_sequence. Zeros originally within the core_sequence are also preserved.
+  - type: positional_shift
+    entities: [core_sequence]
+    property: start_index
+    description: The core_sequence is shifted left relative to its original position. Its starting index in the output is determined by max(0, original_first_nonzero_index - 2).

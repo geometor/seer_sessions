@@ -1,0 +1,54 @@
+task_type: array_rearrangement
+grid_dimensionality: 1D # Represented as List[List[int]] but effectively 1D array
+input_output_size_parity: equal # Length of input array equals length of output array
+element_set_parity: equal # All numbers (colors) in input are present in output
+
+objects:
+  - id: boundary_marker
+    description: The first occurrence of the maroon (9) pixel.
+    properties:
+      - color: 9
+      - role: separator, fixed_position_pivot
+    state_change: Its position remains unchanged from input to output.
+  - id: pre_boundary_segment
+    description: The sequence of pixels before the boundary marker. If no marker exists, this is the entire array.
+    properties:
+      - elements: pixels with various colors (0, 2, 3 observed)
+    state_change: Internal elements are rearranged.
+  - id: post_boundary_segment
+    description: The sequence of pixels after the boundary marker.
+    properties:
+      - elements: pixels with various colors (0 observed)
+      - may_be_empty: true
+    state_change: Elements and their order remain unchanged relative to the boundary marker.
+  - id: background_pixels
+    description: White (0) pixels within the pre_boundary_segment.
+    properties:
+      - color: 0
+    state_change: Grouped together and moved to the start of the pre_boundary_segment in the output.
+  - id: color_block
+    description: A contiguous block of non-white (non-0) and non-boundary (non-9) pixels within the pre_boundary_segment.
+    properties:
+      - color: non-0, non-9 (e.g., 2, 3 observed)
+      - structure: contiguous_block
+    state_change: Moved to follow the background_pixels within the pre_boundary_segment in the output, maintaining internal order.
+
+actions:
+  - name: find_boundary
+    input: input_array
+    target: color_9
+    output: index_of_first_9 (or indicator of absence)
+  - name: partition
+    input: input_array, boundary_index
+    output: pre_boundary_segment, boundary_marker (pixel 9), post_boundary_segment
+  - name: analyze_pre_boundary
+    input: pre_boundary_segment
+    output: background_pixels (list/count), color_block (list)
+  - name: reconstruct_pre_boundary
+    input: background_pixels, color_block
+    logic: Concatenate background_pixels followed by color_block
+    output: new_pre_boundary_segment
+  - name: assemble_output
+    input: new_pre_boundary_segment, boundary_marker, post_boundary_segment
+    logic: Concatenate the three parts in order. Handle cases where boundary or post_boundary might not exist.
+    output: final_output_array

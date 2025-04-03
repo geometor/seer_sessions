@@ -1,0 +1,75 @@
+task_type: array_segment_swap_1d
+components:
+  - type: background
+    color: white (0)
+  - type: target_marker
+    color: green (3)
+    quantity: 1
+    role: fixed anchor point (position remains unchanged)
+  - type: fixed_gap
+    description: A contiguous block of background pixels immediately preceding the target_marker.
+    properties:
+      color: white (0)
+      size: 2 (constant across examples)
+      contiguity: required
+      position: immediately left of target_marker
+  - type: movable_block
+    description: A contiguous block of a single non-background, non-target color immediately preceding the fixed_gap.
+    properties:
+      color: variable (red=2, orange=7, gray=5 in examples)
+      contiguity: required
+      position: immediately left of fixed_gap
+      size: variable
+  - type: prefix_segment
+    description: All pixels from the start of the array up to (but not including) the movable_block.
+    role: remains unchanged and stays at the beginning.
+  - type: suffix_segment
+    description: All pixels from the target_marker to the end of the array.
+    role: remains unchanged and stays at the end relative to the swapped block/gap.
+actions:
+  - name: identify_target
+    actor: system
+    target: target_marker (green=3)
+    result: target_index
+  - name: identify_gap
+    actor: system
+    target: background (white=0) pixels immediately left of target_index
+    constraints: must be size 2
+    result: gap_segment, gap_start_index
+  - name: identify_block
+    actor: system
+    target: contiguous non-background, non-target pixels immediately left of gap_start_index
+    result: block_segment, block_start_index
+  - name: identify_prefix
+    actor: system
+    target: pixels from array start up to block_start_index
+    result: prefix_segment
+  - name: identify_suffix
+    actor: system
+    target: pixels from target_index to array end
+    result: suffix_segment
+  - name: swap_and_reconstruct
+    actor: system
+    inputs: [prefix_segment, gap_segment, block_segment, suffix_segment]
+    output_order: [prefix_segment, gap_segment, block_segment, suffix_segment]
+    effect: Creates the output array by placing the gap segment before the block segment.
+relationships:
+  - type: adjacency
+    entity1: movable_block
+    entity2: fixed_gap
+    state_input: entity1 is immediately left of entity2
+  - type: adjacency
+    entity1: fixed_gap
+    entity2: target_marker
+    state_input: entity1 is immediately left of entity2
+  - type: adjacency
+    entity1: fixed_gap
+    entity2: movable_block
+    state_output: entity1 is immediately left of entity2
+  - type: adjacency
+    entity1: movable_block
+    entity2: target_marker
+    state_output: entity1 is immediately left of entity2
+  - type: fixed_position
+    entity: target_marker
+    state: index remains constant between input and output

@@ -1,0 +1,46 @@
+task_type: noise_reduction_1d_row
+input_description: A 1xN grid (single row) containing pixels. The row typically has leading and/or trailing white (0) pixels (padding). Between the padding, there is a contiguous segment of non-white pixels.
+output_description: A 1xN grid where, within the central non-white segment of the input row, all 'noise' pixels (non-white pixels that are not the most frequent color in that segment) have been replaced by the most frequent non-white color ('main color'). Padding pixels remain unchanged.
+grid_properties:
+  - dimensionality: 2D
+  - shape: 1 row, N columns (1xN)
+elements:
+  - type: pixel
+    name: padding_pixel
+    color: white (0)
+    location: Contiguous blocks at the start and/or end of the row.
+    role: Background/Frame, remains unchanged.
+  - type: segment
+    name: main_segment
+    location: The contiguous block of pixels in the row between the first and last non-white pixel (inclusive).
+    properties: Contains multiple colors, including at least one non-white color.
+  - type: color
+    name: main_color
+    source: Identified within the main_segment.
+    property: The most frequent non-white color within the main_segment. (If ties, one is chosen, e.g., the first encountered or lowest value, though examples don't show ties).
+  - type: pixel
+    name: noise_pixel
+    location: Within the main_segment.
+    color: Any non-white color that is not the main_color.
+    role: Pixels to be modified.
+transformation:
+  - action: identify
+    target: main_segment boundaries
+    based_on: Finding the column indices of the first and last non-white pixels in the row.
+  - action: extract
+    target: main_segment pixels
+    based_on: Slicing the row using the identified start and end column indices.
+  - action: analyze
+    target: main_segment pixels
+    operation: Count frequency of each non-white color.
+  - action: identify
+    target: main_color
+    based_on: Highest frequency count among non-white colors in the main_segment.
+  - action: modify
+    target: input grid (copy)
+    operation: Iterate through the columns corresponding to the main_segment. For each pixel in this range: if it's a noise_pixel (non-white and not main_color), change its color to main_color.
+  - action: preserve
+    target: padding_pixels and pixels within the main_segment that are already the main_color or are white (0).
+relationships:
+  - The main_segment is defined by the extent of non-white pixels in the single row.
+  - Noise_pixels exist only within the main_segment.

@@ -1,0 +1,46 @@
+task_type: sequence_manipulation
+description: Moves the first white pixel following a non-white block to the position preceding that block.
+input_format: 1D sequence (list or 1D NumPy array) of integers (pixels).
+output_format: 1D sequence (list or 1D NumPy array) of integers (pixels).
+components:
+  - item: pixel_sequence
+    type: List[int] or np.ndarray(ndim=1)
+    description: A 1D sequence of color values (0-9).
+  - item: non_white_block
+    type: contiguous_subsequence
+    properties:
+      - Contains pixels of a single color C, where C is not white (C != 0).
+      - All pixels between the start and end index (inclusive) have color C.
+      - It is the *first* such block found when scanning the sequence.
+    relationships:
+      - May be preceded by zero or more white pixels.
+      - Must be succeeded by at least one white pixel for the transformation to occur.
+  - item: target_white_pixel
+    type: single_pixel
+    properties:
+      - Color is white (0).
+      - Located at the index immediately following the `non_white_block`.
+    relationships:
+      - This is the pixel that will be moved.
+transformation:
+  action: move_pixel
+  conditions:
+    - A `non_white_block` must exist.
+    - A `target_white_pixel` must exist at the index `end_index + 1`, where `end_index` is the last index of the `non_white_block`.
+  process:
+    - Identify the start index (`start_idx`) and end index (`end_idx`) of the first `non_white_block`.
+    - Identify the index of the `target_white_pixel` (`source_idx = end_idx + 1`).
+    - Define the destination index (`dest_idx = start_idx`).
+    - Create a new sequence by:
+      - Taking the elements from the original sequence up to (but not including) `dest_idx`.
+      - Appending a white pixel (0).
+      - Appending the elements from the original sequence from `dest_idx` up to (but not including) `source_idx`.
+      - Appending the elements from the original sequence from `source_idx + 1` to the end.
+    - Alternatively (procedurally): Convert input to list, remove element at `source_idx`, insert 0 at `dest_idx`.
+  fallback: If conditions are not met, return the input sequence unchanged.
+invariants:
+  - The total number of pixels remains the same.
+  - The non-white color within the block remains the same.
+  - The relative order of pixels within the non_white_block is preserved.
+  - The relative order of white pixels preceding the block is preserved.
+  - The relative order of white pixels following the `target_white_pixel` is preserved.

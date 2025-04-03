@@ -1,0 +1,45 @@
+task_description: Filters horizontal segments in the first row based on corresponding markers in the second row, then clears the second row.
+grid_properties:
+  - rows: 2 (input and output)
+  - width: variable (consistent between input and output)
+  - colors_used: white (0) background, one or more non-white colors for segments and markers.
+objects:
+  - type: horizontal_segment
+    location: input grid, row 0
+    definition: A maximal contiguous sequence of identical non-white pixels.
+    attributes:
+      - color: non-white (integer 1-9)
+      - start_column: integer index (inclusive)
+      - end_column: integer index (exclusive)
+      - columns: range of column indices covered by the segment
+  - type: marker
+    location: input grid, row 1
+    definition: Any non-white pixel.
+    attributes:
+      - color: non-white (integer 1-9, does not need to match segment color)
+      - column: integer index
+relationship:
+  - type: support
+    from: marker (row 1)
+    to: horizontal_segment (row 0)
+    condition: A marker exists in row 1 at a column index `c` such that `segment.start_column <= c < segment.end_column`. A segment is 'supported' if at least one such marker exists for it.
+transformation:
+  - action: initialize_output
+    details: Create an output grid of the same dimensions as the input grid, filled entirely with white (0).
+  - action: identify_segments
+    source: input grid, row 0
+    object_type: horizontal_segment
+    result: A list of all horizontal segments.
+  - action: filter_and_copy_segments
+    source: identified horizontal segments (from row 0)
+    target: output grid, row 0
+    logic: |
+      For each identified horizontal_segment:
+        Check if the segment is 'supported' by any marker in the input grid's second row (row 1) based on the 'support' relationship.
+        If the segment is supported, copy it (its color and exact horizontal position/span) to the output grid's first row (row 0).
+  - action: clear_row
+    target: output grid, row 1
+    details: Ensure the entire second row (row 1) of the output grid consists of white (0) pixels. (This is achieved by the initialization and lack of modification).
+final_state:
+  - output grid, row 0: Contains only the 'supported' horizontal segments from the input grid's first row, preserving their original color and position. All non-supported segment areas are white.
+  - output grid, row 1: Contains only white (0) pixels.

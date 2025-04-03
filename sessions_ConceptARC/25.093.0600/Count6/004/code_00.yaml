@@ -1,0 +1,46 @@
+task_description: Identify specific 'target' cells within a grid based on their spatial position relative to the outer background and boundary, count them, and represent the count in a fixed-length output list.
+
+input_elements:
+  - type: Grid
+    description: A 2D array of integers.
+    properties:
+      - dimensions: variable (e.g., 12x12, 7x11, 15x15, 11x9, 6x6)
+      - cell_values: integers
+
+  - type: Number (within Grid Cell)
+    description: Values within the grid cells.
+    subtypes:
+      - Background:
+          value: 0
+          role: Represents empty space.
+      - NonZero:
+          value: Any integer != 0
+          role: Represents significant elements within the grid.
+
+spatial_regions:
+  - type: OuterBackground
+    description: The set of all background (0) cells connected to the edges of the grid (using 4-way adjacency).
+  - type: BoundaryCells
+    description: The set of all non-zero cells that are directly adjacent (using 4-way adjacency) to at least one cell belonging to the OuterBackground.
+  - type: TargetCells
+    description: The set of all non-zero cells that are *not* BoundaryCells. These are the cells of interest to be counted.
+
+output_elements:
+  - type: List
+    description: A 1D array of integers representing the count of TargetCells.
+    properties:
+      - fixed_length: 7 (based on examples)
+      - element_values:
+          - 4: Represents one instance of a detected TargetCell in the input grid. Added to the list for each TargetCell found.
+          - 0: Used as padding to fill the list to its fixed length after all '4's have been added.
+
+relationships:
+  - description: BoundaryCells separate the OuterBackground from the TargetCells (and potentially from inner background cells).
+  - description: TargetCells are spatially located "inside" the layer formed by BoundaryCells.
+  - description: The numerical value of a cell does not determine if it's a BoundaryCell or TargetCell; only its position relative to the OuterBackground matters.
+
+transformation:
+  action: Identify and Count
+  input_object_definition: A cell is a TargetCell if its value is non-zero AND it is not adjacent (4-way) to any OuterBackground cell.
+  output_representation: Each identified TargetCell contributes one '4' to the beginning of the output list.
+  output_structure: The list is padded with '0's at the end to reach a fixed total length of 7.

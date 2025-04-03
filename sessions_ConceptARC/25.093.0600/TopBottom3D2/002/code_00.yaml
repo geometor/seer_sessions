@@ -1,0 +1,58 @@
+task_description: Modifies a grid by identifying a unique target column and zeroing out specific digits within it based on row uniformity and column content.
+
+elements:
+  - object: grid
+    properties:
+      - type: 2D array of integers (potentially NumPy)
+      - dimensions: M rows x N columns
+      - content: single-digit non-negative integers (0-9)
+  - object: row
+    properties:
+      - index: position within the grid
+      - values: list/array of digits in that row
+      - distinct_non_zero_digits: set of unique digits > 0
+      - is_uniform: boolean (true if contains exactly one distinct non-zero digit)
+      - uniform_digit: integer (the single distinct non-zero digit if is_uniform is true)
+  - object: column
+    properties:
+      - index: position within the grid
+      - values: list/array of digits in that column
+      - distinct_non_zero_digits: set of unique digits > 0 in the column
+      - frequency_map: map of non-zero digits to their counts within the column
+
+derived_elements:
+  - object: uniform_row_digits_set (U)
+    description: The set of all unique 'uniform_digit' values found across all rows.
+    source: rows where is_uniform is true
+  - object: candidate_columns
+    description: Columns that contain exactly two distinct non-zero digits AND at least one of those digits is present in the uniform_row_digits_set (U).
+    source: columns, uniform_row_digits_set
+  - object: target_column
+    description: The single, unique column identified from the candidate_columns. Assumes there will always be exactly one such column.
+    source: candidate_columns
+  - object: digit_to_remove
+    description: The specific digit within the target_column that needs to be zeroed out.
+    calculation: >
+      Let the two distinct non-zero digits in the target_column be {A, B}.
+      Find the intersection I = {A, B} ∩ U.
+      If |I| == 1, digit_to_remove is the single element in I.
+      If |I| == 2, digit_to_remove is the element in I with the highest frequency in the target_column (resolve ties arbitrarily or consistently, e.g., pick highest value).
+
+actions:
+  - action: identify_uniform_row_digits
+    inputs: grid
+    outputs: uniform_row_digits_set (U)
+  - action: identify_target_column_and_digit
+    inputs: grid, uniform_row_digits_set (U)
+    outputs: target_column_index, digit_to_remove
+    steps:
+      - Iterate through columns.
+      - Calculate distinct_non_zero_digits for each column.
+      - Filter for columns with exactly two distinct non-zero digits.
+      - Filter these further for columns where at least one digit is in U.
+      - Assume uniqueness to find the target_column.
+      - Determine digit_to_remove based on intersection with U and frequency tie-breaking.
+  - action: zero_out_digit_in_column
+    description: Replace all occurrences of digit_to_remove within the target_column of the grid with 0.
+    inputs: grid, target_column_index, digit_to_remove
+    outputs: modified_grid

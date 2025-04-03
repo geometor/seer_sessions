@@ -1,0 +1,34 @@
+task_description: Identify the largest contiguous block of solid, non-white rows and preserve only that block, turning everything else white.
+grid_properties:
+  - dimensions_match: Input and output grids have the same height and width (e.g., 5x7 in examples).
+  - colors_present_input: Primarily white (0) and one other non-white color forming solid rows (e.g., orange-7, azure-8). Other pixels can be white or the non-white color.
+  - colors_present_output: White (0) and the single non-white color from the largest identified solid block. If no such block exists, the output is all white.
+objects:
+  - type: solid_row
+    description: A row consisting entirely of a single non-white color (pixels != 0).
+    properties:
+      - color: The single non-white color filling the row.
+      - row_index: The vertical position of the row in the grid.
+    example_colors: [7, 8]
+  - type: solid_block
+    description: A contiguous vertical group of one or more solid_rows that share the same non-white color.
+    properties:
+      - color: The color shared by all rows in the block.
+      - start_row: The index of the top-most row in the block.
+      - end_row: The index of the bottom-most row in the block.
+      - height: The number of rows in the block (end_row - start_row + 1).
+    relation: This is the primary object to be preserved. Blocks are formed by grouping adjacent solid_rows of the same color.
+  - type: background
+    description: Pixels not part of the identified largest solid_block.
+    color_in_output: white (0)
+actions:
+  - identify_solid_rows: Scan each row of the input grid. If a row contains exactly one unique color value, and that value is not 0 (white), record the row index and the color.
+  - group_blocks: Iterate through the identified solid rows. Group consecutive rows that are vertically adjacent (row index increases by 1) and have the same color into blocks. Record the start row, end row, color, and height for each block.
+  - select_largest_block: Examine all identified blocks. Select the block with the maximum height. If there's a tie in height, the block appearing earliest in the grid (smallest start_row) is selected implicitly by the iteration order and `max` function behavior. If no blocks are found, select nothing.
+  - construct_output: Create a new grid of the same dimensions as the input, filled entirely with white pixels (0).
+  - copy_block: If a largest solid block was selected, copy the pixels corresponding to this block (from its start_row to its end_row, inclusive) from the input grid to the same row and column positions in the initially all-white output grid.
+relationships:
+  - contiguity: Solid rows must be vertically adjacent (indices differ by 1) to form a block.
+  - uniformity: All rows within a single block must be solid and composed of the same non-white color.
+  - maximality: The selection criterion is the height (number of rows) of the block.
+  - preservation: Only the pixels belonging to the single largest solid block are transferred from the input to the output; all other output pixels are white (0).

@@ -1,0 +1,39 @@
+task_type: object_transformation_by_property_and_context
+grid_dimensionality: 1
+grid_size:
+  input_width: variable
+  input_height: 1
+  output_width: same as input_width
+  output_height: 1
+objects:
+  - id: background_pixel
+    type: pixel
+    color: white (0)
+  - id: colored_pixel
+    type: pixel
+    color: non-white (1-9)
+  - id: segment
+    type: group_of_pixels
+    definition: a contiguous horizontal sequence of identical colored_pixels
+    properties:
+      - color: the color of the pixels in the segment
+      - length: the number of pixels in the segment (relevant lengths are 1 and 3)
+      - start_index: the column index where the segment begins
+      - preceding_pixel_color: the color of the pixel at start_index - 1 in the input grid (if start_index > 0)
+transformation_rule:
+  - description: |
+      Segments are identified in the input grid.
+      The transformation depends on the segment's length and its left neighbor in the input.
+  - condition: segment length is 3
+    action: Copy the segment unchanged to the output grid, starting at the segment's original start_index.
+  - condition: segment length is 1 AND start_index > 0 AND preceding_pixel_color is white (0)
+    action: Replace the segment with a new segment of the same color but length 3, starting at start_index - 1 in the output grid.
+  - condition: segment length is 1 AND (start_index is 0 OR preceding_pixel_color is non-white)
+    action: Copy the single-pixel segment unchanged to the output grid at its original start_index. (Inferred, as no examples show this case being transformed differently).
+  - condition: segment length is not 1 or 3
+    action: Copy the segment unchanged to the output grid at its original start_index. (Inferred default behavior).
+output_construction:
+  - Initialize the output grid with background_pixels (white, 0).
+  - Iterate through identified segments in the input grid.
+  - Apply the transformation rule based on segment length and context (preceding pixel).
+  - Place the resulting (original or transformed) segment onto the output grid at the determined start index, overwriting any existing pixels. Handle boundary conditions carefully when writing segments.

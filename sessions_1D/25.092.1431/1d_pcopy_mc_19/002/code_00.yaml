@@ -1,0 +1,42 @@
+task_description: >
+  Identify single, isolated non-white pixels in the input grid. For each such pixel found at position (r, c) with color X, create a 1x3 horizontal line of color X in the output grid, centered at (r, c) and spanning columns (c-1), c, and (c+1). Ensure modifications stay within grid boundaries. Leave all other pixels (background white pixels and non-white objects larger than a single pixel) unchanged.
+
+grid_properties:
+  - background_color: white (0)
+  - dimensions_preserved: true
+
+object_definitions:
+  - type: isolated_pixel
+    description: A single cell with a non-white color whose cardinal neighbors (up, down, left, right) are either background (white, 0) or outside the grid boundaries.
+    properties:
+      - color: Any color except white (0)
+      - size: 1x1
+      - context: Cardinal neighbors are not the same color.
+  - type: horizontal_line_segment
+    description: A horizontal sequence of pixels of the same non-white color.
+    properties:
+      - color: Any color except white (0)
+      - size: 1xN where N > 1
+      - orientation: horizontal
+
+transformation_rules:
+  - condition: Input pixel at (r, c) is an 'isolated_pixel'.
+    action:
+      - type: create_line
+      - target_positions_output: (r, c-1), (r, c), (r, c+1)
+      - color: Use the color of the input pixel at (r, c).
+      - boundaries: Check that column indices c-1 and c+1 are within the grid width before modifying.
+      - result: A 1x3 horizontal line of the original pixel's color is present in the output grid, centered at column c. The original pixel at (r, c) is overwritten (if it wasn't already the correct color), and neighbors (r, c-1) and (r, c+1) are set to this color.
+  - condition: Input pixel is part of a 'horizontal_line_segment' (or any non-white object larger than 1x1).
+    action:
+      - type: copy
+      - result: The pixel retains its original color in the output grid.
+  - condition: Input pixel is white (0) and is not targeted by a 'create_line' action from a neighboring isolated pixel.
+    action:
+      - type: copy
+      - result: The pixel remains white (0) in the output grid.
+
+relationships:
+  - The transformation targets individual pixels based on their color and isolation status.
+  - Existing larger objects are unaffected.
+  - The creation of a new 1x3 line overwrites whatever was previously at the target locations `(r, c-1)` and `(r, c+1)` in the output grid (which is initialized as a copy of the input).

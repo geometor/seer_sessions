@@ -1,0 +1,73 @@
+---
+task_elements:
+  - name: Grid
+    type: Container
+    properties:
+      - dimensions: [rows, columns] (constant between input/output)
+      - elements: Cells
+
+  - name: Cell
+    type: Element
+    properties:
+      - position: [row, column]
+      - color: integer (0-9)
+      - state: (derived) background, potential_frame, potential_inner, external_relative_to_frame, internal_relative_to_frame
+
+  - name: Background
+    type: Region
+    properties:
+      - color: 0
+      - role: Defines the starting point for reachability checks (external access)
+
+  - name: Potential Frame Color
+    type: Color Property
+    properties:
+      - value: C (a non-zero integer in the input grid)
+      - role: Acts as a potential boundary/wall for reachability analysis
+
+  - name: Potential Inner Cell
+    type: Cell Property
+    properties:
+      - color: C_inner (non-zero, different from a Potential Frame Color C_frame)
+      - location: Adjacent to a cell with C_frame
+      - reachability: Not reachable from Background if C_frame cells are walls
+
+relationships:
+  - type: Adjacency
+    between: [Cell, Cell]
+    properties: [4-connectivity (up, down, left, right)]
+  - type: Reachability
+    subject: Cell
+    object: Background
+    condition: Path exists not crossing cells of a specific Potential Frame Color
+  - type: Bordering
+    subject: Potential Inner Cell
+    object: Cell with Potential Frame Color
+    condition: Cells are adjacent
+
+actions:
+  - name: Initialize Output
+    input: Input Grid
+    output: Output Grid (identical copy initially)
+  - name: Identify Potential Frame Colors
+    input: Input Grid
+    output: Set of unique non-zero colors
+  - name: Identify Background Coordinates
+    input: Input Grid
+    output: Set of coordinates where color is 0
+  - name: Analyze Each Potential Frame
+    input: [Input Grid, Output Grid, Potential Frame Color (C_frame), Background Coordinates]
+    output: Updated Output Grid
+    steps:
+      - name: Determine Relative Externality
+        input: [Input Grid, Background Coordinates, C_frame]
+        output: Set of coordinates reachable from background treating C_frame as wall (`External_relative_to_C_frame`)
+        method: Flood fill (BFS) from Background Coordinates, avoiding C_frame cells.
+      - name: Identify and Update Bordering Internal Cells
+        input: [Input Grid, Output Grid, C_frame, `External_relative_to_C_frame`]
+        output: Modified Output Grid
+        method: Iterate through all cells (r, c). If Input Grid cell (r, c) has color `C_inner` (where `C_inner != 0` and `C_inner != C_frame`), AND (r, c) is *not* in `External_relative_to_C_frame`, AND (r, c) is adjacent to a cell with color `C_frame` in the Input Grid, THEN set Output Grid cell (r, c) color to `C_frame`.
+  - name: Finalize Output
+    input: Output Grid (after all potential frames analyzed)
+    output: Final transformed grid.
+---

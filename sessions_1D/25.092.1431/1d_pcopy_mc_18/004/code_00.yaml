@@ -1,0 +1,54 @@
+task_context:
+  grid_dimensionality: 1D (single row, represented as list[list[int]])
+  grid_size: 1x32 for all examples
+  colors_used:
+    - 0 (white): background/separator
+    - 3, 5, 8, 9: foreground colors in examples
+
+objects:
+  - id: isolated_single_pixel
+    description: A non-white pixel P (color C > 0) at index `i` in the input row where the pixel at `i-1` is white (0) and the pixel at `i+1` is white (0). This requires `1 <= i <= width-2`.
+    properties:
+      - color: The color value C (non-zero).
+      - index: The position `i` in the row.
+    examples:
+      - train_1: pixel 8 at index 6
+      - train_2: pixel 9 at index 8, pixel 9 at index 13
+      - train_3: pixel 5 at index 7, pixel 5 at index 13
+  - id: segment_len3
+    description: A contiguous sequence of exactly three identical non-white pixels in the input row.
+    properties:
+      - color: The color value (non-zero).
+      - indices: The start, middle, and end indices.
+    examples:
+      - train_1: 9 9 9 at indices 1, 2, 3
+      - train_2: 8 8 8 at indices 2, 3, 4
+      - train_3: 3 3 3 at indices 2, 3, 4
+  - id: other_pixel
+    description: Any pixel in the input row that is not an `isolated_single_pixel` and is not part of the 3-pixel expansion zone created by an `isolated_single_pixel`. This includes `segment_len3` pixels and background pixels not adjacent to an `isolated_single_pixel`.
+
+relationships:
+  - type: adjacency
+    description: Pixels are evaluated based on their immediate left (i-1) and right (i+1) neighbors within the row.
+  - type: isolation
+    description: A property determining if a non-white pixel qualifies as `isolated_single_pixel` based on white neighbors.
+
+actions_on_input:
+  - action: identify_isolated_pixels
+    description: Scan the input row (indices 1 to width-2) to find all pixels matching the `isolated_single_pixel` definition. Record their index `i` and color `C`.
+
+transformation:
+  - step: 1_initialize_output
+    action: Create a new output row by making a deep copy of the input row.
+  - step: 2_apply_expansions
+    based_on: Each identified `isolated_single_pixel` (color `C`, index `i`) from the input row.
+    action: Modify the **output** row.
+    effect: Set the pixels at output indices `i-1`, `i`, and `i+1` to color `C`. This overwrites the original values at these positions in the copied output row.
+  - step: 3_finalize
+    action: Pixels in the output row not overwritten by step 2 retain their values from the initial copy.
+    result: The modified output row represents the final transformed grid.
+
+processing_notes:
+  - The identification of isolated pixels (action `identify_isolated_pixels`) must be based entirely on the original state of the input row.
+  - Modifications are applied to the copied output row, preventing changes from affecting the identification of other isolated pixels in the same pass.
+  - Boundary conditions: Pixels at index 0 and `width-1` cannot be `isolated_single_pixel` by definition as they lack a neighbor on one side for the check.

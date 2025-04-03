@@ -1,0 +1,60 @@
+task_description: Move a contiguous colored block within a single-row grid across a fixed maroon pivot pixel, preserving the gap size between the block and the pivot.
+grid_dimensionality: 2D (specifically 1xN)
+
+objects:
+  - type: background
+    color: white (0)
+    role: Fills empty space within the row.
+  - type: pivot
+    color: maroon (9)
+    quantity: 1
+    properties:
+      - fixed_position: True (within the row)
+    role: Acts as a reference point for movement along the row.
+  - type: colored_block
+    color: Any color except white (0) or maroon (9)
+    quantity: 1
+    properties:
+      - contiguous: True (along the row)
+      - single_row_extent: True (confined to the first row)
+      - variable_color: True
+      - variable_length: True
+      - variable_position: True (relative to pivot within the row)
+    role: The object that is moved along the row.
+
+relationships:
+  - type: spatial_gap
+    object1: colored_block
+    object2: pivot
+    dimension: horizontal (within the single row)
+    property: size (number of background pixels between them along the row)
+    rule: The horizontal gap size is preserved during the transformation.
+
+actions:
+  - action: identify
+    target: pivot
+    result: pivot_row (always 0), pivot_col
+  - action: identify
+    target: colored_block (within the pivot's row)
+    result: block_color, block_start_col, block_end_col, block_length
+  - action: calculate_gap
+    inputs: block_end_col, pivot_col
+    condition: block occurs before pivot (block_end_col < pivot_col)
+    output: gap_size
+    formula: gap_size = pivot_col - block_end_col - 1
+  - action: calculate_new_position
+    inputs: pivot_col, gap_size
+    condition: block originally before pivot
+    output: new_block_start_col
+    formula: new_block_start_col = pivot_col + 1 + gap_size
+  - action: move_block
+    target: colored_block
+    details: Remove block from original columns in row 0, place it starting at new_block_start_col in row 0.
+  - action: fill_background
+    target: original columns occupied by colored_block in row 0
+    color: white (0)
+
+output_construction:
+  - Initialize output grid (same 1xN shape) with background color (white).
+  - Place the pivot (maroon) at its original (row 0, pivot_col).
+  - Place the colored_block in row 0, starting at the calculated new_block_start_col for block_length columns.

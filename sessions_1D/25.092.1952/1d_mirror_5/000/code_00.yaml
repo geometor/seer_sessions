@@ -1,0 +1,68 @@
+task_description: Relocate a colored block relative to a fixed marker pixel in a 1D array.
+
+elements:
+  - object: background
+    pixels:
+      - color: white
+        value: 0
+    properties:
+      - fills_most_of_the_array
+
+  - object: marker
+    pixels:
+      - color: maroon
+        value: 9
+    properties:
+      - singleton (appears exactly once)
+      - fixed_position (its index is the same in input and output)
+
+  - object: colored_block
+    pixels:
+      - color: [red, green, magenta] # Variable color
+        value: [2, 3, 6] # Variable value, but not 0 or 9
+    properties:
+      - contiguous_block (pixels of the same color are adjacent)
+      - variable_position
+      - variable_color
+      - variable_length (though constant within a single example pair)
+      - appears_once_per_array
+
+relationships_and_actions:
+  - action: identify
+    actor: system
+    target: marker
+    details: find the index of the single maroon (9) pixel.
+
+  - action: identify
+    actor: system
+    target: colored_block
+    details: find the contiguous block of pixels that are not white (0) or maroon (9). Record its color, start index, and end index.
+
+  - relationship: spacing_before
+    between: [colored_block, marker]
+    scope: input
+    measure: distance_in_pixels
+    property: number of white (0) pixels between the end index of the colored_block and the index of the marker. Let this be D.
+    calculation: D = (marker_index - colored_block_end_index - 1)
+
+  - action: create_output_array
+    actor: system
+    details: initialize an array of the same size as the input, filled with white (0) pixels.
+
+  - action: place_marker
+    actor: system
+    target: marker
+    destination: output_array
+    details: place the maroon (9) pixel at its original index in the output array.
+
+  - action: calculate_new_position
+    actor: system
+    target: colored_block
+    based_on: [marker_index, spacing_before (D)]
+    details: the new start index for the colored block is (marker_index + 1 + D).
+
+  - action: place_block
+    actor: system
+    target: colored_block
+    destination: output_array
+    details: place the colored block (using its original color and length) starting at the calculated new position in the output array.

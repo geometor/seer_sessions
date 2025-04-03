@@ -1,0 +1,47 @@
+task_description: Recolor contiguous horizontal blocks of magenta pixels in a single-row grid based on their length.
+elements:
+  - element: grid
+    properties:
+      - type: 2D numpy.ndarray
+      - shape: (1, N) where N is grid width (variable)
+      - content: pixels with integer values representing colors
+  - element: pixel
+    properties:
+      - value: color_code (0-9)
+      - role: background (white, 0) or foreground (magenta, 6 in input; various in output)
+  - element: object
+    type: contiguous_horizontal_block
+    properties:
+      - located_in_row: 0
+      - color: magenta (6) in input
+      - length: number of pixels in the block (1, 2, or 3 observed)
+      - output_color: determined by length (yellow/4 for 1, azure/8 for 2, red/2 for 3)
+relationships:
+  - type: spatial
+    description: Magenta blocks are contiguous horizontally within the single row, separated by one or more white pixels.
+  - type: transformation
+    input_element: magenta_block (object)
+    output_element: block_of_new_color (same location and shape)
+    rule: The output color depends solely on the length of the input magenta block.
+actions:
+  - action: identify_blocks
+    input: input_grid (shape 1xN)
+    output: list of magenta blocks (each with start column index, end column index, length)
+  - action: determine_output_color
+    input: block_length
+    output: corresponding_output_color
+    mapping:
+      - length: 1, color: yellow (4)
+      - length: 2, color: azure (8)
+      - length: 3, color: red (2)
+  - action: replace_pixels
+    input: input_grid, identified_blocks, color_mapping
+    output: output_grid (shape 1xN)
+    description: Create a copy of the input grid. For each identified magenta block, replace the pixels within the block's column indices (in row 0) with the determined output color. Keep white pixels unchanged.
+constants:
+  - name: background_color
+    value: white (0)
+  - name: input_target_color
+    value: magenta (6)
+  - name: output_color_map
+    value: {1: 4, 2: 8, 3: 2} # length -> color code

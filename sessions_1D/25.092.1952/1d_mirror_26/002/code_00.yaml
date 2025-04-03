@@ -1,0 +1,62 @@
+task_type: array_manipulation_1d # Operates logically on a single dimension
+input_format: grid_1xN # Input is technically 2D (1 row, N columns)
+output_format: grid_1xN # Output mirrors input shape
+data_focus: row_1 # All relevant information is in the first (only) row
+components:
+  - type: background
+    color: white (0)
+  - type: marker
+    color: maroon (9)
+    count: 1
+    properties:
+      - fixed_position_relative_to_transformation: true # Its index determines calculations
+  - type: object
+    name: colored_line
+    properties:
+      - contiguous: true
+      - uniform_color: true # Color varies per example (gray, magenta, orange)
+      - variable_length: true
+      - variable_position: true
+      - restriction: color != white (0) and color != maroon (9)
+relationships:
+  - type: sequence # Within the single relevant row
+    description: The input row generally follows a pattern like [background] -> [colored_line] -> [gap_before] -> [marker] -> [gap_after] -> [background].
+    elements: [colored_line, marker]
+    intervening:
+      - gap_before: sequence of white pixels between colored_line and marker
+      - gap_after: sequence of white pixels immediately following the marker (at least one exists in examples)
+actions:
+  - action: extract_data
+    source: input_grid
+    target: first_row_array (1D)
+  - action: identify
+    source: first_row_array
+    target: marker (maroon pixel)
+    result: marker_index
+  - action: identify
+    source: first_row_array
+    target: colored_line
+    result: [line_color, line_length, line_start_index, line_end_index]
+  - action: identify
+    source: first_row_array
+    target: gap_before (white pixels between line_end_index and marker_index)
+    result: gap_before_length
+  - action: identify
+    source: first_row_array
+    target: first white pixel immediately after marker
+    result: first_white_after_marker_index # Index relative to the 1D row
+  - action: calculate
+    target: new_line_start_index
+    formula: first_white_after_marker_index + gap_before_length
+  - action: modify_grid
+    target: output_grid (copy of input_grid)
+    steps:
+      - Step 1: Create a copy of the input grid.
+      - Step 2: Access the first row of the output grid copy.
+      - Step 3: Replace the original colored_line segment in the first row with white pixels (0).
+      - Step 4: Place the colored_line (same color and length) into the first row starting at the calculated new_line_start_index.
+invariants:
+  - marker value (9)
+  - colored_line color
+  - colored_line length
+  - grid dimensions (1xN)

@@ -1,0 +1,44 @@
+task_type: array_manipulation_1d
+components:
+  - type: background
+    color: white (0)
+  - type: object
+    identifier: colored_block
+    description: A contiguous horizontal block of a single color, excluding white (0) and azure (8).
+    properties:
+      - color: variable (green, gray, blue in examples)
+      - contiguous: true
+      - count: 1 per input array
+  - type: marker
+    identifier: anchor_pixel
+    description: A single pixel used as a reference point.
+    properties:
+      - color: azure (8)
+      - count: 1 per input array
+      - static_position: true
+actions:
+  - name: identify_components
+    inputs: [input_array]
+    outputs: [colored_block, anchor_pixel]
+    steps:
+      - Scan the array to find the start and end indices of the contiguous block of non-white, non-azure color.
+      - Scan the array to find the index of the azure (8) pixel.
+  - name: calculate_shift
+    inputs: [colored_block_end_index, anchor_pixel_index]
+    outputs: [shift_amount]
+    description: Determine how many positions the block needs to move right.
+    calculation: target_end_index = anchor_pixel_index - 1; shift_amount = target_end_index - colored_block_end_index
+  - name: apply_shift
+    inputs: [input_array, colored_block_start_index, colored_block_end_index, shift_amount]
+    outputs: [output_array]
+    steps:
+      - Create a copy of the input array, initialized with white (0) pixels.
+      - Copy the non-block pixels (excluding the block area in the input) to the output array, maintaining their original positions relative to the array boundaries or the anchor pixel, except for the area that will be occupied by the shifted block. Specifically, copy the anchor pixel and any pixels to its right. Copy pixels to the left of the original block position.
+      - Calculate the new start and end indices for the block: new_start = colored_block_start_index + shift_amount, new_end = colored_block_end_index + shift_amount.
+      - Copy the pixels of the colored_block from the input array to the output array at the new indices [new_start, new_end].
+      - Ensure the space originally occupied by the block (from colored_block_start_index up to new_start - 1) is filled with white (0) in the output array.
+relationships:
+  - type: spatial_adjacency
+    between: [colored_block, anchor_pixel]
+    state: target
+    details: In the output, the rightmost pixel of the colored_block must be immediately to the left of the anchor_pixel.

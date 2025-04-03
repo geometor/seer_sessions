@@ -1,0 +1,46 @@
+task_type: object_transformation
+grid_dimensionality: 1D (single row)
+input_components:
+  - name: background
+    type: pixels
+    properties:
+      color: white (0)
+      location: contiguous blocks at the start and/or end of the row
+      count: 2 (potentially zero length if sequence touches edge)
+  - name: active_sequence
+    type: object (single contiguous non-white pixel sequence)
+    properties:
+      location: embedded within the background
+      composition: ordered sequence of pixels, where:
+        - marker_pixel: the first pixel in the sequence (color C1)
+        - body_pixels: the remaining pixels in the sequence (all of the same color C2, where C2 may or may not equal C1)
+      count: 1 per input row
+output_components:
+  - name: background
+    type: pixels
+    properties:
+      color: white (0)
+      location: same indices as the input background relative to the active sequence
+      count: 2 (same structure as input)
+  - name: transformed_sequence
+    type: object (single contiguous non-white pixel sequence)
+    properties:
+      location: occupies the same index range as the input active_sequence
+      composition: rearranged sequence, consisting of:
+        - body_pixels: same pixels as input body_pixels, preserving their internal order
+        - marker_pixel: same pixel as input marker_pixel, now appended after the body_pixels
+      count: 1 per output row
+transformation:
+  action: rearrangement
+  target: active_sequence
+  rule: >
+    Identify the contiguous sequence of non-white pixels.
+    Move the first pixel (marker_pixel) of this sequence to the position
+    immediately following the last pixel of the original sequence (which is the
+    last pixel of the body_pixels).
+  constraints:
+    - The relative order of the body_pixels is preserved.
+    - The background pixels (white) remain unchanged in number and position relative to the start/end of the sequence.
+    - The overall length of the row remains unchanged.
+    - Assumes exactly one contiguous non-white sequence exists in the input row.
+    - Assumes the sequence has a length of at least 1. If length is 1, the output is identical to the input.

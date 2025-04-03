@@ -1,0 +1,50 @@
+task_type: object_manipulation
+grid_dimensionality: 1D (single row)
+
+input_features:
+  - type: background
+    color: white (0)
+    location: variable
+  - type: object
+    description: A single contiguous horizontal block of non-white pixels.
+    properties:
+      - color: non-white (varies)
+      - shape: horizontal line segment
+      - location: variable start and end indices
+      - length: variable (>= 1, observed >= 4 in examples)
+    count: 1
+
+output_features:
+  - type: background
+    color: white (0)
+    location: matches input background locations + modified block interior
+  - type: object
+    description: Potentially modified version of the input block.
+    properties:
+      - color: same as input block's color
+      - shape: two points (endpoints of the original block), or the original block if length <= 2
+      - location: first and last index of the original block
+    count: 1 (represented as two separate pixels if length > 2)
+
+transformation:
+  - action: identify_object
+    target: the contiguous non-white block
+  - action: get_properties
+    target: the identified block
+    properties: [start_index, end_index, length, color]
+  - action: conditional_modification
+    condition: block length > 2
+    steps:
+      - preserve pixel at start_index with original color
+      - preserve pixel at end_index with original color
+      - change pixels from (start_index + 1) to (end_index - 1) to white (0)
+  - action: conditional_no_change
+    condition: block length <= 2
+    steps:
+      - leave the block as is
+
+relationships:
+  - The output grid dimensions are identical to the input grid dimensions.
+  - The locations of white pixels outside the block remain unchanged.
+  - The output object's color is derived from the input object's color.
+  - The output object's final state depends on the input object's length.

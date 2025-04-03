@@ -1,0 +1,48 @@
+grid_properties:
+  height: 4
+  width: 8
+  background_color: 0 (white)
+
+input_objects:
+  - type: pixel
+    description: A single cell in the grid.
+    properties:
+      - color: Integer from 0-9.
+      - position: (row, column) coordinates.
+      - is_source: Boolean. True if the pixel is non-white AND its horizontal neighbors (left and right, with column wrap-around) have colors different from this pixel's color.
+  - type: horizontal_line
+    description: A sequence of exactly 3 contiguous pixels in the same row with the same non-white color.
+    properties:
+      - color: Integer from 1-9.
+      - length: 3
+      - position: Defined by the coordinates of its 3 constituent pixels.
+
+transformation_rule:
+  actions:
+    - action: copy_grid
+      description: Create the output grid as an initial copy of the input grid.
+    - action: identify_sources
+      description: Iterate through the input grid to find all 'source' pixels.
+    - action: expand_source
+      description: For each identified source pixel at input position (r, c) with color C:
+      inputs:
+        - source_pixel_coords: (r, c)
+        - source_pixel_color: C
+        - grid_dimensions: (rows=4, cols=8)
+      outputs:
+        - A set of 3 target coordinates and the color C to be written to the output grid.
+      process:
+        1. Calculate target column indices with horizontal wrap-around:
+           - center_c: c
+           - left_c: (c - 1 + 8) % 8
+           - right_c: (c + 1 + 8) % 8
+        2. Calculate target row indices, applying vertical wrap-around only for edge cases:
+           - center_r: r
+           - left_r: (r - 1 + 4) % 4 IF source pixel is at column 0 (c == 0), ELSE r
+           - right_r: (r + 1 + 4) % 4 IF source pixel is at column 7 (c == 7), ELSE r
+        3. Determine the 3 target coordinates: (left_r, left_c), (center_r, center_c), (right_r, right_c).
+    - action: apply_expansion
+      description: For each source pixel identified, overwrite the pixels at the 3 calculated target coordinates in the output grid with the source pixel's color (C).
+
+output_composition:
+  - The final output grid is the modified copy, containing the original horizontal lines (unless overwritten) and the newly created 3-pixel lines resulting from source expansions.

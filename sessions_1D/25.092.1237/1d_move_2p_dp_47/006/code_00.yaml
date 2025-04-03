@@ -1,0 +1,32 @@
+task_description: Reorder segments of a flat sequence based on the location of a specific marker pattern [white, white, azure].
+input_type: flat list of integers (colors)
+output_type: flat list of integers (colors), same length as input.
+marker_sequence: [0, 0, 8] # white, white, azure
+segments:
+  - id: leading_zeros
+    description: A contiguous block of zero or more white (0) pixels at the absolute beginning of the sequence. Defined from index 0 up to the index of the last initial white pixel (inclusive). Empty if the sequence does not start with white.
+  - id: shifting_block
+    description: The contiguous block of pixels located immediately after the leading_zeros segment and immediately before the marker_sequence begins. Can be empty if the marker_sequence directly follows the leading_zeros (or the start of the sequence if there are no leading zeros).
+  - id: marker_pair
+    description: The first two elements ([0, 0]) of the located marker_sequence.
+  - id: trailing_elements
+    description: All elements starting from the third element ([8]) of the located marker_sequence to the end of the sequence.
+actions:
+  - type: locate
+    target: marker_sequence ([0, 0, 8])
+    description: Find the starting index `i` of the first occurrence of the marker_sequence in the input list. If not found, the transformation does not apply (input is returned).
+  - type: identify
+    target: leading_zeros
+    description: Identify the segment `input[0 : j+1]`, where `j` is the index of the last white pixel (0) in the initial contiguous block of white pixels. If the sequence doesn't start with 0, `j` is -1 and this segment is empty.
+  - type: identify
+    target: marker_pair
+    description: Extract the segment `input[i : i+2]`.
+  - type: identify
+    target: shifting_block
+    description: Extract the segment `input[j+1 : i]`. This segment lies between `leading_zeros` and `marker_pair`.
+  - type: identify
+    target: trailing_elements
+    description: Extract the segment `input[i+2 : end]`.
+  - type: reconstruct
+    description: Assemble the output sequence by concatenating the identified segments in a specific new order.
+    new_order: [leading_zeros, marker_pair, shifting_block, trailing_elements]

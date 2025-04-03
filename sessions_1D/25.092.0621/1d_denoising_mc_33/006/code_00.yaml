@@ -1,0 +1,81 @@
+task_description: Homogenize the colors within the central active segment of a single-row grid by replacing impurity colors with the dominant color.
+
+elements:
+  - element: grid
+    description: Input and output are 1xN NumPy arrays of integers (colors 0-9).
+    properties:
+      - shape: [1, Width] where Width varies.
+      - dtype: integer
+
+  - element: active_segment
+    description: The portion of the row between the first and last non-white pixel (inclusive).
+    properties:
+      - location: Defined by start and end column indices derived from the input grid.
+      - content: Contains a mix of colors, including potentially the dominant color, impurity colors, and sometimes embedded white pixels.
+
+  - element: padding_pixels
+    description: White pixels (0) located outside the active segment (at the start and/or end of the row).
+    properties:
+      - color: white (0)
+      - role: Define the boundaries of the active segment. Remain unchanged.
+
+  - element: dominant_color
+    description: The color that appears most frequently within the active segment, excluding any white (0) pixels within that segment.
+    properties:
+      - determination: Calculated by frequency count of non-zero colors within the active_segment.
+      - role: Target color for replacing impurity pixels.
+
+  - element: impurity_pixels
+    description: Pixels within the active segment whose color is neither white (0) nor the dominant color.
+    properties:
+      - color: Any non-zero color that is not the dominant_color.
+      - location: Within the boundaries of the active_segment.
+
+  - element: embedded_white_pixels
+    description: White pixels (0) that may occur *within* the active segment boundaries.
+    properties:
+      - color: white (0)
+      - location: Within the active_segment.
+      - role: Remain unchanged during the transformation.
+
+actions:
+  - action: identify_active_segment
+    description: Find the column index of the first non-white pixel and the last non-white pixel in the input row.
+    inputs:
+      - input_grid (NumPy array)
+    outputs:
+      - start_index (inclusive)
+      - end_index (inclusive)
+
+  - action: determine_dominant_color
+    description: Count the frequency of each non-white color within the active segment (from start_index to end_index) and identify the most frequent one.
+    inputs:
+      - input_grid (NumPy array)
+      - start_index
+      - end_index
+    outputs:
+      - dominant_color (integer value)
+
+  - action: homogenize_segment
+    description: Create a copy of the input grid. Iterate through the pixels within the active segment (from start_index to end_index) of the copied grid. If a pixel is not white (0) and not the dominant color, change its color to the dominant color. Leave all other pixels (padding, embedded white, dominant color pixels) unchanged.
+    inputs:
+      - input_grid_copy (NumPy array)
+      - start_index
+      - end_index
+      - dominant_color
+    outputs:
+      - output_grid (NumPy array)
+
+relationships:
+  - relationship: replacement
+    description: Impurity pixels within the active segment are replaced by the dominant color.
+    between:
+      - impurity_pixels
+      - dominant_color
+
+  - relationship: persistence
+    description: Padding pixels, embedded white pixels, and pixels already matching the dominant color maintain their color and position from input to output.
+    between:
+      - padding_pixels
+      - embedded_white_pixels
+      - dominant_color pixels

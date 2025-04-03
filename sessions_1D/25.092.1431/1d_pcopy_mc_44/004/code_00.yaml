@@ -1,0 +1,43 @@
+task_type: grid_transformation
+grid_properties:
+  dimensionality: 2D
+  shape: Constant within an example, consistent between input/output. Examples use 32 cells (potential shapes: 2x16, 4x8, 8x4, 16x2).
+  background_color: white (0)
+processing_strategy: flatten_transform_reshape # Treat grid as a sequence for transformation logic
+components:
+  - type: object
+    subtype: single_pixel_1D
+    definition: A non-white pixel C at index i in the flattened grid sequence, where the pixel at index i-1 is white (0) and the pixel at index i+1 is white (0). Valid for 0 < i < N-1, where N is sequence length.
+    count_examples: [3, 2, 1] # Number found in train examples 1, 2, 3 respectively
+    actions:
+      - targeted_for_transformation
+  - type: object
+    subtype: horizontal_block_1D
+    definition: A sequence of three identical, non-white pixels C at indices i, i+1, i+2 in the flattened grid sequence.
+    count_examples: [1, 1, 1] # Number found in train examples 1, 2, 3 respectively
+    actions:
+      - remains_unchanged (copied directly to output sequence)
+transformation:
+  overall_process:
+    - Take the 2D input grid (NumPy array).
+    - Store its shape (H, W).
+    - Flatten the grid into a 1D sequence (array) of length N = H * W, using standard row-major order.
+    - Apply 1D transformation rules to generate a 1D output sequence.
+    - Reshape the 1D output sequence back to the original shape (H, W).
+    - Return the 2D output grid.
+  1D_transformation_rules:
+    action: selective_copy_and_expand
+    details:
+      - Initialize a 1D output sequence of length N, filled with white (0).
+      - **Pass 1: Copy Blocks:** Iterate through the flattened input sequence (index `i` from 0 to N-3). If a horizontal_block_1D is found starting at `i`, copy its three pixels to the output sequence at `i`, `i+1`, `i+2`, and advance `i` by 3. Otherwise, advance `i` by 1.
+      - **Pass 2: Expand Singles:** Iterate through the flattened input sequence (index `j` from 1 to N-2). If a single_pixel_1D of color C is found at `j`, write C to the output sequence at indices `j-1`, `j`, and `j+1`. (This might overwrite background pixels or pixels adjacent to blocks, which is consistent with example outputs).
+    priority: Block copying happens first, then single pixel expansion potentially overwrites neighbors.
+output_generation:
+  method: reshape_transformed_sequence
+  steps:
+    - Flatten input grid `I` of shape (H, W) to `I_flat`.
+    - Create output sequence `O_flat` of same size, filled with 0.
+    - Copy horizontal_block_1D from `I_flat` to `O_flat`.
+    - Expand single_pixel_1D from `I_flat` into `O_flat`.
+    - Reshape `O_flat` to shape (H, W).
+    - Return the reshaped grid.

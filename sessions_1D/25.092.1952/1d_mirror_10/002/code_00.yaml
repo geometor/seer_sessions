@@ -1,0 +1,67 @@
+task_type: object_manipulation
+grid_dimensionality: 2D (specifically 1xN) # Input is a list containing one list [[]]
+
+components:
+  - id: background
+    type: area
+    color: white (0)
+    role: fills_empty_space
+
+  - id: marker
+    type: pixel
+    color: maroon (9)
+    quantity: 1
+    attributes:
+      - stationary # Index remains constant from input to output.
+      - reference_point # The block's final position is calculated relative to the marker's index.
+
+  - id: main_block
+    type: object # Contiguous block of pixels in the single row
+    color: variable (gray(5) or magenta(6) in examples)
+    shape: horizontal_line (segment within the row)
+    quantity: 1
+    attributes:
+      - color_preserved # Color does not change.
+      - length_preserved # Length does not change.
+      - moves # Position changes from input to output.
+      - initial_position: always contiguous and entirely to the left of the marker.
+      - final_position: always contiguous and entirely to the right of the marker.
+
+relationships:
+  - type: relative_positioning (Reflection across marker)
+    source: main_block
+    target: marker
+    rule: |
+      The distance 'd' between the marker's index and the index of the rightmost pixel
+      of the main_block in the input grid determines the starting position (leftmost index)
+      of the main_block in the output grid.
+      The output starting index is marker's index + d. This preserves the 'gap'
+      (number of background pixels) between the block and the marker, mirroring it
+      to the other side.
+      Mathematically: d = marker_idx - input_block_rightmost_idx
+                      output_block_leftmost_idx = marker_idx + d
+
+actions:
+  - action: extract_row
+    details: Get the single row (list of integers) from the input grid (list of lists).
+  - action: identify_marker
+    target: marker
+    details: Find the index of the pixel with color 9 in the input row (marker_idx).
+  - action: identify_block
+    target: main_block
+    details: Scan leftwards from marker_idx-1. Find the contiguous block of non-white(0), non-maroon(9) pixels. Record its color (block_color), length (block_len), and the index of its rightmost pixel (block_right_idx).
+  - action: calculate_distance
+    value: d = marker_idx - block_right_idx
+  - action: calculate_position
+    target: main_block (output)
+    value: output_start_idx = marker_idx + d
+  - action: generate_output_row
+    details: Create a new list of the same length as the input row, filled with the background color (0).
+  - action: place_marker
+    target: marker (output)
+    position: Place color 9 at marker_idx in the output row.
+  - action: place_block
+    target: main_block (output)
+    position: Starting at output_start_idx, fill the next block_len pixels with block_color in the output row, ensuring bounds are respected.
+  - action: format_output
+    details: Wrap the generated output row in a list to match the expected output format [[]].

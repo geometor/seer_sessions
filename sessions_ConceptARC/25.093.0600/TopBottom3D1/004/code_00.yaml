@@ -1,0 +1,76 @@
+---
+task_elements:
+  - name: Grid
+    type: Container
+    properties:
+      - dimensions: [rows, columns] (constant)
+      - elements: Cells
+
+  - name: Cell
+    type: Element
+    properties:
+      - position: [row, column]
+      - color: integer (0-9)
+      - state: (derived) background, potential_frame, potential_inner, external_relative_to_frame
+
+  - name: Background
+    type: Region
+    properties:
+      - color: 0
+      - role: Defines exterior boundary; source for reachability tests.
+
+  - name: Potential Frame Color (Cf)
+    type: Color Property
+    properties:
+      - value: Non-zero integer C
+      - role: Acts as a potential wall in reachability tests; target color for adjacent enclosed cells.
+
+  - name: Potential Inner Color (Ci)
+    type: Color Property
+    properties:
+      - value: Non-zero integer C (different from Cf for a given interaction)
+      - role: Color of cells that might be enclosed by Cf.
+
+  - name: External Cells Set (relative to Cf)
+    type: Set of Coordinates
+    properties:
+      - definition: Cells reachable from any Background cell via 4-connectivity without passing through any cell with color Cf in the input grid.
+
+relationships:
+  - type: Adjacency
+    between: [Cell, Cell]
+    properties: [4-connectivity (up, down, left, right)]
+  - type: ReachabilityFromBackground
+    subject: Cell
+    object: Background
+    condition: Path exists using 4-connectivity in the input grid without crossing cells of a specific wall color (Cf).
+  - name: EnclosureConditionForUpdate
+    subject: Cell (r, c) with color Ci in Input Grid
+    condition: Must satisfy ALL:
+      1. Ci != 0
+      2. Ci != Cf
+      3. Cell (r, c) is NOT in the External Cells Set relative to Cf.
+      4. Cell (r, c) is adjacent (4-connectivity) to at least one cell with color Cf in the Input Grid.
+
+actions:
+  - name: Identify Potential Frame Colors
+    input: Input Grid
+    output: Set of unique non-zero colors present in Input Grid.
+  - name: Determine Reachability (Flood Fill)
+    input: [Input Grid, Set of Background Coords, Wall Color Cf]
+    output: Set of coordinates for cells reachable from background without crossing Cf (External Cells Set relative to Cf).
+  - name: Generate Output Grid
+    input: Input Grid
+    output: Output Grid
+    method:
+      1. Initialize Output Grid as a copy of Input Grid.
+      2. Find all unique non-zero colors (Potential Frame Colors) from Input Grid.
+      3. Find coordinates of all Background (0) cells in Input Grid.
+      4. For each Potential Frame Color Cf:
+         a. Calculate the External Cells Set relative to Cf using flood fill from Background cells, avoiding Cf as walls.
+         b. Iterate through each cell (r, c) of the Input Grid.
+         c. Let Ci be the color of the Input Grid at (r, c).
+         d. If the EnclosureConditionForUpdate is met for cell (r, c) with respect to Cf and Ci:
+              - Set the color of cell (r, c) in the Output Grid to Cf.
+      5. Return the final Output Grid.
+---

@@ -1,0 +1,67 @@
+task_description: Reorder sequence segments based on the first occurrence of a specific marker pattern [0, 0, 8].
+elements:
+  - type: sequence
+    description: The input and output are treated as 1D sequences of integers (colors). The length is constant between input and output.
+  - type: color
+    value: 0
+    name: white
+    role: Background element, part of the marker pattern, and forms the leading_zeros segment.
+  - type: color
+    value: 8
+    name: azure
+    role: The anchor part of the marker pattern [0, 0, 8].
+  - type: color
+    value: [1-7, 9] # Any color other than white or azure
+    role: Form contiguous blocks that are repositioned (the shifting_block).
+objects:
+  - id: marker_sequence
+    type: sequence_segment
+    value: [0, 0, 8]
+    description: The trigger pattern for the rearrangement. The logic uses the first occurrence.
+  - id: marker_pair
+    type: sequence_segment
+    value: [0, 0]
+    description: The first two elements of the marker_sequence. This segment is moved.
+    location: Extracted from the start of the first found marker_sequence.
+  - id: marker_anchor
+    type: pixel
+    value: 8
+    description: The last element of the marker_sequence. This element, along with subsequent elements, forms the start of the trailing_elements.
+    location: Immediately follows the marker_pair in the input.
+  - id: leading_zeros
+    type: sequence_segment
+    value: [0, ...]
+    description: An optional contiguous block of only white pixels (0) at the very beginning of the input sequence. Can be empty if the sequence does not start with 0.
+    location: From index 0 up to the index before the first non-zero pixel.
+  - id: shifting_block
+    type: sequence_segment
+    description: A contiguous block of pixels located between the leading_zeros (or start of sequence if no leading zeros) and the marker_pair. This block is moved.
+    location: Starts immediately after leading_zeros and ends immediately before marker_pair.
+  - id: trailing_elements
+    type: sequence_segment
+    description: All elements including and following the marker_anchor (8) in the original sequence. These retain their relative order at the end of the output.
+    location: Starts at the position of the marker_anchor (8) in the input and goes to the end of the sequence.
+relationships:
+  - type: order (input)
+    description: The input sequence structure relative to the first marker is [leading_zeros, shifting_block, marker_pair, marker_anchor, remaining_trailing_elements].
+  - type: adjacency (input)
+    description: The marker_pair [0, 0] is immediately adjacent to and precedes the marker_anchor [8]. The shifting_block immediately precedes the marker_pair. The leading_zeros immediately precede the shifting_block (if present).
+actions:
+  - type: locate
+    target: marker_sequence ([0, 0, 8])
+    description: Find the starting index of the first occurrence of the marker_sequence in the input.
+  - type: identify
+    target: leading_zeros
+    description: Identify the segment from the start of the input sequence up to the last leading zero.
+  - type: identify
+    target: shifting_block
+    description: Identify the segment starting immediately after the leading_zeros and ending immediately before the located marker_sequence.
+  - type: identify
+    target: marker_pair
+    description: Extract the first two elements ([0, 0]) from the located marker_sequence.
+  - type: identify
+    target: trailing_elements
+    description: Identify the segment starting from the third element (the '8') of the located marker_sequence to the end of the input sequence.
+  - type: rearrange
+    description: Construct the output sequence by concatenating identified segments in a specific new order.
+    new_order: [leading_zeros, marker_pair, shifting_block, trailing_elements]

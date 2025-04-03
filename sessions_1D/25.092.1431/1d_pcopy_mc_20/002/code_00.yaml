@@ -1,0 +1,59 @@
+task_description: Transform a 1xN grid based on lengths of contiguous non-zero color sequences within the single row.
+elements:
+  - type: grid
+    representation: 2D NumPy array of integers (colors) with shape (1, N), where 1 <= N <= 30.
+  - type: background
+    color: 0 (white)
+    role: separator between objects within the row
+  - type: object
+    definition: contiguous sequence of identical non-zero pixels within the row
+    properties:
+      - color: the integer value (1-9)
+      - length: number of pixels in the sequence
+      - observed_lengths: [1, 3]
+objects_in_examples: # Refers to sequences within the single row
+  - train_1_input: [{color: 9, length: 3}, {color: 4, length: 1}, {color: 7, length: 1}]
+  - train_1_output: [{color: 9, length: 3}, {color: 4, length: 3}, {color: 7, length: 3}]
+  - train_2_input: [{color: 1, length: 3}, {color: 7, length: 1}, {color: 3, length: 1}]
+  - train_2_output: [{color: 1, length: 3}, {color: 7, length: 3}, {color: 3, length: 3}]
+  - train_3_input: [{color: 3, length: 3}, {color: 1, length: 1}, {color: 7, length: 1}]
+  - train_3_output: [{color: 3, length: 3}, {color: 1, length: 3}, {color: 7, length: 3}]
+transformation:
+  - action: prepare_output
+    description: Initialize an empty list to build the output row's pixel values. Initialize a counter variable `single_pixel_count` to 0.
+  - action: iterate_input_row
+    description: Scan the input grid's single row (row index 0) from left (column index 0) to right.
+  - action: identify_segment
+    description: Determine if the current segment is a gap (sequence of zeros) or an object (sequence of identical non-zero values).
+  - action: process_gap
+    description: If the segment is a gap, determine its length. Look ahead to the next segment (if any) to see if it's a single-pixel object.
+    conditions:
+      - if: gap is followed by a single-pixel object
+        then:
+          - Calculate the reduction amount based on `single_pixel_count` (using `single_pixel_count + 1` because the count increments when the object itself is processed).
+          - Calculate the new gap length: `new_gap_length = max(0, current_gap_length - (single_pixel_count + 1))`.
+          - Append `new_gap_length` zeros to the output list.
+      - else: # Gap is followed by a 3-pixel object or is a trailing gap
+        then:
+          - Append the original number of zeros (`current_gap_length`) to the output list.
+    update_iterator: Advance the scan index past the gap.
+  - action: process_object
+    description: If the segment is an object, determine its color and length.
+    conditions:
+      - if: object length is 1
+        then:
+          - Increment `single_pixel_count`.
+          - Append the object's color three times to the output list.
+      - if: object length is 3
+        then:
+          - Append the object's three pixels (color repeated 3 times) to the output list.
+      - else: # Handle unexpected lengths if necessary (e.g., append as is)
+          - Append the original object's pixels to the output list.
+    update_iterator: Advance the scan index past the object.
+  - action: finalize_output
+    description: Once the entire input row is scanned, convert the constructed output list into a 2D NumPy array with shape (1, New_N).
+relationships:
+  - type: spatial
+    description: Objects are separated by gaps of zero pixels within the row.
+  - type: dependency
+    description: The modification of a gap depends on whether the immediately following object is a single pixel and how many single pixels have been encountered previously in the scan.

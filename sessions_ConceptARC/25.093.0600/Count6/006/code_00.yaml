@@ -1,0 +1,63 @@
+task_description: >
+  Identify specific non-zero 'target' cells within a 2D input grid based on their spatial relationship to the background and boundary.
+  Represent each identified target cell with the digit '4'. Produce a fixed-size output sequence (length 7) containing these '4's, padded with '0's.
+  Each digit in the sequence corresponds to a distinct item/line in the final output.
+
+input_elements:
+  - type: Grid
+    description: A 2D array (list of lists or numpy array) of integers.
+    properties:
+      - dimensions: Variable rows and columns.
+      - cell_values: Integers.
+
+  - type: Cell_Value_Definition
+    description: Defines roles based on value and spatial position.
+    subtypes:
+      - type: Background
+        value: 0
+        role: Represents empty space. Includes 'outer background'.
+      - type: Outer_Background
+        value: 0
+        role: Background cells connected (4-way) to the grid edge, identified via BFS/DFS from edge zeros.
+      - type: Boundary_Cell
+        value: Non-zero integer
+        role: Any non-zero cell directly adjacent (4-way) to at least one Outer_Background cell.
+      - type: Target_Cell
+        value: Non-zero integer
+        role: Any non-zero cell that is *not* a Boundary_Cell. These are counted.
+
+output_elements:
+  - type: Sequence
+    description: A fixed-length sequence (list) of individual integer digits.
+    properties:
+      - fixed_length: 7
+      - element_values:
+          - 4: Represents one identified 'Target_Cell'.
+          - 0: Represents padding.
+      - generation_rule: Contains 'N' instances of the digit 4, where N is the count of Target_Cells (capped at 7), followed by (7 - N) instances of the digit 0.
+      - interpretation: Each integer in the sequence corresponds to one line/item in the expected output format.
+
+relationships:
+  - Spatial adjacency (4-way connectivity) determines if a non-zero cell is a Boundary_Cell (if adjacent to Outer_Background) or potentially a Target_Cell (if not adjacent to Outer_Background).
+
+transformation:
+  - action: Identify Outer Background Coordinates
+    tool: BFS/DFS search
+    input: Grid
+    start_nodes: All cells with value 0 located on the grid edges (row 0, last row, col 0, last col).
+    output: Set of (row, col) tuples for all connected outer background cells.
+  - action: Identify Boundary Cell Coordinates
+    input: Grid, Set of Outer Background Coordinates
+    process: Iterate through all non-zero cells in the grid. For each, check its 4 neighbors. If any neighbor's coordinates are in the Outer Background set, mark the current cell's coordinates as boundary.
+    output: Set of (row, col) tuples for all boundary cells.
+  - action: Count Target Cells
+    input: Grid, Set of Boundary Cell Coordinates
+    process: Iterate through all cells. Increment count if cell value is non-zero AND its coordinates are *not* in the Boundary Cell set.
+    output: Integer count of Target Cells.
+  - action: Generate Output Sequence
+    input: Target Cell Count
+    process:
+      1. Create an empty list.
+      2. Append the integer `4` to the list `min(Target Cell Count, 7)` times.
+      3. Append the integer `0` to the list until the list length is exactly 7.
+    output: List of 7 integers.

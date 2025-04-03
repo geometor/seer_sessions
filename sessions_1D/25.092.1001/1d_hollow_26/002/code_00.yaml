@@ -1,0 +1,40 @@
+task_type: object_transformation
+grid_dimensionality: 2D # Specifically 1xN NumPy arrays
+background_color: white (0)
+input_data_type: numpy.ndarray (dtype=int)
+output_data_type: numpy.ndarray (dtype=int)
+
+objects:
+  - type: contiguous_block
+    description: A horizontal sequence of identical non-white pixels within the single row of the input grid.
+    properties:
+      - color: The integer value (1-9) representing the color of the block.
+      - location: Defined by the start and end column indices within the row.
+      - length: The number of pixels in the block (end_index - start_index + 1).
+
+actions:
+  - action: identify_block_endpoints
+    input: input_grid (1xN NumPy array)
+    output: block_color (int), start_index (int), end_index (int) OR indication of no block found.
+    description: Locates the column indices of the first and last non-white pixels in the row. Assumes only one contiguous block exists. Extracts the color of the block.
+  - action: create_output_grid
+    input: input_grid_shape (tuple), block_color (int), start_index (int), end_index (int)
+    output: output_grid (1xN NumPy array)
+    description: Generates an output grid of the same shape as the input, initialized with the background color (white). Sets the pixels at the start and end indices of the identified block to the block's color.
+
+transformation:
+  - description: Hollow out the block
+    details: The transformation identifies the horizontal contiguous block of non-white color. It creates a new grid of the same dimensions, initially all white. It then places the block's color only at the starting and ending column indices of where the block was located in the input grid. If the block has length 1, only that single pixel is colored in the output.
+    input_elements:
+      - input_grid (1xN NumPy array)
+    output_elements:
+      - output_grid (1xN NumPy array) where:
+          - output_grid[0, start_index] = block_color
+          - output_grid[0, end_index] = block_color
+          - All other output_grid elements are 0 (white).
+
+relationships:
+  - The output grid must have the exact same shape as the input grid.
+  - The non-white pixels in the output grid correspond directly to the column indices of the start and end positions of the non-white block in the input grid's single row.
+  - The color of the non-white pixels in the output is identical to the color of the block in the input.
+  - If no non-white block exists in the input, the output is an all-white grid of the same shape.

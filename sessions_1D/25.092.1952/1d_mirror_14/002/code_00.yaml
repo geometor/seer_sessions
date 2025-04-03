@@ -1,0 +1,64 @@
+task_context:
+  grid_dimensionality: 2D
+  grid_size: Variable (Examples are 1x17, but could differ)
+  background_color: white (0)
+  relevant_row_identified_by: Contains both pivot and object pixels.
+elements:
+  - type: pivot_pixel
+    color: maroon (9)
+    count: 1 per grid
+    location: Within the single relevant row.
+    properties:
+      - stationary # its position does not change between input and output
+  - type: object
+    color: non-white, non-maroon (variable: orange, blue, red in examples)
+    count: 1 per grid
+    shape: contiguous horizontal segment
+    location: Within the single relevant row.
+    properties:
+      - movable # its position changes between input and output
+relationships:
+  - type: spatial
+    element1: object
+    element2: pivot_pixel
+    relation: The object's horizontal position relative to the pivot pixel is reflected within their shared row.
+actions:
+  - name: identify_relevant_row
+    input: input_grid
+    process: Find the unique row index containing both the maroon (9) pixel and the contiguous segment of non-white, non-maroon pixels.
+    output: row_index
+  - name: find_pivot_column
+    input:
+      - input_grid
+      - row_index
+    target: maroon (9) pixel within the specified row
+    output: pivot_col_index
+  - name: find_object_in_row
+    input:
+      - input_grid
+      - row_index
+      - pivot_col_index
+    target: contiguous segment of non-white(0), non-maroon(9) pixels in the specified row
+    output:
+      - object_color
+      - object_col_indices # List of column indices relative to the row
+  - name: reflect_object_in_row
+    input:
+      - object_col_indices
+      - pivot_col_index
+    process: For each object column index `c`, calculate the reflected column index `c' = 2 * pivot_col_index - c`.
+    output: reflected_object_col_indices
+  - name: construct_output
+    input:
+      - input_grid_shape
+      - row_index
+      - pivot_col_index
+      - object_color
+      - reflected_object_col_indices
+    process:
+      - Create a new grid of the same dimensions as the input, filled with the background color (white, 0).
+      - Place the pivot color (maroon, 9) at its original position (row_index, pivot_col_index).
+      - Place the object_color at the calculated reflected positions (row_index, reflected_col_index) for each `reflected_col_index`.
+      # Note: Assumes other rows remain background, as seen in examples. If inputs had multiple rows with content, this might need adjustment.
+    output: output_grid
+transformation_type: Horizontal reflection within a specific row, identified by the co-occurrence of a pivot point (maroon pixel) and a colored object.

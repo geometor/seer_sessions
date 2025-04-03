@@ -1,0 +1,53 @@
+task_type: array_manipulation_1d # Although input might be 2D (1xN), the core logic operates on a 1D sequence.
+input_format: Grid (potentially 1xN or N > 1 x M, but examples are 1xN)
+output_format: Grid (same dimensions as input, modified)
+components:
+  - type: grid_pixel
+    properties:
+      - role: background
+        color: white (0)
+        location: variable, often padding at ends
+      - role: dominant_color_pixel
+        color: variable (most frequent non-background color)
+        location: forms the main sequence defining the transformation span
+      - role: impurity_pixel
+        color: variable (any non-background, non-dominant color)
+        location: occurs within the span defined by the dominant color pixels
+objects:
+  - type: dominant_color_sequence
+    description: The sequence of pixels between the first and last occurrence of the dominant color in the (flattened) grid.
+    properties:
+        - dominant_color: The most frequent non-background color in the entire grid.
+        - start_index: Index of the first occurrence of the dominant color.
+        - end_index: Index of the last occurrence of the dominant color.
+relationships:
+  - type: spatial
+    description: Impurity pixels subject to transformation are located spatially within the span defined by the start_index and end_index of the dominant_color_sequence.
+  - type: frequency
+    description: The dominant color is determined by its frequency across all non-background pixels in the grid.
+actions:
+  - action: flatten_input
+    description: If the input grid is 2D, convert it to a 1D array/sequence for processing. Retain original shape for final output if necessary (though not needed for 1xN).
+    target: input_grid
+    condition: Input grid dimension > 1.
+  - action: identify
+    target: background_color
+    criteria: value is 0 (white).
+  - action: identify
+    target: dominant_color
+    criteria: Color with the highest frequency count among all non-background pixels in the (flattened) grid.
+  - action: define
+    target: modification_span
+    criteria: Range of indices from the first occurrence to the last occurrence (inclusive) of the dominant_color in the (flattened) grid.
+  - action: replace
+    target: impurity_pixels
+    condition: Pixel is within the modification_span AND pixel color is NOT dominant_color AND pixel color is NOT background_color.
+    result: Pixel color is changed to the dominant_color.
+  - action: keep
+    target: all other pixels
+    condition: Pixel is outside the modification_span OR pixel color is dominant_color OR pixel color is background_color.
+    result: Pixel color remains unchanged.
+  - action: reshape_output (Optional/Implicit for 1xN)
+    description: Reshape the processed 1D array back to the original input grid dimensions if they were not 1D.
+    target: output_array
+    result: Output grid with original dimensions.

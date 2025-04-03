@@ -1,0 +1,905 @@
+
+## train_1
+
+**input:**
+```
+0 7 6 6 6 0 0 0 0 0 0 0 0 0
+```
+
+
+**output:**
+```
+0 6 6 6 7 0 0 0 0 0 0 0 0 0
+```
+
+
+## train_2
+
+**input:**
+```
+0 0 0 8 1 1 1 1 1 1 0 0 0 0
+```
+
+
+**output:**
+```
+0 0 0 1 1 1 1 1 1 8 0 0 0 0
+```
+
+
+## train_3
+
+**input:**
+```
+7 6 6 6 0 0 0 0 0 0 0 0 0 0
+```
+
+
+**output:**
+```
+6 6 6 7 0 0 0 0 0 0 0 0 0 0
+```
+
+Okay, let's break down the task based on the provided examples.
+
+## Perception
+
+1.  **Grid Structure:** The input and output grids are single rows (1D arrays represented within a 2D structure). The length of the row remains constant between input and output.
+2.  **Color Palette:** The grids use white (0) as a background color. Other colors observed are orange (7), magenta (6), azure (8), and blue (1).
+3.  **Key Objects:** In each input, there appear to be two distinct non-white objects:
+    *   A single pixel of one color (e.g., orange 7 in train_1, azure 8 in train_2, orange 7 in train_3). Let's call this the "singleton".
+    *   A contiguous horizontal block of one or more pixels of another color (e.g., magenta 6 in train_1 and train_3, blue 1 in train_2). Let's call this the "block".
+4.  **Relationship:** The singleton pixel is always immediately adjacent (horizontally) to the block.
+5.  **Transformation:** The core transformation involves the singleton pixel changing its position relative to the block. It moves from one side of the block (e.g., left) to the immediately adjacent position on the *other* side of the block (e.g., right).
+6.  **Background/Other Pixels:** The white (0) background pixels remain unchanged. The pixels forming the block also remain in their original positions. The original position of the singleton pixel becomes white (0) in the output.
+
+## Facts
+
+
+```yaml
+task_type: object_manipulation
+grid_properties:
+  dimensionality: 1D (represented as single row)
+  size_preservation: True
+  background_color: 0 # white
+objects:
+  - name: singleton
+    count: 1
+    properties:
+      - color: non-white (e.g., 7, 8)
+      - size: 1 pixel
+      - unique_color_instance: True # only one pixel of this color in the input
+  - name: block
+    count: 1
+    properties:
+      - color: non-white (e.g., 6, 1), different from singleton color
+      - shape: contiguous horizontal line
+      - size: 1 or more pixels
+relationships:
+  - type: adjacency
+    subject: singleton
+    object: block
+    details: The singleton is immediately adjacent (left or right) to the block.
+actions:
+  - name: move_singleton
+    target: singleton
+    details:
+      - The singleton pixel moves its position.
+      - The original position of the singleton becomes the background color (0).
+      - The new position is immediately adjacent to the block, but on the side opposite its original position.
+      - The block itself does not move or change color.
+invariants:
+  - background_pixels: Unchanged
+  - block_pixels: Position and color unchanged
+  - grid_dimensions: Unchanged
+```
+
+
+## Natural Language Program
+
+1.  Identify all non-white pixels in the input grid.
+2.  Find the pixel whose color appears only once in the grid; this is the 'singleton'.
+3.  Find the contiguous horizontal block of pixels of another single non-white color; this is the 'block'.
+4.  Verify that the 'singleton' is horizontally adjacent to the 'block'.
+5.  Determine if the 'singleton' is to the left or right of the 'block'.
+6.  Create a copy of the input grid to serve as the basis for the output grid.
+7.  In the output grid, change the color of the 'singleton's original position to white (0).
+8.  If the 'singleton' was originally to the left of the 'block', place the 'singleton' pixel immediately to the right of the 'block' in the output grid.
+9.  If the 'singleton' was originally to the right of the 'block', place the 'singleton' pixel immediately to the left of the 'block' in the output grid.
+10. Return the modified grid as the output.
+```python
+import numpy as np
+from collections import Counter
+
+"""
+Transformation Rule:
+Identify two non-white objects in the 1D input grid: a 'singleton' (a single pixel of one color) and a 'block' (a contiguous horizontal line of one or more pixels of another color). The singleton is always adjacent to the block. Move the singleton pixel from its original position to the position immediately adjacent to the block on the opposite side. The original position of the singleton becomes white (0). The block and background pixels remain unchanged.
+"""
+
+def find_objects_1d(row):
+    """Finds the singleton and block objects in a 1D row."""
+    non_white_indices = [i for i, pixel in enumerate(row) if pixel != 0]
+    if not non_white_indices:
+        return None, None, None, None # No objects found
+
+    non_white_colors = [row[i] for i in non_white_indices]
+    color_counts = Counter(non_white_colors)
+
+    singleton_color = None
+    block_color = None
+    singleton_index = -1
+
+    for color, count in color_counts.items():
+        if count == 1:
+            singleton_color = color
+            # Find the index of the singleton
+            for i in non_white_indices:
+                if row[i] == singleton_color:
+                    singleton_index = i
+                    break
+            break # Assume only one singleton color exists
+
+    if singleton_color is None:
+        # Handle cases where maybe there isn't a singleton (though examples suggest there always is)
+        return None, None, None, None
+
+    # The other non-white color must be the block color
+    block_color = next((c for c in color_counts if c != singleton_color), None)
+    
+    if block_color is None:
+         # Handle cases where maybe there isn't a block (though examples suggest there always is)
+         # Could be just a singleton
+         if len(non_white_indices) == 1:
+             # If only a singleton exists, maybe it doesn't move? Return original state.
+             # Or maybe this case doesn't happen based on examples. 
+             # For now, let's assume block always exists if singleton does based on examples.
+             return None, None, None, None
+         else: # Should not happen if logic above is correct
+             return None, None, None, None
+
+
+    block_indices = [i for i in non_white_indices if row[i] == block_color]
+
+    # Check for contiguity (although sorting by index effectively does this for 1D)
+    if not block_indices:
+        return None, None, None, None # Should not happen
+        
+    block_indices.sort()
+    # Basic contiguity check for 1D
+    if len(block_indices) > 1 and not all(block_indices[j] == block_indices[0] + j for j in range(len(block_indices))):
+         print(f"Warning: Block pixels for color {block_color} are not contiguous.") # Or raise error
+         return None, None, None, None
+
+    block_start_index = block_indices[0]
+    block_end_index = block_indices[-1]
+
+    return singleton_color, singleton_index, block_color, block_indices
+
+def transform(input_grid):
+    """
+    Applies the transformation rule to the input grid.
+
+    Args:
+        input_grid (list of lists): A 2D list representing the input grid. 
+                                     Expected to be effectively 1D (1 row).
+
+    Returns:
+        list of lists: The transformed grid.
+    """
+    # Ensure input is treated as 1D for simplicity, take the first row
+    # Add checks for multi-row inputs if necessary, but examples are 1-row
+    if len(input_grid) != 1:
+        # Handle error or unexpected input format if necessary
+        # For now, assume it's always 1 row based on examples
+        pass 
+        
+    input_row = np.array(input_grid[0]) # Work with the first row as a numpy array
+    output_row = input_row.copy()
+
+    # Find the singleton and block objects
+    singleton_color, singleton_index, block_color, block_indices = find_objects_1d(output_row)
+
+    # If objects aren't found as expected, return the original grid
+    if singleton_color is None or not block_indices:
+        print("Warning: Could not identify singleton and block as expected.")
+        return input_grid # Return original if pattern doesn't match
+
+    block_start_index = block_indices[0]
+    block_end_index = block_indices[-1]
+
+    # Determine the new position for the singleton
+    new_singleton_index = -1
+    is_left = False
+    # Check if singleton is to the left of the block
+    if singleton_index == block_start_index - 1:
+        new_singleton_index = block_end_index + 1
+        is_left = True
+    # Check if singleton is to the right of the block
+    elif singleton_index == block_end_index + 1:
+        new_singleton_index = block_start_index - 1
+        is_left = False
+    else:
+        # Singleton is not adjacent to the block, which contradicts observations. Return original.
+        print("Warning: Singleton is not adjacent to the block.")
+        return input_grid
+
+    # Check if the new position is within the grid bounds
+    if 0 <= new_singleton_index < len(output_row):
+        # Perform the move
+        # 1. Make the original singleton position white (0)
+        output_row[singleton_index] = 0
+        # 2. Place the singleton color at the new position
+        output_row[new_singleton_index] = singleton_color
+    else:
+        # New position is out of bounds, shouldn't happen with these examples
+        # but handle defensively - return original
+         print(f"Warning: Calculated new position {new_singleton_index} is out of bounds.")
+         return input_grid
+
+
+    # Convert the result back to the list of lists format
+    output_grid = [output_row.tolist()]
+
+    return output_grid
+```
+```python
+import numpy as np
+from collections import Counter
+
+"""
+Transformation Rule:
+Identify a 'singleton' pixel (unique non-white color) and a 'block' of contiguous pixels (another non-white color) which are adjacent to each other, forming a combined contiguous 'span'. Rotate the sequence of pixels within this span by one position. If the singleton was originally at the left end of the span, rotate right (last element becomes first). If the singleton was at the right end, rotate left (first element becomes last). Place the rotated sequence back into the same span location in the output grid. Background pixels remain unchanged.
+"""
+
+def find_span_and_singleton_pos(row):
+    """
+    Identifies the combined span of the singleton and block, and the singleton's position.
+
+    Args:
+        row (np.array): The 1D input row.
+
+    Returns:
+        tuple: (span_start, span_end, singleton_pos) or (None, None, None) if pattern not found.
+               singleton_pos is 'left' or 'right'.
+    """
+    non_white_indices = np.where(row != 0)[0]
+    if len(non_white_indices) < 2: # Need at least one singleton and one block pixel
+        return None, None, None
+
+    non_white_colors = row[non_white_indices]
+    color_counts = Counter(non_white_colors)
+
+    singleton_color = None
+    block_color = None
+    singleton_index = -1
+
+    # Identify singleton and block colors
+    for color, count in color_counts.items():
+        if count == 1:
+            if singleton_color is not None: return None, None, None # More than one singleton type
+            singleton_color = color
+        else: # count > 1 implies block color (assuming only 2 non-white colors)
+             if block_color is not None: return None, None, None # More than one block type
+             block_color = color
+
+    if singleton_color is None or block_color is None:
+        return None, None, None # Pattern needs one singleton and one block
+
+    # Find the index of the singleton
+    try:
+        # Find the index within the non_white_indices array first
+        s_idx_in_non_white = np.where(non_white_colors == singleton_color)[0][0]
+        singleton_index = non_white_indices[s_idx_in_non_white]
+    except IndexError:
+        return None, None, None # Should not happen if color_counts was correct
+
+    # Determine span boundaries (min and max of all non-white indices)
+    span_start = np.min(non_white_indices)
+    span_end = np.max(non_white_indices)
+
+    # Verify combined span contiguity
+    expected_len = span_end - span_start + 1
+    if len(non_white_indices) != expected_len:
+        # Implies gaps or non-contiguity of the combined object
+        return None, None, None
+
+    # Determine singleton position within the span
+    if singleton_index == span_start:
+        singleton_pos = 'left'
+    elif singleton_index == span_end:
+        singleton_pos = 'right'
+    else:
+        # Singleton is not at either end, which contradicts the observed pattern
+        return None, None, None
+
+    return span_start, span_end, singleton_pos
+
+
+def transform(input_grid):
+    """
+    Applies the span rotation transformation to the input grid.
+
+    Args:
+        input_grid (list of lists): A 2D list representing the input grid.
+                                     Expected to be effectively 1D (1 row).
+
+    Returns:
+        list of lists: The transformed grid.
+    """
+    # --- Input Validation and Initialization ---
+    if not isinstance(input_grid, list) or not input_grid:
+        return [] # Handle empty input
+    if len(input_grid) != 1:
+         # This specific task seems focused on 1-row grids based on examples.
+         # If multi-row grids were possible, logic would need adjustment.
+         # For now, assume valid input is 1xN. Return original if not.
+         print("Warning: Input grid has more than one row. Returning original.")
+         return input_grid
+    if not isinstance(input_grid[0], list):
+         return [] # Handle malformed input
+
+    input_row = np.array(input_grid[0])
+    output_row = input_row.copy() # Create a copy to modify
+
+    # --- Find the Span and Singleton Position ---
+    span_start, span_end, singleton_pos = find_span_and_singleton_pos(output_row)
+
+    # If the expected pattern (singleton + adjacent block) isn't found, return original
+    if span_start is None:
+        # print("Pattern (singleton adjacent to block) not found. Returning original.")
+        return input_grid
+
+    # --- Extract and Rotate the Span ---
+    # Extract the sequence of pixels within the identified span
+    span_sequence = output_row[span_start : span_end + 1]
+
+    # Perform rotation based on the singleton's original position
+    rotated_sequence = np.zeros_like(span_sequence)
+    if singleton_pos == 'left':
+        # Rotate right: last element moves to the first position
+        rotated_sequence = np.roll(span_sequence, 1)
+    elif singleton_pos == 'right':
+        # Rotate left: first element moves to the last position
+        rotated_sequence = np.roll(span_sequence, -1)
+    else:
+         # Should not happen due to checks in find_span_and_singleton_pos
+         print("Error: Invalid singleton position detected.")
+         return input_grid # Return original on error
+
+    # --- Update Output Grid ---
+    # Place the rotated sequence back into the output row at the original span location
+    output_row[span_start : span_end + 1] = rotated_sequence
+
+    # --- Format and Return Output ---
+    # Convert the modified numpy row back to a list and wrap in a list
+    output_grid = [output_row.tolist()]
+
+    return output_grid
+```
+```python
+import numpy as np
+from collections import Counter
+
+"""
+Transformation Rule:
+Identify a contiguous horizontal span of non-white pixels in the input row. 
+This span must consist of exactly two colors: one 'singleton' color appearing once, 
+and one 'block' color appearing one or more times. The singleton pixel must be 
+located at either the leftmost or rightmost position within this span. 
+The transformation involves performing a circular shift (roll) on the sequence of pixels 
+within the span. If the singleton was originally at the left end, roll the sequence 
+left by one position. If the singleton was originally at the right end, roll the 
+sequence right by one position. Place the rolled sequence back into the same span 
+location in the output grid. Background pixels (color 0) remain unchanged.
+"""
+
+def find_span_and_singleton_pos(row):
+    """
+    Identifies the contiguous non-white span, its boundaries, and the singleton's position.
+
+    Args:
+        row (np.array): The 1D input row.
+
+    Returns:
+        tuple: (span_start, span_end, singleton_pos) or (None, None, None) if pattern not found.
+               singleton_pos is 'left' or 'right'. Returns None if conditions (contiguity, 
+               exactly one singleton at an end, exactly two colors) are not met.
+    """
+    # Find indices of all non-white pixels (colors != 0)
+    non_white_indices = np.where(row != 0)[0]
+
+    # Check if there are at least two non-white pixels needed for a singleton and a block
+    if len(non_white_indices) < 2:
+        return None, None, None
+
+    # Determine the potential start and end of the contiguous span
+    span_start = np.min(non_white_indices)
+    span_end = np.max(non_white_indices)
+
+    # Verify that the identified span is truly contiguous (no background pixels within)
+    # The number of non-white pixels must equal the length of the span
+    expected_len = span_end - span_start + 1
+    if len(non_white_indices) != expected_len:
+        # Implies gaps (background pixels) within the span
+        return None, None, None
+
+    # Extract the sequence of pixels within the span
+    span_sequence = row[span_start : span_end + 1]
+
+    # Count the occurrences of each color within the span
+    color_counts = Counter(span_sequence)
+
+    # Verify exactly two distinct non-white colors exist in the span
+    if len(color_counts) != 2:
+        return None, None, None
+        
+    # Identify the singleton color (the one with count 1)
+    singleton_color = None
+    block_color = None
+    for color, count in color_counts.items():
+        if count == 1:
+            if singleton_color is not None: # Found more than one color with count 1
+                 return None, None, None
+            singleton_color = color
+        else: # Must be the block color (count > 1)
+             if block_color is not None: # Found more than one color with count > 1
+                 return None, None, None
+             block_color = color
+
+    # Check if we successfully identified one singleton and one block color
+    if singleton_color is None or block_color is None:
+        return None, None, None
+
+    # Find the index of the singleton *within the original row*
+    # We know its color, find where it is located between span_start and span_end
+    singleton_index_in_row = -1
+    if row[span_start] == singleton_color:
+        singleton_index_in_row = span_start
+    elif row[span_end] == singleton_color:
+        singleton_index_in_row = span_end
+    else:
+         # Singleton is not at either end of the span, pattern mismatch
+         return None, None, None
+
+    # Determine singleton position ('left' or 'right') based on its index in the row
+    if singleton_index_in_row == span_start:
+        singleton_pos = 'left'
+    elif singleton_index_in_row == span_end:
+        singleton_pos = 'right'
+    else:
+        # This case should technically be caught above, but double-check
+        return None, None, None
+
+    # If all checks passed, return the span boundaries and singleton position
+    return span_start, span_end, singleton_pos
+
+
+def transform(input_grid):
+    """
+    Applies the span rotation transformation to the input grid.
+
+    Args:
+        input_grid (list of lists): A 2D list representing the input grid.
+                                     Expected to be effectively 1D (1 row).
+
+    Returns:
+        list of lists: The transformed grid, or the original grid if the
+                       specific pattern is not found.
+    """
+    # --- Input Validation and Initialization ---
+    # Check if input is a list and not empty
+    if not isinstance(input_grid, list) or not input_grid:
+        print("Warning: Input grid is not a list or is empty.")
+        return input_grid # Return original for invalid input format
+
+    # Check if it contains at least one row
+    if len(input_grid) < 1:
+         print("Warning: Input grid has no rows.")
+         return input_grid # Return original
+
+    # This task specifically targets 1-row grids based on examples.
+    # Handle multi-row inputs by returning original or raising error if needed.
+    if len(input_grid) > 1:
+        print("Warning: Input grid has more than one row. This function expects a single row. Returning original.")
+        return input_grid
+
+    # Check if the first row is a list
+    if not isinstance(input_grid[0], list):
+         print("Warning: First element of input grid is not a list.")
+         return input_grid # Return original for malformed input
+
+    # Convert the first (and only) row to a NumPy array for efficient processing
+    input_row = np.array(input_grid[0])
+    # Create a copy of the input row to modify for the output
+    output_row = input_row.copy()
+
+    # --- Find the Span and Singleton Position ---
+    # Call the helper function to identify the relevant pattern components
+    span_start, span_end, singleton_pos = find_span_and_singleton_pos(output_row)
+
+    # If the expected pattern (contiguous span, 2 colors, singleton at end) isn't found,
+    # the helper returns None. In this case, return the original grid unchanged.
+    if span_start is None:
+        # print("Pattern not found. Returning original grid.") # Optional debug message
+        return input_grid
+
+    # --- Extract and Rotate the Span ---
+    # Extract the sequence of pixels within the identified span
+    span_sequence = output_row[span_start : span_end + 1]
+
+    # Perform circular shift (roll) based on the singleton's original position
+    rotated_sequence = None
+    if singleton_pos == 'left':
+        # If singleton was on the left, roll the sequence LEFT by 1
+        # Example: [S, B, B] -> [B, B, S]
+        rotated_sequence = np.roll(span_sequence, -1)
+    elif singleton_pos == 'right':
+        # If singleton was on the right, roll the sequence RIGHT by 1
+        # Example: [B, B, S] -> [S, B, B]
+        rotated_sequence = np.roll(span_sequence, 1)
+    # else: # This case is prevented by checks in find_span_and_singleton_pos
+        # print("Error: Invalid singleton position detected after check.")
+        # return input_grid # Return original on internal error
+
+
+    # --- Update Output Grid ---
+    # Place the rotated sequence back into the output row at the original span location
+    if rotated_sequence is not None:
+         output_row[span_start : span_end + 1] = rotated_sequence
+    else:
+         # Should not happen if singleton_pos is 'left' or 'right'
+         print("Error: Rotation failed.")
+         return input_grid # Return original if rotation calculation failed
+
+    # --- Format and Return Output ---
+    # Convert the modified numpy row back to a list
+    output_list = output_row.tolist()
+    # Wrap the list in another list to match the required output format [[]]
+    output_grid = [output_list]
+
+    return output_grid
+```
+
+Previous Code:
+```python
+import numpy as np
+from collections import Counter
+
+"""
+Transformation Rule:
+Identify a contiguous horizontal span of non-white pixels in the input row. 
+This span must consist of exactly two colors: one 'singleton' color appearing once, 
+and one 'block' color appearing one or more times. The singleton pixel must be 
+located at either the leftmost or rightmost position within this span. 
+The transformation involves performing a circular shift (roll) on the sequence of pixels 
+within the span. If the singleton was originally at the left end, roll the sequence 
+left by one position. If the singleton was originally at the right end, roll the 
+sequence right by one position. Place the rolled sequence back into the same span 
+location in the output grid. Background pixels (color 0) remain unchanged.
+"""
+
+def find_span_and_singleton_pos(row):
+    """
+    Identifies the contiguous non-white span, its boundaries, and the singleton's position.
+
+    Args:
+        row (np.array): The 1D input row.
+
+    Returns:
+        tuple: (span_start, span_end, singleton_pos) or (None, None, None) if pattern not found.
+               singleton_pos is 'left' or 'right'. Returns None if conditions (contiguity, 
+               exactly one singleton at an end, exactly two colors) are not met.
+    """
+    # Find indices of all non-white pixels (colors != 0)
+    non_white_indices = np.where(row != 0)[0]
+
+    # Check if there are at least two non-white pixels needed for a singleton and a block
+    if len(non_white_indices) < 2:
+        return None, None, None
+
+    # Determine the potential start and end of the contiguous span
+    span_start = np.min(non_white_indices)
+    span_end = np.max(non_white_indices)
+
+    # Verify that the identified span is truly contiguous (no background pixels within)
+    # The number of non-white pixels must equal the length of the span
+    expected_len = span_end - span_start + 1
+    if len(non_white_indices) != expected_len:
+        # Implies gaps (background pixels) within the span
+        return None, None, None
+
+    # Extract the sequence of pixels within the span
+    span_sequence = row[span_start : span_end + 1]
+
+    # Count the occurrences of each color within the span
+    color_counts = Counter(span_sequence)
+
+    # Verify exactly two distinct non-white colors exist in the span
+    if len(color_counts) != 2:
+        return None, None, None
+        
+    # Identify the singleton color (the one with count 1)
+    singleton_color = None
+    block_color = None
+    for color, count in color_counts.items():
+        if count == 1:
+            if singleton_color is not None: # Found more than one color with count 1
+                 return None, None, None
+            singleton_color = color
+        else: # Must be the block color (count > 1)
+             if block_color is not None: # Found more than one color with count > 1
+                 return None, None, None
+             block_color = color
+
+    # Check if we successfully identified one singleton and one block color
+    if singleton_color is None or block_color is None:
+        return None, None, None
+
+    # Find the index of the singleton *within the original row*
+    # We know its color, find where it is located between span_start and span_end
+    singleton_index_in_row = -1
+    if row[span_start] == singleton_color:
+        singleton_index_in_row = span_start
+    elif row[span_end] == singleton_color:
+        singleton_index_in_row = span_end
+    else:
+         # Singleton is not at either end of the span, pattern mismatch
+         return None, None, None
+
+    # Determine singleton position ('left' or 'right') based on its index in the row
+    if singleton_index_in_row == span_start:
+        singleton_pos = 'left'
+    elif singleton_index_in_row == span_end:
+        singleton_pos = 'right'
+    else:
+        # This case should technically be caught above, but double-check
+        return None, None, None
+
+    # If all checks passed, return the span boundaries and singleton position
+    return span_start, span_end, singleton_pos
+
+
+def transform(input_grid):
+    """
+    Applies the span rotation transformation to the input grid.
+
+    Args:
+        input_grid (list of lists): A 2D list representing the input grid.
+                                     Expected to be effectively 1D (1 row).
+
+    Returns:
+        list of lists: The transformed grid, or the original grid if the
+                       specific pattern is not found.
+    """
+    # --- Input Validation and Initialization ---
+    # Check if input is a list and not empty
+    if not isinstance(input_grid, list) or not input_grid:
+        print("Warning: Input grid is not a list or is empty.")
+        return input_grid # Return original for invalid input format
+
+    # Check if it contains at least one row
+    if len(input_grid) < 1:
+         print("Warning: Input grid has no rows.")
+         return input_grid # Return original
+
+    # This task specifically targets 1-row grids based on examples.
+    # Handle multi-row inputs by returning original or raising error if needed.
+    if len(input_grid) > 1:
+        print("Warning: Input grid has more than one row. This function expects a single row. Returning original.")
+        return input_grid
+
+    # Check if the first row is a list
+    if not isinstance(input_grid[0], list):
+         print("Warning: First element of input grid is not a list.")
+         return input_grid # Return original for malformed input
+
+    # Convert the first (and only) row to a NumPy array for efficient processing
+    input_row = np.array(input_grid[0])
+    # Create a copy of the input row to modify for the output
+    output_row = input_row.copy()
+
+    # --- Find the Span and Singleton Position ---
+    # Call the helper function to identify the relevant pattern components
+    span_start, span_end, singleton_pos = find_span_and_singleton_pos(output_row)
+
+    # If the expected pattern (contiguous span, 2 colors, singleton at end) isn't found,
+    # the helper returns None. In this case, return the original grid unchanged.
+    if span_start is None:
+        # print("Pattern not found. Returning original grid.") # Optional debug message
+        return input_grid
+
+    # --- Extract and Rotate the Span ---
+    # Extract the sequence of pixels within the identified span
+    span_sequence = output_row[span_start : span_end + 1]
+
+    # Perform circular shift (roll) based on the singleton's original position
+    rotated_sequence = None
+    if singleton_pos == 'left':
+        # If singleton was on the left, roll the sequence LEFT by 1
+        # Example: [S, B, B] -> [B, B, S]
+        rotated_sequence = np.roll(span_sequence, -1)
+    elif singleton_pos == 'right':
+        # If singleton was on the right, roll the sequence RIGHT by 1
+        # Example: [B, B, S] -> [S, B, B]
+        rotated_sequence = np.roll(span_sequence, 1)
+    # else: # This case is prevented by checks in find_span_and_singleton_pos
+        # print("Error: Invalid singleton position detected after check.")
+        # return input_grid # Return original on internal error
+
+
+    # --- Update Output Grid ---
+    # Place the rotated sequence back into the output row at the original span location
+    if rotated_sequence is not None:
+         output_row[span_start : span_end + 1] = rotated_sequence
+    else:
+         # Should not happen if singleton_pos is 'left' or 'right'
+         print("Error: Rotation failed.")
+         return input_grid # Return original if rotation calculation failed
+
+    # --- Format and Return Output ---
+    # Convert the modified numpy row back to a list
+    output_list = output_row.tolist()
+    # Wrap the list in another list to match the required output format [[]]
+    output_grid = [output_list]
+
+    return output_grid
+```
+Results for code_00.py:
+
+Train Set Results:
+
+## Example 1:
+Input:
+```
+0 7 6 6 6 0 0 0 0 0 0 0 0 0
+```
+Expected Output:
+```
+0 6 6 6 7 0 0 0 0 0 0 0 0 0
+```
+Transformed Output:
+```
+0 7 6 6 6 0 0 0 0 0 0 0 0 0
+```
+Match: False
+Pixels Off: 2
+Size Correct: True
+Color Palette Correct: True
+Color Count Correct: True
+Score: 14.285714285714292
+
+## Example 2:
+Input:
+```
+0 0 0 8 1 1 1 1 1 1 0 0 0 0
+```
+Expected Output:
+```
+0 0 0 1 1 1 1 1 1 8 0 0 0 0
+```
+Transformed Output:
+```
+0 0 0 8 1 1 1 1 1 1 0 0 0 0
+```
+Match: False
+Pixels Off: 2
+Size Correct: True
+Color Palette Correct: True
+Color Count Correct: True
+Score: 14.285714285714292
+
+## Example 3:
+Input:
+```
+7 6 6 6 0 0 0 0 0 0 0 0 0 0
+```
+Expected Output:
+```
+6 6 6 7 0 0 0 0 0 0 0 0 0 0
+```
+Transformed Output:
+```
+7 6 6 6 0 0 0 0 0 0 0 0 0 0
+```
+Match: False
+Pixels Off: 2
+Size Correct: True
+Color Palette Correct: True
+Color Count Correct: True
+Score: 14.285714285714292
+## General Assessment
+
+The provided code implements a transformation rule based on identifying a 'singleton' pixel and an adjacent 'block' of pixels, forming a contiguous non-white 'span'. The transformation is defined as a circular shift (roll) of the pixels within this span. The direction of the shift depends on whether the singleton is at the left or right end of the span.
+
+However, the execution results show that the provided code failed to produce the expected output for all training examples, instead returning the original input grid. This discrepancy is puzzling because a manual trace of the code logic with the example inputs suggests it *should* produce the correct outputs based on the circular shift interpretation.
+
+Possible reasons for the failure include:
+1.  A subtle bug in the `find_span_and_singleton_pos` function causing it to incorrectly return `None`, thus preventing the transformation.
+2.  An issue in the main `transform` function related to array copying, slicing, or assignment, although the code appears standard.
+3.  An incorrect assumption about the `np.roll` direction (though the current implementation seems consistent with the examples).
+4.  An execution environment issue or a difference between the analyzed code and the executed code.
+
+**Strategy:**
+The most likely interpretation based *purely on the visual input/output examples* is the circular shift within the span. Despite the execution failure report, the natural language program and facts will be refined based on this interpretation, as it directly maps the observed visual change. The implementation details (especially the conditions in `find_span_and_singleton_pos` and the `np.roll` application) should be carefully re-examined in the coding phase.
+
+## Metrics
+
+| Example | Input Grid                 | Expected Output            | Transformed Output (Reported) | Match | Pixels Off | Span        | Singleton Pos | Required Roll | Code's Roll Action |
+| :------ | :------------------------- | :------------------------- | :---------------------------- | :---- | :--------- | :---------- | :------------ | :------------ | :----------------- |
+| train_1 | `[0,7,6,6,6,0,...]`        | `[0,6,6,6,7,0,...]`        | `[0,7,6,6,6,0,...]`           | False | 2          | `[7,6,6,6]` | left          | `roll(...,-1)` | `roll(...,-1)`     |
+| train_2 | `[...0,8,1,1,1,1,1,1,0...]` | `[...0,1,1,1,1,1,1,8,0...]` | `[...0,8,1,1,1,1,1,1,0...]`   | False | 2          | `[8,1..1]`  | left          | `roll(...,-1)` | `roll(...,-1)`     |
+| train_3 | `[7,6,6,6,0,...]`          | `[6,6,6,7,0,...]`          | `[7,6,6,6,0,...]`             | False | 2          | `[7,6,6,6]` | left          | `roll(...,-1)` | `roll(...,-1)`     |
+
+*Note: The 'Code's Roll Action' column indicates the action the provided Python code *should* have taken based on its logic, even though the reported output suggests no transformation occurred.*
+
+## Facts
+
+
+```yaml
+task_type: object_manipulation_1d
+grid_properties:
+  dimensionality: 1D (represented as a single row)
+  size_preservation: True
+  background_color: 0 # white
+objects:
+  - name: combined_span
+    count: 1
+    properties:
+      - definition: A maximal contiguous horizontal sequence of non-white pixels.
+      - composition: Must contain exactly two distinct non-white colors.
+      - internal_structure: One color appears exactly once (singleton), the other appears one or more times (block).
+      - contiguity: No background pixels (0) are allowed within the span.
+  - name: singleton_pixel
+    count: 1 (within the span)
+    properties:
+      - definition: The pixel within the span whose color appears only once in that span.
+      - location: Must be located at either the leftmost or the rightmost position of the 'combined_span'.
+  - name: block_pixels
+    count: 1 or more (within the span)
+    properties:
+      - definition: The pixel(s) within the span whose color appears more than once (or exactly once if the span length is 2).
+      - contiguity: Forms a contiguous sub-sequence within the span, adjacent to the singleton.
+relationships:
+  - type: spatial
+    subject: singleton_pixel
+    object: block_pixels
+    details: The singleton_pixel is immediately adjacent to one end of the sequence of block_pixels, together forming the contiguous combined_span.
+  - type: location
+    subject: singleton_pixel
+    object: combined_span
+    details: The singleton_pixel occupies either the starting index or the ending index of the combined_span.
+actions:
+  - name: circular_shift_span
+    target: combined_span
+    details:
+      - Identify the sequence of pixels constituting the combined_span.
+      - Perform a circular shift (numpy.roll) on this sequence.
+      - If the singleton_pixel was originally at the left end (start index) of the span, shift the sequence LEFT by 1 position (np.roll(sequence, -1)).
+      - If the singleton_pixel was originally at the right end (end index) of the span, shift the sequence RIGHT by 1 position (np.roll(sequence, 1)).
+      - Place the resulting shifted sequence back into the original grid location occupied by the combined_span.
+invariants:
+  - background_pixels: Pixels outside the combined_span remain unchanged.
+  - grid_dimensions: Unchanged.
+  - colors_present: The set and count of each color remain the same, only their positions within the span change.
+```
+
+
+## Natural Language Program
+
+1.  Convert the input grid (expected to be a single row) into a 1D sequence. Create a copy of this sequence for modification.
+2.  Identify all indices containing non-white pixels (colors other than 0).
+3.  If there are fewer than two non-white pixels, return the original grid.
+4.  Determine the minimum (`span_start`) and maximum (`span_end`) index among the non-white pixels.
+5.  Verify that the segment of the sequence from `span_start` to `span_end` (inclusive) contains only non-white pixels (i.e., check if the number of non-white pixels equals `span_end - span_start + 1`). If not, return the original grid (the non-white pixels do not form a single contiguous span).
+6.  Extract the sequence of pixels within this identified span (from `span_start` to `span_end`).
+7.  Count the occurrences of each color within the extracted span sequence.
+8.  Verify that there are exactly two distinct colors within the span. If not, return the original grid.
+9.  Verify that one of these colors appears exactly once (the 'singleton' color) and the other appears one or more times (the 'block' color). If this condition isn't met (e.g., two singletons, or more than two colors), return the original grid.
+10. Determine the position of the singleton pixel within the original sequence: check if the pixel at `span_start` or the pixel at `span_end` has the singleton color.
+11. If the singleton pixel is *not* at `span_start` or `span_end`, return the original grid.
+12. If the singleton pixel is at `span_start` (left end):
+    a. Perform a circular shift LEFT by 1 position on the extracted span sequence.
+13. If the singleton pixel is at `span_end` (right end):
+    a. Perform a circular shift RIGHT by 1 position on the extracted span sequence.
+14. Replace the pixels in the copied sequence from `span_start` to `span_end` (inclusive) with the pixels from the shifted span sequence.
+15. Convert the modified 1D sequence back into the grid format (a list containing one list) and return it.

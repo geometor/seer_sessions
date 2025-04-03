@@ -1,0 +1,65 @@
+task_description: Transform a 1D sequence by replicating a pattern based on a seed pixel and a template block.
+
+grid_properties:
+  - type: 1D sequence (represented as a 1xN grid)
+  - size: Variable length (33 in examples)
+  - background_color: white (0)
+
+elements:
+  - type: object
+    name: template_block
+    description: A contiguous sequence of exactly 3 identical non-white pixels.
+    properties:
+      - color: The color of the pixels in the block (azure, azure, red in examples).
+      - size: Fixed at 3 pixels.
+      - position: The starting index of the block.
+    identification: Find 3 consecutive identical non-white pixels, ensuring they are not part of a longer block of the same color.
+    relationship: Persists unchanged in the output at its original location.
+  - type: object
+    name: seed_pixel
+    description: A single non-white pixel, isolated by white (0) pixels or grid boundaries on both sides.
+    properties:
+      - color: The color of the pixel (blue, orange, green in examples).
+      - size: 1 pixel.
+      - position: The index of the pixel.
+    identification: Find a non-white pixel `p` at index `i` such that `grid[i-1]` is white (or `i=0`) and `grid[i+1]` is white (or `i=grid_length-1`). Ensure it's distinct from the template_block.
+    relationship: Determines the color for the new_block. Its original position is overwritten by the new_block. It dictates the placement of the new_block.
+  - type: object
+    name: new_block
+    description: A block created in the output sequence, not present in the input.
+    derivation: Generated based on the properties of the seed_pixel and template_block.
+    properties:
+      - color: Same as the seed_pixel color.
+      - size: Same as the template_block size (3 pixels).
+      - position: Starts at the index immediately preceding the original seed_pixel index (seed_pixel.index - 1).
+
+actions:
+  - action: identify
+    target: template_block
+    details: Locate the block of 3 identical non-white pixels. Record its start index and (implicitly) its size (3).
+  - action: identify
+    target: seed_pixel
+    details: Locate the single isolated non-white pixel. Record its color and index.
+  - action: copy
+    source: input_sequence
+    target: output_sequence
+    details: Initialize the output as a copy of the input.
+  - action: determine_position
+    target: new_block
+    inputs: [seed_pixel.index]
+    details: Calculate the starting index for the new_block as seed_pixel.index - 1.
+  - action: create
+    target: new_block
+    inputs: [seed_pixel.color, template_block.size, new_block.position]
+    details: In the output sequence, place a block of size template_block.size (3) using seed_pixel.color, starting at the calculated new_block.position. This overwrites existing pixels, including the original seed_pixel location.
+
+invariants:
+  - The template_block remains unchanged in the output.
+  - The background white pixels remain unchanged unless overwritten by the new_block.
+  - Grid dimensions remain unchanged.
+
+constraints:
+  - Input contains exactly one template_block of size 3.
+  - Input contains exactly one seed_pixel.
+  - seed_pixel is never at index 0.
+  - template_block and seed_pixel do not overlap.

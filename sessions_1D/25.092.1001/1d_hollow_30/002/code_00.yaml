@@ -1,0 +1,49 @@
+task_type: object_transformation
+dimensionality: 1D # Input/output are effectively 1-dimensional arrays (single row grids)
+input_format: array_like (likely NumPy array) containing a single row of integers (pixels)
+output_format: list containing a single list of integers (pixels)
+objects:
+  - type: segment
+    description: A single contiguous horizontal sequence of identical non-white pixels.
+    attributes:
+      color: non-white (variable: 1-blue, 2-red, 7-orange in examples)
+      contiguity: horizontal
+      location: surrounded by white (0) pixels
+      count_per_input: 1
+    identification: Find all non-white pixels. The first index is the start, the last index is the end.
+actions:
+  - name: initialize_output
+    input: input_grid_dimensions
+    output: output_grid (same dimensions as input, filled with white pixels)
+  - name: identify_segment_endpoints
+    input: input_grid
+    output: segment_properties (color, start_index, end_index)
+    steps:
+      - Find indices of all non-white pixels.
+      - If non-white pixels exist:
+          - start_index = minimum index
+          - end_index = maximum index
+          - segment_color = color at start_index
+      - Else: segment does not exist.
+  - name: transfer_endpoints
+    target: output_grid
+    using: segment_properties (color, start_index, end_index)
+    effect:
+      - If a segment was identified:
+          - Set pixel at start_index in output_grid to segment_color.
+          - Set pixel at end_index in output_grid to segment_color.
+relationships_transformation:
+  - segment_interior_pixels (input) -> white_pixels (output)
+  - segment_endpoint_pixels (input) -> endpoint_pixels (output, color preserved)
+  - surrounding_white_pixels (input) -> surrounding_white_pixels (output, unchanged)
+invariance:
+  - grid_dimensions (height=1, width preserved)
+  - color_of_segment_endpoints
+  - position_of_segment_endpoints
+  - surrounding_white_pixels
+variance:
+  - color_of_non_white_segment
+  - length_of_non_white_segment
+  - position_of_non_white_segment
+error_cause: Likely improper handling of NumPy array input type in conditional statements or type checks.
+resolution_strategy: Modify code to explicitly handle NumPy arrays, potentially using NumPy functions for finding indices and array creation. Ensure output format matches ARC standard (list of lists).

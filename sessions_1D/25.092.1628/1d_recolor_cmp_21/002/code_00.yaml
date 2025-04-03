@@ -1,0 +1,43 @@
+elements:
+  - type: pixel_grid
+    description: A single row of pixels. Assumed shape is 1xN.
+  - type: color
+    values: [white (0), azure (8), gray (5)]
+  - type: object
+    identifier: contiguous_horizontal_azure_block
+    description: A sequence of one or more adjacent azure (8) pixels in the row.
+    properties:
+      - color: azure (8)
+      - length: count of pixels in the block
+      - start_index: position of the first pixel in the block
+      - end_index: position after the last pixel in the block
+
+transformation:
+  - action: identify
+    target: all contiguous_horizontal_azure_blocks
+    output: list_of_azure_blocks_with_properties
+  - action: calculate
+    input: list_of_azure_blocks_with_properties
+    computation: find the maximum length among all identified blocks
+    condition: handle case where no azure blocks exist (max_length = 0 or N/A)
+    output: max_azure_block_length
+  - action: iterate
+    target: list_of_azure_blocks_with_properties
+    condition: block length == max_azure_block_length
+    sub_action:
+      - action: change_color
+        target: pixels within the qualifying block (from start_index to end_index)
+        from_color: azure (8)
+        to_color: gray (5)
+  - action: keep
+    target: all other pixels (white pixels and azure blocks not matching the max_length criteria)
+    properties:
+      - color: unchanged
+
+relationships:
+  - type: positional_invariance
+    description: The positions of white pixels and unchanged azure blocks are preserved.
+  - type: size_invariance
+    description: The length of the transformed block(s) remains the same, only the color changes.
+  - type: context_dependence
+    description: The decision to change a block depends on the lengths of *all* other azure blocks within the same row.

@@ -1,0 +1,80 @@
+task_description: Relocate a colored block relative to a fixed marker pixel within a grid, treating the grid as a 1D sequence.
+
+input_format: Grid (potentially 2D, e.g., NxM numpy array or list of lists) representing pixels.
+processing_format: Input grid is flattened into a 1D sequence for all operations.
+output_format: 1D list representing the transformed pixel sequence.
+
+elements:
+  - object: background
+    pixels:
+      - color: white
+        value: 0
+    properties:
+      - fills_most_of_the_sequence
+
+  - object: marker
+    pixels:
+      - color: maroon
+        value: 9
+    properties:
+      - singleton (appears exactly once in the sequence)
+      - fixed_position (its index in the flattened sequence remains the same in input and output)
+
+  - object: colored_block
+    pixels:
+      - color: variable (not white or maroon)
+        value: variable (not 0 or 9)
+    properties:
+      - contiguous_block (pixels of the same color are adjacent in the 1D sequence)
+      - variable_position (relative to the start of the sequence)
+      - variable_color
+      - variable_length (constant within a single example pair)
+      - appears_once_per_sequence
+      - located_before_marker (in the input sequence)
+
+relationships_and_actions:
+  - action: flatten_input
+    actor: system
+    target: input_grid
+    details: Convert the input grid (potentially 2D) into a 1D sequence.
+
+  - action: identify_marker
+    actor: system
+    target: marker
+    scope: flattened_input
+    details: Find the index (`marker_index`) of the single maroon (9) pixel.
+
+  - action: identify_block
+    actor: system
+    target: colored_block
+    scope: flattened_input
+    details: Find the contiguous block of pixels that are not white (0) or maroon (9). Record its color (`block_color`), length (`block_length`), and the index of its last pixel (`block_end_index`).
+
+  - relationship: spatial_distance
+    scope: flattened_input
+    between: [colored_block, marker]
+    measure: count_of_background_pixels
+    property: Number of white (0) pixels between the `block_end_index` and the `marker_index`.
+    calculation: D = marker_index - block_end_index - 1
+
+  - action: create_output_sequence
+    actor: system
+    details: Initialize a 1D sequence of the same size as the flattened input, filled with the background color (white, 0).
+
+  - action: place_marker
+    actor: system
+    target: marker
+    destination: output_sequence
+    details: Place the maroon (9) pixel at `marker_index` in the output sequence.
+
+  - action: calculate_new_block_position
+    actor: system
+    target: colored_block
+    based_on: [marker_index, spatial_distance (D)]
+    details: The new start index for the colored block in the output sequence is `new_start_index = marker_index + 1 + D`.
+
+  - action: place_block
+    actor: system
+    target: colored_block
+    destination: output_sequence
+    details: Place the colored block (using `block_color` and `block_length`) into the output sequence, starting at `new_start_index`.

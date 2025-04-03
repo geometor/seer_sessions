@@ -1,0 +1,43 @@
+InputGrid:
+  Type: NumPy ndarray
+  Dimensions: 2D, typically shape (1, W) where W is width <= 30.
+  PixelType: Integer (0-9)
+  Background: Typically white (0)
+
+OutputGrid:
+  Type: NumPy ndarray (consistent with input)
+  Dimensions: Same as input grid
+  PixelType: Integer (0-9)
+
+Objects:
+  - Type: Single Isolated Pixel
+    Properties:
+      - Color: Non-white (1-9)
+      - Location: In the single row of the input grid
+      - Context: Horizontally adjacent pixels (if they exist within bounds) are white (0) in the *original* input grid.
+    Action: Center of Expansion
+  - Type: Pixel Block (or Non-Isolated Pixel)
+    Properties:
+      - Color: Non-white (1-9)
+      - Location: In the single row of the input grid
+      - Context: At least one horizontally adjacent pixel (within bounds) is non-white (0) in the *original* input grid. This includes existing blocks like (2, 2, 2).
+    Action: No direct action (retains original color unless overwritten by an adjacent expansion).
+  - Type: White Pixel
+    Properties:
+      - Color: white (0)
+    Action: Retains color unless adjacent to a 'Single Isolated Pixel' in the original input, in which case it takes the color of that adjacent pixel in the output.
+
+Transformation:
+  Rule: Expand single isolated non-white pixels into 3-pixel horizontal blocks.
+  InputProcessing: Extract the first row from the input NumPy array and convert it to a Python list for processing.
+  Mechanism:
+    - Create a list copy of the input row.
+    - Iterate through the *original* input row (list version).
+    - Identify indices `i` corresponding to 'Single Isolated Pixels' based on their color and the colors of neighbors at `i-1` and `i+1` in the original list.
+    - For each identified index `i` with color `C`:
+      - In the *copied list*, set the pixel at index `i-1` to `C` (if `i > 0`).
+      - In the *copied list*, set the pixel at index `i+1` to `C` (if `i < width - 1`).
+      - The pixel at index `i` in the copy retains color `C`.
+  OutputProcessing: Convert the modified list copy back into a NumPy array with the original shape (1, W).
+  Concurrency: Identification of isolated pixels is based solely on the original input state. Modifications are applied based on these identifications to the copied list.
+  Invariance: Pixels in the input row that are not identified as 'Single Isolated Pixel' and are not adjacent to one retain their original color in the output copy.

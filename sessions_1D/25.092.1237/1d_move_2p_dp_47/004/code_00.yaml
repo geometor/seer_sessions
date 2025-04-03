@@ -1,0 +1,67 @@
+task_description: Rearrange segments of a 1D sequence based on a specific three-element marker.
+input_type: flat_list_integers (representing grid pixels)
+output_type: flat_list_integers (representing grid pixels)
+marker_sequence: [0, 0, 8] (white, white, azure)
+elements:
+  - type: color
+    value: 0
+    name: white
+    role: Background, part of marker, potential leading element.
+  - type: color
+    value: 8
+    name: azure
+    role: Anchor part of the marker.
+  - type: color
+    value: [1-7, 9] # Any color other than white or azure
+    role: Constituent of the shifting block.
+objects:
+  - id: marker
+    type: sequence_segment
+    description: The subsequence [0, 0, 8]. Its first occurrence is key.
+  - id: marker_pair
+    type: sequence_segment
+    value: [0, 0]
+    description: The first two elements of the marker sequence. This segment is relocated.
+  - id: marker_anchor
+    type: pixel
+    value: 8
+    description: The third element of the marker sequence. Its position defines the start of the trailing elements.
+  - id: leading_zeros
+    type: sequence_segment
+    description: A contiguous block of zero or more white pixels (0) at the very beginning of the input sequence. Can be empty.
+  - id: shifting_block
+    type: sequence_segment
+    description: The contiguous segment located between the 'leading_zeros' (or start of sequence if no leading zeros) and the 'marker_pair'. Can be empty. Contains non-white pixels in the examples, but logic should handle any color.
+  - id: trailing_elements
+    type: sequence_segment
+    description: All elements from the 'marker_anchor' (8) to the end of the sequence.
+relationships:
+  - type: find
+    target: marker ([0, 0, 8])
+    method: Locate the first occurrence within the input sequence.
+  - type: split
+    target: input_sequence
+    based_on: marker location and leading_zeros end
+    produces: leading_zeros, shifting_block, marker_pair, trailing_elements
+actions:
+  - type: identify
+    target: marker_start_index
+    description: Find the index `i` where the marker [0, 0, 8] first begins.
+  - type: identify
+    target: last_leading_zero_index
+    description: Find the index `j` of the last '0' in the initial contiguous block of zeros. Set to -1 if the sequence doesn't start with '0'.
+  - type: extract
+    target: leading_zeros
+    using: Slice `input[0 : j+1]`.
+  - type: extract
+    target: marker_pair
+    using: Slice `input[i : i+2]`.
+  - type: extract
+    target: shifting_block
+    using: Slice `input[j+1 : i]`.
+  - type: extract
+    target: trailing_elements
+    using: Slice `input[i+2 : end]`.
+  - type: concatenate
+    order: [leading_zeros, marker_pair, shifting_block, trailing_elements]
+    result: output_sequence

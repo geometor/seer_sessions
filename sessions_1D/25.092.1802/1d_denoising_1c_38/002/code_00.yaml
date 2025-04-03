@@ -1,0 +1,55 @@
+task_type: object_selection_and_filtering
+input_features:
+  - grid_dimensionality: 1D (single row, represented as a list of lists: [[...]])
+  - element_type: integers (0-9) representing colors
+  - data_structure_note: Input might be received as a numpy array or list; processing should ideally handle lists.
+  - background_color: white (0)
+  - foreground_color: single non-white color (varies per example: 4, 1, 8)
+  - foreground_pixels_form_blocks: Yes, multiple contiguous blocks of the foreground color can exist.
+  - block_properties:
+      - contiguity: horizontal (adjacent elements in the list)
+      - size: variable length (number of consecutive foreground pixels)
+output_features:
+  - grid_dimensionality: 1D (single row, represented as a list of lists: [[...]])
+  - dimensions: same length as the input row
+  - background_color: white (0)
+  - foreground_color: same as input foreground color
+  - foreground_pixels_form_blocks: Yes, exactly one contiguous block of the foreground color exists (or none if the input had no foreground color).
+relationship_input_output:
+  - selection_criterion: Identify the contiguous block of foreground pixels with the maximum length.
+  - tie-breaking: If multiple blocks share the maximum length, the examples imply any one suffices (the analysis code picked the first one encountered).
+  - preservation: The single output foreground block corresponds exactly in color, size, and position (start/end indices) to the largest foreground block found in the input.
+  - modification: All pixels in the output that do not belong to the preserved largest block are set to the background color (white, 0).
+objects:
+  - object: input_row
+    definition: A 1D sequence (list) of pixel color values.
+    properties:
+      - length: number of pixels
+      - pixels: list of integers (0-9)
+  - object: background_pixel
+    color: white (0)
+  - object: foreground_pixel
+    color: non-white (consistent within an example)
+  - object: foreground_block
+    definition: A maximal contiguous sequence (sub-list) of foreground_pixels within the input_row.
+    properties:
+      - color: foreground_color
+      - length: number of pixels in the sequence
+      - start_index: position of the first pixel in the block
+      - end_index: position of the last pixel in the block
+  - object: target_block
+    definition: The foreground_block with the maximum length in the input_row.
+  - object: output_row
+    definition: A 1D sequence (list) derived from the input_row.
+    properties:
+      - length: same as input_row
+      - pixels: list of integers (0-9), predominantly background_pixels, with one potential target_block.
+actions:
+  - process_input: Accept the input grid, potentially handling list or numpy array format, and extract the first row as a list of integers.
+  - identify_foreground_color: Determine the non-white color present in the input row list.
+  - find_contiguous_blocks: Iterate through the input row list to locate all contiguous sequences (blocks) of the foreground color. Record the start index and length of each block.
+  - measure_block_lengths: Calculate the length of each identified foreground block.
+  - select_largest_block: Identify the foreground block with the maximum length. Record its start index and length. Handle cases with no foreground blocks.
+  - create_output_row: Initialize a new list of the same length as the input row, filled entirely with the background color (white, 0).
+  - copy_target_block: If a largest block was found, copy the foreground color value into the corresponding positions (from start index for the calculated length) in the new output row list.
+  - format_output: Return the output row list, wrapped in another list to match the required grid format `[[...]]`.

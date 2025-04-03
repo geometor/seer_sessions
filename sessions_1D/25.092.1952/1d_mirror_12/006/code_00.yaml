@@ -1,0 +1,73 @@
+task_description: >
+  Move a contiguous colored block horizontally within a single-row grid,
+  relative to a fixed pivot pixel (maroon, 9). The horizontal separation
+  between the block and the pivot is preserved.
+
+elements:
+  - type: grid
+    description: A 2D grid, specifically observed as having 1 row and N columns.
+    properties:
+      shape: (1, N) where N=22 in examples.
+      background_color: 0 (white)
+
+  - type: object
+    name: pivot_pixel
+    description: A single pixel that acts as a reference point for the transformation.
+    properties:
+      color: 9 (maroon)
+      position: Fixed row index 0; column index varies but is constant between input/output for a given example (col 9, 11, 13 in examples).
+      count: 1
+
+  - type: object
+    name: movable_block
+    description: A contiguous sequence of pixels of the same color within the single row (not background or pivot color).
+    properties:
+      color: Variable (3-green, 2-red, 4-yellow in examples)
+      shape: Horizontal contiguous block within row 0.
+      size: Variable (length 5, 6, 6 in examples)
+      location: Resides entirely within row 0.
+      count: 1
+
+relationships:
+  - type: relative_position
+    object1: movable_block
+    object2: pivot_pixel
+    dimension: Horizontal (columns within row 0)
+    input_state: movable_block is located entirely to the left of the pivot_pixel's column.
+    output_state: movable_block is located entirely to the right of the pivot_pixel's column.
+
+  - type: distance
+    object1: movable_block
+    object2: pivot_pixel
+    measure: Number of background pixels (white) separating the two objects horizontally within row 0.
+    property: >
+      This horizontal separation distance is conserved between the input and output state.
+      If distance `d` columns separate the end of the block from the pivot column in the input,
+      then distance `d` columns separate the pivot column from the start of the block column in the output.
+
+actions:
+  - name: identify_elements
+    inputs: input_grid (2D numpy array, shape (1, N))
+    outputs: background_color, pivot_index (column), movable_block (color, start_col, size)
+    description: >
+      Find the background color (0). In row 0, find the column index of the pivot pixel (9).
+      Also in row 0, find the contiguous block of another color, its color, starting column index, and length (size).
+
+  - name: calculate_parameters
+    inputs: input_grid (row 0), pivot_col, block_start_col, block_size
+    outputs: separation_distance
+    description: >
+      Calculate the horizontal separation distance in the input row 0.
+      This is the number of background pixels between the block's last column
+      (`block_start_col + block_size - 1`) and the `pivot_col`.
+      Distance = `pivot_col - (block_start_col + block_size)`.
+
+  - name: construct_output
+    inputs: grid_shape (1, N), background_color, pivot_col, pivot_color, block_color, block_size, separation_distance
+    outputs: output_grid (2D numpy array, shape (1, N))
+    description: >
+      Create an output grid of the same shape, filled with the background color.
+      Place the pivot pixel (color 9) at `(0, pivot_col)`.
+      Calculate the output block's starting column: `output_block_start_col = pivot_col + 1 + separation_distance`.
+      Place the movable block (using `block_color` and `block_size`) into row 0
+      starting at `output_block_start_col`, ensuring it doesn't exceed grid boundaries.

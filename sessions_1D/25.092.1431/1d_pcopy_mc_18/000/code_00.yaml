@@ -1,0 +1,45 @@
+task_context:
+  grid_dimensionality: 1D (single row)
+  colors_used:
+    - 0 (white): background/separator
+    - 1-9: various foreground colors
+
+objects:
+  - id: single_pixel
+    description: A non-white pixel P at index `i` where the pixel at `i-1` is white (0) and the pixel at `i+1` is white (0). Boundary conditions might need consideration if such pixels occur at index 0 or grid_width-1, but examples show them mid-grid.
+    properties:
+      - color: The color value (1-9) of the pixel.
+      - index: The position `i` in the row.
+  - id: segment_len3
+    description: A contiguous sequence of exactly three identical non-white pixels.
+    properties:
+      - color: The color value (1-9) of the pixels in the segment.
+      - indices: The starting, middle, and ending indices of the segment.
+  - id: background
+    description: White pixels (0).
+
+relationships:
+  - type: adjacency
+    description: Pixels are evaluated based on their immediate left and right neighbors.
+  - type: isolation
+    description: A property of `single_pixel`, defined by white neighbors.
+
+actions_on_input:
+  - action: identify_single_pixels
+    description: Scan the input grid to find all pixels matching the `single_pixel` definition. Record their index and color.
+  - action: identify_preserved_elements
+    description: Identify `segment_len3` and `background` pixels that are *not* adjacent (left or right) to an identified `single_pixel`.
+
+transformation:
+  - based_on: identified `single_pixel` at input index `i` with color `c`.
+  - action: expand_pixel
+    target: output grid
+    effect: Set the pixels at output indices `i-1`, `i`, and `i+1` to color `c`.
+  - based_on: identified `preserved_elements`.
+  - action: copy_pixel
+    target: output grid
+    effect: Copy the color of the preserved element from the input grid to the corresponding index in the output grid.
+
+processing_notes:
+  - The identification of single pixels must happen based entirely on the input grid state *before* any transformations are applied to the output grid.
+  - The output grid is constructed by first potentially copying the input, then applying the `expand_pixel` transformation for all identified single pixels. This overwrites the original single pixel and its neighbors (which could be background or part of another segment).

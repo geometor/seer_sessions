@@ -1,0 +1,48 @@
+task_description: Shifts a contiguous color block two positions to the right, triggered by a specific adjacent marker sequence.
+grid_dimensionality: 1D (represented as 1xN list of lists)
+elements:
+  - element: marker_sequence
+    description: A fixed sequence of four pixels used to locate the transformation site.
+    value: [white, white, gray, white] # [0, 0, 5, 0]
+    role: Locator pattern.
+  - element: color_block
+    description: A contiguous block of a single non-white color.
+    properties:
+      - color: The specific non-white color (variable).
+      - length: The number of pixels in the block (variable).
+      - position: Located immediately preceding the marker_sequence in the input.
+    role: The object being moved/transformed.
+  - element: background
+    description: The default pixel color.
+    value: white # 0
+relationships:
+  - type: spatial
+    description: The color_block ends exactly one position before the marker_sequence begins.
+transformation_steps:
+  - step: 1_initialize
+    action: copy_input
+    description: Create a mutable copy of the input grid row.
+  - step: 2_locate_marker
+    action: find_sequence
+    target: marker_sequence
+    input: copied grid row
+    output: starting index of the marker (`marker_start`). If not found, stop.
+  - step: 3_identify_block
+    action: identify_preceding_block
+    input: copied grid row, `marker_start`
+    details: Find the contiguous block of non-white color ending at `marker_start - 1`.
+    output: block's color (`block_color`), block's start index (`block_start`), block's end index (`block_end = marker_start - 1`).
+  - step: 4_clear_origin
+    action: modify_pixels
+    target: copied grid row
+    details: Set the pixels at indices `block_start` and `block_start + 1` to white (0). Handle boundary conditions (if block_start is 0 or 1).
+  - step: 5_apply_shift
+    action: modify_pixels
+    target: copied grid row
+    details: Iterate from `i = block_start` to `block_end`. For each `i`, set the pixel at index `i + 2` to `block_color`. Ensure writing stays within grid bounds.
+  - step: 6_finalize
+    action: format_output
+    description: Return the modified grid row within a list (to match the 1xN structure).
+invariants:
+  - The marker sequence `[0, 0, 5, 0]` itself defines the relative position of the gray (5) and final white (0) pixels in the output; they are effectively preserved at indices `marker_start + 2` and `marker_start + 3` of the *original* grid indices, which corresponds to the end of the shifted block.
+  - Pixels outside the area affected by the block shift (clearing the origin, writing the shifted block) remain unchanged.

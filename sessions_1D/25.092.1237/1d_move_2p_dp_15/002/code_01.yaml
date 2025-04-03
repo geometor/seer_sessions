@@ -1,0 +1,68 @@
+task_type: array_manipulation
+dimensionality: 1D
+input_elements:
+  - type: object
+    name: movable_block
+    description: A contiguous sequence of 1 or more identical pixels whose color is not white (0) and not orange (7). Assumed to be unique per input.
+    properties:
+      - color: The uniform color of the pixels in the block.
+      - length: The number of pixels in the block.
+      - start_index: The 0-based index of the first pixel of the block.
+  - type: object
+    name: anchor_pixel
+    description: A single pixel with the color orange (7). Assumed to be unique per input.
+    properties:
+      - color: 7 (orange)
+      - index: The 0-based index of the pixel.
+  - type: background
+    name: empty_space
+    description: Pixels with the color white (0). Fills the remaining space.
+    properties:
+      - color: 0 (white)
+output_elements:
+  - type: object
+    name: shifted_block
+    description: The movable_block placed at a new position.
+    properties:
+      - color: Same as the input movable_block's color.
+      - length: Same as the input movable_block's length.
+      - start_index: Input movable_block's start_index + 2.
+  - type: object
+    name: fixed_anchor
+    description: The anchor_pixel placed at its original position.
+    properties:
+      - color: 7 (orange)
+      - index: Same as the input anchor_pixel's index.
+  - type: background
+    name: empty_space
+    description: Pixels with the color white (0). Fills all positions not occupied by the shifted_block or the fixed_anchor.
+    properties:
+      - color: 0 (white)
+transformation:
+  - type: identify
+    source: input_array
+    target: movable_block
+    using: Scan for contiguous pixels != 0 and != 7. Record color, length, start_index.
+  - type: identify
+    source: input_array
+    target: anchor_pixel
+    using: Scan for pixel == 7. Record index.
+  - type: initialize_output
+    details: Create an output array of the same size as the input, filled with white (0).
+  - type: calculate_position
+    target: shifted_block
+    details: new_start_index = movable_block.start_index + 2
+  - type: place_object
+    target: output_array
+    object: shifted_block
+    details: Place the block (color, length) starting at new_start_index. Handle boundary conditions (do not write past the end of the array).
+  - type: place_object
+    target: output_array
+    object: fixed_anchor
+    details: Place the anchor pixel (7) at anchor_pixel.index. This step occurs logically *after* placing the shifted_block, potentially overwriting a pixel if the shifted block overlaps the anchor's original position.
+constraints:
+  - Input and output arrays have the same length.
+  - Each input contains exactly one movable_block.
+  - Each input contains exactly one anchor_pixel.
+  - The shift amount is fixed at +2 positions.
+  - The anchor_pixel maintains its absolute position.

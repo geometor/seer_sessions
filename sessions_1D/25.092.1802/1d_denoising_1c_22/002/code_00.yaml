@@ -1,0 +1,70 @@
+task_type: grid_transformation
+description: >
+  Identify the single longest contiguous horizontal segment of the non-background 
+  color within the flattened representation of the input grid. The output grid 
+  has the same dimensions as the input, but contains only this longest segment, 
+  placed according to its position in the flattened sequence, with all other cells 
+  set to the background color.
+
+input_features:
+  - element: grid
+    properties:
+      dimensionality: 2 
+      value_type: integer (color code 0-9)
+      contains:
+        - background_color: white (0)
+        - primary_color: single non-zero color (e.g., red, blue, yellow)
+          distribution: potentially scattered across the grid
+
+output_features:
+  - element: grid
+    properties:
+      dimensionality: 2
+      size: same as input grid
+      value_type: integer (color code 0-9)
+      contains:
+        - background_color: white (0)
+        - primary_color: same as input primary_color
+          distribution: >
+            A single contiguous segment corresponding to the longest 
+            horizontal run found in the flattened input, placed back into 
+            the grid structure based on its flattened index range.
+
+transformation_logic:
+  - action: store_shape
+    inputs: [input_grid]
+    outputs: [original_shape]
+    description: Record the original dimensions of the input grid.
+  - action: flatten_grid
+    inputs: [input_grid]
+    outputs: [flat_array]
+    description: Convert the 2D input grid into a 1D array (row-major order).
+  - action: identify_colors
+    inputs: [flat_array]
+    outputs: [background_color, primary_color]
+    description: Determine the background (0) and the single non-zero primary color from the flattened array.
+  - action: find_contiguous_blocks
+    inputs: [flat_array, primary_color]
+    outputs: [list_of_blocks] # Each block represented by {start_index, end_index, length} relative to flat_array
+    description: Locate all contiguous segments of the primary color in the flattened array.
+  - action: find_largest_block
+    inputs: [list_of_blocks]
+    outputs: [largest_block] # Contains start, end, length of the longest block in the flattened array
+    description: Identify the block with the maximum length from the list. Handle ties if necessary (e.g., take the first one found).
+  - action: generate_output_flat
+    inputs: [flat_array_size, background_color, largest_block, primary_color]
+    outputs: [output_array_flat]
+    description: >
+      Create a 1D array of the same size as flat_array, filled with the background 
+      color. If a largest_block was found, place the primary color pixels at the 
+      indices defined by the largest_block.
+  - action: reshape_output
+    inputs: [output_array_flat, original_shape]
+    outputs: [output_grid]
+    description: Reshape the 1D output array back into the original 2D grid dimensions.
+
+relationships:
+  - identity: Dimensions (height, width) of the output grid are identical to the input grid.
+  - identity: The primary color used in the output is identical to the primary color identified in the input.
+  - correspondence: The segment of primary color in the output corresponds directly in position and length to the longest contiguous segment found when the input grid is treated as a flattened 1D sequence.
+  - filtering: All cells in the output grid that do not belong to the identified longest segment (based on its flattened position) are set to the background color.

@@ -1,0 +1,38 @@
+grid_properties:
+  dimensionality: 1D (effectively, operates on a single row)
+  height: 1
+  width: variable (e.g., 32 in examples)
+  input_output_size_relation: output width is identical to input width
+
+pixel_colors:
+  - background: 0 (white)
+  - active_colors: 1-9 (non-white colors involved in patterns)
+
+identified_objects:
+  - object_name: isolated_pixel_marker
+    description: A non-white pixel 'C' surrounded by two white pixels on each side.
+    structure: A sequence of five pixels `[P1, P2, P3, P4, P5]` where P1, P2, P4, P5 are white (0) and P3 is non-white (C). Represented as `(0, 0, C, 0, 0)`.
+    location: Occurs at indices `[i-2, i-1, i, i+1, i+2]` in the input row.
+
+  - object_name: solid_triplet
+    description: A sequence of three pixels of the same non-white color 'C'.
+    structure: `(C, C, C)` where C is not white (0).
+    location: Can occur in input or output.
+
+transformation_rules:
+  - rule: expansion_from_marker
+    input_pattern: `isolated_pixel_marker` `(0, 0, C, 0, 0)` centered at index `i` in the input.
+    output_pattern: Replaces the central three pixels `(0, C, 0)` at input indices `[i-1, i, i+1]` with `(C, C, C)` in the output at the same indices. The flanking white pixels at `i-2` and `i+2` remain white. The net effect transforms the 5-pixel input `(0, 0, C, 0, 0)` to the output `(0, C, C, C, 0)`.
+    condition: Applies when the `isolated_pixel_marker` pattern is found in the input.
+
+  - rule: preservation
+    input_elements: All pixels not part of the central `(0, C, 0)` segment of an identified `isolated_pixel_marker`.
+    output_elements: Copied directly from the input to the output at the same position unless overwritten by the `expansion_from_marker` rule.
+    effect: This preserves existing `solid_triplet` patterns from the input unless they overlap with a transformation site (which doesn't occur in examples), and preserves background pixels not involved in the transformation.
+
+processing_flow:
+  - step: Initialize the output grid as a copy of the input grid.
+  - step: Iterate through the input grid row, checking for the `isolated_pixel_marker` pattern `(0, 0, C, 0, 0)` centered at each possible position `i` (from index 2 to width-3).
+  - step: If the pattern is found centered at input index `i` with non-white color `C`:
+      - Modify the output grid at indices `i-1`, `i`, and `i+1` by setting them all to the color `C`.
+  - step: The final state of the output grid after checking all positions is the result. Reads are always from the original input; writes are always to the output copy.

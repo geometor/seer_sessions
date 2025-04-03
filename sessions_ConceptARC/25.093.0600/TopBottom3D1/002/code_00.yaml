@@ -1,0 +1,66 @@
+---
+task_elements:
+  - name: Grid
+    type: Container
+    properties:
+      - dimensions: [rows, columns] (constant between input/output)
+      - elements: Cells
+
+  - name: Cell
+    type: Element
+    properties:
+      - position: [row, column]
+      - color: integer (0-9)
+      - state: (derived) frame, internal, external
+
+  - name: Background Region
+    type: Region
+    properties:
+      - color: 0
+      - role: Defines the reference point for 'external'
+
+  - name: Non-Zero Color Region
+    type: Region
+    properties:
+      - color: C (specific non-zero integer)
+      - connectivity: Connected component of cells with color C
+      - role: Can be 'frame', 'internal', or 'other external'
+
+relationships:
+  - type: Adjacency
+    between: [Cell, Cell]
+    properties: [4-connectivity (up, down, left, right)]
+  - type: Adjacency
+    between: [Region, Region]
+    description: Exists if any cell in Region1 is adjacent to any cell in Region2.
+  - type: Reachability
+    description: Cells reachable from the Background Region via flood fill without crossing identified Frame Regions are 'external'.
+
+actions:
+  - name: Identify Valid Frame Colors
+    input: Input Grid
+    output: Set of frame color values (ValidFrameColors)
+    method:
+      1. Find all unique non-zero colors `U`.
+      2. Initialize `ValidFrameColors` as an empty set.
+      3. For each color `Cf` in `U`:
+         a. Perform a test flood fill starting from all background (0) cells, treating `Cf` as walls. Let reachable set be `Reachable_test`.
+         b. Check if there exists any cell `(r, c)` such that `input_grid[r, c]` is non-zero, `input_grid[r, c] != Cf`, and `(r, c)` is NOT in `Reachable_test`.
+         c. If such a cell exists, add `Cf` to `ValidFrameColors`.
+  - name: Determine Final Reachability (Flood Fill)
+    input: [Input Grid, ValidFrameColors]
+    output: Set of coordinates for "external" cells (ExternalCells_final)
+    method: Perform a flood fill starting from all background (0) cells. The fill can propagate to adjacent cells unless the target cell's color is in `ValidFrameColors`. Mark all reached cells as external.
+  - name: Generate Output Grid
+    input: [Input Grid, ValidFrameColors, ExternalCells_final]
+    output: Output Grid
+    method:
+      1. Initialize `output_grid` as a copy of `input_grid`.
+      2. Iterate through each cell `(r, c)` of the input grid:
+         a. Let `input_color = input_grid[r, c]`.
+         b. If `input_color` is in `ValidFrameColors`, `output_grid[r, c] = input_color` (frame cells remain).
+         c. Else if `(r, c)` is in `ExternalCells_final`, `output_grid[r, c] = input_color` (external cells remain).
+         d. Else (cell is internal and not a frame color):
+            i. Find an adjacent neighbor `(nr, nc)` such that `input_grid[nr, nc]` is in `ValidFrameColors`.
+            ii. Set `output_grid[r, c]` to the color of that adjacent frame cell (`input_grid[nr, nc]`). (Assume one such neighbor exists and is sufficient based on examples).
+---

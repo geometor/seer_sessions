@@ -1,0 +1,68 @@
+task_type: 1D rearrangement
+grid_dimensionality: 1D (represented as 1xN list)
+background_color: white (0)
+pivot_color: maroon (9)
+objects:
+  - id: pivot
+    color: maroon (9)
+    count: 1
+    role: Anchor point for rearrangement. Its position remains fixed.
+  - id: colored_block
+    color: any color except white (0) or maroon (9)
+    count: 1
+    properties:
+      - contiguous sequence of identical pixels
+      - located strictly before the pivot pixel in the input
+    role: The object being moved.
+  - id: gap
+    color: assumed to be background_color (white 0) based on examples
+    properties:
+      - contiguous sequence of pixels located strictly between the colored_block and the pivot.
+      - Can have zero length if block and pivot are adjacent.
+    role: Defines the offset for the moved block's new position.
+relationship:
+  - type: spatial order (input)
+    description: prefix + colored_block + gap + pivot + suffix
+  - type: spatial order (output)
+    description: prefix + background_fill + gap + pivot + background_fill_gap + colored_block + suffix
+    clarification: The original location of the colored_block is replaced by background pixels. The block is inserted after the pivot, offset by the original gap length.
+action:
+  - type: cut and paste
+    target: colored_block
+    steps:
+      1. Identify the pivot pixel and its index (`pivot_index`).
+      2. Identify the colored block, its content (`block_data`), start index (`block_start`), and end index (`block_end`).
+      3. Calculate the gap length: `gap_length = pivot_index - block_end - 1`.
+      4. Create the output row initialized as a copy of the input row.
+      5. Replace the original block location (from `block_start` to `block_end`) in the output row with background pixels (0).
+      6. Define the insertion point for the block: `insert_index = pivot_index + 1`.
+      7. Insert the `block_data` into the output row starting at `insert_index`. Note: This description needs refinement as simple insertion might shift subsequent elements incorrectly. A better way is to construct the output piece by piece or use slicing carefully.
+action_revised:
+  - type: rearrangement
+    target: colored_block
+    steps:
+      1. Identify the `pivot` pixel and its index (`pivot_index`).
+      2. Identify the `colored_block` (pixels `block_data`, start index `block_start`, end index `block_end`).
+      3. Identify the `gap` pixels between the block and pivot (indices `block_end + 1` to `pivot_index - 1`). Calculate `gap_length`.
+      4. Determine the target start index for the block in the output: `target_block_start = pivot_index + 1 + gap_length`.
+      5. Create the output row, initially filled with background color (0) and having the same length as the input.
+      6. Place the `pivot` pixel at `pivot_index` in the output row.
+      7. Place the `colored_block` (data) starting at `target_block_start` in the output row.
+      8. Fill the rest of the output row based on the *non-block*, *non-pivot* pixels from the input, preserving their original positions relative to the grid boundaries and the pivot. (Essentially, copy the input, overwrite the block's original position with 0s, then overwrite the target position with the block data).
+action_final:
+  - type: relocate block
+    target: colored_block
+    steps:
+      1. Identify the `pivot` pixel and its index (`pivot_index`).
+      2. Identify the `colored_block` (pixels `block_data`, start index `block_start`, end index `block_end`).
+      3. Calculate the length of the gap between the block and the pivot: `gap_length = pivot_index - block_end - 1`.
+      4. Create the output row as a copy of the input row.
+      5. Overwrite the pixels in the output row from `block_start` to `block_end` with the background color (0).
+      6. Calculate the target start index for the block in the output: `target_block_start = pivot_index + 1 + gap_length`.
+      7. Overwrite the pixels in the output row starting from `target_block_start` for the length of the block, using the `block_data`.
+constraints:
+  - Exactly one pivot pixel exists.
+  - Exactly one contiguous block of a single color (not white 0 or maroon 9) exists.
+  - The colored block initially precedes the pivot pixel.
+  - The length of the input and output rows are identical.
+  - The pivot pixel does not move.

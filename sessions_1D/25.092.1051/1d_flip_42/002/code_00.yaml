@@ -1,0 +1,47 @@
+task_type: object_relocation
+grid_dimensionality: 1D # All examples are 1xN, treated as 1D arrays
+background_color: 0 # white
+objects:
+  - name: marker
+    type: pixel
+    count: 1
+    properties:
+      - color: non-white # variable across examples (3/green, 8/azure)
+      - size: 1x1
+      - constraints:
+          - is immediately adjacent (left) to the 'block' object
+          - is preceded by white(0) or the grid start boundary
+  - name: block
+    type: contiguous_1d_block
+    count: 1
+    properties:
+      - color: non-white # variable across examples (1/blue, 2/red), different from 'marker' color
+      - shape: horizontal line (1xM where M >= 1)
+      - constraints:
+          - is immediately adjacent (right) to the 'marker' object
+          - is followed by white(0) or the grid end boundary
+relationships:
+  - type: spatial_pattern
+    objects: [marker, block]
+    details: The pattern consists of `(white/boundary) -> marker -> block -> (white/boundary)`. The marker pixel is at index `i`, the block occupies indices `i+1` to `j`.
+actions:
+  - action: identify_pattern
+    description: Scan the 1D grid to locate the unique index `i` that marks the start of the `marker -> block` pattern based on color changes and boundary conditions.
+    outputs:
+        - marker_color
+        - marker_index (i)
+        - block_end_index (j)
+  - action: relocate_marker
+    description: Modify a copy of the input grid to move the marker.
+    steps:
+      - step: erase original marker
+        location: index `i` (marker_index)
+        new_color: 0 # white
+      - step: place marker at new location
+        location: index `j + 1` (block_end_index + 1)
+        new_color: original color of the marker
+invariants:
+  - grid_dimensions
+  - color_palette (set of colors present)
+  - count_of_non_white_pixels
+  - color_and_length_of_block

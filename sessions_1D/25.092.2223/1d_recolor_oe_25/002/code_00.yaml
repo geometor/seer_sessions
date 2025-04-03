@@ -1,0 +1,45 @@
+task_description: Recolor horizontal gray segments based on sequence order and segment length parity.
+grid_properties:
+  dimensionality: 2D (represented as 1D in input/output strings, actual shape inferred)
+  # All training examples are 1x29
+  height: 1 
+  width: 29 
+elements:
+  - element_type: pixel
+    properties:
+      color: white (0), gray (5), azure (8), maroon (9)
+  - element_type: object
+    definition: A contiguous horizontal segment of one or more gray (5) pixels within a row.
+    properties:
+      color: gray (5)
+      location: defined by row index and column indices (start, end)
+      length: number of pixels in the segment (end - start + 1)
+      parity: whether the length is odd or even
+relationships:
+  - type: spatial
+    description: Pixels form a 1x29 grid. Segments are horizontal.
+  - type: sequential_order
+    description: Objects (segments) are ordered based on left-to-right column scan (since height is 1).
+transformation:
+  - action: identify_objects
+    input: input grid (1x29)
+    output: ordered list of gray horizontal segments with their locations and lengths.
+    details: Scan grid left-to-right to find continuous sequences of gray (5).
+  - action: determine_start_color
+    input: count of identified segments
+    output: color for the first segment (azure 8 or maroon 9)
+    details: If total segment count is odd, start color is azure (8). If even, start color is maroon (9).
+  - action: assign_colors_sequentially
+    input: ordered list of segments, start_color
+    output: assignment of azure (8) or maroon (9) to each segment
+    details:
+      - Assign start_color to the first segment (index 0).
+      - For each subsequent segment (index i > 0):
+        - Get the color assigned to the previous segment (index i-1).
+        - Check the length parity of the current segment (i) and the previous segment (i-1).
+        - If both current and previous segments have even length, assign the same color as the previous segment.
+        - Otherwise, assign the alternate color (if previous was 8, assign 9; if previous was 9, assign 8).
+  - action: recolor_grid
+    input: input grid, segment locations, assigned colors
+    output: output grid
+    details: Create the output grid by copying the input grid. For each identified segment, change the color of its corresponding pixels from gray (5) to the assigned color (azure 8 or maroon 9). Keep white (0) pixels unchanged.

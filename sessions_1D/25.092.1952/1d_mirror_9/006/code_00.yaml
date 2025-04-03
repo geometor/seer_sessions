@@ -1,0 +1,61 @@
+task_description: Relocate a contiguous colored block to a new row determined by a marker, placing the block at the start of the new row.
+
+grid_properties:
+  - shape_analysis: Input/output pairs consistently have 24 elements, strongly suggesting a 4x6 grid structure upon reshaping.
+  - assumed_shape: [4, 6] # rows, columns
+
+elements:
+  - element_type: background
+    color_code: 0
+    color_name: white
+    role: Fills empty space in the output grid. Replaces the source location of the moved block.
+  - element_type: marker
+    color_code: 9
+    color_name: maroon
+    role: Acts as a reference point. Its row index determines the destination row for the object_block. Its coordinates are preserved in the output.
+    properties:
+      - count: 1 per grid
+      - location: (marker_row, marker_col)
+  - element_type: object_block
+    role: The entity that is moved.
+    properties:
+      - color: Varies (e.g., 3/green, 2/red, 7/orange), but is not 0 or 9.
+      - shape: Contiguous horizontal sequence (block) of a single color within a specific row (source_row).
+      - identification: Find the row containing any non-0, non-9 color. Within that row, identify the start column, end column, length, and color of the contiguous block of that color.
+      - count: 1 per grid
+
+transformation:
+  - action: determine_grid_shape
+    details: Assume input flat list represents a 4x6 grid. Reshape accordingly.
+  - action: initialize_output
+    details: Create a new 4x6 grid filled entirely with the background color (white, 0).
+  - action: identify_marker
+    target: marker (9)
+    details: Find its coordinates (marker_row, marker_col) in the input grid.
+  - action: identify_object_block
+    target: object_block
+    details:
+      - Find the source_row containing any pixel color C where C is not 0 and not 9.
+      - Within source_row, find the contiguous block of color C. Record its color (obj_color), start column (obj_start_col), and length (obj_length).
+  - action: calculate_destination
+    target: object_block
+    reference: marker
+    details: The destination row index (dest_row) is marker_row + 1. The destination start column is 0.
+  - action: place_object_block
+    target: object_block
+    destination: output grid
+    details: Copy the identified object_block (using obj_color and obj_length) into the output grid at row dest_row, starting at column 0. Ensure placement respects grid boundaries.
+  - action: place_marker
+    target: marker
+    destination: output grid
+    details: Copy the marker pixel (maroon, 9) to the output grid at its original coordinates (marker_row, marker_col), overwriting any background pixel placed there.
+
+relationships:
+  - type: relative_positioning
+    source: object_block
+    reference: marker
+    details: The destination row of the object_block is marker_row + 1. The block always starts at column 0 in the destination row.
+  - type: replacement
+    target: original position of object_block within its source_row
+    replacement: background color (white, 0)
+    details: The space occupied by the object_block in the input grid's source_row is filled with the background color in the output grid (implicitly achieved by initializing output to 0s and only placing the block and marker).

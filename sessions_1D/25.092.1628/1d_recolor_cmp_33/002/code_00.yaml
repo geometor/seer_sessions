@@ -1,0 +1,65 @@
+task_context:
+  grid_dimensionality: 2D (specifically 1xN shape)
+  data_format: NumPy array
+  colors_used:
+    - white (0)
+    - azure (8)
+    - green (3)
+  input_composition: A single row containing sequences of azure pixels separated by white pixels.
+  output_composition: Similar structure to input, but azure sequences matching the maximum length are replaced by green sequences.
+
+objects:
+  - type: grid
+    properties:
+      - format: NumPy array
+      - shape: (1, width) where width varies
+      - pixels: 2D array of integer color values
+  - type: pixel
+    properties:
+      - color: (white: 0, azure: 8, green: 3)
+      - position: (row_index, col_index) - always row_index=0 for this task
+  - type: sequence
+    properties:
+      - source_row: The single row of the input grid.
+      - color: azure (8)
+      - pixels: contiguous horizontal block of pixels of the same color in the source row
+      - length: number of pixels in the sequence
+      - start_index: column index of the first pixel
+      - end_index: column index of the last pixel
+      - is_maximal_length: boolean indicating if its length equals the maximum length of all azure sequences in the source row
+
+actions_on_objects:
+  - action: extract_row
+    description: Get the first (and only) row from the input grid for processing.
+    input: input grid (NumPy array)
+    output: 1D view or copy of the row data
+  - action: identify_sequences
+    description: Find all contiguous horizontal sequences of azure (8) pixels within the extracted row.
+    input: extracted row data
+    output: list of azure sequences with their properties (length, start_index, end_index)
+  - action: find_max_length
+    description: Determine the maximum length among all identified azure sequences.
+    input: list of azure sequences
+    output: maximum length value (integer)
+  - action: filter_maximal_sequences
+    description: Identify which sequences have a length equal to the maximum length.
+    input: list of azure sequences, maximum length value
+    output: list of maximal-length azure sequences
+  - action: update_output_grid
+    description: Create a copy of the input grid. Modify the copied grid by changing the color of pixels corresponding to the maximal-length azure sequences from azure (8) to green (3).
+    input: input grid (NumPy array), list of maximal-length sequences
+    output: modified output grid (NumPy array)
+
+relationships:
+  - type: contiguity
+    description: Pixels of the same color adjacent horizontally in the row form a sequence.
+  - type: comparison
+    description: The length of each azure sequence is compared to the maximum length found across all azure sequences in that specific input row.
+
+invariants:
+  - The grid shape (1xN) remains unchanged.
+  - White (0) pixels remain unchanged in position and color.
+  - Azure (8) sequences whose length is less than the maximum length for that input row remain unchanged.
+  - The length and position (start/end indices) of the modified sequences remain the same; only the color changes.
+
+transformation_goal: To identify the longest contiguous horizontal sequence(s) of azure pixels within the single row of the input grid and change their color to green in the output grid.

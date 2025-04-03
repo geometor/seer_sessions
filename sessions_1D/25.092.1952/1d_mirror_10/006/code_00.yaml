@@ -1,0 +1,57 @@
+task_type: object_manipulation
+grid_dimensionality: 1D # Effectively 1 row grid
+
+components:
+  - id: background
+    type: area
+    color: white (0)
+    role: fills_empty_space
+
+  - id: marker
+    type: pixel
+    color: maroon (9)
+    quantity: 1
+    attributes:
+      - stationary # Position remains constant from input to output.
+      - reference_point # Serves as the pivot for the block's movement.
+
+  - id: main_block
+    type: object # Contiguous block of pixels
+    color: variable (non-white, non-maroon; gray(5) or magenta(6) in examples)
+    shape: horizontal_line
+    quantity: 1
+    location_constraint: Must be located entirely to the left of the marker in the input.
+    attributes:
+      - color_preserved # Color does not change.
+      - length_preserved # Length does not change.
+      - moves # Position changes from input to output.
+      - relative_position_preserved: The distance (number of cells) between the block's nearest edge and the marker is the same in the output as in the input, but on the opposite side.
+
+relationships:
+  - type: spatial_reflection
+    source: main_block
+    pivot: marker
+    rule: |
+      1. Identify the marker pixel (maroon, 9) at index `marker_idx`.
+      2. Identify the contiguous block of a single color (not white 0, not maroon 9) entirely to the left of `marker_idx`. Let its rightmost index be `block_right_idx_in`.
+      3. Calculate the distance `d = marker_idx - block_right_idx_in`. This distance represents the offset from the block's right edge to the marker.
+      4. The block's new starting position in the output grid will be `output_start_idx = marker_idx + d`. This places the block's left edge at the same distance `d` to the right of the marker.
+
+actions:
+  - action: initialize_output
+    details: Create a new grid of the same dimensions as the input, filled with the background color (white, 0).
+  - action: locate_and_place_marker
+    details: Find the index `marker_idx` of the maroon (9) pixel in the input and place it at the same index in the output grid.
+  - action: locate_block
+    target: main_block (in input)
+    details: Find the contiguous block of non-white, non-maroon pixels located entirely to the left of `marker_idx`. Record its color (`block_color`), length (`block_len`), and the index of its rightmost pixel (`block_right_idx_in`).
+  - action: check_block_existence
+    details: If no such block is found, the process stops, and the output grid (containing only the marker and background) is returned.
+  - action: calculate_distance
+    value: `d = marker_idx - block_right_idx_in`
+  - action: calculate_new_position
+    target: main_block (output)
+    value: `output_start_idx = marker_idx + d`
+  - action: place_block
+    target: main_block (output)
+    details: Starting at `output_start_idx` in the output grid, fill the next `block_len` pixels with `block_color`, respecting grid boundaries.

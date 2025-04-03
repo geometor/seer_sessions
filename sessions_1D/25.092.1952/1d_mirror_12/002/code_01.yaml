@@ -1,0 +1,57 @@
+task_description: Relocate a contiguous colored block in a 1D grid based on its position relative to a fixed pivot pixel. The block moves from before the pivot to after the pivot, preserving the separation distance.
+
+elements:
+  - type: grid
+    description: A 1D sequence of pixels (represented as integers).
+    properties:
+      length: Variable (22 in examples).
+      background_color: 0 (white).
+
+  - type: object
+    name: pivot_pixel
+    description: A single, fixed reference pixel.
+    properties:
+      color: 9 (maroon).
+      count: 1.
+      position: Its index remains constant between input and output.
+
+  - type: object
+    name: movable_block
+    description: A contiguous sequence of pixels of the same color, excluding background and pivot colors.
+    properties:
+      color: Variable (e.g., 3-green, 2-red, 4-yellow).
+      shape: 1D contiguous block.
+      size: Variable.
+      count: 1.
+      input_position: Located entirely before the pivot_pixel index.
+      output_position: Located entirely after the pivot_pixel index.
+
+relationships:
+  - type: relative_position
+    object1: movable_block
+    object2: pivot_pixel
+    property: In the input, the block ends before the pivot starts. In the output, the block starts after the pivot ends.
+
+  - type: distance
+    object1: movable_block (specifically, its trailing edge in input, leading edge in output)
+    object2: pivot_pixel
+    measure: Number of background pixels (white) separating the block and the pivot.
+    property: This separation distance is calculated from the input and preserved in the output.
+      input_distance = pivot_index - (block_start_index + block_size)
+      output_block_start_index = pivot_index + 1 + input_distance
+
+actions:
+  - name: identify_elements
+    inputs: input_grid
+    outputs: background_color, pivot_pixel (index), movable_block (color, start_index, size)
+    description: Scan the grid to find the background color (assumed 0), the single pivot pixel (9) and its index, and the single contiguous block of another color (identifying its color, start index, and length).
+
+  - name: calculate_output_position
+    inputs: pivot_index, block_start_index, block_size
+    outputs: output_block_start_index
+    description: Calculate the separation distance between the block's end and the pivot in the input. Determine the required start index for the block in the output by adding 1 (for the pivot pixel) and the separation distance to the pivot index.
+
+  - name: construct_output
+    inputs: grid_size, background_color, pivot_color, pivot_index, block_color, block_size, output_block_start_index
+    outputs: output_grid
+    description: Create a new grid of the original size, filled with the background color. Place the pivot pixel at its original index. Place the movable block (with its color and size) starting at the calculated output_block_start_index. Ensure the block placement does not exceed grid boundaries (handle potential clipping if necessary, though not observed in examples).

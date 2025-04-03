@@ -1,0 +1,52 @@
+task_type: rearrangement_1d
+grid_dimensionality: 1D # Confirmed by examples
+input_output_relation: transform_segment # Transformation applies only to a part of the array
+size_invariance: true # Array length is preserved
+
+pivot_element:
+  color: 9 # maroon
+  role: boundary_marker
+  action: locates the segment to be transformed (segment before the marker)
+  persistence: fixed_position # The marker itself and elements after it do not move
+
+transformed_segment:
+  location: array elements before the first occurrence of the pivot_element (color 9)
+  elements:
+    - id: background_pixels
+      color: 0 # white
+      role: movable, filler
+      input_property: potentially_scattered
+      output_property: grouped_at_start # Grouped at the beginning of the transformed segment
+    - id: content_pixels
+      color: non-0 and non-9
+      role: movable_block
+      input_property: scattered_among_background or contiguous
+      output_property: grouped_after_background # Appears after all background pixels in the segment
+      internal_order: preserved # Relative order among content pixels is maintained
+
+untransformed_segment:
+  location: array elements at and after the first occurrence of the pivot_element (color 9)
+  persistence: fixed_position # These elements retain their original values and relative positions
+
+actions:
+  - name: locate_boundary
+    input: input_array
+    target: color 9
+    output: index of the first occurrence (boundary_index) or indicator of absence
+  - name: partition_array
+    input: input_array, boundary_index
+    outputs:
+      - segment_before (elements before boundary_index)
+      - boundary_pixel (element at boundary_index, if exists)
+      - segment_after (elements after boundary_index)
+  - name: separate_elements
+    input: segment_before
+    outputs:
+      - list_of_background_pixels (color 0)
+      - list_of_content_pixels (non-0, order preserved)
+  - name: reconstruct_segment
+    inputs: list_of_background_pixels, list_of_content_pixels
+    output: new_segment_before (background pixels followed by content pixels)
+  - name: assemble_output
+    inputs: new_segment_before, boundary_pixel (if exists), segment_after (if exists)
+    output: final_output_array

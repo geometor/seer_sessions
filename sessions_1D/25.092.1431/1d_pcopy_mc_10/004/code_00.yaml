@@ -1,0 +1,28 @@
+grid_dimensionality: 1 # All examples are 1xN grids
+grid_size_preservation: true # Output grid has the same dimensions as the input grid (1xN)
+background_color: white (0)
+objects:
+  - type: contiguous_block
+    properties:
+      - color (white=0 or non-white=1-9)
+      - length (number of contiguous pixels of the same color)
+actions:
+  - identify_blocks: Scan the input row left-to-right to identify contiguous blocks of pixels (both white and non-white).
+  - transform_non_white_blocks:
+      condition: block is non-white and length is 1
+      action: replace with a block of the same color but length 3.
+      condition: block is non-white and length is 3
+      action: keep the block unchanged (replace with same color, length 3).
+  - reduce_following_white_block:
+      trigger: after processing a non-white block.
+      action: Determine the reduction amount based on the *original* length of the non-white block just processed.
+          - If original length was 1, reduction is 2.
+          - If original length was 3, reduction is 1.
+      target: the *next* block in the input sequence, *if* it is a white block.
+      effect: reduce the length of this white block by the calculated reduction amount (minimum length is 0).
+  - construct_output: Append the (potentially transformed) non-white blocks and the (potentially reduced) white blocks sequentially to form the output row structure.
+  - adjust_final_length: If the constructed output row's length does not match the input row's length, adjust the length of the *last appended white block* (by padding or truncating, typically padding with white pixels) to ensure the final output length equals the input length.
+relationships:
+  - Blocks are sequential and maintain their relative order.
+  - The transformation of a non-white block influences the length of the white block immediately following it.
+  - The overall length constraint links the transformations across the entire row.

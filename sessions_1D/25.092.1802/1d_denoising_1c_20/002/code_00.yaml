@@ -1,0 +1,52 @@
+task_type: object_filtering
+input_domain:
+  dimensionality: 2 # Explicitly 2D, although effectively 1D processing
+  grid_shape: 1xN (1 row, N columns)
+  pixel_colors:
+    - white (0)
+    - one other color C (non-zero, consistent within an example)
+  elements:
+    - pixels:
+        attributes: [color, position (row, column)]
+    - row_sequence:
+        description: The single row of pixels constituting the input grid.
+        attributes: [length]
+    - contiguous_blocks:
+        description: Sequences of adjacent pixels of the same non-white color C within the row sequence.
+        attributes: [color, start_column, end_column, length]
+output_domain:
+  dimensionality: 2
+  grid_shape: 1xN (same as input)
+  pixel_colors:
+    - white (0)
+    - the same color C from the input
+  elements:
+    - pixels:
+        attributes: [color, position (row, column)]
+    - single_block:
+        description: The largest contiguous block of color C identified from the input row sequence.
+        attributes: [color, start_column, end_column, length]
+transformation:
+  operation: selection / filtering
+  steps:
+    - Extract the single row (the 1D sequence of pixels) from the 1xN input grid.
+    - Identify the non-white color C present in the row sequence.
+    - Find all contiguous blocks (sequences of one or more adjacent pixels) of color C within the row sequence. Record the start column, end column (exclusive), and length of each block.
+    - Determine the maximum length among all identified blocks.
+    - Select the first block encountered that has this maximum length.
+    - Create an output grid of the same 1xN dimensions as the input, filled entirely with white (0) pixels.
+    - If a largest block was identified, copy the pixels corresponding to this block (using its start and end column indices) from the input row sequence to the corresponding positions in the single row of the output grid.
+relationships:
+  - Adjacency (horizontal): Defines contiguous blocks within the row.
+  - Size comparison: Used to select the largest block based on length.
+  - Positional correspondence: The largest block retains its original column positions within the row in the output.
+invariants:
+  - Grid dimensions (1xN) remain the same.
+  - The color of the pixels within the largest block remains the same.
+  - The row index (always 0) remains the same.
+  - The column indices (position) of the largest block remain the same.
+  - White pixels outside the span of the largest block remain white.
+uncertainties:
+  - Behavior for inputs with multiple non-white colors (assumed not to occur based on examples).
+  - Tie-breaking rule for multiple blocks of the same maximum length (assumed first occurring based on standard iteration).
+  - Handling of completely white inputs (should produce all-white output).

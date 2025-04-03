@@ -1,0 +1,80 @@
+task_description: Relocates a contiguous colored block and its adjacent spacing pixels to the opposite side of a fixed pivot pixel within a 1D grid.
+
+grid_properties:
+  dimensionality: 1D (single row)
+  size_invariant: true # Size remains constant (1x19 in examples)
+  background_color: 0 # white
+
+objects:
+  - object: pivot
+    color: 9 # maroon
+    shape: single pixel
+    quantity: 1
+    properties:
+      - index: variable # Position within the grid
+      - invariant: true # Position and color do not change during transformation
+    role: static reference point
+
+  - object: colored_block
+    color: non-zero, non-nine # e.g., gray (5), green (3)
+    shape: contiguous horizontal block
+    quantity: 1
+    properties:
+      - content: variable # Specific sequence of pixel colors
+      - length: variable
+      - color: variable # The single color making up the block
+      - content_invariant: true # Content does not change
+      - length_invariant: true # Length does not change
+      - color_invariant: true # Color does not change
+    role: primary element to be moved
+
+  - object: spacing_sequence
+    color: 0 # white
+    shape: contiguous horizontal block (can be empty or length >= 1)
+    location: directly between the colored_block and the pivot
+    quantity: 1
+    properties:
+      - content: variable # Specific sequence of white pixels
+      - length: variable (e.g., 2 in ex1/ex2, 1 in ex3)
+      - content_invariant: true # Sequence of white pixels does not change
+      - length_invariant: true # Length does not change
+    role: maintains separation distance between block and pivot
+
+relationships:
+  - type: spatial_adjacency
+    description: The colored_block and pivot are separated only by the spacing_sequence. Either block-spacing-pivot or pivot-spacing-block.
+  - type: relative_position
+    object1: colored_block
+    object2: pivot
+    state: [left_of, right_of] # Determined by block indices relative to pivot index
+
+actions:
+  - action: identify_pivot
+    target: pixel with color 9
+    result: pivot_index
+  - action: identify_colored_block
+    target: contiguous sequence of non-zero, non-nine pixels
+    result: block_content, block_start_index, block_end_index
+  - action: identify_spacing_sequence
+    target: sequence of zero pixels between block_end_index and pivot_index (if block is left), or between pivot_index and block_start_index (if block is right)
+    result: spacing_content, spacing_length
+  - action: determine_relative_position
+    input: block_end_index, pivot_index
+    result: is_left (boolean)
+  - action: construct_output_grid
+    details:
+      1. Create a new grid of the same dimensions, filled with background_color (0).
+      2. Place the pivot pixel (9) at its original pivot_index.
+      3. If the block was originally 'is_left':
+         - Place spacing_content immediately to the right of the pivot (index pivot_index + 1).
+         - Place block_content immediately to the right of the spacing.
+      4. If the block was originally not 'is_left' (i.e., right):
+         - Place spacing_content immediately to the left of the pivot (ending at index pivot_index - 1).
+         - Place block_content immediately to the left of the spacing.
+      5. Ensure all other grid cells remain background_color (0).
+
+constraints:
+  - Only one pivot (9) exists.
+  - Only one contiguous colored block (non-0, non-9) exists.
+  - Pixels between the block and pivot must be background color (0).
+  - The combined length of the block, spacing, and pivot must fit within the grid boundaries when moved to the opposite side.

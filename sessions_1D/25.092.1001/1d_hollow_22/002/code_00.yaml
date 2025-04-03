@@ -1,0 +1,50 @@
+task_type: grid_transformation
+input_features:
+  - description: A 2D grid (NumPy array) of pixels.
+  - properties:
+      - Each row contains at most one contiguous horizontal block of a single non-white color.
+      - Non-white blocks are surrounded horizontally by white pixels (0).
+      - Examples provided show grids with a single row.
+output_features:
+  - description: A 2D grid (NumPy array) of the same dimensions as the input.
+  - properties:
+      - Derived from the input grid by modifying rows containing non-white blocks.
+transformation:
+  - description: Modifies each row containing a contiguous non-white block independently.
+  - steps:
+      - For each row in the input grid:
+          - Identify the start and end column indices of the contiguous non-white block, if present. Note its color.
+          - Create a corresponding output row, initially identical to the input row or filled with white pixels.
+          - If a block exists:
+              - Ensure the pixel at the start index in the output row retains the block's color.
+              - Ensure the pixel at the end index in the output row retains the block's color.
+              - Set all pixels in the output row strictly between the start and end indices to white (0).
+          - Pixels outside the original block's span (before start index, after end index) remain unchanged.
+objects:
+  - id: background
+    color: white (0)
+    role: static background within each row.
+  - id: block
+    color: non-white (e.g., yellow (4), green (3))
+    shape: contiguous horizontal segment within a row.
+    role: object being modified.
+relationships:
+  - type: spatial
+    description: The non-white block is embedded horizontally within the white background of a row.
+actions:
+  - action: identify_row_block
+    target: a row of the input grid
+    output: start index, end index, color of the block (or indication of no block)
+  - action: modify_row_block
+    target: block identified in the row
+    result: A modified row segment where only the first and last pixels of the original block retain their color, and intermediate pixels become white (0).
+  - action: construct_output_row
+    input: original row, identified block info, modification rule
+    output: the transformed output row.
+  - action: assemble_output_grid
+    input: transformed output rows
+    output: the final output grid.
+constraints:
+  - Each row is processed independently.
+  - Assumes at most one contiguous non-white block per row based on examples.
+  - Block modification (setting intermediate pixels to white) only applies if the block length is 3 or more. Blocks of length 1 or 2 remain unchanged.

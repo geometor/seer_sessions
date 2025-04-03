@@ -1,0 +1,61 @@
+task_description: Rearrange segments of a 1D array by moving a specific block of white pixels.
+
+elements:
+  - type: array
+    name: input_array
+    description: A 1D list of pixel values (integers 0-9).
+  - type: segment
+    name: prefix_whites
+    description: Contiguous block of white (0) pixels at the beginning of the input_array. Can be empty.
+    example_value: [0, 0, 0, 0, 0] (from ex1), [] (from ex3)
+  - type: segment
+    name: main_block
+    description: The first contiguous block of non-white pixels found immediately after prefix_whites.
+    properties:
+      color: Any non-zero color. Color varies between examples (7, 5, 6).
+      length: Variable.
+    example_value: [7, 7, 7, 7, 7, 7, 7] (from ex1)
+  - type: pixel
+    name: separator_pixel
+    description: The first pixel with value red (2) that appears *after* the end of main_block.
+    properties:
+      color: red (2)
+    example_value: [2]
+  - type: segment
+    name: intervening_whites
+    description: Contiguous block consisting *only* of white (0) pixels located strictly between the end of main_block and the position of separator_pixel. Can be empty if no white pixels exist in that location.
+    properties:
+      color: white (0)
+      length: Variable (2 in all examples).
+    example_value: [0, 0]
+  - type: segment
+    name: suffix
+    description: The segment of the input_array starting from the separator_pixel to the end.
+    example_value: [2, 0] (from ex1), [2, 0, 0, 0, 0, 0] (from ex2)
+
+relationships:
+  - type: spatial_sequence
+    description: In the input, the segments appear in the order (potentially with overlaps or gaps filled by other pixels not explicitly named here): prefix_whites, main_block, intervening_whites, separator_pixel, rest_of_suffix.
+  - type: condition
+    description: intervening_whites only exists if the segment between main_block and separator_pixel contains solely white pixels.
+
+actions:
+  - action: identify
+    target: prefix_whites, main_block, separator_pixel, intervening_whites, suffix
+    description: Locate these segments/pixels within the input_array based on their definitions and relative positions.
+  - action: extract
+    target: prefix_whites, main_block, intervening_whites, suffix
+    description: Isolate the identified segments.
+  - action: move
+    target: intervening_whites
+    from: Original position between main_block and separator_pixel.
+    to: Position immediately after prefix_whites in the output construction.
+  - action: concatenate
+    elements: [prefix_whites, intervening_whites, main_block, suffix]
+    order: specified
+    description: Assemble the output array by concatenating the extracted segments in the new order.
+
+constraints:
+  - Input is a 1D array/list.
+  - A single red (2) pixel must exist after the main_block for the transformation to apply as described.
+  - The segment between main_block and the red (2) pixel must be entirely white (0) for it to be identified as intervening_whites and moved.

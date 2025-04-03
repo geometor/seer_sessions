@@ -1,0 +1,66 @@
+task_description: Filter the input grid to keep only the largest contiguous object for each color, changing all other pixels of that color to the background color (white, 0).
+
+elements:
+  - type: grid
+    properties:
+      - background_color: white (0)
+      - foreground_colors: Variable per example (e.g., magenta, green, orange). Can contain multiple distinct foreground colors within a single grid (though not shown in examples).
+      - shape: Variable (e.g., 3x11, 4x8 based on analysis). Assumed to be provided as a 2D structure.
+  - type: object
+    description: A contiguous group of pixels of the same non-background color.
+    properties:
+      - color: The color of the pixels forming the object.
+      - pixels: A set of (row, column) coordinates comprising the object.
+      - size: The number of pixels in the object (count of coordinates).
+      - connectivity: Defined by cardinal adjacency (up, down, left, right). Pixels sharing only a corner are not considered connected.
+  - type: concept
+    description: Largest object per color
+    details: For a given non-background color present in the grid, the object of that color with the maximum size (pixel count). Assumes a unique largest object exists for each color based on examples.
+
+actions:
+  - name: identify_objects_by_color
+    description: Finds all distinct contiguous objects for a specific non-background color.
+    inputs:
+      - grid: The 2D input grid.
+      - color: The target non-background color.
+    outputs:
+      - list_of_objects: A list where each element represents one object (e.g., as a set of coordinates).
+  - name: find_largest_object_for_color
+    description: Determines the single largest object among those found for a specific color.
+    inputs:
+      - list_of_objects: The list of objects of the same color.
+    outputs:
+      - largest_object: The object (e.g., set of coordinates) with the maximum size. Returns None or empty if the input list is empty.
+  - name: construct_output_grid
+    description: Creates the output grid by preserving background pixels and pixels belonging only to the largest object of each color.
+    inputs:
+      - input_grid: The original 2D grid.
+    outputs:
+      - output_grid: The filtered 2D grid.
+    logic: |
+      Initialize output_grid with the same dimensions as input_grid, filled with the background color (0).
+      Identify all unique non-background colors in the input_grid.
+      Create a set 'pixels_to_keep' to store coordinates of pixels that should be in the output.
+      For each unique non-background color:
+        Find all objects of this color using identify_objects_by_color.
+        If objects are found:
+          Find the largest_object using find_largest_object_for_color.
+          Add all pixel coordinates from largest_object to the 'pixels_to_keep' set.
+      Iterate through the 'pixels_to_keep' set:
+        For each coordinate (r, c) in the set:
+          Set output_grid[r, c] = input_grid[r, c].
+      Return output_grid.
+
+relationships:
+  - type: filtering
+    description: Objects are filtered based on their size relative to other objects of the same color.
+  - type: preservation
+    description: Pixels belonging to the largest object of each color are preserved. Original background pixels are implicitly preserved because the output starts as background and only largest objects are added back.
+  - type: removal (implicit)
+    description: Pixels belonging to non-largest objects are effectively removed because they are not added back to the initially empty output grid.
+
+assumptions:
+  - The input is provided as a 2D grid structure (e.g., list of lists or NumPy array).
+  - White (0) is the universal background color.
+  - Connectivity for objects is cardinal (up, down, left, right).
+  - For each non-background color present, there is a uniquely identifiable largest object. The examples support this, but edge cases with ties are not explicitly shown. The described logic keeps only one largest object (the first one found if sizes are equal using simple max comparison, or potentially all if the logic slightly changes to accommodate ties). The metrics show pixel counts decreasing, consistent with removing smaller objects.

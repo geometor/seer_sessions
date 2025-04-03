@@ -1,0 +1,35 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "## Perception of Task Elements\n\nThe task involves transforming a 2D grid of numbers (representing colors). The core operation appears to be a \"fill\" or \"paint bucket\" like function, constrained by specific boundaries within the grid.\n\n1.  **Grid Structure:** Both input and output are 2D grids of the same dimensions, containing single digits (0-9). '0' consistently represents the background color.\n2.  **Colored Regions:** Non-zero numbers form distinct regions or shapes within the grid.\n3.  **Boundary/Frame:** In each example, there's a specific non-zero color that acts as a frame or boundary (`C_frame`). This frame partially or fully encloses regions of other non-zero colors.\n4.  **Enclosed Area:** The area inside the `C_frame` boundary contains other non-zero colors (`C_inner`).\n5.  **External Area:** Areas outside the `C_frame` boundary, including the background (0) and potentially other non-zero colored regions not enclosed by `C_frame`, are considered external.\n6.  **Transformation:** The transformation identifies the `C_frame` color and the region it encloses. All cells within this enclosed region that originally had a `C_inner` color are changed to the `C_frame` color in the output. The `C_frame` cells themselves, the background (0), and any non-zero cells in the external area remain unchanged.\n\n## Facts\n\n"
+          },
+          {
+            "text": "```yaml\n---\ntask_elements:\n  - name: Grid\n    type: Container\n    properties:\n      - dimensions: [rows, columns] (constant between input/output)\n      - elements: Cells\n\n  - name: Cell\n    type: Element\n    properties:\n      - position: [row, column]\n      - color: integer (0-9)\n      - state: (derived) external or internal relative to the frame\n\n  - name: Background\n    type: Region\n    properties:\n      - color: 0\n      - state: external\n\n  - name: Frame Region\n    type: Region\n    properties:\n      - color: C_frame (specific non-zero integer, e.g., 1, 3, 7 in examples)\n      - connectivity: Forms a boundary separating internal and external areas\n      - state: external (in the sense that its color is preserved)\n\n  - name: Enclosed Region\n    type: Region\n    properties:\n      - color: C_inner (one or more non-zero integers different from C_frame)\n      - location: Geometrically inside the Frame Region\n      - state: internal\n\n  - name: External Non-Frame Region\n    type: Region\n    properties:\n      - color: Non-zero integer (potentially same as C_inner, but located outside)\n      - location: Geometrically outside the Frame Region\n      - state: external\n\nrelationships:\n  - type: Adjacency\n    between: [Cell, Cell]\n    properties: [4-connectivity (up, down, left, right)]\n  - type: Enclosure\n    subject: Frame Region\n    object: Enclosed Region\n  - type: Reachability\n    description: Cells reachable from the Background without crossing the Frame Region color are external.\n\nactions:\n  - name: Identify Frame Color (C_frame)\n    input: Input Grid\n    output: C_frame color value\n    method: Find the unique non-zero color C such that treating C as a wall isolates other non-zero colors from the background during a flood fill starting from the background.\n  - name: Determine Reachability (Flood Fill)\n    input: [Input Grid, C_frame]\n    output: Set of coordinates for \"external\" cells\n    method: Perform a flood fill starting from all background (0) cells. The fill can propagate to adjacent cells unless the target cell has the C_frame color. Mark all reached cells as external.\n  - name: Generate Output Grid\n    input: [Input Grid, C_frame, External Cells Set]\n    output: Output Grid\n    method: Iterate through input grid cells. If a cell's color is C_frame, copy C_frame to output. If a cell is marked external, copy its input color to output. If a cell is not external and not C_frame, set its output color to C_frame.\n---\n```"
+          },
+          {
+            "text": "\n\n## Natural Language Program\n\n1.  **Identify** the unique non-zero color (`C_frame`) in the input grid that acts as a boundary, such that if cells of this color were treated as impassable walls, a flood fill starting from the background (color 0) would fail to reach at least one other non-zero colored cell.\n2.  **Perform** a flood fill starting from all background cells (color 0) in the input grid. This fill can move to adjacent cells (up, down, left, right) but *cannot* enter cells whose color is `C_frame`.\n3.  **Mark** all cells reached by this flood fill as \"external\". All other cells (including the `C_frame` cells themselves and any unreached non-zero cells) are considered \"internal\" in terms of reachability, though `C_frame` cells are treated specially.\n4.  **Create** a new output grid with the same dimensions as the input grid.\n5.  **Iterate** through each cell `(r, c)` of the input grid:\n    a.  If the input cell `(r, c)` has the color `C_frame`, set the output cell `(r, c)` to `C_frame`.\n    b.  Else if the input cell `(r, c)` is marked \"external\" (from step 3), copy the input cell's color to the output cell `(r, c)`.\n    c.  Else (the cell is not `C_frame` and was not marked \"external\"), set the output cell `(r, c)` to the `C_frame` color.\n6.  **Return** the completed output grid."
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 1349,
+    "candidates_token_count": 7930,
+    "total_token_count": 9279,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 80.25135,
+  "retries": 1
+}

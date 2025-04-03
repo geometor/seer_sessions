@@ -1,0 +1,55 @@
+task_type: object_manipulation
+grid_dimensionality: 1D (single row), represented as 2D NumPy array with shape (1, width)
+grid_size:
+  width: variable (observed 21)
+  height: 1
+
+input_features:
+  - type: background
+    color: white (0)
+    location: variable, complements the object block
+  - type: object
+    description: A single contiguous horizontal block of a non-white color.
+    source: input grid
+    properties:
+      - color: non-white (observed orange(7), green(3), gray(5))
+      - shape: horizontal line segment
+      - location: defined by start_index and end_index
+      - length: end_index - start_index + 1 (observed 9, 6, 4)
+    count: 1
+
+output_features:
+  - type: background
+    color: white (0)
+    location: original white background locations + interior of modified block
+  - type: object
+    description: Modified version of the input block, reduced to its endpoints if length > 2.
+    source: derived from input object
+    properties:
+      - color: same as input block's color
+      - shape: two points (if original length > 2), or original line segment (if length <= 2)
+      - location: original start_index and end_index
+    count: 1 (represented as two pixels or the original block)
+
+transformation_steps:
+  - action: identify_object_properties
+    target: input grid row
+    outputs: [start_index, end_index, color, length] of the first contiguous non-white block. Returns None if no block exists.
+  - action: copy_grid
+    source: input grid
+    destination: output grid
+  - action: conditional_modification
+    condition: block was found AND block length > 2
+    target: output grid
+    steps:
+      - iterate indices from (start_index + 1) to (end_index - 1)
+      - set pixel value at each index to white (0)
+  - action: no_modification
+    condition: no block found OR block length <= 2
+    target: output grid (remains identical to input grid in the block region)
+
+relationships:
+  - Output grid shape is identical to input grid shape.
+  - The transformation preserves the color and the start/end positions of the original block.
+  - The transformation specifically targets the *interior* pixels of the block.
+  - Only the first contiguous non-white block is considered if multiple exist (inferred, based on simplicity and examples).

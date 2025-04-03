@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom typing import List\n\n\"\"\"\nTransforms a 4x8 grid represented as a 1D list of 32 integers.\n\nThe transformation rule operates as follows:\n1. Reshape the input 1D list into a 4x8 2D grid.\n2. Create an output grid initialized as a copy of the input grid.\n3. Iterate through each cell (pixel) of the input grid.\n4. Identify \"source\" pixels: A non-white pixel is a source if its horizontal neighbors (left and right, with column wrap-around) have different colors than the pixel itself.\n5. For each source pixel found at position (r, c) with color 'C':\n    a. Determine the target coordinates for a 3-pixel horizontal line centered conceptually at (r, c):\n        - Center: (r, c)\n        - Left column: (c - 1 + 8) % 8\n        - Right column: (c + 1 + 8) % 8\n    b. Apply special row wrap-around rules for the left/right pixels if the source pixel is on a column edge:\n        - If the source pixel is in the leftmost column (c == 0), the row index for the \"left\" target pixel (which wraps to the last column) becomes (r - 1 + 4) % 4. Otherwise, it's 'r'.\n        - If the source pixel is in the rightmost column (c == 7), the row index for the \"right\" target pixel (which wraps to the first column) becomes (r + 1 + 4) % 4. Otherwise, it's 'r'.\n    c. Set the pixels at the calculated left, center, and right target coordinates in the *output* grid to the color 'C' of the source pixel.\n6. Pixels that were part of an existing 3-pixel horizontal line in the input grid (and therefore not \"source\" pixels) remain unchanged in the output grid because the output grid starts as a copy and these pixels are not overwritten.\n7. Flatten the final 4x8 output grid back into a 1D list of 32 integers.\n\"\"\"\n\ndef is_source_pixel(grid: np.ndarray, r: int, c: int) -> bool:\n    \"\"\"\n    Checks if a pixel at (r, c) is a source for expansion.\n    A pixel is a source if it's non-white and its horizontal neighbors\n    (with column wrap-around) are not the same color as the pixel.\n    \"\"\"\n    rows, cols = grid.shape\n    color = grid[r, c]\n\n    # Must be non-white\n    if color == 0:\n        return False\n\n    # Check horizontal neighbors\n    left_c = (c - 1 + cols) % cols\n    right_c = (c + 1 + cols) % cols\n    left_neighbor_color = grid[r, left_c]\n    right_neighbor_color = grid[r, right_c]\n\n    return left_neighbor_color != color and right_neighbor_color != color\n\ndef calculate_target_coords(r: int, c: int, rows: int, cols: int) -> tuple:\n    \"\"\"\n    Calculates the target coordinates (left, center, right) for expansion,\n    applying row and column wrap-around rules.\n    Returns: ((left_r, left_c), (center_r, center_c), (right_r, right_c))\n    \"\"\"\n    # Calculate column indices with wrap-around\n    left_c_target = (c - 1 + cols) % cols\n    center_c_target = c\n    right_c_target = (c + 1 + cols) % cols\n\n    # Calculate row indices, initially same as source row\n    left_r_target = r\n    center_r_target = r\n    right_r_target = r\n\n    # Apply row wrap adjustment for edge columns\n    if c == 0: # Source is in the first column\n        left_r_target = (r - 1 + rows) % rows\n    if c == cols - 1: # Source is in the last column\n        right_r_target = (r + 1 + rows) % rows\n\n    return ((left_r_target, left_c_target),\n            (center_r_target, center_c_target),\n            (right_r_target, right_c_target))\n\n\ndef transform(input_grid_flat: List[int]) -> List[int]:\n    \"\"\"\n    Applies the expansion transformation to the input grid list.\n    \"\"\"\n    # Assume 4x8 grid dimensions based on analysis\n    rows, cols = 4, 8\n    expected_length = rows * cols\n    if len(input_grid_flat) != expected_length:\n        raise ValueError(f\"Input grid list must have exactly {expected_length} elements for a {rows}x{cols} grid.\")\n\n    # Reshape input list into a 2D numpy array\n    input_grid = np.array(input_grid_flat).reshape(rows, cols)\n\n    # Initialize output grid as a copy of the input\n    output_grid = input_grid.copy()\n\n    # Iterate through each cell of the input grid to find source pixels\n    for r in range(rows):\n        for c in range(cols):\n            # Check if the current cell is a source for expansion\n            if is_source_pixel(input_grid, r, c):\n                color = input_grid[r, c]\n\n                # Calculate the target coordinates for the 3-pixel line\n                (left_coord, center_coord, right_coord) = calculate_target_coords(r, c, rows, cols)\n\n                # Update the output grid with the expanded line\n                output_grid[left_coord] = color\n                output_grid[center_coord] = color # Overwrites original source pixel\n                output_grid[right_coord] = color\n\n    # Flatten the output grid back to a 1D list\n    return output_grid.flatten().tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 8600,
+    "candidates_token_count": 1381,
+    "total_token_count": 9981,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 16.172211,
+  "retries": 1
+}

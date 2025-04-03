@@ -1,0 +1,73 @@
+task_type: object_reordering_1d
+
+elements:
+  - element: grid
+    type: 1D_array
+    description: A single row of pixels with integer values 0-9 representing colors. Contains background pixels and a distinct pattern.
+
+  - element: mover_pixel
+    type: object
+    description: A single pixel identified by its unique non-background color (1-9) relative to an adjacent block. Must be bordered by background (0), grid edge, or the block.
+    properties:
+      - color: (varies, non-zero, e.g., azure, red, gray)
+      - position: immediately adjacent to one end of the color_block
+
+  - element: color_block
+    type: object
+    description: A contiguous sequence of 2 or more pixels of the same non-background color (1-9).
+    properties:
+      - color: (varies, non-zero, e.g., gray, orange)
+      - length: (>= 2)
+      - position: immediately adjacent to the mover_pixel
+      - distinct_color: color is different from mover_pixel's color
+
+  - element: background_pixel
+    type: pixel
+    description: Pixels not part of the identified mover_pixel or color_block pattern.
+    properties:
+      - color: white (0)
+      - state: unchanged and preserved in position relative to grid edges and the pattern segment.
+
+  - element: pattern
+    type: composite_object
+    description: The combination of the mover_pixel and the color_block found adjacent to each other.
+    properties:
+      - sequence: (mover_pixel, color_block) or (color_block, mover_pixel)
+      - start_index: The grid index where the pattern begins.
+      - end_index: The grid index where the pattern ends.
+
+actions:
+  - action: find_non_background_pattern
+    description: Scan the input grid to locate the first occurrence of a pattern consisting of a single non-background 'mover_pixel' immediately adjacent to a non-background 'color_block' (length >= 2, different color). Background pixels (0) are ignored during the search for the core components but define the boundaries.
+    inputs: grid
+    outputs: pattern (mover_pixel, color_block, start_index, end_index, relative_position) or None
+
+  - action: determine_relative_position
+    description: Identify if the mover_pixel is to the left or right of the color_block within the found pattern.
+    inputs: pattern
+    outputs: relative_position (left or right)
+
+  - action: swap_elements
+    description: Create a new sequence by swapping the order of the mover_pixel and the color_block.
+    condition: if mover_pixel is left of color_block
+    result: new_sequence = color_block + mover_pixel
+    condition: if mover_pixel is right of color_block
+    result: new_sequence = mover_pixel + color_block
+    inputs: pattern
+    outputs: new_sequence
+
+  - action: reconstruct_grid
+    description: Create the output grid by replacing the segment of the input grid defined by the pattern's start and end indices with the swapped new_sequence. Preserve all pixels outside this segment.
+    inputs: input_grid, pattern.start_index, pattern.end_index, new_sequence
+    outputs: output_grid
+
+relationships:
+  - relationship: adjacency
+    between: [mover_pixel, color_block]
+    description: The mover_pixel is located directly next to one end of the color_block in the input grid. Both must be non-background colors.
+  - relationship: boundary
+    between: [mover_pixel, background_pixel / grid_edge]
+    description: The mover_pixel must be bordered by a background pixel, grid edge, or the adjacent color_block on sides not touching the block.
+  - relationship: boundary
+    between: [color_block, background_pixel / grid_edge]
+    description: The color_block end not adjacent to the mover must be bordered by a background pixel, grid edge, or a pixel of a different color.

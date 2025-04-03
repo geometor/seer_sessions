@@ -1,0 +1,58 @@
+task_type: Grid transformation
+dimensionality: 2D (specifically 1xN)
+grid_properties:
+  size_relation: input and output grids have the same dimensions (1x19 in examples)
+colors_present:
+  - background: white (0)
+  - anchor: gray (5)
+  - moving_block_colors: [magenta (6), yellow (4)] # Variable color for the block
+objects:
+  - object_type: block
+    identifier: moving_block
+    properties:
+      - color: non-white (0) and non-gray (5)
+      - contiguous horizontally
+      - located entirely to the left of the anchor_pixel in the input
+      - variable length
+  - object_type: pixel
+    identifier: anchor_pixel
+    color: gray (5)
+    properties:
+      - fixed position (column 17 in examples)
+      - defines the target boundary for the moving_block
+relationships:
+  - relation_type: spatial adjacency
+    initial_state: moving_block is separated from anchor_pixel by one or more background (white) pixels.
+    final_state: the rightmost pixel of moving_block is immediately adjacent (to the left) of the anchor_pixel.
+actions:
+  - action_type: identify
+    target: grid row
+    details: Extract the single row from the input grid.
+  - action_type: identify
+    target: anchor_pixel
+    details: Find the column index of the gray (5) pixel in the row.
+  - action_type: identify
+    target: moving_block
+    details: Find the contiguous sequence of non-white (0), non-gray (5) pixels to the left of the anchor_pixel's column. Record its color and length.
+  - action_type: calculate_position
+    target: moving_block
+    details: Determine the target end column index (anchor_column - 1) and target start column index (target_end_column - block_length + 1).
+  - action_type: reconstruct_row
+    details: Create the output row by:
+      1. Initializing with background color (white, 0).
+      2. Copying the anchor_pixel and all pixels to its right from the input row.
+      3. Placing the moving_block (using its color and length) into its calculated target start/end columns.
+  - action_type: reconstruct_grid
+    details: Assemble the final 1xN output grid using the reconstructed row.
+state_change:
+  - element: moving_block
+    attribute: position (column indices)
+    change: shifted rightwards to be adjacent to the anchor_pixel.
+  - element: pixels
+    attribute: color
+    change: pixels between the original start column of the moving_block and its target start column become background (white, 0).
+assumptions:
+  - Input is always a 1xN grid.
+  - There is exactly one anchor_pixel (gray, 5).
+  - There is exactly one contiguous moving_block (non-white, non-gray) located entirely to the left of the anchor_pixel.
+  - The grid is wide enough to accommodate the shifted block without overlapping the anchor or going out of bounds to the left.

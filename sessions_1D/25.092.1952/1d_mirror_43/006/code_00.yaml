@@ -1,0 +1,82 @@
+task_description: Repositions a colored block across a fixed pivot pixel within a 1D grid, preserving the intermediate spacing.
+
+grid_properties:
+  dimensionality: 1D (single row)
+  background_color: 0 (white)
+  size_invariant: true # Grid dimensions do not change
+
+objects:
+  - object: pivot
+    color: 9 (maroon)
+    shape: single_pixel
+    quantity: 1
+    role: static_reference
+    location: fixed_index # Its index within the row does not change during the transformation.
+  - object: colored_block
+    color: variable (non-0, non-9, consistent within block) # e.g., 5 (gray), 3 (green)
+    shape: contiguous_horizontal_block
+    quantity: 1
+    role: dynamic_element # Element whose position changes.
+    properties:
+      - content_invariant: true # The sequence and color of pixels within the block do not change.
+      - size_invariant: true # The length of the block does not change.
+  - object: spacing
+    color: 0 (white)
+    shape: contiguous_horizontal_block (can be empty)
+    location: directly_between_pivot_and_colored_block
+    role: separator
+    properties:
+      - content_invariant: true # The sequence of pixels (all 0s) does not change.
+      - size_invariant: true # The number of spacing pixels is preserved during the move.
+  - object: background
+    color: 0 (white)
+    role: filler # Occupies remaining grid cells.
+
+relationships:
+  - type: relative_position
+    object1: colored_block
+    object2: pivot
+    states: [left_of, right_of]
+    # The transformation flips this relationship (left_of -> right_of, right_of -> left_of).
+  - type: adjacency_sequence
+    description: In the input, the sequence is either [..., colored_block, spacing, pivot, ...] or [..., pivot, spacing, colored_block, ...]. In the output, it becomes the other sequence.
+
+actions:
+  - action: locate
+    target: pivot (color 9)
+    result: pivot_index
+  - action: locate
+    target: colored_block (contiguous non-0, non-9 pixels)
+    result: block_start_index, block_end_index, block_content
+  - action: locate
+    target: spacing (pixels between block_end and pivot_index, or pivot_index and block_start)
+    result: spacing_content
+  - action: determine_side
+    based_on: block_end_index vs pivot_index
+    result: is_left (boolean)
+  - action: initialize_output
+    details: Create a new grid (list) of the same dimensions as the input, filled with the background color (0).
+  - action: place_pivot
+    target: output_grid
+    details: Place the pivot color (9) at its original pivot_index.
+  - action: calculate_new_position
+    based_on: is_left, pivot_index, length(spacing_content), length(block_content)
+    result: new_block_start_index, new_spacing_start_index
+  - action: place_moved_elements
+    target: output_grid
+    details: |
+      If the block was initially left, place spacing_content starting at pivot_index + 1,
+      and place block_content immediately after the spacing.
+      If the block was initially right, place block_content ending immediately before
+      (pivot_index - length(spacing_content)), and place spacing_content immediately
+      after the block (ending just before pivot_index).
+  - action: verify_bounds
+    details: Ensure calculated placement indices are within the grid dimensions [0, length-1]. If not, the transformation may be considered invalid or handled via error state (e.g., return original grid).
+
+constraints:
+  - Grid size remains constant.
+  - Pivot position remains constant.
+  - Block content and size remain constant.
+  - Spacing content (all 0s) and size remain constant.
+  - Only one pivot (9) and one contiguous colored block exist.
+  - Spacing consists only of background pixels (0).

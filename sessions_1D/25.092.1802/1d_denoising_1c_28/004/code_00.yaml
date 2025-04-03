@@ -1,0 +1,61 @@
+task_description: Identify all contiguous objects for each non-background color. For each color, retain only the object(s) with the largest area (pixel count), changing all pixels belonging to smaller objects of that same color to the background color.
+
+elements:
+  - type: grid
+    properties:
+      - background_color: white (0)
+      - foreground_colors: [magenta (6), green (3), orange (7)] # Example-dependent
+      - dimensions: Variable (e.g., 3x11, 4x8 observed)
+  - type: object
+    description: A contiguous group of pixels of the same non-background color.
+    properties:
+      - color: The integer value (1-9) of the pixels.
+      - pixels: A set of (row, column) coordinates comprising the object.
+      - size: The number of pixels in the object (count of coordinates).
+      - connectivity: Cardinal adjacency (up, down, left, right). Pixels sharing only a corner are not considered connected.
+  - type: concept
+    description: Largest Object(s) per Color
+    details: For a given non-background color present in the grid, the object (or objects, if tied) whose size (pixel count) is maximal among all objects of that color.
+
+actions:
+  - name: identify_colors
+    description: Find all unique non-background colors present in the input grid.
+    inputs: input_grid
+    outputs: set_of_colors
+  - name: find_objects_by_color
+    description: For a given color, find all distinct contiguous objects using Breadth-First Search (BFS) based on cardinal adjacency.
+    inputs:
+      - grid
+      - color
+    outputs: list_of_objects [where each object is a set of (row, col) coordinates]
+  - name: determine_largest_size
+    description: Calculate the maximum size among a list of objects of the same color.
+    inputs: list_of_objects
+    outputs: max_size
+  - name: identify_largest_objects
+    description: Filter the list of objects to include only those whose size equals the maximum size.
+    inputs:
+      - list_of_objects
+      - max_size
+    outputs: list_of_largest_objects
+  - name: construct_output
+    description: Create an output grid initialized with the background color, then populate it only with the pixels belonging to the identified largest objects of each color.
+    inputs:
+      - input_grid_shape
+      - background_color
+      - map_of_color_to_largest_objects # Contains all pixels to keep
+    outputs: output_grid
+
+relationships:
+  - type: grouping
+    description: Pixels are grouped into objects based on color and cardinal adjacency.
+  - type: comparison
+    description: Objects of the same color are compared based on size (pixel count).
+  - type: filtering
+    description: Pixels are filtered based on whether they belong to a largest object of their color. Pixels not belonging to a largest object are discarded (set to background color).
+
+assumptions:
+  - Input is a 2D grid represented as a flattened list; dimensions must be inferred. Common factors or typical ARC sizes (like 3x11, 4x8 observed) are likely intended.
+  - Connectivity is strictly cardinal (4-way). Diagonal adjacency does not connect objects.
+  - White (0) is the universal background color.
+  - For each color, there might be multiple objects tied for the largest size; all such tied objects should be kept. (Though examples only show one clear largest).

@@ -1,0 +1,56 @@
+task_description: "Flood fill the dominant background color of a canvas with azure, using other colors as barriers."
+
+input_elements:
+  - element: Palette
+    location: Top 6 rows (if grid height > 6)
+    properties:
+      - border: Gray (5)
+      - content: Contains pairs of [Color, White (0)], defining potential barrier colors.
+    purpose: Primarily defines barrier colors; may be partially redundant if barriers also exist in canvas.
+  - element: Canvas
+    location: Rows below the Palette (or entire grid if height <= 6)
+    properties:
+      - background_color: The single most frequent color, excluding azure (8). This color is paintable.
+      - content: Contains various colored objects/regions, including azure seeds and barriers.
+      - barrier_colors: All colors present *except* the background_color and azure (8). These match colors defined in the palette.
+      - includes: Azure (8) 'seed' pixels.
+    purpose: The area where the transformation takes place.
+  - element: Azure_Seed
+    location: Within the Canvas
+    color: Azure (8)
+    purpose: Starting points for the flood fill.
+
+transformation:
+  - action: Identify_Sections
+    inputs: [Input Grid]
+    outputs: [Palette, Canvas]
+    logic: >
+      Split the grid. Top 6 rows are Palette (if possible), rest is Canvas.
+  - action: Identify_Background_Color
+    inputs: [Canvas]
+    outputs: [paintable_background_color]
+    logic: >
+      Find the single most frequent color in the Canvas, ignoring azure (8).
+  - action: Locate_Azure_Seeds
+    inputs: [Canvas]
+    outputs: [Set of seed coordinates]
+    logic: Find all (r, c) where Canvas[r, c] is azure (8).
+  - action: Flood_Fill_Background
+    inputs: [Canvas, Set of seed coordinates, paintable_background_color]
+    outputs: [Modified Canvas]
+    logic: >
+      Create a copy of the Canvas. Starting from the seed coordinates, recursively change
+      adjacent (8-way connectivity) pixels to Azure (8) *only if* their current color
+      matches the paintable_background_color. All other colors (including original seeds)
+      block the fill.
+  - action: Final_Output
+    inputs: [Modified Canvas]
+    outputs: [Output Grid]
+    logic: The final output grid is the Modified Canvas.
+
+output_elements:
+  - element: Modified_Canvas
+    properties:
+      - background_color: Original background color is now largely replaced by azure where reachable.
+      - azure_regions: Expanded areas originating from Azure_Seed, covering only areas that were originally the paintable_background_color.
+      - barrier_regions: Regions with barrier_colors remain unchanged.

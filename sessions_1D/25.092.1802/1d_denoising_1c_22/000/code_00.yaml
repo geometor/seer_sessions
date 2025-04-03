@@ -1,0 +1,48 @@
+task_type: array_transformation_1d
+description: Isolate the single largest contiguous block of the non-background color within a 1D array.
+
+input_features:
+  - element: array_1d
+    properties:
+      dimensionality: 1
+      size: variable (32 in examples)
+      value_type: integer (color code 0-9)
+      contains:
+        - background_color: white (0)
+        - primary_color: single non-zero color (e.g., red, blue, yellow)
+          distribution: multiple contiguous blocks of varying lengths
+
+output_features:
+  - element: array_1d
+    properties:
+      dimensionality: 1
+      size: same as input array
+      value_type: integer (color code 0-9)
+      contains:
+        - background_color: white (0)
+        - primary_color: same as input primary_color
+          distribution: single contiguous block located at the position of the largest block from the input
+
+transformation_logic:
+  - action: identify_colors
+    inputs: [input_array]
+    outputs: [background_color, primary_color]
+    description: Determine the background (0) and the single non-zero primary color.
+  - action: find_contiguous_blocks
+    inputs: [input_array, primary_color]
+    outputs: [list_of_blocks] # Each block represented by {start_index, end_index, length}
+    description: Locate all contiguous segments of the primary color.
+  - action: find_largest_block
+    inputs: [list_of_blocks]
+    outputs: [largest_block]
+    description: Identify the block with the maximum length from the list. Assume uniqueness or select any one if tied.
+  - action: generate_output_array
+    inputs: [input_array_size, background_color, largest_block, primary_color]
+    outputs: [output_array]
+    description: Create an array filled with the background color, then place the primary color pixels at the indices defined by the largest_block.
+
+relationships:
+  - identity: Size of the output array is identical to the size of the input array.
+  - identity: The primary color in the output is identical to the primary color in the input.
+  - correspondence: The position (start and end indices) of the primary color block in the output matches the position of the largest primary color block in the input.
+  - filtering: All pixels in the input that are *not* part of the largest contiguous block of the primary color are mapped to the background color in the output.

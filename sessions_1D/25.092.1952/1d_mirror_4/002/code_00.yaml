@@ -1,0 +1,59 @@
+task_description: Reflect a colored line segment across a fixed maroon pivot pixel within a 1D grid.
+grid_properties:
+  dimensionality: 1D (list or 1D NumPy array)
+  size_preservation: Input and output grids have the same size.
+  background_color: white (0)
+
+objects:
+  - id: pivot
+    color: maroon (9)
+    count: 1
+    role: Fixed point for reflection.
+    location: Its index remains unchanged between input and output.
+  - id: line_segment
+    color: Any color except white (0) or maroon (9).
+    count: 1 per grid.
+    shape: Contiguous horizontal sequence of pixels of the same color.
+    role: The object being transformed via reflection.
+    properties:
+      - length: Preserved between input and output.
+      - color: Preserved between input and output.
+      - location: Changes based on reflection across the pivot.
+
+actions:
+  - name: identify_pivot
+    input: input_grid (list or 1D array)
+    output: index of the maroon (9) pixel (`pivot_index`).
+  - name: identify_line_segment
+    input: input_grid (list or 1D array)
+    output: color (`segment_color`), start_index (`start_in`), end_index (`end_in`) of the contiguous non-white, non-maroon line. Returns None if no segment found.
+  - name: calculate_reflection
+    inputs:
+      - pivot_index
+      - segment_start_index (`start_in`)
+      - segment_end_index (`end_in`)
+    output: new_segment_start_index (`start_out`), new_segment_end_index (`end_out`)
+    logic: |
+      Calculate distance from pivot to input segment ends:
+      dist_start_in = pivot_index - start_in
+      dist_end_in = pivot_index - end_in
+      Calculate output segment ends by swapping distances relative to pivot:
+      start_out = pivot_index + dist_end_in
+      end_out = pivot_index + dist_start_in
+  - name: construct_output
+    inputs:
+      - input_grid_size
+      - pivot_index
+      - pivot_color (9)
+      - new_segment_start_index (`start_out`)
+      - new_segment_end_index (`end_out`)
+      - segment_color
+    output: output_grid (list)
+    logic: |
+      Create a new list of the input size, filled with the background color (0).
+      Place the pivot pixel at its index.
+      Determine the correct range for the output segment (min(start_out, end_out) to max(start_out, end_out)).
+      Fill the cells within this range (excluding the pivot index if it falls within) with the segment_color.
+
+relationships:
+  - The output position of the line segment is a reflection of its input position across the pivot pixel. The distance from the pivot to the start of the output segment equals the distance from the pivot to the end of the input segment. The distance from the pivot to the end of the output segment equals the distance from the pivot to the start of the input segment.

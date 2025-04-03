@@ -1,0 +1,40 @@
+task_context:
+  grid_dimensionality: 1D # Input and output are single rows
+  grid_size: Fixed width (e.g., 33 in examples), height 1. Output preserves input dimensions.
+  background_color: white (0)
+objects:
+  - id: color_block
+    type: contiguous_horizontal_segment
+    properties:
+      color: non-white (values 1-9)
+      length:
+        input: 1 or 3 (observed in examples)
+        output: 3 (always)
+      start_index: integer >= 0
+relationships:
+  - type: spatial
+    description: Color blocks are separated by one or more background (white) pixels in the input. Output blocks might become adjacent or overlap if input blocks were close.
+actions:
+  - name: Initialize Output
+    description: Create a new 1D grid (row) of the same width as the input, filled with the background color (white, 0).
+  - name: Scan Input and Identify Blocks
+    description: Iterate through the input row from left to right (index 0 to width-1).
+    sub_actions:
+      - When a non-white pixel is found that hasn't been processed as part of a block yet, identify the contiguous block of the same color starting at that index.
+      - Record the block's color (C), starting index (S_in), and length (L_in).
+  - name: Transform and Place Blocks
+    description: For each identified input block, determine its properties and placement in the output grid.
+    rule: |
+      Input Block (Color C, Start Index S_in, Length L_in):
+      - Define Output Length L_out = 3.
+      - Define Output Start Index S_out:
+        - If L_in is 1, then S_out = S_in - 1.
+        - If L_in is 3, then S_out = S_in.
+        - (Assume L_in is always 1 or 3 based on examples).
+      - Place the Output Block: Write pixels of color C into the output grid at indices from S_out to S_out + L_out - 1. Ensure indices stay within the grid bounds [0, width-1]. Overwrite any existing pixels at these locations.
+  - name: Finalize Output
+    description: Return the completed output grid.
+notes: |
+  The transformation process involves resizing and repositioning blocks based on their initial length.
+  The order of processing input blocks matters if output blocks could potentially overlap; processing left-to-right ensures later blocks might overwrite earlier ones if necessary (though overlap didn't occur in the examples).
+  Potential Implementation Issue: The previous Python error arose from checking `if not input_grid` which is ambiguous for list-of-lists/numpy arrays. Validation should check list properties like length or use explicit checks like `input_grid is None` or `len(input_grid) == 0`.

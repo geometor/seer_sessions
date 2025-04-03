@@ -1,0 +1,65 @@
+objects:
+  - color: white (0)
+    property: forms a single contiguous object (W)
+    shape: variable, denoted shape(W)
+    action: always changes color to blue (1) in the output.
+  - color: red (2)
+    property: forms a single contiguous object (R)
+    shape: variable, denoted shape(R)
+    action:
+      - changes color to white (0) IF shape(W) == shape(R) AND no sub-region within blue pixels matches shape(W).
+      - remains unchanged (red) otherwise.
+  - color: blue (1)
+    property: forms one or more contiguous regions/pixels (B)
+    shape: region is variable; contains potential sub-regions.
+    action:
+      - A specific sub-region changes color to white (0) IF the red object does not change to white.
+      - The sub-region chosen is the first one found that matches shape(W).
+      - If no sub-region matches shape(W), the sub-region chosen is the first one found that matches shape(R) (only applicable if shape(W) != shape(R)).
+      - Pixels originally white become blue, adding to the blue pixels.
+      - Other blue pixels remain unchanged.
+  - color: green (3)
+    property: background/border
+    action: remains unchanged
+
+relationships:
+  - type: shape_comparison
+    between: [white object (W), red object (R)]
+    purpose: Primary condition for determining R's fate.
+  - type: shape_embedding_check
+    target_shape: shape(W)
+    search_area_color: blue (1)
+    purpose: Secondary condition for R's fate; identifies primary candidate blue sub-region to change.
+  - type: shape_embedding_check
+    target_shape: shape(R)
+    search_area_color: blue (1)
+    purpose: Identifies secondary candidate blue sub-region to change (used only if shape(W) != shape(R) and no blue sub-region matches shape(W)).
+
+transformation_rules:
+  - rule: Base Change
+    steps:
+      - Identify W, R, and all blue pixels B.
+      - Determine shape(W) and shape(R).
+      - Create output grid copy.
+      - Change all pixels of W to blue (1) in the output grid.
+  - rule: Conditional Change (apply one)
+    - condition_A: shape(W) == shape(R)
+      - sub_condition_A1: A sub-region matching shape(W) exists within the original blue pixels B.
+        - steps:
+            - Find one such blue sub-region.
+            - Change the pixels of that sub-region to white (0) in the output grid.
+            - Leave R unchanged (red).
+      - sub_condition_A2: No sub-region matching shape(W) exists within the original blue pixels B.
+        - steps:
+            - Change all pixels of R to white (0) in the output grid.
+    - condition_B: shape(W) != shape(R)
+      - steps:
+          - Leave R unchanged (red).
+          - Find if a sub-region matching shape(W) exists within the original blue pixels B.
+          - IF YES:
+              - Change the pixels of the first found matching sub-region to white (0).
+          - IF NO:
+              - Find if a sub-region matching shape(R) exists within the original blue pixels B.
+              - IF YES:
+                 - Change the pixels of the first found matching sub-region to white (0).
+              # (Implicit ELSE: if neither shape W nor R matches a blue sub-region, no blue pixels change to white).

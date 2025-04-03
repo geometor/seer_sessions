@@ -1,0 +1,72 @@
+task_type: object_transformation_1d
+
+elements:
+  - element: grid
+    type: 1D_array
+    description: A single row of pixels with integer values 0-9 representing colors.
+    properties:
+      - length: (varies, e.g., 20)
+
+  - element: mover_pixel
+    type: object
+    description: A single pixel identified by its unique color relative to an adjacent block and its isolation (not having same-colored neighbors).
+    properties:
+      - color: (varies, e.g., azure(8), red(2), gray(5))
+      - count: exactly 1 within the affected segment
+      - adjacent_to: color_block
+
+  - element: color_block
+    type: object
+    description: A contiguous sequence of 2 or more pixels of the same color, adjacent to the mover_pixel.
+    properties:
+      - color: (varies, e.g., gray(5), orange(7))
+      - length: (>= 2, e.g., 8, 9, 7)
+      - adjacent_to: mover_pixel
+      - distinct_color: color is different from mover_pixel's color
+
+  - element: background_pixel
+    type: pixel
+    description: Pixels not part of the identified mover_pixel or color_block interaction.
+    properties:
+      - color: typically white (0)
+      - state: unchanged and unmoved in the transformation
+
+objects_identified:
+  - example: 1
+    mover_pixel: color=azure(8), input_index=9
+    color_block: color=gray(5), length=8, input_indices=10-17
+    relative_position_input: mover is left of block
+  - example: 2
+    mover_pixel: color=red(2), input_index=0
+    color_block: color=gray(5), length=9, input_indices=1-9
+    relative_position_input: mover is left of block
+  - example: 3
+    mover_pixel: color=gray(5), input_index=1
+    color_block: color=orange(7), length=7, input_indices=2-8
+    relative_position_input: mover is left of block
+
+actions:
+  - action: find_pattern
+    description: Identify the unique structure of a single 'mover' pixel adjacent to a contiguous 'block' of 2 or more pixels, where the mover and block have different colors. This pattern is the only segment that changes between input and output.
+    inputs: grid
+    outputs: mover_pixel_info (color, index), color_block_info (color, sequence, indices), start_index, end_index (of the combined pattern), mover_is_left (boolean)
+
+  - action: reorder_elements
+    description: Swap the relative order of the mover_pixel and the color_block.
+    condition: if mover_pixel was originally left of color_block
+    result: new_sequence = color_block_sequence + [mover_pixel_color]
+    condition: if mover_pixel was originally right of color_block
+    result: new_sequence = [mover_pixel_color] + color_block_sequence
+
+  - action: update_grid_segment
+    description: Replace the segment in the grid defined by the combined pattern's start_index and end_index with the reordered new_sequence.
+    inputs: grid, start_index, end_index, new_sequence
+    outputs: modified_grid
+
+relationships:
+  - relationship: adjacency
+    between: [mover_pixel, color_block]
+    description: The mover_pixel is located directly next to one end of the color_block in the input grid's identified pattern segment.
+  - relationship: distinction
+    between: [mover_pixel.color, color_block.color]
+    description: The color of the mover_pixel must be different from the color of the pixels in the color_block.

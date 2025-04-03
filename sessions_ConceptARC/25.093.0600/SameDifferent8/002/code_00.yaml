@@ -1,0 +1,79 @@
+task_elements:
+  - name: Input Grid
+    type: Grid
+    properties:
+      - Contains numerical digits.
+      - Contains exactly one separator (either a full row or a full column) consisting entirely of zeros.
+  - name: Separator
+    type: Line (Row or Column)
+    properties:
+      - Consists solely of the digit 0.
+      - Divides the input grid into two primary sub-grids (Sub1, Sub2).
+      - Orientation (Row or Column) determines the split axis.
+  - name: Sub1 (First Sub-grid)
+    type: Sub-Grid
+    properties:
+      - Location relative to separator (e.g., Top or Left).
+      - Contains multiple colors, or just one.
+      - Has a background color (bg1), defined as the most frequent color.
+      - Contains a pattern formed by all non-background color cells.
+      - Pattern cells can include zero.
+      - Has a pattern shape (Shape1), defined by the relative coordinates of non-bg1 cells within their minimal bounding box (bbox1).
+      - Bounding box (bbox1) encloses all non-bg1 cells.
+      - May contain only one color (no distinct pattern shape).
+  - name: Sub2 (Second Sub-grid)
+    type: Sub-Grid
+    properties:
+      - Location relative to separator (e.g., Bottom or Right).
+      - Has a background color (bg2).
+      - Contains a pattern formed by non-bg2 cells.
+      - Has a pattern shape (Shape2), defined by relative coordinates of non-bg2 cells within bbox2.
+      - Bounding box (bbox2) encloses all non-bg2 cells.
+      - May contain only one color.
+  - name: Output
+    type: Grid
+    properties:
+      - Can be a grid derived from Shape1's bounding box and colors.
+      - Can be a 1x1 grid containing the single digit 0.
+
+relationships:
+  - type: Comparison
+    between: [Shape1, Shape2]
+    based_on: Set of relative coordinates of non-background cells within their respective bounding boxes.
+  - type: Condition
+    if: Shape1 exists and Shape1 is identical to Shape2
+    then: Output is derived from Sub1's bounding box.
+    else: Output is [[0]].
+  - type: Transformation (Output Generation from Sub1)
+    input: Sub1 grid portion corresponding to bbox1.
+    output_grid:
+      - Dimensions match bbox1.
+      - For each cell within bbox1:
+          - If the corresponding cell color in Sub1 is bg1, the output cell is 0.
+          - If the corresponding cell color in Sub1 is not bg1, the output cell retains that original color.
+
+actions:
+  - Detect the zero separator (row or column).
+  - Split the input grid into Sub1 and Sub2 based on the separator.
+  - Analyze Sub1:
+    - Determine background color (bg1 - most frequent).
+    - Identify all non-bg1 cells.
+    - If non-bg1 cells exist:
+        - Calculate their bounding box (bbox1).
+        - Extract their relative pattern (Shape1).
+        - Extract the corresponding subgrid slice (bbox_subgrid1).
+    - Else (only bg1 exists):
+        - Shape1 is considered non-existent or empty.
+  - Analyze Sub2:
+    - Determine background color (bg2 - most frequent).
+    - Identify all non-bg2 cells.
+    - If non-bg2 cells exist:
+        - Calculate their bounding box (bbox2).
+        - Extract their relative pattern (Shape2).
+    - Else:
+        - Shape2 is considered non-existent or empty.
+  - Compare Shape1 and Shape2.
+  - If Shape1 exists and is identical to Shape2:
+    - Generate the output grid by filtering bbox_subgrid1 (map bg1 to 0, keep others).
+  - Else:
+    - Generate the output grid [[0]].

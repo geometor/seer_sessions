@@ -1,0 +1,42 @@
+task_type: grid_transformation
+input_format: 1D_array_representing_flattened_2D_grid
+output_format: 1D_array_representing_flattened_2D_grid
+grid_dimensions:
+  analysis: Constant across examples
+  height: 3
+  width: 11
+elements:
+  - type: background_pixel
+    color_value: 0
+    color_name: white
+  - type: isolated_pixel_horizontal
+    properties:
+      - color_value: non-zero (C)
+      - context: Located at grid position (r, c)
+      - condition: Pixel to the left (r, c-1) is white AND pixel to the right (r, c+1) is white.
+  - type: pixel_block
+    properties:
+      - composition: Identical non-zero color_value
+      - context: Can exist in the input or be created by the transformation.
+actions:
+  - name: reshape_input
+    input: 1D_array (length 33)
+    output: 2D_grid (3x11)
+  - name: identify_horizontal_pattern
+    input: 2D_grid
+    pattern: sequence [white, non-white(C), white] horizontally adjacent
+    target: isolated_pixel_horizontal and its immediate horizontal white neighbors
+  - name: replace_horizontal_pattern
+    input_pattern: [0, C, 0] at grid cells [(r, c-1), (r, c), (r, c+1)]
+    output_pattern: [C, C, C] at grid cells [(r, c-1), (r, c), (r, c+1)]
+    condition: Applied to a *copy* of the grid for every match found in the *original* grid.
+  - name: flatten_output
+    input: 2D_grid (3x11)
+    output: 1D_array (length 33)
+relationships:
+  - type: spatial
+    description: Horizontal adjacency within rows of the 2D grid is critical. Vertical adjacency is ignored.
+invariance:
+  - description: Pixels not part of a horizontal [0, C, 0] pattern remain unchanged.
+  - description: Existing blocks of non-white pixels are preserved unless they are part of a transformation pattern (which seems unlikely given the observed pattern requires white neighbors).
+  - description: Vertical patterns or isolated pixels without the specific horizontal white neighbors are unchanged.

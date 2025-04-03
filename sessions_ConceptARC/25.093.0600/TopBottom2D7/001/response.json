@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom scipy.ndimage import label, find_objects\n\n\"\"\"\nIdentifies all contiguous blocks of non-zero numbers (1s and 3s) in the input grid.\nDetermines the \"target number\" (1 or 3) based on the block whose top-left corner is highest (minimum row index) and, in case of a tie, leftmost (minimum column index).\nExtracts all blocks composed of this target number from the input grid.\nConstructs the output grid containing only the cells belonging to these selected blocks, preserving their values and relative positions, cropped to their combined bounding box.\n\"\"\"\n\ndef find_blocks(grid):\n    \"\"\"\n    Finds all connected components (blocks) of non-zero values in the grid.\n\n    Args:\n        grid (np.ndarray): The input grid.\n\n    Returns:\n        list: A list of dictionaries, where each dictionary represents a block\n              and contains 'value', 'coords' (list of (r, c) tuples),\n              and 'top_left' (r, c) tuple. Returns empty list if no blocks.\n    \"\"\"\n    blocks = []\n    # Structure for 4-connectivity (up, down, left, right)\n    # Use 8-connectivity if diagonal connections count: structure = np.ones((3, 3), dtype=bool)\n    structure = np.array([[0,1,0],[1,1,1],[0,1,0]])\n    \n    # Label connected components for 1s\n    labeled_grid_1, num_features_1 = label(grid == 1, structure=structure)\n    objects_1 = find_objects(labeled_grid_1)\n    for i in range(num_features_1):\n        label_id = i + 1\n        coords = list(zip(*np.where(labeled_grid_1 == label_id)))\n        if not coords:\n            continue\n        min_r = min(r for r, c in coords)\n        min_c = min(c for r, c in coords if r == min_r)\n        blocks.append({'value': 1, 'coords': coords, 'top_left': (min_r, min_c)})\n\n    # Label connected components for 3s\n    labeled_grid_3, num_features_3 = label(grid == 3, structure=structure)\n    objects_3 = find_objects(labeled_grid_3)\n    for i in range(num_features_3):\n        label_id = i + 1\n        coords = list(zip(*np.where(labeled_grid_3 == label_id)))\n        if not coords:\n            continue\n        min_r = min(r for r, c in coords)\n        min_c = min(c for r, c in coords if r == min_r)\n        blocks.append({'value': 3, 'coords': coords, 'top_left': (min_r, min_c)})\n        \n    return blocks\n\n\ndef transform(input_grid):\n    \"\"\"\n    Transforms the input grid based on the described rules.\n\n    Args:\n        input_grid (list of list of int): The input 8x8 grid.\n\n    Returns:\n        list of list of int: The transformed, cropped output grid.\n    \"\"\"\n    grid = np.array(input_grid, dtype=int)\n\n    # 1. Identify all distinct contiguous blocks of non-zero numbers\n    all_blocks = find_blocks(grid)\n\n    if not all_blocks:\n        return [] # Handle empty input or input with only zeros\n\n    # 2. Find the top-most, left-most block to determine the target number\n    min_r = float('inf')\n    min_c_at_min_r = float('inf')\n    target_value = -1 # Initialize with an invalid value\n\n    for block in all_blocks:\n        r, c = block['top_left']\n        if r < min_r:\n            min_r = r\n            min_c_at_min_r = c\n            target_value = block['value']\n        elif r == min_r:\n            if c < min_c_at_min_r:\n                min_c_at_min_r = c\n                target_value = block['value']\n\n    # 3. Select all blocks matching the target number\n    selected_blocks = [block for block in all_blocks if block['value'] == target_value]\n\n    if not selected_blocks:\n         return [] # Should not happen if all_blocks was not empty, but good practice\n\n    # 4. Collect all coordinates from selected blocks\n    all_selected_coords = []\n    for block in selected_blocks:\n        all_selected_coords.extend(block['coords'])\n\n    if not all_selected_coords:\n        return [] # Should not happen\n\n    # 5. Determine the bounding box of the selected coordinates\n    min_row = min(r for r, c in all_selected_coords)\n    max_row = max(r for r, c in all_selected_coords)\n    min_col = min(c for r, c in all_selected_coords)\n    max_col = max(c for r, c in all_selected_coords)\n\n    # 6. Create the output grid\n    output_height = max_row - min_row + 1\n    output_width = max_col - min_col + 1\n    # Initialize with 0, though not strictly necessary as we fill non-zero values\n    output_grid_np = np.zeros((output_height, output_width), dtype=int) \n\n    # 7. Populate the output grid\n    for r, c in all_selected_coords:\n        # Adjust coordinates relative to the bounding box top-left\n        output_r = r - min_row\n        output_c = c - min_col\n        # The value is the target_value\n        output_grid_np[output_r, output_c] = target_value\n\n    # Convert back to list of lists for the required output format\n    output_grid = output_grid_np.tolist()\n\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 2373,
+    "candidates_token_count": 1409,
+    "total_token_count": 3782,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 23.222657,
+  "retries": 1
+}

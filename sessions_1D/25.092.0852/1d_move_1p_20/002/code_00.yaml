@@ -1,0 +1,46 @@
+task_description: "Shift a contiguous block of non-white pixels in a single-row grid one step to the right, moving the white pixel immediately preceding the block into the block's original start position."
+grid_properties:
+  dimensionality: 2 # Represented as 2D array
+  shape: 1xN # Always a single row
+  max_colors: 2 # White background plus one object color
+objects:
+  - id: background_pixel
+    color_value: 0
+    color_name: white
+    description: "Forms the background of the grid."
+  - id: color_block
+    color_value: non-zero (e.g., 4, 6)
+    color_name: variable (e.g., yellow, magenta)
+    description: "A single contiguous sequence of identical non-white pixels."
+    properties:
+      - contiguous: True
+      - uniform_color: True
+relationships:
+  - type: spatial
+    description: "The color_block is always preceded by at least one background_pixel."
+  - type: spatial
+    description: "The color_block is always followed by at least one background_pixel (allowing shift)."
+actions:
+  - action: identify_block
+    target: color_block
+    description: "Find the start index (s) and end index (e) of the color_block within the single row."
+  - action: identify_preceding_pixel
+    target: background_pixel
+    description: "Identify the background_pixel at index s-1."
+    preconditions:
+      - "s > 0"
+  - action: check_shift_validity
+    target: color_block
+    description: "Verify that there is space to shift the block (e+1 < grid_width)."
+  - action: execute_shift
+    target: color_block, preceding background_pixel
+    description: |
+      1. Copy the input row to create the output row.
+      2. Copy the pixels of the color_block (from input index s to e) to the output row at indices s+1 to e+1.
+      3. Place the value of the preceding background_pixel (always 0) into the output row at index s.
+    preconditions:
+      - "Block identified (s != -1)."
+      - "Preceding pixel exists (s > 0)."
+      - "Space exists to shift (e+1 < grid_width)."
+  - action: no_change
+    description: "If no block is found, or if it starts at index 0, or if there's no space to shift right, return the input grid unchanged."

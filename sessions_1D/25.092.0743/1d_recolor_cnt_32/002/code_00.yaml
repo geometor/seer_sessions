@@ -1,0 +1,59 @@
+task_type: object_transformation
+grid_properties:
+  dimensionality: 1 # Represented as 1xN list of lists
+  size_preservation: True # Output grid has the same dimensions as the input (1xN)
+input_elements:
+  - object: pixel
+    color: white (0)
+    behavior: static, remains unchanged in the output at the same position.
+  - object: contiguous_horizontal_block
+    color: magenta (6)
+    properties:
+      - length: Integer > 0 (observed lengths are 1, 2, 3 in training)
+    behavior: transformed based on length.
+output_elements:
+  - object: pixel
+    color: white (0)
+    origin: copied from input white pixel.
+  - object: contiguous_horizontal_block
+    properties:
+      - length: 1
+      - color: red (2)
+    origin: transformed from magenta block of length 1.
+  - object: contiguous_horizontal_block
+    properties:
+      - length: 2
+      - color: gray (5)
+    origin: transformed from magenta block of length 2.
+  - object: contiguous_horizontal_block
+    properties:
+      - length: 3
+      - color: azure (8)
+    origin: transformed from magenta block of length 3.
+transformation_rule:
+  - scope: single row grid (1xN)
+  - process:
+    - step: Initialize the output row as a copy of the input row.
+    - step: Iterate through the input row from left to right.
+    - step: If a magenta (6) pixel is encountered that hasn't been processed as part of a block yet:
+        - action: Identify the full contiguous horizontal block of magenta (6) pixels starting at this position.
+        - action: Measure the length of this block.
+        - condition: Check the block length:
+            - if length is 1: set replacement color to red (2).
+            - if length is 2: set replacement color to gray (5).
+            - if length is 3: set replacement color to azure (8).
+            - otherwise (length is 0 or >3): No specific rule defined by examples, leave as is (or handle as error, though initial copy handles 'leave as is' if no replacement occurs).
+        - action: If a replacement color was determined (length 1, 2, or 3), replace the pixels in the output row corresponding to the *entire* identified block (using its start position and length) with the replacement color.
+        - action: Advance the iteration index past the identified block.
+    - step: If a white (0) pixel is encountered, no action is needed as it was already copied to the output. Advance the iteration index.
+  - output: Return the modified output row, formatted as a list within a list.
+relationships:
+  - relationship: block_mapping
+    input_object: magenta (6) block
+    output_object: block of new color
+    mapping: input block length -> output block color (1->2, 2->5, 3->8)
+    constraints: block length and position are preserved.
+  - relationship: pixel_mapping
+    input_object: white (0) pixel
+    output_object: white (0) pixel
+    constraints: position is preserved.

@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom collections import deque\n\n\"\"\"\nIdentify connected components (shapes) of non-zero values in the input grid.\nCheck for horizontal adjacencies between cells of different non-zero values.\nIf two adjacent cells (r, c) and (r, c+1) have values V1 and V2 (both > 0, V1 != V2), \nidentify the shape associated with the minimum value (min(V1, V2)).\nMark this minimum-value shape for a leftward shift (move one column to the left).\nApply all identified shifts simultaneously: \n  - First, clear the original positions of all shifting shapes in the output grid.\n  - Second, fill the new, left-shifted positions of all shifting shapes in the output grid, overwriting existing values.\nShapes not marked for shifting remain in place unless overwritten by a shifting shape.\n\"\"\"\n\ndef _find_shapes(grid):\n    \"\"\"\n    Identifies all connected components (shapes) of non-zero values using BFS.\n\n    Args:\n        grid: A numpy array representing the input grid.\n\n    Returns:\n        A tuple containing:\n        - shapes: A dictionary mapping shape_id to {'value': int, 'cells': set((r, c))}.\n        - cell_to_shape_id: A numpy array of the same shape as grid, where each cell \n                           contains the shape_id it belongs to, or -1 if background (0).\n    \"\"\"\n    rows, cols = grid.shape\n    visited = np.zeros((rows, cols), dtype=bool)\n    cell_to_shape_id = np.full((rows, cols), -1, dtype=int)\n    shapes = {}\n    shape_id_counter = 0\n\n    for r in range(rows):\n        for c in range(cols):\n            # If the cell is non-zero and not visited yet, start a BFS\n            if grid[r, c] != 0 and not visited[r, c]:\n                value = grid[r, c]\n                current_shape_id = shape_id_counter\n                shapes[current_shape_id] = {'value': value, 'cells': set()}\n                q = deque([(r, c)])\n                visited[r, c] = True\n\n                while q:\n                    row, col = q.popleft()\n                    # Add cell to the current shape\n                    shapes[current_shape_id]['cells'].add((row, col))\n                    cell_to_shape_id[row, col] = current_shape_id\n\n                    # Explore 4-directional neighbors\n                    for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n                        nr, nc = row + dr, col + dc\n                        # Check boundaries, if neighbor has the same value, and not visited\n                        if 0 <= nr < rows and 0 <= nc < cols and \\\n                           grid[nr, nc] == value and not visited[nr, nc]:\n                            visited[nr, nc] = True\n                            q.append((nr, nc))\n                \n                shape_id_counter += 1\n                \n    return shapes, cell_to_shape_id\n\ndef transform(input_grid):\n    \"\"\"\n    Applies the transformation rule to the input grid.\n\n    Identifies shapes based on horizontal adjacency of different non-zero colors.\n    Shifts the shape with the minimum value in such adjacent pairs one step to the left.\n\n    Args:\n        input_grid: A list of lists or numpy array representing the input grid.\n\n    Returns:\n        A numpy array representing the transformed output grid.\n    \"\"\"\n    grid = np.array(input_grid)\n    rows, cols = grid.shape\n    output_grid = grid.copy() # Initialize output grid as a copy\n\n    # 1. Identify all shapes in the input grid\n    shapes, cell_to_shape_id = _find_shapes(grid)\n    \n    # 2. Identify shapes to shift based on horizontal adjacency\n    shapes_to_shift_ids = set()\n    for r in range(rows):\n        for c in range(cols - 1): # Iterate up to the second-to-last column\n            v1 = grid[r, c]\n            v2 = grid[r, c + 1]\n\n            # Check for horizontal adjacency between different non-zero values\n            if v1 != 0 and v2 != 0 and v1 != v2:\n                # Determine the minimum value and the corresponding shape_id\n                if v1 < v2:\n                    min_val_shape_id = cell_to_shape_id[r, c]\n                else: # v2 < v1\n                    min_val_shape_id = cell_to_shape_id[r, c + 1]\n                \n                # Add the shape_id to the set of shapes to be shifted\n                # Check if min_val_shape_id is valid (not -1) before adding\n                if min_val_shape_id != -1:\n                    shapes_to_shift_ids.add(min_val_shape_id)\n\n    # 3. Apply the shifts (in two phases to handle overlaps correctly)\n    \n    # Phase 1: Clear the original positions of shifting shapes\n    for shape_id in shapes_to_shift_ids:\n        shape_info = shapes[shape_id]\n        for r, c in shape_info['cells']:\n            output_grid[r, c] = 0 # Set original cell to background\n\n    # Phase 2: Fill the new, left-shifted positions\n    for shape_id in shapes_to_shift_ids:\n        shape_info = shapes[shape_id]\n        shape_value = shape_info['value']\n        for r, c in shape_info['cells']:\n            # Check if the shift is possible (not shifting from column 0)\n            if c > 0:\n                new_c = c - 1\n                output_grid[r, new_c] = shape_value # Set new cell value, overwriting if necessary\n\n    return output_grid.tolist() # Return as list of lists per standard format\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 3004,
+    "candidates_token_count": 1404,
+    "total_token_count": 4408,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 108.349822,
+  "retries": 2
+}

@@ -1,0 +1,49 @@
+task_context:
+  grid_representation: 2D NumPy array
+  grid_dimensions: 1 row, variable columns (15 in examples)
+  relevant_colors:
+    - white: 0
+    - blue: 1
+    - main_block_colors: [2, 3, 4, 5, 6, 7, 8, 9] # Non-white, non-blue
+
+identified_objects:
+  - object: data_row
+    description: The single row of the input grid containing all relevant pixels.
+    source: Input grid[0]
+  - object: main_block
+    description: Located within the data_row. A contiguous sequence of pixels of the same color C, where C is not white(0) or blue(1). Assumed to be the first such block encountered.
+    properties: [color, length, start_index, end_index]
+    count_per_example: 1
+  - object: white_pair
+    description: Located within the data_row. A contiguous sequence of exactly two white (0) pixels, i.e., [0, 0]. Assumed to be the first such pair encountered.
+    properties: [start_index, end_index]
+    count_per_example: 1
+  - object: prefix
+    description: Sequence of pixels in the data_row *before* the main_block. Can be empty.
+  - object: suffix
+    description: Sequence of pixels in the data_row *after* the white_pair. Contains the marker_pixel (blue 1).
+
+relationships:
+  - type: spatial_adjacency (input row)
+    description: In all examples, the white_pair immediately follows the main_block. (main_block.end_index + 1 == white_pair.start_index)
+  - type: transformation
+    description: The data_row is segmented, and the main_block and white_pair segments swap positions. The output grid has the same dimensions as the input, containing the rearranged row.
+
+actions:
+  - action: extract_row
+    description: Get the first (and only) row from the input 2D NumPy array.
+    inputs: [input_grid]
+    outputs: [data_row]
+  - action: segment_row
+    description: Identify and extract the prefix, main_block, white_pair, and suffix sequences from the data_row.
+    inputs: [data_row]
+    outputs: [prefix, main_block, white_pair, suffix]
+  - action: construct_output_row
+    description: Concatenate the extracted segments in the order prefix, white_pair, main_block, suffix.
+    inputs: [prefix, main_block, white_pair, suffix]
+    concatenation_order: [prefix, white_pair, main_block, suffix]
+    output: [output_row]
+  - action: format_output_grid
+    description: Create the final output grid (2D NumPy array) by placing the output_row as the single row.
+    inputs: [output_row]
+    outputs: [output_grid]

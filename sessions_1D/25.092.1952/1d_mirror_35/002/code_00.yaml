@@ -1,0 +1,48 @@
+task_description: Move a colored block relative to a fixed pivot point in a 1D array (represented as a 1xN grid), preserving the gap between them.
+elements:
+  - type: Grid
+    description: Input and Output are 1xN NumPy arrays representing color pixels.
+    properties:
+      - shape: [1, N] (e.g., [1, 26] in examples).
+      - values: Integers 0-9 representing colors.
+  - type: Pivot Pixel
+    description: A single pixel with a specific color (maroon, value 9).
+    properties:
+      - color: 9 (maroon)
+      - count: Exactly one per grid.
+    location:
+      - Defined by its index in the flattened array or (0, col_index) in the 2D grid.
+    actions:
+      - Remains in its original index position in the output grid.
+  - type: Object Block
+    description: A contiguous sequence of identical pixels in the row, excluding white (0) and the Pivot color (9).
+    properties:
+      - contiguity: Pixels are adjacent horizontally.
+      - uniformity: All pixels within the block have the same color.
+      - color: Varies per example (e.g., 5, 4, 1), but is not 0 or 9.
+      - count: Exactly one block per grid (in examples).
+    location:
+      - Defined by its start and end column indices in the input grid.
+    actions:
+      - Is effectively removed from its original location in the input (replaced by background 0).
+      - Is placed contiguously in the output grid row.
+  - type: Gap
+    description: The sequence of white (0) pixels horizontally located between the Object Block and the Pivot Pixel in the input grid row.
+    properties:
+      - content: Consists only of white (0) pixels.
+      - size: The number of white pixels in the sequence. Can be zero or more.
+    relationships:
+      - Located spatially between the Object Block's end index and the Pivot's index (assuming object is before pivot, as per examples).
+    actions:
+      - The size of this gap (`gap_size`) dictates the placement of the Object Block in the output.
+transformation:
+  input: 1xN NumPy Array (Grid)
+  output: 1xN NumPy Array (Grid)
+  steps:
+    - Identify the column index (`pivot_index`) of the Pivot Pixel (maroon, 9) in the input grid's first (only) row.
+    - Identify the Object Block (contiguous, non-white, non-maroon pixels) in the input grid's row. Record its pixel values/data (`object_data`), start column index (`object_start_index`), and end column index (`object_end_index`).
+    - Calculate the `gap_size`: count the number of white (0) pixels strictly between `object_end_index` and `pivot_index` in the input grid row.
+    - Create a new output grid of the same shape as the input, filled with the background color (white, 0).
+    - Place the Pivot Pixel (9) at `(0, pivot_index)` in the output grid.
+    - Calculate the starting column index for the relocated Object Block in the output grid: `output_object_start_index = pivot_index + gap_size + 1`.
+    - Place the `object_data` into the output grid's first row, starting at `output_object_start_index`, ensuring it doesn't exceed grid boundaries.

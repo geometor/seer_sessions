@@ -1,0 +1,59 @@
+Grid:
+  - Type: Input
+    Properties:
+      - Dimensions: HxW (Constant within task, e.g., 5x6)
+      - Pixels:
+          - Background: White (0)
+          - Marker: Exactly one Maroon (9) pixel
+          - Movable_Shape: One contiguous object of a single color (not 0 or 9)
+  - Type: Output
+    Properties:
+      - Dimensions: Same HxW as Input
+      - Pixels:
+          - Background: White (0)
+          - Marker: Same Maroon (9) pixel, same position as Input
+          - Movable_Shape: Same shape and color as Input, different position
+
+Objects:
+  - Name: Marker_Pixel
+    Instance_In: Input Grid
+    Properties:
+      - Color: Maroon (9)
+      - Count: 1
+      - Role: Anchor / Reference point for vertical positioning
+    Instance_In: Output Grid
+    Properties:
+      - Color: Maroon (9)
+      - Position: Identical (row, col) to its position in the Input Grid
+
+  - Name: Movable_Shape
+    Instance_In: Input Grid
+    Properties:
+      - Color: A single color C, where C is not White (0) or Maroon (9)
+      - Pixels: A set of coordinates {(r, c), ...} where grid[r, c] == C
+      - Structure: Assumed contiguous based on examples
+      - Location: Occupies rows entirely above the Marker_Pixel's row
+      - Top_Row: Minimum row index (`shape_top_row`) among all shape pixels
+    Instance_In: Output Grid
+    Properties:
+      - Color: Same color C as in Input Grid
+      - Pixels: Same set of relative pixel positions as in Input Grid
+      - Structure: Identical to Input Grid shape
+      - Location: Relocated vertically
+      - Top_Row: Positioned at `marker_row + 1`
+
+Relationships:
+  - The Marker_Pixel defines a horizontal reference line at `marker_row`.
+  - In the Input, the Movable_Shape is strictly above this line (`r < marker_row` for all shape pixels).
+  - In the Output, the Movable_Shape is strictly below this line, starting immediately after it.
+
+Action/Transformation:
+  - Identify: Marker_Pixel position (`marker_row`, `marker_col`).
+  - Identify: Movable_Shape pixels `{(r, c), ...}` and its color `shape_color`.
+  - Calculate: `shape_top_row = min(r for r, c in shape_pixels)`.
+  - Create: Output grid of same dimensions, filled with White (0).
+  - Place: Marker_Pixel at (`marker_row`, `marker_col`) in Output.
+  - Translate: For each input shape pixel `(r, c)`:
+      - Calculate relative row: `relative_r = r - shape_top_row`.
+      - Calculate new output row: `new_r = (marker_row + 1) + relative_r`.
+      - Place `shape_color` at (`new_r`, `c`) in Output, preserving the column `c`.

@@ -1,0 +1,64 @@
+objects:
+  - name: Grid
+    properties:
+      - type: 2D array of integers
+      - dimensions: 6x6
+      - contains: Cells
+  - name: Cell
+    properties:
+      - row_index: integer (0-5)
+      - column_index: integer (0-5)
+      - value: integer (0-9)
+  - name: Block
+    properties:
+      - type: connected component of Cells
+      - connection_rule: adjacent horizontally, vertically, or diagonally
+      - cell_value: common non-zero integer for all cells in the block
+      - size: count of cells in the block (> 1)
+      - anchor: coordinates (row, col) of the top-most, then left-most cell in the block
+
+relationships:
+  - type: spatial
+    description: Cells are positioned within the Grid.
+  - type: connectivity
+    description: Cells with the same non-zero value can be connected to form a Block.
+  - type: selection_priority
+    description: >
+      Blocks are compared for selection based on a hierarchy:
+      1. Minimum anchor row index.
+      2. Minimum block size (among those tied for minimum anchor row).
+      3. Maximum anchor column index (among those tied for minimum anchor row and minimum size).
+
+actions:
+  - name: identify_blocks
+    description: >
+      Scan the input Grid to find all distinct Blocks of connected non-zero cells.
+      Calculate size and anchor (min_row, min_col) for each block.
+    inputs: Grid
+    outputs: list of Blocks
+  - name: filter_blocks_by_size
+    description: Remove Blocks with size less than or equal to 1.
+    inputs: list of Blocks
+    outputs: filtered list of Blocks
+  - name: select_target_block
+    description: >
+      From the filtered list of Blocks (size > 1), select a single target Block using a
+      hierarchical comparison:
+      1. Find the minimum anchor row index among all blocks.
+      2. Filter the list to include only blocks with this minimum anchor row index.
+      3. If only one block remains, it is the target.
+      4. If multiple blocks remain, find the minimum block size among them.
+      5. Filter the current list to include only blocks with this minimum size.
+      6. If only one block remains, it is the target.
+      7. If multiple blocks still remain (tied on min row and min size), find the maximum
+         anchor column index among them.
+      8. The block with this maximum anchor column index is the target.
+    inputs: filtered list of Blocks
+    outputs: target Block (or none if the filtered list was initially empty)
+  - name: modify_grid
+    description: >
+      Create a copy of the input Grid. If a target Block was selected,
+      change the value of all cells corresponding to the target Block to 5 in the copied grid.
+      Otherwise, return the copied grid unchanged.
+    inputs: input Grid, target Block (optional)
+    outputs: output Grid

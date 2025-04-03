@@ -1,0 +1,46 @@
+task_context:
+  grid_representation: 2D
+  grid_dimensions: 4x8 # Consistently inferred from length 32 and visual patterns
+  background_color: white (0)
+  foreground_colors: Only one non-white color per grid (gray-5 or magenta-6 in examples).
+
+input_elements:
+  - type: background
+    color: white (0)
+    location: Fills the grid initially.
+  - type: object
+    description: Contiguous areas of a single non-white color.
+    properties:
+      - color: The specific non-white color present (e.g., gray-5, magenta-6).
+      - pixels: Set of (row, column) coordinates belonging to the object.
+      - size: Count of pixels in the object.
+      - adjacency: Cardinal (up, down, left, right) connectivity defines contiguity.
+    relationships:
+      - Multiple distinct objects of the same color can exist in the input.
+
+transformation:
+  - action: accept_input_grid
+    description: Receive the input as a 2D structure (e.g., NumPy array or list of lists) with dimensions 4x8.
+  - action: identify_dominant_color
+    description: Find the single non-white color present in the input grid. If none exists, the output is an all-white grid.
+  - action: find_objects
+    input: dominant_color, input_grid
+    description: Identify all distinct contiguous objects of the dominant color using cardinal adjacency (e.g., via Breadth-First Search or Depth-First Search). Store the pixel coordinates for each object.
+  - action: calculate_object_sizes
+    input: objects
+    description: Determine the number of pixels (size) for each identified object.
+  - action: find_largest_object
+    input: objects_with_sizes
+    description: Select the object with the maximum size. (Assumes no ties for largest based on examples; if ties occurred, a tie-breaking rule would be needed, but isn't evident here). If no objects are found, proceed as if an empty object is selected.
+  - action: generate_output_grid
+    description: Create a new 4x8 grid.
+    initial_state: Filled with the background color (white, 0).
+  - action: populate_output_grid
+    input: largest_object, dominant_color
+    description: For each pixel coordinate belonging to the identified largest object, set the corresponding pixel in the output grid to the dominant color. If no largest object exists (input was all white or had no non-white objects), the output grid remains all white.
+
+output_elements:
+  - type: background
+    color: white (0)
+  - type: object
+    description: If non-white objects existed in the input, this is the single largest object from the input grid, preserving its shape, position, and color. All other input elements are replaced by the background color. If no non-white objects were in the input, the output is entirely background.

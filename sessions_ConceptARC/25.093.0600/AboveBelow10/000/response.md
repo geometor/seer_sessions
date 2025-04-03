@@ -1,0 +1,76 @@
+Okay, let's break down the transformation logic based on the provided examples.
+
+## Perception of Task Elements
+
+1.  **Input/Output Data:** Both inputs and outputs are 2D grids (matrices) containing single-digit non-negative integers.
+2.  **Background Value:** The predominant value in both input and output grids is 0, acting as a background.
+3.  **Significant Value:** Each input grid contains a single unique non-zero integer (4 in `train_1`, 3 in `train_2`). Let's call this the "source value".
+4.  **Source Pattern:** The non-zero values in the input grids form a sparse pattern, specifically:
+    *   `train_1`: A diagonal line segment moving downwards and to the right.
+    *   `train_2`: An anti-diagonal line segment moving downwards and to the left.
+5.  **Transformation Effect:** The transformation fills regions of the output grid with the source value. The original source cells retain their value in the output. The filled region appears to be related to the positions of the source cells.
+6.  **Filling Logic:** The filling seems to propagate downwards from each source cell. The horizontal extent of the fill depends on the pattern:
+    *   `train_1` (down-right diagonal): Filling occurs downwards and *leftwards* relative to the source cell's column index. Specifically, a cell `(r, c)` is filled if there is a source cell `(r_s, c_s)` such that `r >= r_s` and `c <= c_s`.
+    *   `train_2` (down-left anti-diagonal): Filling occurs downwards and *rightwards* relative to the source cell's column index. Specifically, a cell `(r, c)` is filled if there is a source cell `(r_s, c_s)` such that `r >= r_s` and `c >= c_s`.
+7.  **Determining Fill Direction:** The direction of the source pattern (down-right vs. down-left) determines whether the horizontal fill condition is `c <= c_s` or `c >= c_s`. This direction can be inferred by comparing the coordinates of (at least) two source cells.
+
+## YAML Facts Documentation
+
+
+```yaml
+Grid:
+  Properties:
+    - dimensions (rows, columns)
+    - contains Cells
+Cell:
+  Properties:
+    - coordinates (row, column)
+    - value (integer)
+SourceCell:
+  Inherits: Cell
+  Properties:
+    - value is non-zero
+Relationship:
+  - Below: Cell A is below Cell B if A.row > B.row
+  - LeftOf: Cell A is left of Cell B if A.column < B.column
+  - RightOf: Cell A is right of Cell B if A.column > B.column
+  - SameColumn: Cell A is in the same column as Cell B if A.column == B.column
+PatternDirection:
+  Values:
+    - DownRight (source cells trend: row increases, column increases)
+    - DownLeft (source cells trend: row increases, column decreases)
+    - DownVertical (source cells trend: row increases, column stays same) # Hypothetical
+Action:
+  - FillCell: Set the value of an output grid cell.
+TransformationRule:
+  - Identify all SourceCells in the input grid.
+  - Determine the PatternDirection from the SourceCells' coordinates.
+  - Create an output grid initialized with zeros.
+  - For each cell (r, c) in the output grid:
+    - Check if there exists any SourceCell (r_s, c_s) with value 'v' such that:
+      - r >= r_s (cell is below or in the same row as the source)
+      - AND a horizontal condition based on PatternDirection is met:
+        - If PatternDirection is DownRight: c <= c_s
+        - If PatternDirection is DownLeft: c >= c_s
+        - If PatternDirection is DownVertical: c == c_s # Assumed
+    - If such a SourceCell exists, FillCell(output[r][c], v).
+```
+
+
+## Natural Language Program
+
+1.  Initialize an output grid with the same dimensions as the input grid, filled entirely with zeros.
+2.  Identify all "source cells" in the input grid, which are cells containing a non-zero value. Record their row index `r_s`, column index `c_s`, and the non-zero value `v`. Assume there is only one unique non-zero value `v` across all source cells.
+3.  Determine the overall trend or direction of the source cells:
+    a.  If there are fewer than two source cells, assume a "DownVertical" trend (or define specific behavior for this edge case - based on examples, we need at least two).
+    b.  If there are two or more source cells, compare the coordinates of the source cell with the lowest row index (`s1`) to the source cell with the second-lowest row index (`s2`).
+    c.  If `s2.column > s1.column`, the trend is "DownRight".
+    d.  If `s2.column < s1.column`, the trend is "DownLeft".
+    e.  If `s2.column == s1.column`, the trend is "DownVertical".
+4.  Iterate through each cell `(r, c)` of the grid (from row 0 to max_row, column 0 to max_col).
+5.  For the current cell `(r, c)`, check against *all* identified source cells `(r_s, c_s)`:
+    a.  If the trend is "DownRight", check if there exists *any* source cell `(r_s, c_s)` such that `r >= r_s` AND `c <= c_s`.
+    b.  If the trend is "DownLeft", check if there exists *any* source cell `(r_s, c_s)` such that `r >= r_s` AND `c >= c_s`.
+    c.  If the trend is "DownVertical", check if there exists *any* source cell `(r_s, c_s)` such that `r >= r_s` AND `c == c_s`.
+6.  If the condition in step 5 (corresponding to the determined trend) is met for *at least one* source cell, set the value of the output grid cell `output[r][c]` to the source value `v`.
+7.  After checking all cells `(r, c)`, return the completed output grid.

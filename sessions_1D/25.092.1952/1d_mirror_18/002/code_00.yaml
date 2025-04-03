@@ -1,0 +1,59 @@
+task_description: Move a contiguous colored block across a fixed maroon pivot pixel in a 1D grid, preserving the gap size between the block and the pivot.
+grid_dimensionality: 1D (single row)
+input_data_type: numpy.ndarray
+
+objects:
+  - type: background
+    color: white (0)
+    role: Fills empty space.
+  - type: pivot
+    color: maroon (9)
+    quantity: 1
+    properties:
+      - fixed_position: True (its index remains constant in the output)
+    role: Acts as a reference point for movement.
+  - type: colored_block
+    color: Any color except white (0) or maroon (9)
+    quantity: 1
+    properties:
+      - contiguous: True
+      - variable_color: True
+      - variable_length: True
+      - variable_position: True (relative to pivot)
+    role: The object that is moved.
+
+relationships:
+  - type: spatial_gap
+    object1: colored_block
+    object2: pivot
+    property: size (number of background pixels between them)
+    rule: The gap size is preserved during the transformation.
+
+actions:
+  - action: locate_pivot
+    input: input_grid
+    method: Find the index where pixel value is maroon (9). (e.g., using np.where)
+    output: pivot_index
+  - action: locate_colored_block
+    input: input_grid
+    method: Iterate through the grid to find the first sequence of contiguous pixels that are neither white (0) nor maroon (9).
+    output: block_color, block_start_index, block_end_index, block_length
+  - action: calculate_gap_and_new_position
+    inputs: block_start_index, block_end_index, pivot_index
+    condition: block is before pivot (block_end_index < pivot_index)
+    calculations:
+      - gap_size = pivot_index - block_end_index - 1
+      - new_block_start_index = pivot_index + 1 + gap_size
+    outputs: new_block_start_index
+  - action: construct_output
+    inputs: grid_size, pivot_index, block_color, block_length, new_block_start_index
+    steps:
+      - Create an output grid of the same size, filled with background color (white, 0).
+      - Place the pivot (maroon, 9) at pivot_index.
+      - Place the colored_block (block_color) starting at new_block_start_index for block_length pixels.
+    output: output_grid
+
+implicit_assumptions:
+  - The input grid will always contain exactly one maroon (9) pivot pixel.
+  - The input grid will always contain exactly one contiguous block of a color other than white (0) or maroon (9).
+  - In all observed examples, the colored block appears *before* the pivot pixel in the input. The transformation moves it to appear *after* the pivot.

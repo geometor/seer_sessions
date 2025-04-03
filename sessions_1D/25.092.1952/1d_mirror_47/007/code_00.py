@@ -1,0 +1,136 @@
+"""
+Transforms a 1xN input grid by rearranging elements within the single row. 
+It identifies a single marker pixel (color 9) and a contiguous block of 
+another color (non-0, non-9). The marker pixel maintains its original column 
+index. The colored block is moved to the position immediately following the 
+marker, preserving the length of any gap of background pixels (color 0) 
+that originally existed between the block and the marker. In the output row, 
+the marker is followed by the gap (represented by background pixels), which 
+is then followed by the colored block. The background color is white (0).
+"""
+
+import numpy as np
+
+def find_marker_in_row(row_array):
+    """
+    Finds the column index of the marker pixel (9) in a 1D numpy array (row).
+    Returns the index, or -1 if not found.
+    """
+    # Find indices where the value is 9
+    marker_indices = np.where(row_array == 9)[0]
+    # Assume only one marker based on examples
+    if len(marker_indices) > 0:
+        return marker_indices[0] 
+    return -1 # Marker not found
+
+def find_colored_block_in_row(row_array):
+    """
+    Finds the start index, end index, and color of the contiguous 
+    non-background (0), non-marker (9) block in a 1D numpy array (row).
+    Returns (start_index, end_index, color), or (-1, -1, -1) if not found.
+    """
+    block_start = -1
+    block_end = -1
+    block_color = -1
+    
+    # Iterate through the row to find the block
+    for i, pixel in enumerate(row_array):
+        # Check if the pixel is part of the colored block (not 0 and not 9)
+        if pixel != 0 and pixel != 9:
+            if block_start == -1:
+                # Found the start of a potential block
+                block_start = i
+                block_color = pixel
+            # Check if this is the end of the block
+            # End conditions: end of row OR next pixel is not the block color
+            if (i + 1 == len(row_array) or row_array[i+1] != block_color):
+                 block_end = i
+                 # Found the complete block, return its properties
+                 return block_start, block_end, block_color
+        elif block_start != -1:
+             # This condition is implicitly handled by the end condition check above.
+             # If a block was started and we encounter 0 or 9, the `if` condition
+             # `row_array[i+1] != block_color` would have triggered on the previous iteration.
+             pass 
+
+    # If no block was found after iterating through the whole row
+    return block_start, block_end, block_color
+
+
+def transform(input_grid):
+    """
+    Applies the transformation rule to the input grid (assumed 1xN).
+    
+    Args:
+        input_grid (list of lists): A 1xN grid represented as a list containing one list.
+
+    Returns:
+        list of lists: The transformed 1xN grid.
+    """
+    
+    # Validate input format: must be a list containing exactly one list (the row)
+    if not isinstance(input_grid, list) or len(input_grid) != 1 or not isinstance(input_grid[0], list):
+        # Invalid format, return input unchanged as per ARC guidelines for non-applicable rules
+        return input_grid
+        
+    input_row = input_grid[0]
+    # Convert row to numpy array for efficient processing
+    input_row_array = np.array(input_row, dtype=int)
+    row_size = len(input_row_array)
+    
+    # Handle empty row case
+    if row_size == 0:
+        return input_grid
+
+    # Initialize output_row with background color (0)
+    output_row_array = np.zeros_like(input_row_array)
+
+    # 1. Locate the single marker pixel (maroon, 9) and note its index
+    marker_index = find_marker_in_row(input_row_array)
+    # If no marker, the rule doesn't apply; return input
+    if marker_index == -1:
+        return input_grid 
+
+    # 2. Locate the contiguous colored block (not 0 or 9)
+    block_start_index, block_end_index, block_color = find_colored_block_in_row(input_row_array)
+    # If no block, the rule doesn't apply; return input (marker is not enough)
+    # Or should we place only the marker? Examples suggest both exist. Let's return input.
+    if block_start_index == -1:
+         # Alternatively, could place just the marker:
+         # output_row_array[marker_index] = 9
+         # return [output_row_array.tolist()]
+         return input_grid
+
+    # Calculate block length
+    block_length = block_end_index - block_start_index + 1
+
+    # 3. Determine the gap length between the block end and the marker start in the input
+    # The gap consists of pixels between block_end_index + 1 and marker_index - 1
+    gap_start_index_in_input = block_end_index + 1
+    gap_end_index_in_input = marker_index - 1 
+    gap_length = 0
+    if gap_start_index_in_input <= gap_end_index_in_input:
+         # Calculate number of elements in the gap range [gap_start, gap_end]
+         gap_length = gap_end_index_in_input - gap_start_index_in_input + 1 
+
+    # 4. Place the marker pixel into the output row at its original index
+    output_row_array[marker_index] = 9 # Marker color is always 9
+    
+    # 5. Calculate the target start index for the colored block in the output row
+    # Position is: index immediately after marker + length of the original gap
+    new_block_start_index = marker_index + 1 + gap_length
+    
+    # 6. Place the colored block into the output row, handling boundaries
+    if new_block_start_index < row_size: # Check if the block start index is within the row
+        # Calculate the index where the block placement *would* ideally end
+        new_block_end_index_ideal = new_block_start_index + block_length 
+        # Determine the actual end index for placement, clipping at the row boundary
+        actual_new_end_index = min(new_block_end_index_ideal, row_size)
+        # Place the block (or the part that fits) using slice assignment
+        output_row_array[new_block_start_index : actual_new_end_index] = block_color
+
+    # 7. Convert the modified numpy row back to a list 
+    #    and wrap it in another list to match the required 1xN grid format
+    output_grid = [output_row_array.tolist()]
+
+    return output_grid

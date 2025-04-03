@@ -1,0 +1,46 @@
+Okay, let's break down the task based on the provided examples.
+
+**Perception of Elements:**
+
+1.  **Grid Structure:** The inputs and outputs are represented as 2D grids of pixels. Based on the number of elements (32), a 4x8 or 8x4 grid is likely. The examples seem consistent with a 4x8 grid structure.
+2.  **Colors:** The primary colors involved are white (0 - background), maroon (9 - primary objects), and yellow (4 - appears only in the output).
+3.  **Objects:** The maroon (9) pixels form distinct contiguous shapes (objects) against the white (0) background. Connectivity appears to be based on horizontal and vertical adjacency (4-connectivity).
+4.  **Transformation:** In each example, one specific maroon object from the input grid has its color changed to yellow (4) in the output grid. Other maroon objects and the background remain unchanged.
+5.  **Pattern:** Comparing the maroon objects that change color to those that don't, the key distinguishing factor seems to be size (number of pixels). In each example, the largest maroon object (by pixel count) is the one that undergoes the color change.
+
+**Facts:**
+
+
+```yaml
+Grid:
+  - type: 2D Array
+  - dimensions: 4x8 (inferred)
+  - background_color: white (0)
+
+Objects:
+  - type: Contiguous Pixels
+  - color: maroon (9)
+  - connectivity: 4-way (horizontal/vertical)
+  - property: size (pixel count)
+
+Transformation:
+  - action: Color Change
+  - target_criteria: The single largest maroon object (by pixel count).
+  - input_color: maroon (9)
+  - output_color: yellow (4)
+  - scope: Affects only the pixels of the identified largest object. Other pixels retain their original color.
+
+Relationship:
+  - The transformation rule is determined by comparing the sizes of all distinct maroon objects present in the input grid.
+```
+
+
+**Natural Language Program:**
+
+1.  Identify all distinct connected groups (objects) of maroon (9) pixels in the input grid, considering pixels connected horizontally or vertically as part of the same object.
+2.  Calculate the size (number of pixels) for each identified maroon object.
+3.  Determine the maximum size among these objects.
+4.  Locate the maroon object that corresponds to this maximum size. If there are multiple objects tied for the largest size, this rule applies to one such object (the examples suggest there will be only one unique largest object, or the first one encountered during search).
+5.  Create a new grid identical to the input grid.
+6.  Change the color of all pixels belonging to the identified largest maroon object from maroon (9) to yellow (4) in the new grid.
+7.  The resulting grid is the output.

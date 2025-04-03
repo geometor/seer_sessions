@@ -1,0 +1,61 @@
+task_type: object_transformation
+dimensionality: 1D # or 1xN grid
+input_features:
+  - single pivot pixel: maroon (9)
+  - single contiguous object: block of non-white, non-maroon color
+  - object location: left of the pivot
+  - left gap: zero or more white (0) pixels between the object and the pivot
+  - background: white (0) pixels fill the rest
+output_features:
+  - grid size: same as input
+  - pivot pixel: maroon (9), same position as input
+  - object: same pixels as input object
+  - object location: right of the pivot
+  - right gap: zero or more white (0) pixels between the pivot and the object
+  - background: white (0) pixels fill the rest
+objects:
+  - id: pivot
+    color: maroon (9)
+    count: 1
+    role: fixed reference point
+  - id: block
+    color: variable (non-white, non-maroon)
+    shape: contiguous horizontal line segment
+    count: 1 (or 0 if none exists left of pivot)
+    role: movable element
+  - id: left_gap
+    color: white (0)
+    shape: contiguous horizontal line segment (can be length 0)
+    location: between block's right edge and pivot's left edge (input)
+    property: size measured (left_gap_size)
+  - id: right_gap
+    color: white (0)
+    shape: contiguous horizontal line segment
+    location: between pivot's right edge and block's left edge (output)
+    property: size calculated based on left_gap_size and block's start position
+  - id: background
+    color: white (0)
+    role: fills remaining space
+transformation:
+  - action: identify_pivot
+    input: input_grid
+    output: pivot_index
+  - action: identify_object_and_left_gap
+    input: input_grid, pivot_index
+    output: block_pixels, block_start_index, left_gap_size
+  - action: calculate_right_gap_size
+    input: block_start_index, left_gap_size
+    condition: if block_start_index is 0 (and block exists)
+    true_output: right_gap_size = left_gap_size
+    false_output: right_gap_size = left_gap_size + 1
+  - action: construct_output_grid
+    input: input_grid_size
+    output: output_grid (filled with white)
+  - action: place_pivot
+    input: pivot_index, pivot_color (9)
+    target: output_grid
+  - action: place_object
+    input: block_pixels, pivot_index, right_gap_size
+    target: output_grid
+    location_start: pivot_index + 1 + right_gap_size
+rule_summary: Identify the maroon pivot (9). Find the contiguous colored block and the white gap to its left. Create a new grid. Place the pivot at its original position. Calculate the right gap size: if the block started at index 0, the right gap equals the left gap; otherwise, the right gap is the left gap plus one. Place the colored block to the right of the pivot, separated by this calculated right gap. Fill remaining space with white.

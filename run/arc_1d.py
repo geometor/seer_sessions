@@ -3,18 +3,33 @@ from pathlib import Path
 from datetime import datetime
 
 from geometor.seer import Seer, Tasks
+from geometor.seer.config import Config, ConfigError
 from geometor.seer.tasks.tasks import get_unsolved_tasks
 
 
 def run():
     #  config_file = "thinker.yaml"
-    config_file = "config-25.yaml"
-    with open(config_file, "r") as f:
-        config = yaml.safe_load(f)
+    config_dir = Path("./config") # Or Path("path/to/your/config_directory")
 
-    seer = Seer(config)
+    try:
+        # Instantiate the Config object, passing the directory path
+        config = Config(config_dir)
+        print(f"Configuration loaded successfully from: {config_dir}")
+    except (FileNotFoundError, ConfigError) as e:
+        print(f"FATAL: Failed to load configuration from {config_dir}: {e}")
+        sys.exit(1) # Exit if configuration fails to load
+    # --- End Configuration Loading ---
 
-    output_dir = Path("../sessions_1D/")
+    # Seer now expects the Config object directly
+    try:
+        seer = Seer(config)
+    except (ValueError, RuntimeError) as e:
+        # Catch errors during Seer initialization (e.g., missing roles, client init failure)
+        print(f"FATAL: Failed to initialize Seer: {e}")
+        sys.exit(1)
+
+
+    output_dir = Path("../sessions_optorex_1D/")
 
     #  tasks = Tasks("../tasks/ConceptARC_minimal")
     #  #  tasks = get_unsolved_tasks(Path("../sessions"))
@@ -22,7 +37,7 @@ def run():
 
     #  seer.run(tasks, output_dir, "minimal")
 
-    parent_path = Path("../tasks/1D")
+    parent_path = Path("../tasks/optorex_1D")
     for set_dir in parent_path.iterdir():
         if set_dir.is_dir():
             print("SET:", set_dir.name)

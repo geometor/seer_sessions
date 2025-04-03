@@ -1,0 +1,38 @@
+task_type: array_transformation
+dimensionality: 1D # Effectively 1xN grid
+input_output_shape: preserved # Output grid has the same dimensions as the input grid
+objects:
+  - type: pixel_block
+    description: A contiguous sequence of one or more pixels of the same color.
+    properties:
+      - color: The color (0-9) of the pixels in the block.
+      - length: The number of pixels in the block.
+      - location: The starting index of the block.
+      - context: The colors of the pixels immediately preceding and succeeding the block (or boundary).
+  - type: single_pixel_block
+    description: A pixel_block with length 1 whose color is non-white (1-9) and is surrounded by white pixels (0) or grid boundaries.
+  - type: triplet_pixel_block
+    description: A pixel_block with length 3 whose color is non-white (1-9). Examples show these are surrounded by white pixels (0).
+relationships:
+  - type: adjacency
+    description: Blocks are adjacent or separated by white pixels (color 0).
+actions:
+  - name: scan_and_identify
+    description: Iterate through the input row to identify pixel blocks and their properties (color, length, location, context). Specifically identify 'single_pixel_block' and 'triplet_pixel_block'.
+  - name: copy_pixel
+    conditions:
+      - The pixel is not part of a transformation target window.
+    description: Copy the pixel from the input to the corresponding position in the output grid. (This is the default action, transformations override it).
+  - name: expand_single_pixel
+    conditions:
+      - An identified block is a 'single_pixel_block' of color C at index `i`.
+      - The index `i-1` is valid (i.e., `i > 0`).
+      - The index `i+1` is valid (i.e., `i < length - 1`).
+      - The pixel at `input[i-1]` is white (0).
+    description: Modify the output grid by setting the pixels at indices `i-1`, `i`, and `i+1` to color C.
+    effect: Overwrites the original pixels at these three locations in the output grid.
+  - name: copy_triplet_block
+    conditions:
+      - An identified block is a 'triplet_pixel_block'.
+    description: Ensure the triplet block from the input is present in the output. (Handled implicitly by the initial copy and the specific targeting of the `expand_single_pixel` action).
+goal: Transform the input row by replacing each occurrence of a pattern `[0, C, 0]` (where C is non-white) with `[C, C, C]`, while leaving existing `[C, C, C]` blocks and other pixels unchanged. The transformation happens in place conceptually, but is best implemented by modifying a copy based on the original input's structure.

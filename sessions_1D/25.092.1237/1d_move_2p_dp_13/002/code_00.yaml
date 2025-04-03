@@ -1,0 +1,49 @@
+task_description: Relocates whitespace segments within a 1D grid based on object proximity.
+grid_dimensions:
+  input: 1xN (N=20 in examples)
+  output: 1xN (Same as input)
+objects:
+  - object_id: leading_whitespace
+    color: white (0)
+    description: Sequence of zero or more white pixels at the start of the grid, preceding the mobile_block.
+    location: Variable start (index 0), ends just before mobile_block.
+  - object_id: mobile_block
+    color: any non-white color(s)
+    description: The first contiguous sequence of one or more non-white pixels in the grid. Can be monochromatic or potentially multi-colored (though examples only show monochromatic).
+    location: Variable start and end. Identified by finding the first non-white pixel and continuing until the first white pixel is encountered.
+  - object_id: separating_whitespace
+    color: white (0)
+    description: Sequence of zero or more white pixels located immediately after the mobile_block and before the anchor_pixel.
+    location: Starts immediately after mobile_block ends, ends just before anchor_pixel.
+  - object_id: anchor_pixel
+    color: any non-white color
+    description: The first single non-white pixel found after the mobile_block (and after any separating_whitespace). Acts as a positional reference. Must exist based on examples.
+    location: Variable index, found by searching from the end of the mobile_block.
+  - object_id: trailing_whitespace
+    color: white (0)
+    description: Sequence of zero or more white pixels located after the anchor_pixel, extending to the end of the grid.
+    location: Starts immediately after anchor_pixel, ends at the last index of the grid.
+relationships:
+  - type: spatial_adjacency
+    description: In the input, the sequence is leading_whitespace -> mobile_block -> separating_whitespace -> anchor_pixel -> trailing_whitespace. Some segments (like leading/separating/trailing whitespace) can be empty.
+  - type: spatial_adjacency
+    description: In the output, the sequence is separating_whitespace -> leading_whitespace -> mobile_block -> anchor_pixel -> trailing_whitespace. The mobile_block becomes directly adjacent to the anchor_pixel.
+actions:
+  - action: identify_segment
+    target: mobile_block
+    criteria: Find the start index of the first non-white pixel. Find the end index (exclusive) which is the index of the first white pixel encountered at or after the start index.
+  - action: identify_segment
+    target: anchor_pixel
+    criteria: Find the index of the first non-white pixel at or after the end index of the mobile_block.
+  - action: extract_segment
+    target: leading_whitespace
+    criteria: All pixels from the start of the grid up to the start index of the mobile_block.
+  - action: extract_segment
+    target: separating_whitespace
+    criteria: All pixels from the end index of the mobile_block up to the index of the anchor_pixel.
+  - action: extract_segment
+    target: trailing_whitespace
+    criteria: All pixels from the index immediately after the anchor_pixel to the end of the grid.
+  - action: reconstruct_grid
+    order: [separating_whitespace, leading_whitespace, mobile_block, [anchor_pixel], trailing_whitespace]
+    description: Concatenate the identified and extracted segments in the specified new order to form the output grid.

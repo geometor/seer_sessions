@@ -1,0 +1,51 @@
+task_description: Filters horizontal segments in the first row based on corresponding markers in the second row.
+grid_properties:
+  - input_rows: 2
+  - output_rows: 2
+  - input_width: variable
+  - output_width: equals input_width
+objects:
+  - type: horizontal_segment
+    location: first row (row 0)
+    definition: A maximal contiguous sequence of identical non-white pixels.
+    attributes:
+      - color: non-white
+      - start_column: int
+      - end_column: int
+  - type: marker
+    location: second row (row 1)
+    definition: Any non-white pixel.
+    attributes:
+      - color: non-white (does not need to match segment color)
+      - column: int
+relationship:
+  - type: vertical_alignment
+    from: marker (in row 1)
+    to: pixel (in row 0)
+    condition: The marker and the pixel share the same column index.
+  - type: support
+    from: marker (in row 1)
+    to: horizontal_segment (in row 0)
+    condition: A marker exists in row 1 at a column index `c` such that `segment.start_column <= c <= segment.end_column`.
+transformation:
+  - action: create_output_grid
+    source: input grid
+    properties: same dimensions, initialized to white (0).
+  - action: identify_objects
+    target: input grid, first row
+    object_type: horizontal_segment
+  - action: filter_and_copy
+    target: output grid, first row
+    logic: |
+      For each identified horizontal_segment in the input's first row:
+        Check if there exists at least one marker in the input's second row
+        that 'supports' the segment (i.e., is located at a column index
+        within the segment's horizontal span).
+        If such a marker exists, copy the entire horizontal_segment
+        to the corresponding position in the output grid's first row.
+  - action: clear_row
+    target: output grid, second row
+    details: Fill the entire second row with white (0) pixels.
+final_state:
+  - row 0: Contains only the 'supported' horizontal segments from the input's first row.
+  - row 1: Contains only white (0) pixels.

@@ -1,0 +1,49 @@
+task_description: Rearrange segments of a 1D grid based on object positions.
+grid_dimensions:
+  input: 1xN (N=20 in examples)
+  output: 1xN (same N as input)
+object_definitions: # Defined implicitly by color and contiguity
+  - type: whitespace
+    color: white (0)
+  - type: non_whitespace_block
+    color: any non-white (e.g., orange 7, yellow 4)
+    property: contiguous sequence of one or more pixels
+  - type: non_whitespace_pixel
+    color: any non-white (e.g., maroon 9)
+    property: single pixel
+segments: # Defined relative to each other within the 1D grid
+  - segment_id: leading_whitespace
+    description: Sequence of white pixels from the start of the grid up to the first non-white pixel. Can be empty.
+  - segment_id: mobile_block
+    description: The first contiguous block of non-white pixels found when scanning from left to right. Must contain at least one pixel.
+  - segment_id: separating_whitespace
+    description: Sequence of white pixels located between the end of the mobile_block and the next non-white pixel (anchor_pixel). Can be empty.
+  - segment_id: anchor_pixel
+    description: The single non-white pixel located immediately following the separating_whitespace (or immediately following the mobile_block if separating_whitespace is empty).
+  - segment_id: trailing_whitespace
+    description: Sequence of white pixels from the position immediately after the anchor_pixel to the end of the grid. Can be empty.
+relationships:
+  - type: spatial_order (input)
+    elements: [leading_whitespace, mobile_block, separating_whitespace, anchor_pixel, trailing_whitespace]
+    description: The segments appear in this order in the input grid. Some segments (leading, separating, trailing) can be empty.
+actions:
+  - action: identify_segments
+    inputs: input_grid (1D list of pixels)
+    outputs: [leading_whitespace, mobile_block, separating_whitespace, anchor_pixel (as list), trailing_whitespace]
+    steps:
+      - Find start/end indices of the first contiguous non-white block (mobile_block).
+      - Identify leading_whitespace before the mobile_block start index.
+      - Find index of the first non-white pixel after the mobile_block end index (anchor_pixel).
+      - Identify separating_whitespace between mobile_block end and anchor_pixel index.
+      - Identify trailing_whitespace after the anchor_pixel index.
+      - Extract pixel lists for each segment.
+  - action: reconstruct_grid
+    inputs: [separating_whitespace, leading_whitespace, mobile_block, anchor_pixel, trailing_whitespace] (as lists)
+    output: output_grid (1D list of pixels)
+    steps:
+      - Concatenate the input lists in the specified order.
+      - Format as List[List[int]].
+invariants:
+  - Grid dimensions (height=1, width=N) remain unchanged.
+  - Total count of each pixel color remains unchanged.
+  - The content (pixels) of each identified segment remains unchanged, only their order is modified.

@@ -1,0 +1,57 @@
+task_description: Relocate the grid row containing a specific colored object based on the row position of a marker pixel.
+
+elements:
+  - element_type: background
+    color_code: 0
+    color_name: white
+    role: Fills empty space and replaces the original row of the moved object.
+  - element_type: marker
+    color_code: 9
+    color_name: maroon
+    role: Acts as a fixed reference point for the relocation. Its row index determines the destination row for the object_row.
+    properties:
+      - count: 1 per grid
+      - location: Defined by (row, column) coordinates.
+  - element_type: object_segment
+    role: The key colored segment that identifies the row to be moved.
+    properties:
+      - color: Varies (e.g., 3/green, 2/red, 7/orange), but is not 0 or 9.
+      - shape: Contiguous horizontal sequence (segment) of a single color within a single row.
+      - count: 1 per grid (implicitly defines the object_row).
+  - element_type: object_row
+    role: The entire grid row containing the object_segment. This is the unit that is moved.
+    properties:
+      - content: Can contain the object_segment and potentially background pixels.
+
+transformation:
+  - action: identify_marker
+    target: marker
+    details: Find the (row, column) coordinates of the single maroon (9) pixel. Record the marker's row index.
+  - action: identify_object_row
+    target: object_row
+    details: Find the row index of the row that contains a contiguous segment of pixels whose color is not white (0) or maroon (9). Record this object row's index and its contents.
+  - action: initialize_output
+    details: Create a new grid of the same dimensions as the input, filled entirely with the background color (white, 0).
+  - action: place_marker
+    target: marker
+    destination: output grid
+    details: Copy the marker pixel (maroon, 9) to the output grid at the same (row, column) coordinates it occupied in the input grid.
+  - action: calculate_destination_row
+    details: Determine the destination row index for the object_row in the output grid. This is calculated as `marker_row_index + 1`.
+  - action: place_object_row
+    target: object_row
+    destination: output grid
+    details: Copy the entire identified object_row (including any background pixels it contained) from the input grid into the output grid at the calculated destination row index. Ensure this placement does not overwrite the marker pixel if the destination row is the same as the marker's original row (although this case doesn't occur in examples, it's a logical consideration). *Correction based on examples:* The marker is placed *first*, and then the object row overwrites that row *if* `marker_row_index + 1` happens to be the marker's original row index. However, the examples show the marker always remains, implying the moved row *replaces* the content at the destination row, *except* for the marker's original position if it happens to fall within that destination row. *Revisiting examples:* The marker is *always* preserved. The simplest interpretation is: Initialize output with background, place the marker, *then* place the moved row, potentially overwriting background or other non-marker pixels in the destination row.
+
+relationships:
+  - type: relative_positioning
+    source: object_row
+    reference: marker
+    details: The final row index of the object_row is determined relative to the marker's row index (marker_row_index + 1).
+  - type: row_replacement
+    source_row_index: original object_row index
+    target_row_index: calculated destination row index (`marker_row_index + 1`)
+    details: The content of the input object_row replaces the content of the destination row in the output grid (except potentially the marker position). The original object_row index in the output grid is filled with the background color (unless it's the marker row or the destination row itself).
+  - type: preservation
+    target: marker
+    details: The marker pixel's position and color are preserved in the output grid.

@@ -1,0 +1,44 @@
+elements:
+  - type: grid
+    properties:
+      dimensionality: 1D (row vector, 1xN)
+      input_representation: May be list[list[int]] or numpy.ndarray.
+      size: Constant 1x14 in examples.
+      content: Contains background pixels and one segment.
+  - type: pixel
+    properties:
+      color: Integer 0-9.
+      role:
+        - background (white '0')
+        - segment_pixel (non-white, non-zero)
+  - type: segment
+    properties:
+      definition: A single, contiguous horizontal sequence of non-white pixels.
+      location: Surrounded by white pixels.
+      color: Uniform within the segment, but can vary between grids (e.g., gray '5', magenta '6').
+      length: Variable (e.g., 8, 6, 5 pixels in examples).
+      structure: Composed of a start_pixel, end_pixel, and optional interior_pixels.
+
+actions:
+  - name: ensure_list_format
+    inputs: input_grid_row (potentially NumPy array)
+    outputs: list_representation_of_row
+    description: Convert the input row data structure to a standard Python list for consistent processing.
+  - name: locate_segment_endpoints
+    inputs: grid_row (list)
+    outputs: start_index, end_index
+    description: Find the index of the first non-white pixel (start_index) and the last non-white pixel (end_index) in the row. Returns identifiers (e.g., None or -1) if no segment or segment of length < 2 is found.
+  - name: preserve_endpoints_and_background
+    inputs: input_grid_row (list), start_index, end_index
+    outputs: partially_modified_row (list)
+    description: Create a copy of the input row. The pixels at start_index and end_index, and all pixels outside the segment (before start_index and after end_index), retain their original colors.
+  - name: hollow_segment_interior
+    inputs: partially_modified_row (list), start_index, end_index
+    outputs: final_output_row (list)
+    description: If the segment has interior pixels (i.e., end_index > start_index + 1), change the color of all pixels strictly between start_index and end_index to white ('0'). Otherwise, the row remains unchanged from the previous step.
+
+relationships:
+  - type: spatial
+    description: Pixels within the segment are horizontally contiguous.
+  - type: transformation
+    description: The output row is derived from the input row by identifying the non-white segment, preserving its first and last pixels and all background pixels, and replacing the segment's interior pixels (if any) with white pixels.

@@ -1,0 +1,42 @@
+task_context:
+  grid_dimensionality: 1D (single row array/list)
+  grid_size: Constant width within examples (e.g., 32), potentially variable between tasks. Output width matches input width.
+  colors_used:
+    - 0 (white): background/separator
+    - 1-9: various foreground colors (maroon, azure, green, gray, yellow used in examples)
+
+objects:
+  - id: isolated_single_pixel
+    description: A non-white pixel `P` with color `c` at index `i` in the input array where the pixel at `i-1` is white (0) and the pixel at `i+1` is white (0). This definition applies for indices `1 <= i <= width-2`.
+    properties:
+      - color: The color value `c` (1-9) of the pixel.
+      - index: The position `i` in the array.
+  - id: segment_len3
+    description: A contiguous sequence of exactly three identical non-white pixels in the input array.
+    properties:
+      - color: The color value (1-9) of the pixels in the segment.
+      - indices: The starting, middle, and ending indices of the segment.
+  - id: background_pixel
+    description: A white pixel (0) in the input array.
+
+relationships:
+  - type: adjacency
+    description: Pixels are evaluated based on their immediate left (`i-1`) and right (`i+1`) neighbors in the 1D array.
+  - type: isolation
+    description: A property of `isolated_single_pixel`, defined by white immediate neighbors.
+
+actions_on_input:
+  - action: scan_for_isolated_pixels
+    description: Iterate through the input array (from index 1 to width-2) to find all pixels matching the `isolated_single_pixel` definition. Record their index `i` and color `c`.
+
+transformation_rule:
+  - step: 1. Initialize Output
+    action: Create an output array as a copy of the input array.
+  - step: 2. Apply Expansions
+    trigger: For each `isolated_single_pixel` found in the *input* array at index `i` with color `c`.
+    action: Modify the *output* array by setting the elements at indices `i-1`, `i`, and `i+1` to color `c`.
+    effect: Overwrites original values at these three positions in the output array. Pixels not involved in any expansion retain their copied value.
+    concurrency: All expansions are based on the original input state; the order of applying expansions to the output array does not matter if their target indices do not overlap (which they won't by definition of isolation).
+
+output_generation:
+  - The final state of the modified output array after applying all expansions is the result.
