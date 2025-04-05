@@ -1,0 +1,59 @@
+objects:
+  - name: sequence
+    type: list_of_integers (potentially represented as 1D or 2D NumPy array)
+    properties:
+      - length: fixed (e.g., 12 in examples)
+      - background_element: 0
+      - contains_single_non_zero_block: true
+  - name: non_zero_block
+    type: contiguous_sublist_of_integers
+    properties:
+      - elements_are_identical: true
+      - elements_are_non_zero: true
+    location:
+      - property: start_index_input
+      - property: end_index_input
+      - property: start_index_output
+      - property: end_index_output
+    value:
+      - property: element_value (preserved during transformation)
+    length:
+      - property: block_length (preserved during transformation)
+
+actions:
+  - name: ensure_1d
+    target: sequence (input)
+    description: Flatten the input sequence if it has more than one dimension.
+  - name: locate_block
+    target: sequence (input, 1D)
+    outputs: start_index_input, end_index_input, element_value
+    description: Find the start/end indices and value of the non_zero_block.
+  - name: initialize_output
+    properties:
+      - length: same as input sequence
+      - elements: all background_element (0)
+    output: sequence (output)
+  - name: shift_and_copy_block
+    target: non_zero_block
+    source: sequence (input)
+    destination: sequence (output)
+    properties:
+      - new_start_index: start_index_input + 2
+      - direction: right
+      - amount: 2 positions
+    description: Copy the non_zero_block (using element_value and block_length) from its input position to the calculated new position in the output sequence, overwriting the background elements. Handle boundary conditions (truncation if shifted past the end).
+
+relationships:
+  - type: transformation
+    from: sequence (input)
+    to: sequence (output)
+    rule: Ensure input is 1D, locate the non_zero_block, create an output sequence of zeros, copy the block shifted right by 2 positions into the output sequence.
+  - type: positional_change
+    object: non_zero_block
+    details: start_index_output = start_index_input + 2
+  - type: length_constraint
+    object: sequence
+    details: len(output) == len(input)
+  - type: value_constraint
+    object: non_zero_block
+    details: value(output) == value(input)

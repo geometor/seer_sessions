@@ -1,0 +1,59 @@
+task_elements:
+  - object: input_sequence
+    properties:
+      - type: list of integers
+      - length: 12
+      - elements: single digits (0-9)
+  - object: output_sequence
+    properties:
+      - type: list of integers
+      - length: 12
+      - elements: single digits (0-9) derived from input_sequence
+  - object: non_zero_subsequence
+    properties:
+      - type: list of integers
+      - elements: non-zero digits extracted from input_sequence
+      - order: relative order preserved from input_sequence
+      - count: N (number of non-zero elements)
+  - object: shift_rules
+    properties:
+      - type: mapping (dictionary or function)
+      - input: N (count of non-zero elements)
+      - output: shift_amount (integer)
+      - rules:
+          - { input_N: [1, 2, 3, 4], output_shift: 8 }
+          - { input_N: 5, output_shift: 4 }
+          - { input_N: 7, output_shift: 5 }
+          - { input_N: 8, output_shift: 2 }
+          - { input_N: other, output_shift: 0 } # Default/fallback
+  - object: sequence_parameters
+    properties:
+      - length: 12 (constant)
+      - indexing: 0-based
+      - behavior: cyclic (wraps around)
+
+relationship:
+  - type: transformation
+    applies_to: input_sequence
+    results_in: output_sequence
+    steps:
+      - action: identify_and_extract
+        actor: system
+        input: input_sequence
+        output: non_zero_subsequence, first_nz_idx_in, N
+        details: Finds all non-zero elements, preserves their relative order, notes the index of the first non-zero element in the original input sequence, and counts the total number (N) of non-zero elements. Handles the case of all zeros (N=0, first_nz_idx_in=-1).
+      - action: determine_shift
+        actor: system
+        input: N (count of non-zero elements)
+        output: shift_amount
+        details: Calculates shift based on N using the predefined shift_rules mapping.
+      - action: calculate_start_position
+        actor: system
+        input: first_nz_idx_in, shift_amount, sequence_length (12)
+        output: output_start_idx
+        details: Computes `(first_nz_idx_in + shift_amount) % sequence_length`. If input was all zeros (first_nz_idx_in = -1), this step is skipped.
+      - action: construct_output
+        actor: system
+        input: non_zero_subsequence, output_start_idx, sequence_length (12)
+        output: output_sequence
+        details: Creates a list of `sequence_length` zeros. If non_zero_subsequence is empty, returns the list of zeros. Otherwise, places the non_zero_subsequence into the list starting at output_start_idx, wrapping around cyclically using the modulo operator for indices.

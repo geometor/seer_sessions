@@ -1,0 +1,60 @@
+task_description: Fill the segment between the first and last occurrence of each non-zero digit within a 1D sequence with that digit.
+
+elements:
+  - name: sequence
+    type: 1D list/array of integers
+    properties:
+      - length: fixed (12 in examples)
+      - values: single digits (0-9)
+
+  - name: background_element
+    type: integer
+    value: 0
+    role: Represents elements that may be overwritten during the fill process.
+
+  - name: marker_element
+    type: integer
+    properties:
+      - value: non-zero digit (1-9)
+      - role: Defines the boundaries and the fill value for a transformation segment.
+      - occurrence: Can appear zero, one, or multiple times.
+
+actions:
+  - name: identify_unique_markers
+    input: sequence
+    output: set of unique non-zero values present in the sequence
+    description: Finds all distinct non-zero digits that appear in the input.
+
+  - name: find_marker_indices
+    input: sequence, marker_value (N)
+    output: list of indices where N appears
+    description: Locates all positions of a specific non-zero marker N in the original sequence.
+
+  - name: determine_boundaries
+    input: list of indices
+    output: first_index, last_index
+    condition: Requires the list of indices to contain at least two elements.
+    description: Finds the minimum and maximum index from the list of occurrences.
+
+  - name: fill_segment
+    input: target_sequence, first_index, last_index, marker_value (N)
+    output: modified target_sequence
+    condition: Requires last_index > first_index + 1 (i.e., at least one element exists strictly between the boundaries).
+    description: Modifies the target_sequence by setting all elements at indices `i` such that `first_index < i < last_index` to the value `N`.
+
+process_flow:
+  - step: Initialize the output sequence as a copy of the input sequence.
+  - step: Perform identify_unique_markers on the input sequence.
+  - step: For each unique marker value `N` found:
+      - Perform find_marker_indices for `N` using the *original input* sequence.
+      - Check if `N` occurred more than once (list of indices has length > 1).
+      - If yes:
+          - Perform determine_boundaries using the list of indices.
+          - Perform fill_segment on the *output* sequence using the determined boundaries and the value `N`.
+  - step: Return the final modified output sequence.
+
+constraints:
+  - The transformation for each non-zero value is independent.
+  - The fill operation only affects elements strictly *between* the first and last occurrence.
+  - If a non-zero value appears only once or twice adjacently, no elements are changed based on that value.
+  - The original positions of the marker elements defining the boundaries are never overwritten by the fill operation itself (only the elements *between* them).

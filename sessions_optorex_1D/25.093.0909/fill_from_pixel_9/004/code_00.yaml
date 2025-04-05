@@ -1,0 +1,55 @@
+objects:
+  - name: input_sequence
+    type: sequence of integers (potentially numpy.ndarray)
+    properties:
+      - length: variable (12 in examples)
+      - elements: single digits (0-9)
+  - name: output_sequence
+    type: list of integers
+    properties:
+      - length: same as input_sequence
+      - elements: single digits (0-9)
+      - derivation: initialized as a copy of input_sequence, then modified
+  - name: element
+    type: integer
+    properties:
+      - value: 0-9
+      - index: position within the sequence
+  - name: singular_non_zero_element
+    type: element
+    constraints:
+      - value != 0
+      - is_singular: True # Defined below
+    properties:
+      - is_singular: # Boolean property evaluated based on neighbors in the *original* input_sequence
+          description: True if (element is at start OR left neighbor has different value) AND (element is at end OR right neighbor has different value). False otherwise.
+
+actions:
+  - name: initialize_output
+    input: input_sequence
+    output: output_sequence
+    description: Create a deep copy of the input_sequence.
+  - name: identify_singulars
+    input: input_sequence
+    output: list of indices
+    description: Iterate through the input_sequence and identify the indices of all singular_non_zero_elements.
+  - name: spread_value
+    input:
+      - index: index of a singular_non_zero_element
+      - value: value of the singular_non_zero_element
+      - input_sequence: the original input sequence (for checking zero boundaries)
+      - output_sequence: the sequence being modified
+    description: |
+      Modify the output_sequence by propagating the 'value' from the 'index'
+      into adjacent elements that were originally zero in the 'input_sequence'.
+      Spreading occurs leftward from index-1 and rightward from index+1.
+      It stops in each direction upon encountering a non-zero element (in the original input_sequence)
+      or the sequence boundary.
+
+relationships:
+  - type: adjacency
+    description: Positional relationship between elements based on index (i-1, i, i+1).
+  - type: boundary_condition
+    description: Checks if an index is at the start (0) or end (length-1) of the sequence.
+  - type: source_target_modification
+    description: The output_sequence is derived from the input_sequence; checks for spreading use the original input_sequence state, while modifications apply to the output_sequence.

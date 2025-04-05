@@ -1,0 +1,67 @@
+task_elements:
+  - item: sequences
+    properties:
+      - type: list or array of single-digit integers
+      - length: fixed (12 in examples)
+      - role: input and output
+objects:
+  - object: input_sequence
+    properties:
+      - is a list/array of integers (0-9)
+      - may contain leading zeros
+      - may contain trailing zeros
+  - object: output_sequence
+    properties:
+      - is a list/array of integers
+      - contains the same integers as input (reordered)
+      - same length as input
+  - object: non_zero_subsequence
+    derivation: The contiguous slice of the input sequence starting from the index of the first non-zero integer and ending at the index of the last non-zero integer (inclusive).
+    properties:
+      - may be the entire sequence if no leading/trailing zeros exist
+      - is empty if the input sequence contains only zeros
+  - object: leading_zeros_sequence
+    derivation: The slice of the input sequence from the beginning up to (but not including) the index of the first non-zero integer.
+    properties:
+      - contains only zeros
+      - is empty if the first element is non-zero
+  - object: trailing_zeros_sequence
+    derivation: The slice of the input sequence starting from the index immediately after the last non-zero integer to the end of the sequence.
+    properties:
+      - contains only zeros
+      - is empty if the last element is non-zero
+relationships:
+  - relationship: position_preservation
+    between: leading_zeros_sequence in input_sequence
+    and: start of output_sequence
+    description: The leading_zeros_sequence from the input appears unchanged at the beginning of the output.
+  - relationship: position_preservation
+    between: trailing_zeros_sequence in input_sequence
+    and: end of output_sequence
+    description: The trailing_zeros_sequence from the input appears unchanged at the end of the output.
+actions:
+  - action: identify_boundaries
+    on: input_sequence
+    produces: start_index (index of first non-zero, or -1 if none), end_index (index of last non-zero, or -1 if none)
+  - action: handle_all_zeros
+    condition: start_index is -1
+    on: input_sequence
+    produces: output_sequence (identical to input_sequence)
+  - action: extract_components
+    condition: start_index is not -1
+    on: input_sequence
+    using: start_index, end_index
+    produces:
+      - leading_zeros_sequence (input_sequence[0 : start_index])
+      - non_zero_subsequence (input_sequence[start_index : end_index + 1])
+      - trailing_zeros_sequence (input_sequence[end_index + 1 : ])
+  - action: reverse_sequence
+    on: non_zero_subsequence
+    produces: reversed_non_zero_subsequence
+  - action: construct_output
+    condition: start_index is not -1
+    using:
+      - leading_zeros_sequence
+      - reversed_non_zero_subsequence
+      - trailing_zeros_sequence
+    produces: output_sequence

@@ -1,0 +1,70 @@
+Data:
+  type: sequence
+  element_type: integer_digit (0-9)
+  representation: 1D NumPy array (inferred from execution error)
+  length: 12 (consistent across examples)
+
+Objects:
+  - name: input_sequence
+    type: numpy_array_of_integers
+    properties:
+      - contains exactly one contiguous block of identical non-zero digits
+      - remaining elements are zeros
+      - fixed length (12)
+
+  - name: non_zero_block
+    type: logical_sub_sequence # Not explicitly extracted as a separate array
+    properties:
+      - elements are identical non-zero digits
+      - contiguous
+    attributes:
+      - digit_value: The non-zero digit (e.g., 6, 8, 7)
+      - start_index: The 0-based index where the block begins in the input_sequence
+      - end_index: The 0-based index where the block ends (inclusive) in the input_sequence
+      - length: Number of elements in the block (end_index - start_index + 1)
+
+  - name: output_sequence
+    type: numpy_array_of_integers
+    properties:
+      - same length as input_sequence (12)
+      - contains the same non_zero_block as the input, shifted
+      - remaining elements are zeros
+    relationships:
+      - derived from input_sequence
+
+Actions:
+  - name: identify_non_zero_block
+    inputs: input_sequence (numpy_array)
+    outputs: digit_value, start_index, end_index, block_length
+
+  - name: calculate_shifted_position
+    inputs: start_index, end_index, block_length
+    parameters:
+      shift_amount: 2 (constant)
+      sequence_length: 12 (constant)
+    outputs: new_start_index, new_end_boundary # (exclusive index for slicing)
+    process: |
+      new_start_index = start_index + shift_amount
+      new_end_boundary = min(new_start_index + block_length, sequence_length)
+
+  - name: construct_output
+    inputs: sequence_length, digit_value, new_start_index, new_end_boundary
+    process: |
+      1. Create a numpy array of sequence_length filled with zeros.
+      2. If new_start_index is less than sequence_length:
+         Assign digit_value to the slice of the output array from 
+         new_start_index up to (but not including) new_end_boundary.
+    outputs: output_sequence (numpy_array)
+
+  - name: format_output_string
+    inputs: output_sequence (numpy_array)
+    outputs: output_string (space-separated digits)
+    process: Convert each integer in the array to a string and join with spaces.
+
+
+Relationships:
+  - The non_zero_block (digit value and length) is preserved between input and output.
+  - The start index of the non_zero_block in the output_sequence is exactly 2 greater than the start index in the input_sequence.
+  - The output_sequence has the same length as the input_sequence.
+  - Positions in the output_sequence not occupied by the shifted non_zero_block are filled with zeros.
+  - Any part of the block that would be shifted beyond the sequence length is truncated (implicitly handled by slicing with boundary checks).

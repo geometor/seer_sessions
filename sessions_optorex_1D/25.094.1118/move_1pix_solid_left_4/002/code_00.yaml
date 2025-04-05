@@ -1,0 +1,46 @@
+task_elements:
+  - type: sequence
+    format: numpy.ndarray
+    role: input_output
+    properties:
+      - dtype: int (observed as int64)
+      - length: constant_across_transformation (observed as 12)
+
+identified_objects:
+  - object: zero
+    value: 0
+    role: padding_element
+  - object: non_zero_block
+    description: A contiguous sequence of identical non-zero integer digits within the array.
+    properties:
+      - surrounded_by_zeros (except potentially at the very start/end after transformation)
+      - preceded_by_at_least_one_zero_in_input (observed)
+      - unique_per_input (observed)
+    role: primary_element_for_transformation
+
+actions:
+  - action: locate
+    target: non_zero_block
+    description: Find the start index of the non_zero_block (the index of the first non-zero element).
+  - action: locate
+    target: preceding_zero
+    description: Identify the element at the index immediately before the start index of the non_zero_block.
+  - action: condition_check
+    description: Verify that the non_zero_block does not start at index 0 and that the preceding element is indeed 0.
+  - action: shift_left
+    target: non_zero_block
+    precondition: condition_check is true
+    mechanism:
+      - remove: element at index (start_index - 1) from the array/list.
+      - append: integer zero (value 0) to the end of the array/list.
+    result: The non_zero_block appears one position earlier in the sequence, maintaining overall sequence length.
+
+relationships:
+  - type: position
+    element1: non_zero_block
+    element2: array
+    description: The non_zero_block occupies a contiguous sub-sequence within the main array.
+  - type: adjacency
+    element1: preceding_zero
+    element2: non_zero_block
+    description: A zero exists directly before the start of the non_zero_block in the input array.

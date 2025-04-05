@@ -1,0 +1,59 @@
+task_elements:
+  - object: input_sequence
+    type: list_of_integers
+    properties:
+      - role: input
+      - length: L
+      - structure: Contains an initial non_zero_prefix followed by optional trailing_zeros.
+  - object: non_zero_prefix
+    type: list_of_integers
+    derivation: The longest contiguous subsequence starting from the beginning of input_sequence containing only non-zero integers.
+    properties:
+      - length: P
+      - constraints: P >= 0. For valid transformation based on examples, P > 0 and P is even.
+      - structure: If P > 0 and even, it consists of exactly two repetitions of a base_pattern.
+  - object: base_pattern
+    type: list_of_integers
+    derivation: If non_zero_prefix has length P > 0 and P is even, base_pattern is the first P/2 elements of non_zero_prefix. Otherwise, it's considered invalid or empty.
+    properties:
+      - length: B = P / 2 (if valid)
+  - object: output_sequence
+    type: list_of_integers
+    properties:
+      - role: output
+      - length: L (same as input_sequence)
+      - structure: Constructed by starting with non_zero_prefix and appending elements cyclically from base_pattern until length L is reached. If non_zero_prefix is empty or base_pattern is invalid, the output consists of L zeros.
+
+actions:
+  - action: parse_input
+    input: input_string
+    output: input_sequence (list_of_integers)
+  - action: find_prefix_end
+    input: input_sequence
+    output: index_of_first_zero (or L if none)
+  - action: extract_prefix
+    inputs:
+      - input_sequence
+      - prefix_end_index
+    output: non_zero_prefix
+  - action: derive_pattern
+    input: non_zero_prefix
+    output: base_pattern
+    process: Check if length P of non_zero_prefix is > 0 and even. If yes, return the first P/2 elements. Otherwise, return an empty list.
+  - action: construct_output
+    inputs:
+      - non_zero_prefix
+      - base_pattern
+      - total_length (L)
+    output: output_sequence
+    process:
+      1. If length of base_pattern is 0 (either prefix was empty/odd, or pattern derived as empty): Return list of L zeros.
+      2. Else: Initialize output_sequence with a copy of non_zero_prefix. Use a pattern index `idx = 0`. While length of output_sequence < L, append `base_pattern[idx]` and update `idx = (idx + 1) % len(base_pattern)`. Return output_sequence.
+  - action: format_output
+    input: output_sequence (list_of_integers)
+    output: output_string
+
+relationships:
+  - len(output_sequence) == len(input_sequence)
+  - If non_zero_prefix is valid, output_sequence starts with non_zero_prefix.
+  - If non_zero_prefix is valid, len(non_zero_prefix) == 2 * len(base_pattern).

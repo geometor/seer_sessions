@@ -1,0 +1,74 @@
+data_representation:
+  type: sequence
+  format: 1D array (derived from space-separated string)
+  elements: integers (digits 0-9)
+
+objects:
+  - object: target_marker
+    properties:
+      - value: 2
+      - role: trigger for potential modification, boundary for fill operation
+
+  - object: fillable_element
+    properties:
+      - value: 0
+      - role: element to be potentially replaced
+
+  - object: fill_source
+    properties:
+      - value: any integer from 1, 3, 4, 5, 6, 7, 8, 9
+      - role: provides the value used to replace fillable_elements
+
+  - object: sequence_segment
+    properties:
+      - type: contiguous block of fillable_elements (0s)
+      - role: target for replacement action
+
+state:
+  - input_array: the original sequence of integers
+  - output_array: a modifiable copy of the input_array, initially identical
+
+actions:
+  - action: initialize_output
+    description: Create a copy of the input array to store results.
+
+  - action: locate_targets
+    input: input_array
+    target: target_marker (value 2)
+    output: list of indices where the target_marker exists
+
+  - action: process_target_neighbors
+    trigger: for each index found by locate_targets
+    input: input_array, target_marker_index
+    steps:
+      - check_direction: left
+        - condition_1: index > 0 (boundary check)
+        - condition_2: element at index - 1 is fillable_element (0)
+        - if_conditions_met:
+          - find_segment: identify contiguous block of fillable_elements (0s) extending leftwards from index - 1.
+          - find_source: check element immediately to the left of the identified segment.
+          - condition_3: source element exists (within bounds).
+          - condition_4: source element is a fill_source (non-zero digit).
+          - if_conditions_met:
+            - replace_segment: modify the output_array by replacing the identified segment with the value of the fill_source.
+      - check_direction: right
+        - condition_1: index < length - 1 (boundary check)
+        - condition_2: element at index + 1 is fillable_element (0)
+        - if_conditions_met:
+          - find_segment: identify contiguous block of fillable_elements (0s) extending rightwards from index + 1.
+          - find_source: check element immediately to the right of the identified segment.
+          - condition_3: source element exists (within bounds).
+          - condition_4: source element is a fill_source (non-zero digit).
+          - if_conditions_met:
+            - replace_segment: modify the output_array by replacing the identified segment with the value of the fill_source.
+
+  - action: finalize_output
+    description: Return the modified output_array.
+
+flow:
+  - Initialize output array from input.
+  - Find all indices of '2' in the input array.
+  - For each index of '2':
+    - Perform 'process_target_neighbors' for the left direction, using the input array for checks and modifying the output array for replacements.
+    - Perform 'process_target_neighbors' for the right direction, using the input array for checks and modifying the output array for replacements.
+  - Return the final output array.

@@ -1,0 +1,52 @@
+task_description: Fill gaps between specific markers in a sequence.
+input_type: Sequence of integers (likely represented as a Python list or potentially a NumPy array by the environment).
+output_type: Sequence of integers (matching the input format).
+objects:
+  - name: integer_sequence
+    type: list or 1D array
+    contains: integers (0-9)
+    properties:
+      - length
+      - elements (integers)
+  - name: non_zero_digit
+    type: integer
+    properties:
+      - value > 0
+      - is_marker: True
+  - name: zero_digit
+    type: integer
+    properties:
+      - value == 0
+      - is_gap_filler: True
+      - can_be_replaced: True
+  - name: marker_pair
+    type: tuple
+    contains: (non_zero_digit, index1, index2)
+    condition: The non_zero_digit appears exactly twice in the sequence at index1 and index2 (index1 < index2).
+
+relationships:
+  - type: spatial
+    description: Zeros located at indices strictly between the indices of a marker_pair.
+  - type: cardinality
+    description: Transformation depends on the count of each unique non_zero_digit (must be exactly 2).
+  - type: priority
+    description: If multiple non_zero_digits appear exactly twice, the one whose first occurrence has the smallest index is chosen as the marker_pair.
+
+actions:
+  - name: identify_marker_candidates
+    input: integer_sequence
+    output: map of each non_zero_digit to its list of indices.
+  - name: filter_marker_pairs
+    input: map from identify_marker_candidates
+    output: list of potential marker_pairs (digits appearing exactly twice).
+  - name: select_target_marker
+    input: list of potential marker_pairs, integer_sequence
+    output: the single marker_pair to use for filling (based on the earliest first index). Returns None if no pairs exist.
+  - name: fill_gap
+    input: integer_sequence, target_marker_pair
+    output: modified integer_sequence
+    condition: target_marker_pair is not None.
+    effect: Elements in the sequence at indices > index1 and < index2 are replaced with the non_zero_digit value from the marker_pair.
+
+goal:
+  - Transform the input integer_sequence to the output integer_sequence by identifying if exactly one type of marker_pair exists based on the priority rule, and if so, filling the gap between the pair's indices with the marker digit. If no such marker_pair exists, return the original sequence.

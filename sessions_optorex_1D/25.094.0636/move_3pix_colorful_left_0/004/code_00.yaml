@@ -1,0 +1,90 @@
+task_description: "Parse a string of 12 space-separated digits, identify the sub-sequence starting from the first non-zero digit, shift this sub-sequence left by 3 positions within a 12-element list, pad with zeros, and format the result as a space-separated string."
+constants:
+  - name: sequence_length
+    value: 12
+    type: integer
+    description: The fixed total number of digits in the input and output sequences.
+  - name: shift_amount
+    value: 3
+    type: integer
+    description: The number of positions to shift the active block to the left.
+elements:
+  - object: input_string
+    properties:
+      - type: string
+      - format: space-separated digits (e.g., "0 0 3 ...")
+      - length_constraint: Represents 12 digits
+      - role: raw input data
+  - object: output_string
+    properties:
+      - type: string
+      - format: space-separated digits
+      - length_constraint: Represents 12 digits
+      - role: final transformed data
+  - object: digit_list
+    properties:
+      - type: list
+      - item_type: integer (0-9)
+      - length: 12
+      - role: internal representation derived from input_string, basis for transformation, precursor to output_string
+  - object: zero_digit
+    properties:
+      - value: 0
+      - type: integer
+      - role: padding (leading/trailing), part of active_block
+  - object: non_zero_digit
+    properties:
+      - value: integer (1-9)
+      - type: integer
+      - role: marker for start of active_block, content
+  - object: active_block
+    properties:
+      - type: sub-list (of digit_list)
+      - definition: The portion of the digit_list starting from the index of the first non-zero digit, extending to the end of the list.
+      - contains: The first non-zero digit and all subsequent digits (including zeros) from the original digit_list.
+    relationships:
+      - determined_by: position of the first non-zero digit in digit_list
+  - object: position_index
+    properties:
+      - type: integer (0-based)
+      - role: location identifier within digit_list
+      - names: start_index (first non-zero), new_start_index (target position for active_block)
+actions:
+  - action: parse_input_string
+    description: Convert the input string into a list of 12 integers.
+    inputs: input_string
+    outputs: digit_list
+  - action: find_first_non_zero_index
+    description: Find the index of the first digit greater than 0 in the digit_list.
+    inputs: digit_list
+    outputs: start_index (integer >= 0, or -1 if none found)
+  - action: handle_all_zeros
+    description: If no non-zero digit is found (start_index is -1), the original digit_list is the result.
+    inputs: start_index
+    condition: start_index == -1
+    outputs: result_list (identical to original digit_list)
+  - action: extract_active_block
+    description: Get the sub-list from the identified start_index to the end of the digit_list.
+    inputs: digit_list, start_index
+    condition: start_index != -1
+    outputs: active_block (sub-list)
+  - action: calculate_new_start_index
+    description: Determine the starting index for the active_block in the output list.
+    inputs: start_index
+    condition: start_index != -1
+    calculation: new_start_index = start_index - shift_amount
+    outputs: new_start_index (integer >= 0)
+  - action: construct_output_list
+    description: Assemble the final 12-digit list based on the calculated position and block.
+    inputs: new_start_index, active_block, sequence_length
+    condition: start_index != -1
+    steps:
+      - Create a list of 'new_start_index' zeros.
+      - Append the 'active_block' to this list.
+      - Append trailing zeros until the list length equals 'sequence_length'.
+      - Handle potential truncation if the shifted block would exceed sequence_length (though not observed in examples).
+    outputs: result_list (list of 12 integers)
+  - action: format_output_string
+    description: Convert the result list of integers back into a space-separated string.
+    inputs: result_list
+    outputs: output_string

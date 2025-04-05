@@ -1,0 +1,59 @@
+task_description: Mirror the position of a contiguous block of identical digits relative to a fixed pivot digit '2' within a sequence, preserving the gap size.
+constraints:
+  - Input/Output sequence length is 12.
+  - Input contains exactly one digit '2' (the pivot).
+  - Input contains exactly one contiguous block of identical digits (value != 0 and != 2).
+  - All other elements are '0'.
+  - The block does not touch the pivot (gap > 0 or gap == 0 tested).
+elements:
+  - object: sequence
+    properties:
+      format: list of 12 integers (0-9)
+      role: input/output container
+  - object: pivot
+    properties:
+      value: 2
+      occurrence: exactly one per sequence
+      behavior: position remains fixed between input and output
+      identifier: pivot_idx
+  - object: block
+    properties:
+      value: integer (not 0, not 2)
+      occurrence: one contiguous block per sequence
+      structure: sequence of identical digits
+      length: variable (>= 1)
+      identifier: block_val, block_start_in, block_end_in, block_len
+  - object: gap
+    properties:
+      value: integer >= 0 (number of zeros between pivot and nearest block edge)
+      behavior: size is preserved during transformation
+      calculation: |
+        if block is before pivot: pivot_idx - block_end_in - 1
+        if block is after pivot: block_start_in - pivot_idx - 1
+  - object: padding
+    properties:
+      value: 0
+      role: fills remaining positions in the output
+action:
+  name: mirror_block_position
+  inputs:
+    - input_sequence (list of 12 ints)
+  output:
+    - output_sequence (list of 12 ints)
+  logic: |
+    1. Identify the index of the pivot ('2').
+    2. Identify the block (value, start index, end index, length).
+    3. Determine if the block is 'before' or 'after' the pivot.
+    4. Calculate the gap size (number of zeros) between the pivot and the nearest edge of the block.
+    5. Calculate the new starting position for the block:
+       - If originally 'before', the new start is pivot_idx + gap + 1.
+       - If originally 'after', the new end is pivot_idx - gap - 1; the new start is new_end - block_len + 1.
+    6. Construct the output sequence: Initialize with zeros, place the pivot at its original index, place the block at its new calculated position.
+relationships:
+  - type: relative_position
+    object1: block
+    object2: pivot
+    condition: Determines the direction of movement (block_start_in < pivot_idx or block_start_in > pivot_idx). If before, moves after; if after, moves before.
+  - type: distance_preservation
+    object1: gap
+    condition: The number of zeros between the pivot and the nearest edge of the block remains the same in the output, but on the opposite side of the pivot.

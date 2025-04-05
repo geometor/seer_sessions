@@ -1,0 +1,49 @@
+task_elements:
+  - name: sequence
+    type: numpy_array # Updated based on error analysis
+    properties:
+      - dtype: integer
+      - shape: (12,)
+      - contains_zeros: true
+      - contains_non_zero_block: true
+  - name: zero
+    type: integer
+    value: 0
+    role: background_element
+  - name: non_zero_block
+    type: contiguous_sub_array
+    properties:
+      - uniformity: all elements are identical and non-zero
+      - variable_length: true
+      - variable_value: true # (e.g., 2, 6, 5, 9, 4, 1)
+      - variable_position: true
+      - uniqueness: only one such block exists per sequence
+actions:
+  - name: identify_block
+    input: sequence (numpy_array)
+    output: block_details (value, start_index, end_index) # end_index is exclusive
+  - name: calculate_new_indices
+    input: block_details
+    parameter: shift_amount (integer, constant = 4)
+    output: new_start_index, new_end_index
+  - name: construct_output
+    input: sequence_length (integer, constant = 12), block_details, new_start_index, new_end_index
+    output: output_sequence (list_of_integers) # Output format specified as list
+    process: Create zero-filled list, place block_value at new indices.
+relationships:
+  - type: positional_shift
+    element: non_zero_block
+    attribute: start_index
+    change: input_start_index + shift_distance -> output_start_index
+  - type: positional_shift
+    element: non_zero_block
+    attribute: end_index
+    change: input_end_index + shift_distance -> output_end_index
+  - type: replacement
+    location: original position of non_zero_block
+    new_value: zero (implicitly handled by creating new zero list)
+constants:
+  - name: sequence_length
+    value: 12
+  - name: shift_distance
+    value: 4

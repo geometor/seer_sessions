@@ -1,0 +1,318 @@
+
+## train_1
+
+**input:**
+```
+0 0 0 7 0
+0 0 0 0 7
+0 0 0 7 0
+0 0 0 0 7
+0 0 0 7 0
+```
+
+
+**output:**
+```
+0 0 0 0 7
+0 0 0 7 0
+0 0 0 0 7
+0 0 0 7 0
+0 0 0 0 7
+```
+
+
+## train_2
+
+**input:**
+```
+6 0 6 0 0
+0 6 0 6 0
+0 0 0 0 0
+0 0 0 0 0
+0 0 0 0 0
+```
+
+
+**output:**
+```
+0 6 0 6 0
+6 0 6 0 0
+0 0 0 0 0
+0 0 0 0 0
+0 0 0 0 0
+```
+
+
+## train_3
+
+**input:**
+```
+8 0 0 0 0
+0 9 0 0 0
+8 0 0 0 0
+0 0 0 0 0
+0 0 0 0 0
+```
+
+
+**output:**
+```
+0 8 0 0 0
+9 0 0 0 0
+0 8 0 0 0
+0 0 0 0 0
+0 0 0 0 0
+```
+
+
+## train_4
+
+**input:**
+```
+0 3 0 0 0
+3 0 0 0 0
+0 6 0 0 0
+3 0 0 0 0
+0 0 0 0 0
+```
+
+
+**output:**
+```
+3 0 0 0 0
+0 3 0 0 0
+6 0 0 0 0
+0 3 0 0 0
+0 0 0 0 0
+```
+
+*   **Perception of Elements:** The task operates on 2D grids of integers. The input grid undergoes a transformation to produce the output grid. The transformation appears to be column-based, specifically involving swapping pairs of adjacent columns. The dimensions of the grid remain constant. The values within the cells are moved, but not altered.
+
+*   **YAML Facts:**
+    
+```yaml
+    task_elements:
+      - object: grid
+        properties:
+          - type: 2D array of integers
+          - dimensions: variable (e.g., 5x5 in examples)
+          - cells: contain non-negative integers
+      - relationship: adjacency
+        between: columns
+        definition: Columns with indices `j` and `j+1` are adjacent.
+      - action: swap_columns
+        target: adjacent column pairs
+        condition: Applies to pairs starting with an even index (0, 2, 4, ...)
+        effect: The entire content of column `j` is exchanged with the entire content of column `j+1`.
+    transformation_goal:
+      - Rearrange the grid by systematically swapping adjacent pairs of columns.
+    ```
+
+
+*   **Natural Language Program:**
+    1.  Iterate through the columns of the input grid using an index `j`, starting from 0 and incrementing by 2 in each step (i.e., process columns 0, 2, 4, ...).
+    2.  For each index `j`, check if a subsequent column `j+1` exists within the grid boundaries.
+    3.  If column `j+1` exists, swap the entire contents of column `j` with the entire contents of column `j+1`.
+    4.  The resulting grid after performing all necessary swaps is the output.
+```python
+"""
+Rearrange the grid by systematically swapping adjacent pairs of columns.
+Iterate through the columns starting from index 0, incrementing by 2.
+For each index j, if column j+1 exists, swap column j with column j+1.
+"""
+
+import numpy as np
+import copy
+
+def swap_columns(grid, col1_idx, col2_idx):
+    """
+    Swaps two columns in a grid represented as a list of lists.
+    """
+    new_grid = copy.deepcopy(grid) # Work on a copy
+    for row_idx in range(len(new_grid)):
+        new_grid[row_idx][col1_idx], new_grid[row_idx][col2_idx] = \
+            new_grid[row_idx][col2_idx], new_grid[row_idx][col1_idx]
+    return new_grid
+
+def transform(input_grid):
+    """
+    Applies the column swapping transformation to the input grid.
+
+    Args:
+        input_grid: A list of lists representing the input 2D grid.
+
+    Returns:
+        A list of lists representing the transformed 2D grid.
+    """
+    # Initialize output_grid as a deep copy of the input to avoid modifying the original
+    output_grid = copy.deepcopy(input_grid)
+    num_rows = len(output_grid)
+    if num_rows == 0:
+        return output_grid # Handle empty grid case
+    num_cols = len(output_grid[0])
+
+    # Iterate through the columns with a step of 2
+    # We process pairs (0, 1), (2, 3), (4, 5), etc.
+    for j in range(0, num_cols - 1, 2):
+        # Check if the next column (j+1) exists
+        # The range already ensures j < num_cols - 1, so j+1 is always a valid index within the loop
+        
+        # Swap the entire contents of column j with column j+1
+        # Use a helper function for clarity or perform swap directly
+        for i in range(num_rows):
+            # Swap elements in each row for the current pair of columns
+            output_grid[i][j], output_grid[i][j+1] = output_grid[i][j+1], output_grid[i][j]
+
+    # The resulting grid after performing all necessary swaps is the output
+    return output_grid
+
+```
+```python
+"""
+Transforms the input grid by swapping adjacent columns based on the parity of the index of the first column containing a non-zero value.
+1. Find the index of the first column (leftmost) containing any non-zero value. If all columns are zero, consider the index to be 0.
+2. If this index is odd, swap adjacent column pairs starting from index 1 (i.e., swap (1,2), (3,4), ...).
+3. If this index is even (or all zeros), swap adjacent column pairs starting from index 0 (i.e., swap (0,1), (2,3), ...).
+"""
+
+import copy
+# numpy is not strictly necessary for this logic but can be useful for grid operations
+# import numpy as np 
+
+def find_first_non_zero_col(grid):
+    """
+    Finds the index of the first column containing a non-zero value.
+    Returns -1 if the grid is empty or all values are zero.
+    """
+    if not grid or not grid[0]:
+        return -1 # Indicate empty or invalid grid
+
+    num_rows = len(grid)
+    num_cols = len(grid[0])
+
+    for j in range(num_cols):
+        for i in range(num_rows):
+            if grid[i][j] != 0:
+                return j  # Found the first non-zero column index
+    
+    return -1 # No non-zero values found
+
+def transform(input_grid):
+    """
+    Applies the conditional column swapping transformation.
+
+    Args:
+        input_grid: A list of lists representing the input 2D grid.
+
+    Returns:
+        A list of lists representing the transformed 2D grid.
+    """
+    # Handle empty grid case
+    if not input_grid or not input_grid[0]:
+        return []
+
+    num_rows = len(input_grid)
+    num_cols = len(input_grid[0])
+    
+    # initialize output_grid as a deep copy to avoid modifying the input
+    output_grid = copy.deepcopy(input_grid)
+
+    # 1. Find the index of the first non-zero column
+    first_nz_col_index = find_first_non_zero_col(input_grid)
+
+    # 2. Determine the starting index for swapping
+    # If no non-zero found (first_nz_col_index == -1), treat as even (start at 0)
+    if first_nz_col_index != -1 and first_nz_col_index % 2 != 0:
+        start_index = 1 # Start swapping from pair (1, 2)
+    else:
+        start_index = 0 # Start swapping from pair (0, 1)
+
+    # 3. Apply Swaps
+    # Iterate through the columns with a step of 2, starting from the determined index
+    for j in range(start_index, num_cols - 1, 2):
+        # The loop condition ensures j < num_cols - 1, so j+1 is always a valid index within the loop
+        
+        # Swap the entire contents of column j with column j+1
+        for i in range(num_rows):
+            # Swap elements in each row for the current pair of columns
+            output_grid[i][j], output_grid[i][j+1] = output_grid[i][j+1], output_grid[i][j]
+
+    # 4. Output
+    return output_grid
+```
+```python
+"""
+Transforms the input grid by swapping adjacent columns. The pattern of swapping (starting at index 0 or 1) depends on the parity of the index of the first column containing a non-zero value.
+1. Find the index of the first column (leftmost) containing any non-zero value. If all columns are zero, consider the index to be 0 (even).
+2. If this index is odd, swap adjacent column pairs starting from index 1 (i.e., swap (1,2), (3,4), ...).
+3. If this index is even (or all zeros), swap adjacent column pairs starting from index 0 (i.e., swap (0,1), (2,3), ...).
+"""
+
+import copy
+
+def find_first_non_zero_col(grid):
+    """
+    Finds the index of the first column containing a non-zero value.
+    Returns -1 if the grid is empty or all values are zero.
+    """
+    # Check for empty grid or grid with no columns
+    if not grid or not grid[0]:
+        return -1 
+
+    num_rows = len(grid)
+    num_cols = len(grid[0])
+
+    # Iterate through columns to find the first non-zero element
+    for j in range(num_cols):
+        for i in range(num_rows):
+            if grid[i][j] != 0:
+                return j  # Found the first non-zero column index
+    
+    # If no non-zero element is found after checking all columns
+    return -1 
+
+def transform(input_grid):
+    """
+    Applies the conditional column swapping transformation to the input grid.
+
+    Args:
+        input_grid: A list of lists representing the input 2D grid.
+
+    Returns:
+        A list of lists representing the transformed 2D grid.
+    """
+    # Handle empty grid case immediately
+    if not input_grid or not input_grid[0]:
+        return []
+
+    num_rows = len(input_grid)
+    num_cols = len(input_grid[0])
+    
+    # Initialize output_grid as a deep copy to avoid modifying the input
+    output_grid = copy.deepcopy(input_grid)
+
+    # 1. Inspect Input Grid: Find the index of the first non-zero column
+    first_nz_col_index = find_first_non_zero_col(input_grid)
+
+    # 2. Determine Swap Pattern: Set the starting index for swapping
+    # If no non-zero found (first_nz_col_index == -1), treat as even (start at 0)
+    if first_nz_col_index != -1 and first_nz_col_index % 2 != 0:
+        # Odd index means start swapping from pair (1, 2)
+        start_index = 1 
+    else:
+        # Even index or all zeros means start swapping from pair (0, 1)
+        start_index = 0 
+
+    # 3. Perform Swaps: Iterate through column pairs and swap if needed
+    # Iterate through the columns with a step of 2, starting from the determined index
+    for j in range(start_index, num_cols - 1, 2):
+        # The loop condition 'num_cols - 1' ensures j+1 is always a valid column index
+        
+        # Swap the entire contents of column j with column j+1
+        for i in range(num_rows):
+            # Swap elements in each row for the current pair of columns
+            output_grid[i][j], output_grid[i][j+1] = output_grid[i][j+1], output_grid[i][j]
+
+    # 4. Output: Return the modified grid
+    return output_grid
+```

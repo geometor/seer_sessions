@@ -1,0 +1,54 @@
+task_description: Processes a 2D grid containing non-zero integers forming specific structures. It identifies a unique vertical segment, a unique horizontal segment (which do not overlap), and a unique isolated cell, then swaps/assigns their values based on interaction rules.
+
+grid_properties:
+  type: 2D array of integers (typically numpy array)
+  size: Variable (examples are 5x5)
+  background_value: 0
+
+identified_objects:
+  - object: vertical_segment
+    description: The unique contiguous sequence of cells (length > 1) in a single column, all sharing the same non-zero value, that does not spatially overlap with the identified horizontal_segment.
+    properties:
+      - coordinates: Set of (row, col) tuples.
+      - value: The single non-zero integer value shared by all cells in the segment.
+    identification:
+      - Find all contiguous vertical cell groups (len>1) with uniform non-zero values.
+      - Select the one that does not overlap with the identified horizontal_segment.
+    actions:
+      - value_assignment: In the output grid, the value of all cells at these coordinates is set to the original value of the 'isolated_cell'.
+
+  - object: horizontal_segment
+    description: The unique contiguous sequence of cells (length > 1) in a single row that does not spatially overlap with the identified vertical_segment. Values within the segment can vary.
+    properties:
+      - coordinates: Set of (row, col) tuples.
+      - values: List or tuple of the original non-zero integer values in the segment cells.
+      - unique_values: Set of distinct non-zero values present.
+    identification:
+      - Find all contiguous horizontal cell groups (len>1) with non-zero values.
+      - Select the one that does not overlap with the identified vertical_segment.
+    actions:
+      - value_swap: If exactly two unique non-zero values (A, B) existed in the input segment, create a mapping {A: B, B: A}. Otherwise, create a mapping {V: V} for each unique value V. Apply this mapping to the corresponding cells in the output grid.
+
+  - object: isolated_cell
+    description: The unique non-zero cell whose coordinates are not part of the identified vertical_segment or horizontal_segment.
+    properties:
+      - coordinates: The (row, col) tuple of the cell.
+      - value: The original non-zero integer value of the cell.
+    identification:
+      - Find all non-zero cells.
+      - Exclude cells belonging to the identified (non-overlapping) vertical_segment and horizontal_segment.
+      - The single remaining cell is the isolated cell.
+    actions:
+      - value_assignment: In the output grid, the value of the cell at these coordinates is set to the original value of the 'vertical_segment'.
+
+relationships:
+  - Critical constraint: The true 'vertical_segment' and 'horizontal_segment' must be spatially disjoint (no shared coordinates). This is key for identification.
+  - Transformation dependency: 'vertical_segment' output depends on 'isolated_cell' input.
+  - Transformation dependency: 'isolated_cell' output depends on 'vertical_segment' input.
+  - Transformation dependency: 'horizontal_segment' output depends only on its own input values.
+
+assumptions:
+  - Each input grid contains exactly one structure satisfying the 'vertical_segment' definition, exactly one satisfying the 'horizontal_segment' definition, and exactly one satisfying the 'isolated_cell' definition, such that the chosen segments do not overlap.
+  - Segments are strictly horizontal or vertical and contiguous.
+  - Segment length is always greater than 1.
+  - Zero cells (background) remain unchanged.

@@ -1,0 +1,61 @@
+objects:
+  - name: input_sequence
+    type: list
+    properties:
+      length: 12
+      elements: integer
+  - name: output_sequence
+    type: list
+    properties:
+      length: 12
+      elements: integer
+  - name: target_subsequence
+    type: list slice
+    source: input_sequence
+    indices: 0-9
+  - name: control_values
+    type: list slice
+    source: input_sequence
+    indices: 10-11
+    elements:
+      - name: val1
+        index: 10 (relative to input_sequence)
+      - name: val2
+        index: 11 (relative to input_sequence)
+  - name: target_value
+    type: integer
+    value: 5
+  - name: ignored_value
+    type: integer
+    value: 0
+  - name: groups_of_target
+    type: list of list slices
+    description: Contiguous sequences of target_value within target_subsequence.
+
+actions:
+  - name: identify_groups
+    input: target_subsequence, target_value
+    output: groups_of_target
+    description: Find all contiguous blocks of the target_value.
+  - name: generate_output_prefix
+    input: target_subsequence, groups_of_target, val1, val2
+    output: list (length 10)
+    description: >
+      Create the first 10 elements of the output by copying the target_subsequence
+      and then replacing values within the identified groups based on the number of groups
+      and the values of val1 and val2.
+      If one group exists: replace with val1 if val1 != 0, else replace with val2.
+      If two groups exist: replace first group with val1, second group with val2.
+      Leave ignored_value (0) unchanged.
+  - name: construct_output
+    input: generated_output_prefix, val1, val2
+    output: output_sequence
+    description: Concatenate the generated_output_prefix with val1 and val2.
+
+relationships:
+  - The output_sequence depends on the input_sequence.
+  - The transformation primarily affects elements in the target_subsequence that match the target_value.
+  - The specific replacement values are determined by control_values (val1, val2).
+  - The application logic of control_values depends on the number and position of groups_of_target.
+  - Elements equal to ignored_value in the target_subsequence remain unchanged.
+  - control_values (val1, val2) are preserved in the last two positions of the output_sequence.

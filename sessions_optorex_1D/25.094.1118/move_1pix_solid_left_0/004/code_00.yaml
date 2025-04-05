@@ -1,0 +1,60 @@
+task_elements:
+  - name: sequence
+    type: list_of_integers
+    role: input_output_container
+    properties:
+      - length_invariant: true
+      - contains_zeros: true
+      - contains_non_zeros: true
+      - expected_format: Python list or NumPy array of integers. # Added clarity on format
+  - name: non_zero_block
+    type: contiguous_subsequence
+    role: object_of_interest
+    properties:
+      - elements_are_identical: true # Based on all examples
+      - elements_are_non_zero: true
+      - uniqueness: Assumed to be the only such block in the sequence. # Based on examples
+  - name: zero
+    type: integer
+    value: 0
+    role: padding_or_separator
+actions:
+  - name: find_block
+    input: sequence (list of integers)
+    output: start_index, end_index # end_index is exclusive
+    description: Identify the start and end indices of the first contiguous block of identical, non-zero integers. Returns (None, None) if no such block is found.
+  - name: shift_block_left
+    input: sequence (list of integers)
+    output: modified_sequence (new list)
+    condition: A non_zero_block exists and its start_index is greater than 0.
+    description: |-
+      Constructs a new sequence by:
+      1. Taking elements from the original sequence up to (but not including) the index before the block (index `start_index - 1`).
+      2. Appending the `non_zero_block` itself.
+      3. Appending the elements from the original sequence that came *after* the block (from `end_index` onwards).
+      4. Appending a single `0` to the end.
+      This effectively removes the element at `start_index - 1` and adds a `0` at the end, shifting the block left.
+  - name: handle_no_shift_case
+    input: sequence (list of integers)
+    output: original_sequence_copy (new list)
+    condition: No non_zero_block is found, or the block starts at index 0.
+    description: Returns a copy of the original input sequence without modification.
+relationships:
+  - type: positional
+    between: [non_zero_block, zero]
+    description: In inputs where shifting occurs, the non_zero_block is preceded by at least one zero.
+  - type: transformation
+    input: input_sequence
+    output: output_sequence
+    rule: Apply `shift_block_left` if its condition is met; otherwise, apply `handle_no_shift_case`.
+constraints:
+  - item: sequence_length
+    value: constant (preserved in output)
+  - item: block_content
+    value: preserved (the non-zero digits and their order within the block do not change)
+  - item: shift_amount
+    value: 1 position
+  - item: shift_direction
+    value: left
+  - item: input_structure
+    value: A single contiguous block of identical non-zero numbers, surrounded by zeros.

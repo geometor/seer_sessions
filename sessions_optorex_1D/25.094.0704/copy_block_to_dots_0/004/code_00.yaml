@@ -1,0 +1,41 @@
+task_description: "Transform an integer sequence by expanding isolated non-zero numbers."
+data_representation:
+  input: sequence of integers (list)
+  output: sequence of integers (list)
+properties:
+  sequence_length: consistent between input and output (e.g., 12 in examples)
+  element_values: non-negative single-digit integers (0 and N > 0)
+objects:
+  - name: zero_element
+    value: 0
+    role: context_provider (part of the pattern trigger)
+  - name: non_zero_element
+    symbol: N
+    value_constraint: N > 0
+    role: active_element (value propagates during transformation)
+  - name: input_sequence
+    type: list[int]
+    role: source_data
+  - name: output_sequence
+    type: list[int]
+    role: result_data
+    initialization: copy of input_sequence
+patterns:
+  - name: isolated_non_zero_triplet
+    structure: [zero_element, non_zero_element(N), zero_element]
+    represented_as: [0, N, 0]
+    location: contiguous elements at indices [i-1, i, i+1] in the input_sequence
+    condition: input_sequence[i-1] == 0 AND input_sequence[i] == N != 0 AND input_sequence[i+1] == 0
+    scope: applied simultaneously based on all occurrences in the original input_sequence
+actions:
+  - name: expand_non_zero
+    trigger: detection of an isolated_non_zero_triplet pattern centered at index 'i' with value 'N' in the input_sequence.
+    target: output_sequence
+    effect: Set the values in the output_sequence at indices [i-1, i, i+1] to N.
+    formula: output_sequence[i-1]=N, output_sequence[i]=N, output_sequence[i+1]=N
+  - name: preserve_element
+    trigger: an element at index 'j' in the input_sequence is NOT the center ('i') of an isolated_non_zero_triplet pattern.
+    condition_implicit: The element at index 'j' might still be part of an expanded triplet (at indices i-1 or i+1) or completely unaffected. The explicit update handles the affected elements; others are preserved by the initial copy.
+    target: output_sequence
+    effect: The value at output_sequence[j] retains its initial value (copied from input_sequence[j]) unless overwritten by the expand_non_zero action triggered by a pattern centered at j-1, j, or j+1.
+rule_summary: "Iterate through the input sequence. For every occurrence of the pattern [0, N, 0] where N is non-zero, replace the corresponding triplet in the output sequence with [N, N, N]. Elements not involved in such a replacement retain their original value."

@@ -1,0 +1,58 @@
+task_elements:
+  - item: input_sequence
+    type: List[int]
+    properties:
+      - length: 12 (consistent across examples)
+      - elements: single digits (0-9)
+  - item: output_sequence
+    type: List[int]
+    properties:
+      - length: 12 (same as input_sequence)
+      - elements: single digits (0-9), derived from input_sequence
+  - item: non_zero_span
+    type: List[int]
+    description: The contiguous sub-sequence within the input_sequence, starting from the first non-zero element and ending at the last non-zero element.
+    properties:
+      - start_index: The index of the first non-zero element in the input_sequence.
+      - end_index: The index of the last non-zero element in the input_sequence.
+      - elements: The sequence of integers from start_index to end_index (inclusive) in the input_sequence.
+      - presence: May not exist if the input_sequence contains only zeros.
+relationships:
+  - type: positional_shift
+    source: non_zero_span (from input_sequence)
+    target: non_zero_span (in output_sequence)
+    details: >
+      If a non_zero_span exists in the input, its starting position in the
+      output_sequence is exactly 3 indices greater than its starting index
+      in the input_sequence. The elements of the span maintain their relative order.
+  - type: element_placement
+    details: >
+      The output_sequence is initialized with zeros. If a non_zero_span exists
+      in the input, its elements are copied into the output_sequence starting at the
+      calculated shifted position (input start_index + 3). Elements that would be
+      placed beyond the bounds of the output_sequence are truncated (not included).
+  - type: zero_handling
+    details: >
+      If the input_sequence contains only zeros (no non_zero_span), the
+      output_sequence also contains only zeros.
+actions:
+  - action: find_span_indices
+    input: input_sequence
+    output: start_index, end_index (or indication of non-existence)
+    description: >
+      Iterate through the input_sequence to find the index of the first non-zero
+      element (start_index) and the index of the last non-zero element (end_index).
+      If no non-zero elements are found, indicate this.
+  - action: construct_output
+    input: input_sequence_length, input_sequence, span_indices (start_index, end_index)
+    output: output_sequence
+    description: >
+      1. Create a new sequence of zeros with the specified input_sequence_length.
+      2. Check if span_indices were found.
+      3. If yes: Calculate the target_start_index = start_index + 3.
+         Iterate from i = start_index to end_index of the input_sequence.
+         Calculate the target_index = target_start_index + (i - start_index).
+         If target_index is within the bounds (0 <= target_index < input_sequence_length),
+         copy the element input_sequence[i] to output_sequence[target_index].
+      4. If no: The output_sequence remains all zeros.
+      5. Return the constructed output_sequence.

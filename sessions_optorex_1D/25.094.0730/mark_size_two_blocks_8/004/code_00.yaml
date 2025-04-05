@@ -1,0 +1,56 @@
+task_elements:
+  - name: input_sequence
+    type: list of integers
+    description: The initial sequence containing 0s and 1s.
+  - name: output_sequence
+    type: list of integers
+    description: The transformed sequence containing 0s, 1s, and potentially 3s.
+    relationship: Derived from input_sequence based on a specific local pattern rule.
+  - name: target_pattern
+    type: sequence of integers
+    value: [1, 1]
+    description: The primary pattern being searched for in the input sequence.
+  - name: disqualifying_pattern_context
+    type: integer
+    value: 1
+    description: If the target_pattern is immediately preceded or followed by this value, the transformation is not applied for that specific target_pattern occurrence.
+  - name: replacement_value
+    type: integer
+    value: 3
+    description: The value used to replace adjacent 0s when a qualifying target_pattern is found.
+  - name: context_values_to_replace
+    type: list of integers
+    value: [0]
+    description: The value(s) adjacent to a qualifying target_pattern that trigger the replacement.
+
+actions:
+  - name: scan_sequence
+    input: input_sequence
+    output: identified locations of target_pattern
+    description: Iterate through the input sequence to find all occurrences of the target_pattern [1, 1].
+  - name: check_pattern_context
+    input: input_sequence, location of target_pattern
+    output: boolean (is_qualifying)
+    description: For each found target_pattern at index `i`, check if `input_sequence[i-1]` is 1 (if `i>0`) or if `input_sequence[i+2]` is 1 (if `i+2 < len(input_sequence)`). The pattern qualifies for neighbor modification only if neither of these conditions is true.
+  - name: check_and_modify_neighbors
+    input: input_sequence, location of a qualifying target_pattern, output_sequence
+    output: modified output_sequence
+    description: For a qualifying target_pattern at index `i`, check the element at `input_sequence[i-1]` (if `i>0`) and `input_sequence[i+2]` (if `i+2 < len(input_sequence)`). If a neighbor exists and its value in the input_sequence is 0, change the corresponding element in the output_sequence to 3.
+
+process_flow:
+  - Start with a copy of the input_sequence to create the initial output_sequence.
+  - Iterate through the input_sequence using an index `i` from the first element up to the second-to-last element.
+  - At each position `i`, check if the elements `input_sequence[i]` and `input_sequence[i+1]` match the target_pattern [1, 1].
+  - If the pattern matches:
+    - Determine if the pattern is disqualified: Check if `i > 0` and `input_sequence[i-1] == 1`, OR if `i + 2 < length(input_sequence)` and `input_sequence[i+2] == 1`.
+    - If the pattern is *not* disqualified:
+      - Check the element *before* the pattern: If `i > 0` and `input_sequence[i-1]` is 0, update `output_sequence[i-1]` to 3.
+      - Check the element *after* the pattern: If `i + 2 < length(input_sequence)` and `input_sequence[i+2]` is 0, update `output_sequence[i+2]` to 3.
+  - Ensure modifications are made to the output_sequence copy, referencing the original input_sequence for pattern and context checks.
+  - Return the final output_sequence.
+
+constraints:
+  - The transformation is only triggered by sequences of exactly two consecutive 1s (i.e., `[1, 1]`) that are *not* immediately preceded or followed by another 1. Patterns like `[0, 1, 1, 0]` trigger the rule, while `[1, 1, 1, 0]` or `[0, 1, 1, 1]` do not.
+  - Only 0s immediately adjacent (before or after) to a *qualifying* `[1, 1]` pattern are changed to 3.
+  - The 1s forming the pattern are never changed.
+  - Modifications are based on the state of the original input sequence.

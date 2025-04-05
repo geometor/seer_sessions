@@ -1,0 +1,54 @@
+objects:
+  - name: input_grid
+    type: 2D NumPy array of integers (likely shape (1, N)) or 1D NumPy array (shape (N,))
+    properties:
+      - represents: a single sequence of integers
+      - length: N (observed as 12 in examples)
+      - contains: a single contiguous block of non-zero integers surrounded by zeros, or all zeros.
+  - name: output_grid
+    type: 1D NumPy array of integers
+    properties:
+      - length: N (same as input sequence length)
+      - derived_from: input_grid
+      - contains: the non-zero block from the input, shifted right, padded with zeros.
+  - name: non_zero_block
+    type: 1D sequence/array of integers
+    properties:
+      - extracted_from: the effective 1D sequence of input_grid
+      - contains_only: integers > 0
+      - contiguous: yes
+  - name: shift_amount
+    type: integer
+    value: 3
+    description: The fixed number of positions the non_zero_block is shifted to the right.
+  - name: sequence_length
+    type: integer
+    value: N (derived from input, observed as 12)
+
+actions:
+  - name: preprocess_input
+    actor: system
+    input: input_grid (potentially 2D)
+    output: effective_1d_input (1D NumPy array)
+    description: Extracts the 1D sequence from the input grid (e.g., selects the first row if input is 2D).
+  - name: locate_block
+    actor: system
+    input: effective_1d_input
+    output: start_index, end_index, non_zero_block
+    description: Finds the start and end indices of the first contiguous non-zero block in the 1D sequence and extracts the block. Returns null/None indicators if no block is found.
+  - name: calculate_new_position
+    actor: system
+    input: start_index, shift_amount
+    output: new_start_index
+    description: Calculates the target starting index for the block in the output sequence.
+  - name: construct_output
+    actor: system
+    input: non_zero_block, new_start_index, sequence_length
+    output: output_grid (1D NumPy array)
+    description: Creates a new 1D array of the target length initialized with zeros, places the non_zero_block at the new_start_index (handling boundary conditions), and returns the result.
+
+relationships:
+  - The output_grid is a transformation of the effective 1D sequence from the input_grid.
+  - The non_zero_block in the output_grid starts at an index exactly `shift_amount` (3) positions greater than its starting index in the effective 1D input sequence.
+  - The relative order and values within the non_zero_block remain unchanged.
+  - If the shifted block exceeds the sequence boundary, it is truncated.

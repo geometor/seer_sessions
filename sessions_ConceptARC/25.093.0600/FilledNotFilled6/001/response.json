@@ -1,0 +1,39 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom scipy.ndimage import label, find_objects, binary_fill_holes, generate_binary_structure\n\n\"\"\"\nThe transformation identifies distinct connected objects of non-zero colors in the input grid.\nFor each object, it determines if it's \"hollow\" (contains enclosed background '0' cells) or \"solid\" (does not).\nIf an object is hollow in the input, the transformation fills the enclosed background cells with the object's color in the output.\nIf an object is solid in the input, the transformation hollows it out in the output by changing its interior cells (cells not on the border) to the background color '0', leaving only the border intact.\n\"\"\"\n\ndef find_neighbors(r, c, shape):\n    \"\"\" Get valid 4-connected neighbors within grid boundaries. \"\"\"\n    neighbors = []\n    rows, cols = shape\n    if r > 0: neighbors.append((r - 1, c))\n    if r < rows - 1: neighbors.append((r + 1, c))\n    if c > 0: neighbors.append((r, c - 1))\n    if c < cols - 1: neighbors.append((r, c + 1))\n    return neighbors\n\ndef transform(input_grid):\n    \"\"\"\n    Applies the fill/hollow transformation based on object solidity.\n\n    Args:\n        input_grid: A list of lists or numpy array representing the input grid.\n\n    Returns:\n        A numpy array representing the transformed grid.\n    \"\"\"\n    # Convert input to numpy array for easier processing\n    input_arr = np.array(input_grid, dtype=int)\n    output_arr = np.copy(input_arr)\n    rows, cols = input_arr.shape\n\n    # Get unique non-zero colors\n    unique_colors = np.unique(input_arr[input_arr != 0])\n\n    # Define connectivity structure (4-connectivity)\n    struct = generate_binary_structure(2, 1) \n\n    # Process each color separately\n    for color in unique_colors:\n        # Create a binary mask for the current color\n        color_mask = (input_arr == color)\n\n        # Label connected components (objects) for this color\n        labeled_array, num_labels = label(color_mask, structure=struct)\n\n        # Find the locations (slices) of each object\n        object_slices = find_objects(labeled_array)\n\n        # Iterate through each found object of the current color\n        for i in range(num_labels):\n            obj_label = i + 1\n            obj_slice = object_slices[i]\n            \n            # Extract the object region from the labeled array and input array\n            obj_region_labeled = labeled_array[obj_slice]\n            obj_region_input = input_arr[obj_slice]\n            \n            # Create a mask for the current specific object within its slice\n            current_object_mask_in_slice = (obj_region_labeled == obj_label)\n            \n            # --- Determine if the object is hollow (contains enclosed 0s) ---\n            # Use binary_fill_holes on the object mask to find the filled shape\n            filled_object_mask_in_slice = binary_fill_holes(current_object_mask_in_slice, structure=struct)\n            \n            # Identify the holes (enclosed background) by comparing filled vs original\n            holes_mask_in_slice = filled_object_mask_in_slice & ~current_object_mask_in_slice\n            \n            is_hollow = np.any(holes_mask_in_slice)\n\n            # Get coordinates of the object cells relative to the *full grid*\n            object_coords_global = np.argwhere(labeled_array == obj_label)\n\n            if is_hollow:\n                # --- Fill Action ---\n                # Find coordinates of holes relative to the full grid\n                hole_coords_relative = np.argwhere(holes_mask_in_slice)\n                # Adjust coordinates to be absolute in the full grid\n                start_row, start_col = obj_slice[0].start, obj_slice[1].start\n                hole_coords_global = [(r + start_row, c + start_col) for r, c in hole_coords_relative]\n                \n                # Fill the holes in the output grid with the object's color\n                for r, c in hole_coords_global:\n                    # Double check it was originally background in input\n                    if input_arr[r,c] == 0: \n                         output_arr[r, c] = color\n            else:\n                # --- Hollow Out Action ---\n                # Identify interior cells: object cells not adjacent to background (0) in the input\n                interior_cells_global = []\n                for r, c in object_coords_global:\n                    is_border = False\n                    for nr, nc in find_neighbors(r, c, input_arr.shape):\n                        # Check if neighbor is outside the *current specific object*\n                        # This means checking against the labeled array, not just color '0'\n                        if labeled_array[nr, nc] != obj_label: \n                            is_border = True\n                            break\n                    if not is_border:\n                        # Check if the cell is truly interior (not on the edge of the grid slice for this object)\n                        # This check helps avoid hollowing single-pixel-thick parts incorrectly.\n                        # A simpler check: if it wasn't identified as border, it's interior.\n                        interior_cells_global.append((r, c))\n\n                # Change interior cells to background color (0) in the output grid\n                for r, c in interior_cells_global:\n                     # Make sure we don't hollow out single-pixel width lines accidentally.\n                     # This check requires careful thought. The current neighbour check is a proxy.\n                     # A more robust check might involve comparing the original object mask with its erosion.\n                     # For now, the neighbour check handles most cases seen in example.\n                     output_arr[r, c] = 0\n                     \n    return output_arr.tolist() # Return as list of lists if needed, or keep as numpy array\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "citation_metadata": {
+        "citation_sources": [
+          {
+            "start_index": 4208,
+            "end_index": 4415,
+            "uri": "https://github.com/Anuj-cs20/IIITDMK_CSE_Coursework",
+            "license_": ""
+          }
+        ]
+      },
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 2072,
+    "candidates_token_count": 1407,
+    "total_token_count": 3479,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 21.587276,
+  "retries": 1
+}

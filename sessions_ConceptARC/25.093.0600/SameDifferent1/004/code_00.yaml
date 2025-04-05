@@ -1,0 +1,55 @@
+task_description: Remove connected regions of color if they touch the grid border.
+
+elements:
+  - element: grid
+    properties:
+      - type: 2D array of integers
+      - dimensions: variable (e.g., 10x10, 8x8, 9x9, 11x11)
+      - cell_values: integers 0-9
+      - background_color: 0
+      - border: Cells in row 0, last row, column 0, or last column.
+
+  - element: region
+    properties:
+      - type: connected component of non-zero cells
+      - connectivity: horizontal and vertical adjacency (4-way)
+      - color: the integer value (1-9) shared by cells in the region
+      - location: set of coordinates (row, col) occupied by the region
+      - touches_border: boolean (true if any cell coordinates in the region match a border coordinate)
+
+actions:
+  - action: identify_regions
+    input: input grid
+    output: list of regions (each with color, coordinates)
+    description: Finds all connected components of non-zero cells using 4-way adjacency.
+
+  - action: check_border_contact
+    input: list of regions, grid dimensions
+    output: list of regions (each with added 'touches_border' property)
+    description: For each region, determine if any of its cell coordinates lie on the grid border (row 0, last row, col 0, last col).
+
+  - action: filter_regions
+    input: list of regions (with 'touches_border' property)
+    output: list of regions_to_keep
+    description: Selects only those regions where the 'touches_border' property is false.
+
+  - action: generate_output_grid
+    input:
+      - input grid dimensions
+      - list of regions_to_keep
+    output: output grid
+    description: Creates a new grid filled with the background color ('0'). Then, for each region in 'regions_to_keep', place its color value at its corresponding coordinates in the new grid.
+
+relationships:
+  - relationship: border_determines_removal
+    subject: region
+    object: grid border
+    description: A region's 'touches_border' status determines if it is kept (false) or removed (true) in the output grid. Removal applies to the entire region if any part touches the border.
+
+consistency_issue:
+  - description: >
+      The provided 'Expected Output' for examples train_1, train_3, test_1, and test_2
+      show regions being removed even when they do *not* touch the defined grid border.
+      This contradicts the rule derived from successful examples train_2 and test_3,
+      and the behavior of the current code. The analysis proceeds assuming the rule
+      "remove if touching border" is correct and these specific expected outputs are anomalous.

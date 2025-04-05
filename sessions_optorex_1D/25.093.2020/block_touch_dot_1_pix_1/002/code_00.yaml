@@ -1,0 +1,74 @@
+objects:
+  - name: sequence
+    type: list of integers # Updated type
+    description: Represents the input and output data as a list of single-digit integers.
+  - name: digit_2
+    type: integer
+    value: 2
+    description: Acts as a potential trigger or anchor point for the transformation. Requires search within the sequence.
+  - name: digit_0
+    type: integer
+    value: 0
+    description: Plays a key role in the condition (must be followed by non-zero) and the transformation action (removal and appending).
+  - name: non_zero_digit
+    type: integer
+    value_constraint: '> 0'
+    description: A digit greater than zero, required to follow a '0' to trigger the transformation.
+
+properties:
+  - name: index
+    applies_to: [sequence element]
+    description: The zero-based position of a digit within the sequence.
+  - name: value
+    applies_to: [sequence element]
+    description: The integer value of a digit at a specific index.
+  - name: length
+    applies_to: [sequence]
+    description: The number of digits in the sequence. Remains constant during transformation.
+  - name: adjacency
+    applies_to: [sequence element]
+    description: The relationship checked between a digit '0' and the digit immediately following it.
+
+actions:
+  - name: find_first
+    actor: rule_logic
+    target: digit_2
+    inputs: [sequence]
+    result: index of the first digit_2 or indication of absence
+    description: Locate the index of the first '2' in the input sequence.
+  - name: search_subsequence
+    actor: rule_logic
+    target: sequence
+    parameters: [start_index]
+    description: Iterate through the sequence starting from a specific index (immediately after the first '2').
+  - name: check_condition_at_index
+    actor: rule_logic
+    inputs: [sequence, current_index]
+    condition: |
+      Is the digit at current_index == 0?
+      Is current_index less than the last index of the sequence?
+      Is the digit at current_index + 1 != 0?
+    result: boolean (condition met or not)
+    description: Evaluate if a specific '0' at the current index meets the criteria for removal.
+  - name: remove_element_at_index
+    actor: rule_logic
+    target: sequence
+    parameters: [index]
+    effect: Element at the specified index is removed, subsequent elements shift left. Sequence length decreases by 1.
+    description: Delete a digit from the sequence at a specific position.
+  - name: append_element
+    actor: rule_logic
+    target: sequence
+    parameters: [element_value] # Always 0 for this task
+    effect: Adds the specified element ('0') to the end of the sequence. Sequence length increases by 1.
+    description: Add a '0' to the end of the sequence.
+
+relationships:
+  - type: relative_position
+    from: digit_0 (target for removal)
+    to: digit_2 (first occurrence)
+    description: The condition applies only to '0's that appear *after* the index of the first '2'.
+  - type: immediate_succession
+    from: digit_0 (target for removal)
+    to: non_zero_digit
+    description: The core condition requires a '0' to be immediately followed by a non-zero digit within the search subsequence.

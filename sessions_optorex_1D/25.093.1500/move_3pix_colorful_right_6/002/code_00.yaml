@@ -1,0 +1,63 @@
+task_description: Shift a contiguous block of non-zero numbers within a list to the right by a fixed amount.
+task_elements:
+  - object: input_data
+    properties:
+      - type: list
+      - contains: integers
+      - length: fixed (e.g., 12 in examples)
+      - structure: contains zeros and potentially one contiguous block of non-zero integers.
+  - object: output_data
+    properties:
+      - type: list
+      - contains: integers
+      - length: same as input_data
+      - derived_from: input_data
+      - structure: contains the shifted non-zero block from input_data, padded with zeros elsewhere.
+  - object: non_zero_block
+    properties:
+      - type: sublist (contiguous)
+      - identified_by: sequence starting from the first non-zero element to the last non-zero element in input_data.
+      - existence: may not exist (if input_data is all zeros).
+      - content: non-zero integers.
+      - relative_order: preserved from input_data.
+      - values: preserved from input_data.
+  - object: shift_operation
+    properties:
+      - direction: right
+      - amount: 3 positions (constant)
+      - applies_to: non_zero_block's starting position.
+  - object: padding
+    properties:
+      - value: 0
+      - role: fills positions in output_data not occupied by the shifted non_zero_block.
+constants:
+  - shift_amount: 3
+  - padding_value: 0
+actions:
+  - name: find_block_indices
+    input: input_data (list)
+    output: start_index, end_index (indices of the first and last non-zero elements)
+    description: Iterate through the input list to find the first index (`start_index`) and the last index (`end_index`) containing non-zero values. If no non-zeros are found, both indices are null/None.
+  - name: extract_block
+    input: input_data, start_index, end_index
+    output: non_zero_block (sublist)
+    condition: Only if start_index is not null.
+    description: Slice the input_data from `start_index` to `end_index` (inclusive).
+  - name: calculate_new_start_position
+    input: start_index, shift_amount (3)
+    output: new_start_index
+    condition: Only if start_index is not null.
+    description: Add `shift_amount` to the original `start_index`.
+  - name: construct_output_list
+    input: list_length, non_zero_block, new_start_index, padding_value (0)
+    output: output_data (list)
+    description: >
+      Create a new list of `list_length` filled with `padding_value`.
+      If `non_zero_block` exists, place it into the new list starting at `new_start_index`.
+      Handle boundary conditions: ensure the placement does not exceed the list's bounds (truncate the block if necessary).
+      If no `non_zero_block` exists, the output is the zero-filled list.
+relationships:
+  - type: transformation
+    from: input_data
+    to: output_data
+    rule: Apply shift_operation to the non_zero_block identified in input_data and place it in output_data, padding with zeros.

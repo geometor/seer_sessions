@@ -1,0 +1,64 @@
+task_description: Fill sequences of zeros based on proximity to a marker and other non-zero digits.
+elements:
+  - type: sequence
+    properties:
+      - item_type: integer
+      - item_range: 0-9
+      - length: variable (observed as 12 in examples, but logic might generalize)
+objects:
+  - id: marker
+    value: 2
+    description: A fixed pivot digit. Its position determines the regions for potential filling. It is never overwritten.
+  - id: empty_space
+    value: 0
+    description: Represents positions that are candidates for being filled.
+  - id: fill_source
+    value: N (any digit from 1, 3, 4, 5, 6, 7, 8, 9)
+    description: Non-zero, non-marker digits. The nearest 'fill_source' to the 'marker' on each side dictates the value used for filling 'empty_space' on that side. 'fill_source' digits are never overwritten.
+relationships:
+  - type: position
+    description: The index of the 'marker' is crucial.
+  - type: adjacency
+    description: The transformation depends on the sequence of digits between the 'marker' and the nearest 'fill_source' on the left and right.
+  - type: nearest_neighbor
+    description: Finding the closest 'fill_source' to the left and right of the 'marker' is a key step.
+actions:
+  - name: initialize_output
+    actor: system
+    input: input_sequence
+    output: output_sequence
+    description: Create a mutable copy of the input sequence.
+  - name: locate_marker
+    actor: system
+    target: input_sequence
+    output: marker_index
+    description: Find the index of the first occurrence of the 'marker' (digit 2). If not found, return the initial copy.
+  - name: find_left_neighbor
+    actor: system
+    target: input_sequence
+    input: marker_index
+    output: left_fill_value, left_fill_index
+    description: Search leftwards from marker_index - 1. Find the first 'fill_source' digit and its index. If none found, values remain null/invalid.
+  - name: find_right_neighbor
+    actor: system
+    target: input_sequence
+    input: marker_index
+    output: right_fill_value, right_fill_index
+    description: Search rightwards from marker_index + 1. Find the first 'fill_source' digit and its index. If none found, values remain null/invalid.
+  - name: fill_left_gap
+    actor: system
+    target: output_sequence
+    input: marker_index, left_fill_value, left_fill_index
+    condition: A 'left_fill_value' was found (left_fill_index is valid).
+    effect: Iterate from index `left_fill_index + 1` up to (but not including) `marker_index`. If the digit at the current index in the *original input sequence* was an 'empty_space' (0), replace the digit at the corresponding index in the 'output_sequence' with 'left_fill_value'.
+  - name: fill_right_gap
+    actor: system
+    target: output_sequence
+    input: marker_index, right_fill_value, right_fill_index
+    condition: A 'right_fill_value' was found (right_fill_index is valid).
+    effect: Iterate from index `marker_index + 1` up to (but not including) `right_fill_index`. If the digit at the current index in the *original input sequence* was an 'empty_space' (0), replace the digit at the corresponding index in the 'output_sequence' with 'right_fill_value'.
+  - name: finalize_output
+    actor: system
+    input: output_sequence
+    output: final_sequence
+    description: Return the modified 'output_sequence'.

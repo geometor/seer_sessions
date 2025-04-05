@@ -1,0 +1,47 @@
+elements:
+  - type: sequence
+    properties:
+      - content: list of integers
+      - role: input or output
+  - type: number
+    properties:
+      - value: integer (0-9)
+      - position: index within the sequence
+      - category: zero or non-zero
+relations:
+  - type: positional
+    properties:
+      - relationship: first element
+      - relationship: last element
+      - relationship: preceding element
+      - relationship: succeeding element
+      - relationship: between non-zeros
+      - relationship: before first non-zero (leading)
+      - relationship: after last non-zero (trailing)
+actions:
+  - name: determine_rule
+    inputs: first element value
+    outputs: fill direction (forward or backward)
+    condition: value == 5
+  - name: fill_zeros
+    inputs: sequence, fill direction
+    outputs: modified sequence
+    steps:
+      - identify non-zero elements and their indices
+      - iterate through segments between non-zeros
+      - if direction is forward: replace segment zeros with left non-zero value
+      - if direction is backward: replace segment zeros with right non-zero value
+      - preserve leading zeros
+      - preserve trailing zeros (only for backward fill) # Correction: Trailing zeros are handled implicitly by iterating *between* non-zeros. Forward fill also only affects zeros *between* non-zeros based on re-evaluation. Let's simplify.
+    refined_steps:
+      - create a copy of the input sequence
+      - find indices of all non-zero elements
+      - iterate through pairs of consecutive non-zero indices (idx_left, idx_right)
+      - if rule is Forward Fill: fill sequence[idx_left + 1 : idx_right] with sequence[idx_left]
+      - if rule is Backward Fill: fill sequence[idx_left + 1 : idx_right] with sequence[idx_right]
+transformation_rule:
+  - condition: The first element of the input sequence determines the fill rule.
+  - rule_1: If the first element is 5, use Backward Fill (zeros between non-zeros take the value of the right non-zero neighbor).
+  - rule_2: If the first element is not 5, use Forward Fill (zeros between non-zeros take the value of the left non-zero neighbor).
+  - unchanged: Zeros before the first non-zero element and after the last non-zero element remain zero. # Re-checking trailing zeros on forward fill. Train_5: `...2 0 5` -> `...2 2 5`. Zeros *between* non-zeros. It seems trailing zeros are never filled in either case.
+  - final_unchanged: Zeros before the first non-zero element and zeros after the last non-zero element always remain zero.

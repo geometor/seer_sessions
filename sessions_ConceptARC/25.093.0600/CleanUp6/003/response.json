@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom collections import Counter\n\n\"\"\"\nTransforms a 2D grid based on color frequency and connectivity.\n\n1.  Identifies all non-zero colors and their frequencies in the input grid.\n2.  Determines the maximum frequency among these colors.\n3.  Identifies all colors ('dominant candidates') that occur with this maximum frequency.\n4.  Applies a tie-breaking rule if multiple dominant candidates exist: A candidate color is disqualified if *all* of its occurrences in the input grid are 'isolated' (i.e., have no orthogonally adjacent neighbors of the same color). Otherwise, it remains a 'kept color'. If there was only one dominant candidate initially, it is automatically a 'kept color'.\n5.  Creates an output grid initialized with zeros.\n6.  Iterates through the input grid. For each cell containing a 'kept color', it checks if that cell has at least one orthogonally adjacent neighbor in the input grid that also contains the *same* kept color.\n7.  If a cell contains a kept color and has at least one neighbor of the same color, its color is copied to the corresponding cell in the output grid.\n8.  All other cells in the output grid (background, minority colors, disqualified dominant colors, and isolated kept colors) remain zero.\n\"\"\"\n\ndef _get_color_frequencies(grid_np):\n    \"\"\"Counts frequencies of non-zero colors.\"\"\"\n    colors, counts = np.unique(grid_np[grid_np != 0], return_counts=True)\n    return dict(zip(colors, counts))\n\ndef _has_neighbor_of_same_color(grid_np, r, c, color):\n    \"\"\"Checks if cell (r, c) has an orthogonal neighbor with the specified color.\"\"\"\n    rows, cols = grid_np.shape\n    # Define orthogonal neighbor offsets\n    neighbors_coords = [(r - 1, c), (r + 1, c), (r, c - 1), (r, c + 1)]\n\n    for nr, nc in neighbors_coords:\n        # Check bounds\n        if 0 <= nr < rows and 0 <= nc < cols:\n            # Check color\n            if grid_np[nr, nc] == color:\n                return True\n    return False\n\ndef _is_color_entirely_isolated(grid_np, color):\n    \"\"\"Checks if ALL occurrences of a color are isolated.\"\"\"\n    rows, cols = grid_np.shape\n    found_connected = False\n    for r in range(rows):\n        for c in range(cols):\n            if grid_np[r, c] == color:\n                if _has_neighbor_of_same_color(grid_np, r, c, color):\n                    # Found at least one connected instance, so not entirely isolated\n                    return False\n    # If loop completes without finding a connected instance, it's entirely isolated\n    return True\n\n\ndef transform(input_grid):\n    \"\"\"\n    Applies the transformation rule based on frequency, tie-breaking, and connectivity.\n    \"\"\"\n    input_np = np.array(input_grid, dtype=int)\n    rows, cols = input_np.shape\n    output_grid_np = np.zeros_like(input_np)\n\n    # 1 & 2: Get color frequencies\n    color_counts = _get_color_frequencies(input_np)\n\n    if not color_counts: # Handle empty or all-zero grid\n        return output_grid_np.tolist()\n\n    # 3: Determine dominant candidates\n    max_freq = max(color_counts.values())\n    dominant_candidates = [color for color, count in color_counts.items() if count == max_freq]\n\n    # 4: Apply tie-breaking rule\n    kept_colors = set() # Use a set for efficient lookup\n    if len(dominant_candidates) > 1:\n        for color in dominant_candidates:\n            # Keep the color if it's NOT entirely isolated\n            if not _is_color_entirely_isolated(input_np, color):\n                kept_colors.add(color)\n    elif len(dominant_candidates) == 1:\n         # If only one dominant color, it's automatically kept (no tie-breaking needed)\n         # We still need to check isolation later cell-by-cell\n         kept_colors.add(dominant_candidates[0])\n    \n    # If tie-breaking resulted in no kept colors (e.g., all candidates were purely isolated)\n    if not kept_colors:\n         return output_grid_np.tolist()\n\n    # 5, 6, 7: Filter grid based on kept colors and connectivity\n    for r in range(rows):\n        for c in range(cols):\n            current_color = input_np[r, c]\n            # Check if it's one of the final kept colors\n            if current_color in kept_colors:\n                # Check if this specific instance is connected to a neighbor of the same color\n                if _has_neighbor_of_same_color(input_np, r, c, current_color):\n                    output_grid_np[r, c] = current_color\n            # Otherwise, the output cell remains 0 (minority, disqualified, or isolated kept color)\n\n    # 8: Return the final grid\n    return output_grid_np.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 11255,
+    "candidates_token_count": 1211,
+    "total_token_count": 12466,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 27.683361,
+  "retries": 1
+}

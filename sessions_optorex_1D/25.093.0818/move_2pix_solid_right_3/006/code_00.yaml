@@ -1,0 +1,68 @@
+Data:
+  - type: sequence
+    format: space-separated integers (input), 1D NumPy integer array (internal), space-separated integers (output)
+    elements: integers
+    length_constraint: fixed between input and output
+
+Objects:
+  - name: input_sequence
+    type: 1D NumPy array of integers
+    source: input string parsed and converted
+  - name: active_block
+    type: 1D NumPy array (sub-sequence)
+    definition: The portion of the input_sequence starting from the index of the first non-zero integer and ending at the index of the last non-zero integer (inclusive).
+    properties:
+      - start_index_input: index of the first non-zero integer in input_sequence. (-1 if none)
+      - end_index_input: index of the last non-zero integer in input_sequence. (-1 if none)
+      - content: the sequence of integers within the block.
+      - length: number of elements in the block.
+  - name: background_element
+    type: integer
+    value: 0
+  - name: output_sequence
+    type: 1D NumPy array of integers
+    properties:
+      - length: same as input_sequence length
+      - content: initially all zeroes, then populated with the shifted active_block.
+
+Actions:
+  - name: parse_input
+    inputs: input_string
+    outputs: input_sequence (NumPy array)
+  - name: find_nonzero_bounds
+    inputs: input_sequence
+    outputs: start_index_input, end_index_input
+    method: Use `np.nonzero` to find indices of non-zero elements, then find min and max index. Return (-1, -1) if no non-zero elements exist.
+  - name: handle_all_zero_input
+    inputs: start_index_input
+    condition: If start_index_input is -1.
+    outputs: A copy of the input_sequence (or a new zero array of the same size).
+  - name: extract_active_block
+    inputs: input_sequence, start_index_input, end_index_input
+    condition: If start_index_input is not -1.
+    outputs: active_block (NumPy array slice)
+    method: Slice `input_sequence[start_index_input : end_index_input + 1]`
+  - name: initialize_output
+    inputs: input_sequence (for shape/type)
+    outputs: output_sequence (zero-filled NumPy array)
+    method: Use `np.zeros_like(input_sequence)`
+  - name: calculate_target_indices
+    inputs: start_index_input, active_block_length
+    outputs: target_start_index, target_end_index
+    rule:
+      - target_start_index = start_index_input + 2
+      - target_end_index = target_start_index + active_block_length
+  - name: place_block
+    inputs: output_sequence, active_block, target_start_index, target_end_index, sequence_length
+    outputs: modified output_sequence
+    condition: If target_end_index <= sequence_length (ensure bounds).
+    method: Assign `output_sequence[target_start_index:target_end_index] = active_block`
+  - name: format_output
+    inputs: output_sequence (NumPy array)
+    outputs: output_string (space-separated integers)
+
+Relationships:
+  - The output_sequence is derived from the input_sequence by relocating the active_block.
+  - The starting position of the active_block in the output is precisely 2 indices greater than its starting position in the input.
+  - Elements in the output_sequence outside the bounds of the placed active_block remain zero.
+  - If the input contains only zeroes, the output is identical.

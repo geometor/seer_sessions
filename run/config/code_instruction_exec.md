@@ -15,10 +15,10 @@
 
 {{ allowed imports that support the transform }}
 
-def transform(input_grid):
+def transform(input_grid: list[list[int]]) -> list[list[int]]:
     # initialize output_grid
 
-    # change output pixels 
+    # perform transformation 
 
     return output_grid
 

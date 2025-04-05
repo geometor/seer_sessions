@@ -1,0 +1,49 @@
+task_name: TransformSequenceByHalfBlockFloor
+description: Modifies a sequence of digits by changing trailing '2's within contiguous blocks of '2's to '8's. The number of '2's changed at the end of each block is determined by the floor of half the block's length.
+
+input_domain:
+  type: sequence
+  element_type: integer
+  allowed_values: [0, 2]
+  separator: space
+  description: A space-separated sequence of 0s and 2s.
+
+output_domain:
+  type: sequence
+  element_type: integer
+  allowed_values: [0, 2, 8]
+  separator: space
+  description: A space-separated sequence where some 2s from the input have been changed to 8s.
+
+components:
+  - object: sequence_element
+    properties:
+      - value: { type: integer, description: The digit (0, 2, or 8) }
+      - index: { type: integer, description: Position in the sequence (0-based) }
+  - object: contiguous_two_block
+    properties:
+      - start_index: { type: integer, description: Index of the first '2' in the block }
+      - end_index: { type: integer, description: Index of the last '2' in the block }
+      - length: { type: integer, description: Number of '2's in the block (end_index - start_index + 1) }
+
+transformation:
+  action: identify_and_modify_blocks
+  target: contiguous_two_block
+  rule:
+    - name: modify_trailing_elements
+      condition: Always applies to each identified contiguous_two_block.
+      calculation:
+        - variable: k
+          operation: floor_division
+          value1: contiguous_two_block.length
+          value2: 2
+          description: Calculate k = floor(length / 2), the number of elements to change.
+      action: change_value
+      target_element_condition: sequence_element.index >= (contiguous_two_block.end_index - k + 1) AND sequence_element.index <= contiguous_two_block.end_index
+      new_value: 8
+      pre_condition: k > 0
+
+relationships:
+  - The output sequence is derived from the input sequence by modifying elements within identified blocks.
+  - Elements with value '0' in the input remain '0' in the output.
+  - Elements with value '2' in the input may change to '8' in the output if they fall within the trailing `k` positions of a `contiguous_two_block`.

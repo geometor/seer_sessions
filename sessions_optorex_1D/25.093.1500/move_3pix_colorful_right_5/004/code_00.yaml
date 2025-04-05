@@ -1,0 +1,59 @@
+    objects:
+      - name: input_sequence
+        type: list or 1D array of integers
+        properties:
+          - length: 12 (consistent across examples)
+          - contains: integers, potentially including a single contiguous block of non-zero values surrounded by zeros.
+      - name: output_sequence
+        type: list or 1D array of integers
+        properties:
+          - length: 12 (same as input)
+          - contains: integers, derived from input_sequence.
+      - name: non_zero_block
+        type: sub-sequence of integers
+        properties:
+          - extracted_from: input_sequence (if present)
+          - contiguous: yes
+          - values: all non-zero
+      - name: block_properties
+        type: dictionary
+        properties:
+          - input_start_index: integer (index of the first non-zero element, or None)
+          - input_end_index: integer (index *after* the last non-zero element, or None)
+          - block_length: integer (number of elements in the block, 0 if no block)
+      - name: transformation_parameters
+        type: dictionary
+        properties:
+          - sequence_length: integer (value: 12)
+          - shift_amount: integer (value: 3, direction: right)
+
+    actions:
+      - name: locate_first_non_zero_block
+        actor: system
+        input: input_sequence
+        output: block_properties (input_start_index, input_end_index)
+        description: Iterates through the input sequence to find the start and end indices of the *first* contiguous block of non-zero numbers. Returns None for indices if no block is found.
+      - name: calculate_new_start_index
+        actor: system
+        input: input_start_index, shift_amount
+        output: new_start_index
+        description: Calculates the target starting index for the block in the output sequence by adding shift_amount to input_start_index. Only applicable if input_start_index is not None.
+      - name: construct_output_sequence
+        actor: system
+        input: input_sequence, block_properties, new_start_index, sequence_length
+        output: output_sequence
+        description: >
+          Creates a new sequence of zeros with the defined sequence_length.
+          If a non_zero_block was found in the input (input_start_index is not None),
+          extracts the block using input_start_index and input_end_index.
+          Copies the extracted block into the new sequence starting at new_start_index.
+          Handles potential clipping if the shifted block exceeds the sequence_length.
+          If no block was found, returns the sequence of zeros.
+
+    relationships:
+      - The output_sequence length always equals the input_sequence length (12).
+      - If a non_zero_block exists in the input starting at `s`, it appears in the output starting at `s + 3`.
+      - The content and relative order of elements within the non_zero_block are preserved in the output.
+      - Positions in the output sequence not occupied by the shifted block are filled with 0.
+      - If the input contains no non-zero elements, the output is all zeros.
+      - The shift operation might cause the tail end of the block to be truncated if `s + 3 + block_length > 12`.

@@ -1,0 +1,61 @@
+objects:
+  - name: input_sequence
+    type: list_of_integers
+    properties:
+      - length: 12 (in examples)
+      - contains: integers, including special values 0 and 5
+  - name: output_sequence
+    type: list_of_integers
+    properties:
+      - length: same as input_sequence
+      - derived_from: input_sequence
+  - name: zero_value
+    type: integer
+    properties:
+      - value: 0
+      - role: separator/boundary
+      - transformation: remains unchanged
+  - name: five_value
+    type: integer
+    properties:
+      - value: 5
+      - role: placeholder
+      - occurs_in: sequences (e.g., [5, 5], [5, 5, 5])
+      - transformation: replaced based on context
+  - name: non_zero_values
+    type: list_of_integers
+    properties:
+      - source: input_sequence excluding 0 and 5
+      - order: preserved from input sequence
+      - role: replacement values for sequences of 5s
+      - transformation: remain unchanged at their original positions
+
+relationships:
+  - type: mapping
+    from: input_sequence
+    to: output_sequence
+    rule: element-wise transformation based on value and context
+  - type: preservation
+    element: 0
+    rule: input[i] == 0 implies output[i] == 0
+  - type: preservation
+    element: non_zero_values (excluding 5)
+    rule: if input[i] is a non-zero value (not 5), then output[i] == input[i]
+  - type: replacement
+    element: sequences of 5s
+    rule: the k-th sequence of 5s in the input is replaced by the k-th non_zero_value (excluding 5) from the input, repeated for the length of the sequence.
+
+actions:
+  - name: identify_non_zeros
+    input: input_sequence
+    output: ordered list of non-zero integers (excluding 5)
+  - name: identify_five_sequences
+    input: input_sequence
+    output: list of start/end indices for consecutive sequences of 5s
+  - name: generate_output
+    inputs:
+      - input_sequence
+      - ordered_non_zeros
+      - five_sequences_indices
+    output: output_sequence
+    process: iterate through input, apply preservation rules for 0s and other non-zeros, apply replacement rule for 5s using the ordered_non_zeros list based on the sequence order.

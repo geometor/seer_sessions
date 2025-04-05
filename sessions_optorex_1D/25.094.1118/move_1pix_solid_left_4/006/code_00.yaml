@@ -1,0 +1,51 @@
+task_elements:
+  - type: sequence
+    format: 1D array/list of integers
+    role: input_output
+    properties:
+      - length: constant_across_transformation
+
+identified_objects:
+  - object: padding_element
+    value: 0
+    role: filler, shift_mechanic
+  - object: non_zero_block
+    description: A single contiguous sequence of identical non-zero digits.
+    properties:
+      - value: constant_digit > 0 (preserved during transformation)
+      - length: variable (preserved during transformation)
+      - location: defined by start_index and end_index
+      - input_precondition: start_index > 0 (always preceded by a padding_element)
+
+actions:
+  - action: find_block_start
+    target: input_sequence
+    outputs: start_index
+    description: Locate the index of the first non-zero digit.
+  - action: conditional_shift
+    condition: start_index > 0
+    target: input_sequence
+    mechanism:
+      - step: Define the preceding element's index as `preceding_index = start_index - 1`.
+      - step: Remove the element at `preceding_index` from the sequence.
+      - step: Append a padding_element (value 0) to the end of the sequence.
+    result: A new sequence where the non_zero_block is shifted one position to the left, maintaining overall sequence length.
+  - action: identity (else case)
+    condition: start_index == 0
+    target: input_sequence
+    result: The sequence remains unchanged (implied, not observed).
+
+relationships:
+  - type: positional_transformation
+    element: non_zero_block
+    input_property: start_index
+    output_property: start_index
+    change: decremented by 1 (if input start_index > 0)
+  - type: length_conservation
+    element: sequence
+    property: length
+    result: remains constant
+  - type: content_conservation
+    element: non_zero_block
+    properties: [value, length]
+    result: remain constant

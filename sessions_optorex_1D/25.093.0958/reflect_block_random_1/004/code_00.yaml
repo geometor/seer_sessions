@@ -1,0 +1,66 @@
+task_elements:
+  - object: sequence
+    properties:
+      - type: list_of_integers
+      - content: single digits (0-9)
+      - role: input_and_output_format
+  - object: leading_zeros_segment
+    properties:
+      - type: sub-sequence
+      - location: start_of_sequence
+      - content: contiguous block of only_zeros
+      - bounds: from index 0 up to (but not including) the index of the first non-zero element
+      - note: can be empty if the sequence starts with a non-zero element
+  - object: trailing_zeros_segment
+    properties:
+      - type: sub-sequence
+      - location: end_of_sequence
+      - content: contiguous block of only_zeros
+      - bounds: from the index after the last non-zero element to the end of the sequence
+      - note: can be empty if the sequence ends with a non-zero element
+  - object: core_segment
+    properties:
+      - type: sub-sequence
+      - location: between leading_zeros_segment and trailing_zeros_segment (inclusive of boundary non-zero elements)
+      - content: contains all non-zero digits and any zeros interspersed within them
+      - bounds: starts at the index of the first non-zero element, ends at the index of the last non-zero element (inclusive)
+      - note: if the sequence contains no non-zero elements, this segment is effectively empty or non-existent for transformation purposes.
+actions:
+  - action: identify_boundaries
+    inputs: input_sequence
+    outputs:
+      - index_first_non_zero
+      - index_last_non_zero
+    description: Find the start and end indices of the core_segment. Handle the edge case where the sequence might contain only zeros (in which case indices indicating 'not found' or the sequence length might be returned, depending on implementation).
+  - action: segment_sequence
+    inputs:
+      - input_sequence
+      - index_first_non_zero
+      - index_last_non_zero
+    outputs:
+      - leading_zeros_segment
+      - core_segment
+      - trailing_zeros_segment
+    description: Split the input sequence into three parts based on the identified boundaries. Handle the case where indices are 'not found' (e.g., if all zeros, the core and trailing segments might be empty, and the leading segment is the whole sequence).
+  - action: reverse_segment
+    inputs: core_segment
+    outputs: reversed_core_segment
+    description: Reverse the order of elements within the core_segment. If the core_segment is empty or non-existent (e.g., all zeros input), this action has no effect or is skipped.
+  - action: reconstruct_sequence
+    inputs:
+      - leading_zeros_segment
+      - reversed_core_segment
+      - trailing_zeros_segment
+    outputs: output_sequence
+    description: Combine the segments in order (leading, reversed core, trailing) to form the final output sequence. If the input was all zeros, this effectively reconstructs the original sequence.
+relationships:
+  - type: positional_invariance
+    elements: [leading_zeros_segment, trailing_zeros_segment]
+    description: The leading and trailing zero segments maintain their position and content in the output relative to the sequence boundaries.
+  - type: core_transformation
+    elements: [core_segment]
+    action: reverse_segment
+    description: The core_segment is the only part of the sequence whose element order is modified.
+special_cases:
+  - condition: input_sequence contains only zeros
+    outcome: output_sequence is identical to input_sequence

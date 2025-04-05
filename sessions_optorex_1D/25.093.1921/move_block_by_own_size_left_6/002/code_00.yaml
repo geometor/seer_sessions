@@ -1,0 +1,47 @@
+task_type: array_transformation
+input_format: 2D_numpy_array # Likely shape (1, N) representing a single row grid
+output_format: 1D_list_of_integers # Target output format
+input_element_type: integer
+output_element_type: integer
+data_structure_processed: 1D_list_of_integers # Extracted from the input array's first row
+key_elements:
+  - name: zero
+    property: background_value
+    value: 0
+  - name: non_zero_block
+    property: contiguous_sequence_of_identical_non_zero_integers
+    relationship: single_occurrence_per_input_row
+action:
+  - name: extract_1d_data
+    inputs: input_grid (2D numpy array, shape (1, N))
+    outputs: input_list (1D list or 1D numpy array of N integers)
+    process: Access the first row of the input array (index 0).
+  - name: identify_non_zero_block
+    inputs: input_list (1D sequence of integers)
+    outputs:
+      - block_value (integer)
+      - start_index (integer)
+      - end_index (integer)
+      - block_size (integer) # end_index - start_index + 1
+    process: Scan the list to find the start and end indices of the first contiguous block of identical non-zero values.
+  - name: calculate_shift_amount
+    inputs: block_size
+    outputs: shift_amount (integer)
+    process: Set shift_amount equal to block_size.
+  - name: calculate_new_start_index
+    inputs: start_index, shift_amount
+    outputs: new_start_index (integer)
+    process: Calculate new_start_index = start_index - shift_amount. Ensure it's not negative (though examples suggest it won't be).
+  - name: generate_output_list
+    inputs: list_length (N), new_start_index, block_value, block_size
+    outputs: output_list (1D list of N integers)
+    process: Create a list of N zeros, then place the block (block_size elements of block_value) starting at new_start_index.
+relationship:
+  - type: positional_shift
+    direction: left
+    object: non_zero_block
+    amount: equal_to_block_size # The length of the non_zero_block
+constraints:
+  - Only one non-zero block exists per input.
+  - The block consists of identical non-zero integers.
+  - The list length remains constant.

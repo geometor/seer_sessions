@@ -1,0 +1,73 @@
+objects:
+  - name: InputGrid
+    type: 2D Array of Integers
+  - name: OutputGrid
+    type: 2D Array of Integers
+  - name: SourceCell
+    description: >
+      A unique cell containing a non-zero integer (Y) which is the least frequent
+      non-zero value in the grid and is orthogonally adjacent to at least one cell
+      containing a *different* non-zero integer (X).
+    properties:
+      - value: Y (integer, Y != 0)
+      - location: Coordinate (row_y, col_y)
+      - relationship: Is adjacent to at least one BackgroundCell
+      - property: Least frequent non-zero value
+  - name: BackgroundValue
+    description: >
+      The non-zero integer value (X) found in cells orthogonally adjacent to the
+      SourceCell (Y). X != Y. X is typically the most frequent non-zero value.
+    properties:
+      - value: X (integer, X != 0, X != Y)
+      - property: Adjacent to SourceCell
+      - property: Usually most frequent non-zero value
+  - name: InternalHoleRegion
+    description: >
+      A connected component of zero (0) valued cells where all orthogonally adjacent
+      non-zero cells have the BackgroundValue (X), AND no cell within this component
+      is located on the boundary of the grid (row 0, col 0, max_row, max_col).
+    properties:
+      - value: 0 (integer)
+      - cells: List of coordinates (row_h, col_h)
+      - connectivity: Orthogonal
+      - relationship: All non-zero neighbors have BackgroundValue (X)
+      - constraint: Does not touch grid boundary
+
+actions:
+  - name: IdentifySourceAndBackground
+    description: >
+      Scan the InputGrid to find the unique SourceCell (Y at (row_y, col_y)) based
+      on its properties (least frequent non-zero, adjacent to a different non-zero).
+      Identify the BackgroundValue (X) from the neighbors of the SourceCell.
+  - name: IdentifyInternalHole
+    description: >
+      Find all connected components of zero-valued cells in the InputGrid.
+      Filter these components to keep only those where all non-zero neighbors have
+      the BackgroundValue (X). From the filtered set, select the single component
+      where none of its cells lie on the grid boundary. This is the InternalHoleRegion (H).
+  - name: FillHole
+    description: >
+      Modify a copy of the InputGrid (OutputGrid) by setting the value of all
+      cells within the identified InternalHoleRegion (H) to the value (Y) of the SourceCell.
+  - name: UpdateSourceLocation
+    description: >
+      In the OutputGrid, set the value of the cell at the SourceCell's original
+      location (row_y, col_y) to the BackgroundValue (X).
+  - name: GenerateOutput
+    description: The final modified OutputGrid after FillHole and UpdateSourceLocation.
+
+relationships:
+  - type: Adjacency
+    between: [SourceCell, Cell with BackgroundValue]
+    details: The SourceCell shares an orthogonal edge with at least one cell having the BackgroundValue (X).
+  - type: Bordering
+    between: [InternalHoleRegion, Cells with BackgroundValue]
+    details: All non-zero orthogonal neighbors of any cell in the InternalHoleRegion must have the BackgroundValue (X).
+  - type: Spatial Constraint
+    on: InternalHoleRegion
+    details: No cell within the InternalHoleRegion can have a row or column index equal to 0 or the maximum row/column index of the grid.
+
+constraints:
+  - There is exactly one SourceCell value (Y).
+  - The SourceCell (Y) is adjacent to cells with exactly one other non-zero value (X).
+  - There is exactly one InternalHoleRegion satisfying the definition.

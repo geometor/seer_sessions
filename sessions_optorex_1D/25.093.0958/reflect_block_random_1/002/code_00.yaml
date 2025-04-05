@@ -1,0 +1,62 @@
+task_elements:
+  - object: input_sequence
+    properties:
+      - type: list_of_integers # Corrected from string; could also be NumPy array
+      - length: fixed (12 in examples)
+      - contains: single digits (0-9)
+  - object: leading_zeros_segment # Renamed for clarity
+    properties:
+      - type: sub-sequence
+      - location: start_of_sequence, before first non-zero element
+      - content: only_zeros (can be empty)
+      - relationship: forms the prefix of the output
+  - object: trailing_zeros_segment # Renamed for clarity
+    properties:
+      - type: sub-sequence
+      - location: end_of_sequence, after last non-zero element
+      - content: only_zeros (can be empty)
+      - relationship: forms the suffix of the output
+  - object: core_segment
+    properties:
+      - type: sub-sequence
+      - location: between the first and last non-zero elements (inclusive)
+      - content: contains all non-zero digits and any zeros interspersed within them
+      - bounds: starts at index_first_non_zero, ends at index_last_non_zero
+      - relationship: is reversed to form the middle part of the output
+      - edge_case: if sequence contains no non-zero elements, this segment is considered empty, and the sequence is unchanged.
+actions:
+  - action: identify_boundaries
+    inputs: input_sequence (list of integers)
+    outputs:
+      - index_first_non_zero
+      - index_last_non_zero
+    description: Find the start and end indices of the core_segment. Handle the case where the sequence is all zeros (indices remain invalid/special value like -1).
+  - action: segment_sequence
+    inputs:
+      - input_sequence
+      - index_first_non_zero
+      - index_last_non_zero
+    outputs:
+      - leading_zeros_segment (prefix)
+      - core_segment (middle)
+      - trailing_zeros_segment (suffix)
+    description: Split the input sequence into three parts based on the identified boundaries. If no non-zero elements exist, prefix is the whole sequence, middle and suffix are empty.
+  - action: reverse_segment
+    inputs: core_segment
+    outputs: reversed_core_segment
+    description: Reverse the order of elements within the core_segment. If core_segment is empty, the output is also empty.
+  - action: concatenate_segments
+    inputs:
+      - leading_zeros_segment
+      - reversed_core_segment
+      - trailing_zeros_segment
+    outputs: output_sequence (list of integers)
+    description: Combine the segments in order (leading, reversed core, trailing) to form the final output sequence.
+relationships:
+  - type: positional_invariance
+    elements: [leading_zeros_segment, trailing_zeros_segment]
+    description: These segments maintain their relative positions (start/end) and content in the output.
+  - type: transformation
+    elements: [core_segment]
+    action: reverse_segment
+    description: The core_segment is the only part of the sequence whose element order is modified.

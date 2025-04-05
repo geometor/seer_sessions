@@ -1,0 +1,64 @@
+task_description: Transform a 1D sequence containing 0s and 3s by identifying two groups of 3s and replacing them based on relative length.
+input_type: 1D sequence (list or NumPy array) of integers.
+output_type: 1D sequence (list or NumPy array) of integers.
+elements:
+  - type: integer
+    value: 0
+    role: background/separator
+    behavior: remains unchanged in position and value.
+  - type: integer
+    value: 3
+    role: primary input value
+    behavior: subject to transformation within groups.
+  - type: integer
+    value: 1
+    role: output value
+    behavior: replaces groups of 3s based on comparison rules.
+  - type: integer
+    value: 2
+    role: output value
+    behavior: replaces groups of 3s based on comparison rules.
+  - type: object
+    name: group_of_threes
+    description: A contiguous subsequence within the input containing only the number 3.
+    properties:
+      - start_index: integer (0-based)
+      - end_index: integer (inclusive)
+      - length: integer (count of 3s, calculated as end_index - start_index + 1)
+      - order: position relative to other groups (first or second based on start_index).
+    constraint: All examples contain exactly two such groups.
+relationships:
+  - type: mapping
+    from: group_of_threes (input)
+    to: group_of_ones_or_twos (output)
+    properties:
+      - preserves_length: True (the output group has the same length as the input group)
+      - preserves_position: True (the output group occupies the same indices as the input group)
+  - type: comparison
+    objects: [first_group_of_threes, second_group_of_threes]
+    property: length
+    determines: which output value (1 or 2) replaces each group.
+actions:
+  - name: identify_groups
+    input: input_sequence (1D list/array of integers)
+    output: list containing exactly two group_of_threes objects (ordered by start_index).
+    precondition: The input sequence must contain exactly two distinct groups of 3s.
+  - name: compare_group_lengths
+    input: first_group (group_of_threes), second_group (group_of_threes)
+    output: boolean (is length of first_group strictly greater than length of second_group?)
+  - name: assign_output_values
+    input: comparison_result (boolean), first_group, second_group
+    output: two values (value_for_first_group, value_for_second_group)
+    rule: |
+      If comparison_result is True (first group is longer):
+        assign (1, 2)
+      Else (first group is shorter or equal length):
+        assign (2, 1)
+  - name: construct_output
+    input: input_sequence, first_group, second_group, value_for_first_group, value_for_second_group
+    output: output_sequence (1D list/array of integers)
+    process: |
+      Initialize output as a copy of the input sequence.
+      Fill the indices from first_group.start_index to first_group.end_index in the output sequence with value_for_first_group.
+      Fill the indices from second_group.start_index to second_group.end_index in the output sequence with value_for_second_group.
+      Ensure 0s remain unchanged.

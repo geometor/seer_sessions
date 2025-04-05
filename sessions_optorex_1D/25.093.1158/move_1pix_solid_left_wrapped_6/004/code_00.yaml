@@ -1,0 +1,79 @@
+# YAML document describing objects, properties, and relationships
+
+# Input/Output Data Structure
+data_structure:
+  type: numpy_array
+  dimensionality: potentially_2D # Input seems to be MxN, likely 1x12 based on examples and errors
+  element_type: integer_digit
+  output_type: numpy_array # Matching input type
+  fixed_length: 12 # Number of elements in the sequence remains constant
+
+# Identified Objects and Properties
+objects:
+  - object: sequence # The effective 1D sequence of digits after flattening
+    properties:
+      - contains_digits: true
+      - length: 12
+      - composed_of_blocks: true # Consecutive identical digits form blocks
+
+  - object: block
+    properties:
+      - consists_of_identical_digits: true
+      - has_digit_value: (e.g., 0, 2, 4, 5, 6, 7, 8)
+      - has_length: (number of digits in the block)
+      - has_positional_index: (order within the sequence of blocks)
+
+# Relationships and Actions
+relationships:
+  - type: relative_position
+    description: Blocks are ordered sequentially based on their appearance in the flattened input.
+  - type: separation
+    description: >
+      Blocks of one digit type can be separated by one or more blocks
+      of a *different* digit type.
+
+actions:
+  - action: flatten_input
+    description: Convert the input NumPy array into a 1D list of digits.
+    input: numpy.ndarray
+    output: List[int]
+
+  - action: identify_blocks
+    description: Group consecutive identical digits from the flattened list into blocks, noting their digit value and length.
+    input: List[int]
+    output: List[Tuple[int, int]] # List of (digit, length)
+
+  - action: find_transfer_candidate
+    description: >
+      Iterate through the unique digit values present in the blocks.
+      For each digit, find the index of the *first* block and the *last* block containing that digit.
+    input: List[Tuple[int, int]] # blocks
+    output: Optional[Tuple[int, int, int]] # (digit_value, first_block_index, last_block_index)
+
+  - action: check_separation_condition
+    description: >
+      Verify if the identified first and last blocks (for a candidate digit) are distinct
+      (first_index < last_index) and if all blocks positioned strictly *between* them
+      contain a *different* digit value.
+    input: List[Tuple[int, int]], Tuple[int, int, int] # blocks, candidate info
+    output: boolean # True if conditions met
+
+  - action: perform_transfer
+    description: >
+      If the separation condition is met for a candidate digit, decrease the length
+      of the first block by one and increase the length of the last block (of the same digit) by one.
+      This action is performed at most once per input sequence (for the first valid candidate found).
+    input: List[Tuple[int, int]], Tuple[int, int, int] # blocks, candidate info
+    output: List[Tuple[int, int]] # Modified blocks
+
+  - action: reconstruct_sequence
+    description: >
+      Combine the modified blocks back into a single flat list of digits.
+      Blocks whose length was reduced to zero are omitted.
+    input: List[Tuple[int, int]] # Modified blocks
+    output: List[int] # Flat list of digits
+
+  - action: format_output
+    description: Convert the reconstructed flat list of digits back into a NumPy array of the same shape/type characteristics as the input.
+    input: List[int]
+    output: numpy.ndarray

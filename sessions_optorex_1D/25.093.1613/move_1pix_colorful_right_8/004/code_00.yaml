@@ -1,0 +1,43 @@
+task_elements:
+  - item: input_sequence
+    type: sequence of integers
+    source_format: Provided as list, string, or numpy.ndarray (potentially 2D with shape (1,N) in testing environment). Must be processed into a 1D list/array for the core logic.
+    properties:
+      - elements: single digits (0-9)
+      - length: fixed for a given task instance (e.g., 12)
+  - item: output_sequence
+    type: list
+    subtype: integer
+    properties:
+      - elements: single digits (0-9)
+      - length: same as input_sequence
+  - item: active_subsequence
+    type: sublist # Derived from the processed 1D input list
+    derivation: defined by the inclusive range between the first non-zero element and the last non-zero element in the processed 1D input list.
+    properties:
+      - includes all elements (including zeros) within the calculated start and end indices.
+      - considered empty if the input sequence contains only zeros.
+relationships:
+  - The processed 1D input sequence contains the active_subsequence.
+  - The output_sequence is a transformation of the processed 1D input sequence.
+actions:
+  - name: preprocess_input
+    description: Convert the raw input into a 1D Python list of integers. Handle potential string, list, or NumPy array (1D or 2D) formats. If 2D, extract the first row.
+  - name: find_bounds
+    description: Identify the index of the first non-zero element (`first_nz`) and the last non-zero element (`last_nz`) in the processed 1D list. Requires element-wise comparison.
+  - name: handle_all_zeros
+    description: If `first_nz` is not found, return a copy of the processed 1D input list.
+  - name: construct_output
+    description: Create a new list of the same length as the input, initialized with zeros.
+  - name: copy_prefix
+    description: Copy elements from the processed input list from index 0 up to (excluding) `first_nz` to the output list at the same indices.
+  - name: shift_subsequence
+    description: Copy the active_subsequence (from `first_nz` to `last_nz` in the processed input list) into the output list, starting at index `first_nz + 1`, respecting list boundaries (elements shifted beyond the end are dropped).
+transformation_rule:
+  - description: Overall process to transform input to output.
+    steps:
+      - Run `preprocess_input` to get a clean 1D list (`processed_list`).
+      - Run `find_bounds` on `processed_list` to get `first_nz` and `last_nz`.
+      - Execute `handle_all_zeros` if applicable.
+      - If not all zeros, execute `construct_output`, `copy_prefix`, and `shift_subsequence`.
+      - Return the final output list.

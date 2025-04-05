@@ -1,0 +1,59 @@
+task_elements:
+  - item: input_sequence
+    properties:
+      - type: list of integers (or structure behaving like one, e.g., 1D NumPy array)
+      - length: N (e.g., 12 in examples)
+      - contains: background_digit, object_block
+  - item: output_sequence
+    properties:
+      - type: list of integers
+      - length: N (same as input)
+      - contains: background_digit, shifted_object_block
+  - item: background_digit
+    properties:
+      - value: 0
+  - item: object_block
+    properties:
+      - type: contiguous subsequence in input_sequence
+      - elements: identical non-zero integers
+      - value: the non-zero integer (V)
+      - length: number of elements in the block (L)
+      - start_index_input: the starting position (0-based index) in the input_sequence (S_in)
+  - item: shifted_object_block
+    properties:
+      - type: contiguous subsequence in output_sequence
+      - elements: identical non-zero integers (same value V as object_block)
+      - length: same length L as object_block
+      - start_index_output: the starting position (0-based index) in the output_sequence (S_out)
+relationships:
+  - type: transformation
+    action: shift_left
+    source: object_block
+    target: shifted_object_block
+    parameter: shift_amount
+derivation_rules:
+  - rule: identify_object_block
+    input: input_sequence
+    output: object_block properties (value V, start_index_input S_in, length L)
+    method: Scan the input sequence for the first non-zero element. Record its value (V) and index (S_in). Continue scanning while subsequent elements equal V to determine the length (L).
+  - rule: calculate_shift_amount
+    input: object_block.length (L)
+    output: shift_amount
+    formula: shift_amount = L
+  - rule: calculate_output_start_index
+    input:
+      - object_block.start_index_input (S_in)
+      - shift_amount (L)
+    output: shifted_object_block.start_index_output (S_out)
+    formula: S_out = S_in - L
+  - rule: construct_output_sequence
+    input:
+      - input_sequence.length (N)
+      - shifted_object_block (properties V, L, S_out)
+    output: output_sequence
+    method: Create a list of length N initialized with the background_digit (0). Place the shifted_object_block (value V) into this list starting at index S_out for L elements, ensuring placement respects list boundaries (indices 0 to N-1).
+constraints:
+  - Each input sequence contains exactly one object_block.
+  - The object_block consists of identical non-zero digits.
+  - The background is consistently the digit 0.
+  - The shift operation places the block based on the calculated start index; elements that would fall outside the sequence bounds (index < 0 or index >= N) are omitted.

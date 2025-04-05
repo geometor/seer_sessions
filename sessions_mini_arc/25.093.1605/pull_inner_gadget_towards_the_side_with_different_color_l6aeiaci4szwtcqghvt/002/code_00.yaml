@@ -1,0 +1,62 @@
+# Task Components and Relationships (Revised)
+
+grid:
+  type: 2D array
+  content: single-digit integers (0-9)
+  role: defines the space for transformation
+
+# --- Identified Objects ---
+background:
+  digit: 0
+  role: empty space
+  behavior: static, fills vacated cells during movement
+
+target_object:
+  digit: 7
+  role: attractor and primary stopping boundary for movement
+  identification: all cells containing the digit 7
+  behavior: static
+
+movable_object:
+  role: object(s) undergoing translation
+  identification:
+    - contiguous block(s) of identical digits.
+    - digit is not 0 (background) and not 7 (target).
+    - determined by observing which non-0/non-7 digit changes position between input and output. Assumed to be only one such digit type per grid.
+  properties:
+    - digit_value: varies (e.g., 8, 9, 3, 6, 1)
+    - shape: defined by contiguous cells
+  behavior: moves iteratively within the grid until a stopping condition is met
+
+other_static_object:
+  role: obstacles or boundaries that prevent movement into their space
+  identification:
+    - all non-zero cells that are not part of the movable_object or target_object (7).
+    - typically includes the outer border frame.
+  behavior: static, prevent movable_object from entering their cells
+
+# --- Transformation Details ---
+transformation:
+  type: iterative translation
+  actor: movable_object(s)
+  action: slide step-by-step in a single cardinal direction
+  direction:
+    determination: Primary cardinal axis (Up, Down, Left, Right) determined by the relative positions of the movable_object(s) and the target_object(s) (7s). Calculate from centroid to centroid.
+  iteration_logic:
+    1. Determine the single movement direction vector (dr, dc).
+    2. Initialize the current state grid (copy of input) and current movable coordinates.
+    3. Loop:
+       a. Calculate the `potential_next_coords` by applying (dr, dc) to all `current_movable_coords`.
+       b. Check for **collisions** and **stop conditions** based on `potential_next_coords`:
+          i. **Boundary Collision:** Will any `potential_next_coords` be outside the grid?
+          ii. **Obstacle Collision:** Will any `potential_next_coords` overlap with `other_static_object` coordinates?
+          iii. **Target Adjacency:** Will any `potential_next_coords` be adjacent (up, down, left, right) to any `target_object` coordinate?
+       c. If any of conditions (i), (ii), or (iii) are TRUE, then **stop** the loop; the `current_movable_coords` represent the final position.
+       d. If ALL conditions (i), (ii), (iii) are FALSE:
+          - Update the grid state: clear the `current_movable_coords` (set to 0), place the movable digit at the `potential_next_coords`.
+          - Update `current_movable_coords` to `potential_next_coords`.
+          - Continue the loop.
+  effect:
+    - movable_object(s) occupy new positions, having moved iteratively until the step *before* colliding with an obstacle/boundary or becoming adjacent to the target_object (7).
+    - vacated path cells are filled with the background digit (0).
+    - target_object(s) and other_static_object(s) remain unchanged.

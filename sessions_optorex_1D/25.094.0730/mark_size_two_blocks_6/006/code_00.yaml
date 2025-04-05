@@ -1,0 +1,57 @@
+task_description: "Modify a sequence of 0s and 1s by changing specific 0s to 3s based on the pattern of adjacent 1s."
+elements:
+  - type: sequence
+    name: input_list
+    contains:
+      - type: integer
+        possible_values: [0, 1]
+  - type: sequence
+    name: output_list
+    contains:
+      - type: integer
+        possible_values: [0, 1, 3]
+    relationship: "Derived from input_list by conditionally modifying 0s adjacent to specific patterns."
+objects:
+  - name: digit_zero
+    value: 0
+    property: "Can be changed to 3 if adjacent to an isolated '1 1' block."
+  - name: digit_one
+    value: 1
+    property: "Forms the core of the trigger pattern."
+  - name: digit_three
+    value: 3
+    property: "Result of transforming a digit_zero meeting specific criteria."
+  - name: isolated_block_one_one
+    value: "[1, 1]"
+    property: "A sequence of exactly two consecutive 1s, not preceded or followed by another 1."
+    relationship: "Triggers the transformation of adjacent 0s."
+  - name: non_isolated_block_one_one
+    value: "[1, 1]"
+    example: "The '1 1' within '[0, 1, 1, 1, 0]' or '[1, 1, 1, 0]'."
+    property: "A sequence of two consecutive 1s that is part of a longer sequence of 1s."
+    relationship: "Does *not* trigger the transformation of adjacent 0s."
+actions:
+  - name: identify_isolated_blocks
+    input: input_list
+    output: indices of the start of all isolated_block_one_one instances
+    condition: "Checks for pattern '1 1' at indices i, i+1, ensuring input[i-1] is not 1 (or i=0) and input[i+2] is not 1 (or i+2 >= length)."
+  - name: modify_neighbors
+    input: input_list, indices_of_isolated_blocks
+    output: output_list
+    effect: >
+      Initialize output_list as a copy of input_list.
+      For each identified isolated_block_one_one starting at index i:
+      If index i-1 exists and input_list[i-1] is 0, set output_list[i-1] = 3.
+      If index i+2 exists and input_list[i+2] is 0, set output_list[i+2] = 3.
+relationships:
+  - type: adjacency
+    description: "A digit_zero is considered adjacent if it is at index i-1 or i+2 relative to an isolated_block_one_one starting at index i."
+  - type: transformation_trigger
+    subject: isolated_block_one_one
+    object: adjacent digit_zero (in input_list)
+    action: change corresponding element in output_list to 3
+constraints:
+  - "The length of the input and output sequences must be identical."
+  - "Only 0s adjacent to an *isolated* block of exactly two 1s are modified."
+  - "1s and 0s not meeting the criteria remain unchanged."
+  - "The transformation depends only on the input list; modifications in the output list do not affect later checks."

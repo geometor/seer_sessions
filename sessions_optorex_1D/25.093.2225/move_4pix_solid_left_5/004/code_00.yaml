@@ -1,0 +1,49 @@
+task_elements:
+  - type: sequence
+    role: input
+    properties:
+      - data_type: integer_sequence # Can be list or NumPy array
+      - element_range: 0-9
+      - length: 12
+      - structure: Contains exactly one contiguous block of identical non-zero digits, padded with zeros.
+  - type: sequence
+    role: output
+    properties:
+      - data_type: integer_sequence # Matches input type
+      - element_range: 0-9
+      - length: 12
+      - structure: Derived from input by shifting the non-zero block.
+  - object: non_zero_block
+    properties:
+      - value: The non-zero integer forming the block (e.g., 2, 4, 7, 9).
+      - start_index: The 0-based index of the first element of the block in the input sequence.
+      - end_index: The 0-based index of the last element of the block in the input sequence.
+      - length: The number of elements in the block (end_index - start_index + 1).
+transformation:
+  action: identify_block
+  input: input sequence
+  target: contiguous block of identical non-zero digits
+  output: block_value, start_index, end_index, length
+transformation:
+  action: construct_output_sequence
+  parameters:
+    - sequence_length: 12 (constant)
+    - shift_amount: 4 (constant, to the left)
+  inputs:
+    - block_value
+    - start_index
+    - length
+  process:
+    - Initialize an output sequence of `sequence_length` with all zeros.
+    - Calculate the new starting index for the block: `new_start_index = start_index - shift_amount`.
+    - Iterate from `i = 0` to `length - 1`:
+      - Calculate the target index in the output: `output_idx = new_start_index + i`.
+      - If `0 <= output_idx < sequence_length`:
+        - Set `output_sequence[output_idx] = block_value`.
+  output: modified sequence
+relationships:
+  - The output sequence is a direct transformation of the input sequence.
+  - The non-zero block maintains its value and length but changes its position.
+  - The shift amount (4 positions left) is constant across all examples.
+  - Zeros act as background/padding and fill positions not occupied by the shifted block.
+  - Elements of the block shifted to an index less than 0 are discarded.

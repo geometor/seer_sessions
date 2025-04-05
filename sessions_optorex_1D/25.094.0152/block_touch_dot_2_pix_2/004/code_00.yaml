@@ -1,0 +1,50 @@
+task_elements:
+  - object: sequence
+    properties:
+      - type: list or 1D NumPy array
+      - element_type: integer
+      - length: 12
+  - object: element
+    properties:
+      - type: integer
+      - value: specific numbers (0, 1, 6 are active; others are passive/boundaries)
+      - position: index (0-11)
+  - object: block
+    properties:
+      - type: maximal contiguous sequence of identical non-zero elements
+      - value: the repeated integer (specifically 6 in current rules)
+      - start_index: position of the first element
+      - end_index: position of the last element
+actions:
+  - name: identify_blocks
+    description: Find all maximal contiguous blocks of a specific value (e.g., 6).
+  - name: check_adjacent_zeros
+    description: Verify if specific adjacent positions relative to an element or block contain zeros.
+    parameters:
+      - position: index of element or start/end of block
+      - direction: left or right
+      - count: number of adjacent positions to check (1 or 2)
+      - expected_value: 0
+  - name: shift_element_or_block
+    description: Relocate an element (1) or a block (6) by swapping positions with adjacent zeros.
+    parameters:
+      - target: the element index or block range (start, end)
+      - direction: left or right
+      - distance: number of positions to shift (1 for '1', 2 for '6')
+rules:
+  - rule: movement_rule_6_left
+    priority: 1
+    description: A block of `6`s moves 2 positions left.
+    condition: block_value == 6 AND start_index >= 2 AND the two elements immediately preceding the block (at index start_index - 2 and start_index - 1) are both 0.
+    action: shift_element_or_block(target=(start, end), direction=left, distance=2)
+  - rule: movement_rule_6_right
+    priority: 2
+    description: A block of `6`s moves 2 positions right.
+    condition: block_value == 6 AND end_index <= length - 3 AND the two elements immediately following the block (at index end_index + 1 and end_index + 2) are both 0.
+    action: shift_element_or_block(target=(start, end), direction=right, distance=2)
+  - rule: movement_rule_1_right
+    priority: 3
+    description: An element `1` moves 1 position right.
+    condition: element_value == 1 AND index < length - 1 AND the element immediately following it (at index + 1) is 0.
+    action: shift_element_or_block(target=index, direction=right, distance=1)
+  - note: Rules are checked in priority order. Only the first applicable rule is executed. If no rules apply, the sequence remains unchanged.

@@ -1,0 +1,58 @@
+objects:
+  - name: Grid
+    properties:
+      - type: 2D array of integers
+      - dimensions: height, width
+      - cells: list of Cell objects
+  - name: Cell
+    properties:
+      - position: (row_index, column_index)
+      - value: integer (digit 0-9)
+      - type: BACKGROUND (if value is 0), FOREGROUND (if value is non-zero)
+  - name: Horizontally_Isolated_Foreground_Cell
+    isa: Cell
+    properties:
+      - value: non-zero integer
+      - condition: Left and right neighbors in the same row are BACKGROUND cells or grid boundaries.
+    constraints:
+      - Exactly one such cell exists in each input grid.
+
+properties:
+  - name: Global_Non_Zero_Column_Range
+    description: The range of column indices containing at least one FOREGROUND cell across the entire grid.
+    attributes:
+      - min_column_index
+      - max_column_index
+
+actions:
+  - name: Identify_Non_Zero_Cells
+    input: Grid
+    output: List of FOREGROUND Cell positions and values
+  - name: Calculate_Global_Column_Range
+    input: List of FOREGROUND Cell positions
+    output: min_column_index, max_column_index
+  - name: Find_Horizontally_Isolated_Cell
+    input: Grid
+    output: The single Horizontally_Isolated_Foreground_Cell (position and value)
+  - name: Calculate_Destination_Column
+    input:
+      - original_column: column index of the Horizontally_Isolated_Foreground_Cell
+      - min_column_index: from Global_Non_Zero_Column_Range
+      - max_column_index: from Global_Non_Zero_Column_Range
+    output: destination_column
+    logic: destination_column = min_column_index + max_column_index - original_column
+  - name: Move_Cell
+    input:
+      - input_grid: Grid
+      - moving_cell: Horizontally_Isolated_Foreground_Cell (position and value)
+      - destination_column: calculated destination column index
+    output: output_grid: Grid
+    logic:
+      - Create a copy of the input_grid.
+      - Set the original position of the moving_cell in the copied grid to 0 (BACKGROUND).
+      - Set the cell at (moving_cell.row_index, destination_column) in the copied grid to moving_cell.value.
+
+relationships:
+  - The transformation modifies only one cell's position.
+  - The cell to be moved is uniquely identified by its non-zero value and horizontal isolation.
+  - The destination column is determined by reflecting the original column across the center of the global horizontal extent of all non-zero cells.

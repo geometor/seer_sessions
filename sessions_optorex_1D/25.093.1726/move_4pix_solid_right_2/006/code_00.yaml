@@ -1,0 +1,66 @@
+objects:
+  - name: input_container
+    type: list or numpy.ndarray
+    properties:
+      - structure: Can be 1D sequence (length 12) OR 2D structure containing one 1D sequence (e.g., list of list `[[...]]` or numpy array shape (1, 12)).
+      - elements: integers (0-9)
+  - name: data_sequence
+    type: list
+    properties:
+      - source: Extracted from input_container (always the single inner sequence if input is 2D/nested).
+      - length: 12
+      - elements: single-digit integers (0-9)
+  - name: non_zero_block
+    type: sub-sequence
+    properties:
+      - source: data_sequence
+      - elements: identical non-zero digits
+      - contiguous: true
+      - location: variable within the data_sequence
+      - length: variable (1 or more)
+  - name: zero_elements
+    type: integer
+    value: 0
+    role: padding/background
+  - name: output_sequence
+    type: list
+    properties:
+      - length: 12
+      - elements: single-digit integers (0-9)
+      - structure: 1D sequence
+
+actions:
+  - name: standardize_input
+    actor: system
+    input: input_container
+    output: data_sequence (1D list of length 12)
+    process: Check input structure. If nested list or 2D numpy array (1x12), extract the inner 1D sequence. Validate length is 12.
+  - name: identify_block
+    actor: system
+    input: data_sequence
+    output: non_zero_block (value, start_index, end_index/length)
+  - name: shift_block
+    actor: system
+    object: non_zero_block
+    properties:
+      - direction: right
+      - distance: 4 positions
+  - name: generate_output
+    actor: system
+    input:
+      - identified non_zero_block (value, start_index, length)
+      - shift parameters (distance=4)
+      - output sequence length (12)
+    output: output_sequence
+    process: Create a new list of length 12 filled with zeros. Calculate the new start index (original_start + 4). Place the non_zero_block (value and length) at the new position in the zero-filled list.
+
+relationships:
+  - type: positional_change
+    subject: non_zero_block
+    details: The start index of the non_zero_block increases by exactly 4 from its position in the standardized input data_sequence to its position in the output_sequence.
+  - type: value_preservation
+    subject: non_zero_block
+    details: The digit value and length of the non_zero_block remain the same between the data_sequence and the output_sequence.
+  - type: structure_preservation
+    subject: sequence
+    details: The length of the core data sequence (12) is preserved from the standardized input to the output. The output is always a 1D list.

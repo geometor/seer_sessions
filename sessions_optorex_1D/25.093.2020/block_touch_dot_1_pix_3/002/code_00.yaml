@@ -1,0 +1,63 @@
+Task: Shift a block of digits relative to a fixed pivot digit '2'.
+
+Input_Type: List or NumPy Array of Integers
+Output_Type: List or NumPy Array of Integers
+
+Objects:
+  - name: Sequence
+    type: List[int] | numpy.ndarray
+    length: 12
+    elements: Digits 0-9
+  - name: Pivot
+    type: Digit
+    value: 2
+    property: Stationary position; exactly one instance per sequence.
+  - name: Block
+    type: Contiguous Subsequence
+    elements: Digits 1, 3, 4, 5, 6, 7, 8, 9 (non-zero, non-pivot)
+    property: Mobile; exactly one such block needs to be moved per task instance (based on examples).
+  - name: Space
+    type: Digit
+    value: 0
+    property: Represents empty space; swappable with the Block.
+
+Relationships:
+  - type: Relative Position
+    object1: Block
+    object2: Pivot
+    states: [Left_Of (block ends before pivot index), Right_Of (block starts after pivot index)]
+  - type: Adjacency_For_Swap
+    object1: Block
+    object2: Space
+    condition: |
+      If Block is Left_Of Pivot, a Space must exist immediately to the right of the Block (index = block_end + 1).
+      If Block is Right_Of Pivot, a Space must exist immediately to the left of the Block (index = block_start - 1).
+
+Actions:
+  - name: Identify Pivot Position
+    input: Sequence
+    output: index_pivot
+  - name: Identify Movable Block
+    input: Sequence, index_pivot
+    output: block_info(start_index, end_index, content)
+    detail: Finds the first contiguous sequence of non-zero, non-pivot digits.
+  - name: Determine Shift Direction and Target Swap Index
+    input: block_info, index_pivot, Sequence
+    output: Direction (Left | Right | None), Swap_Index (int | None)
+    condition: |
+      if block.end_index < index_pivot and Sequence[block.end_index + 1] == 0:
+          return Right, block.end_index + 1
+      if block.start_index > index_pivot and Sequence[block.start_index - 1] == 0:
+          return Left, block.start_index - 1
+      else:
+          return None, None
+  - name: Perform Shift and Swap
+    input: Sequence (mutable), block_info, Direction, Swap_Index
+    output: Modified Sequence (in-place or new)
+    logic: |
+      If Direction is Right:
+          Place the Space (0) at block.start_index.
+          Place the Block content starting at block.start_index + 1.
+      If Direction is Left:
+          Place the Space (0) at block.end_index.
+          Place the Block content starting at block.start_index - 1.

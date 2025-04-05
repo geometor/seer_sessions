@@ -1,0 +1,85 @@
+task_elements:
+  - object: sequence
+    properties:
+      - type: list_of_integers
+      - element_type: single_digit (0-9)
+      - length: fixed (12 in examples)
+  - object: sequence_segment
+    properties:
+      - type: sub-sequence
+      - identified_by: boundaries
+  - object: boundaries
+    properties:
+      - type: pair_of_indices
+      - name: start_index
+        value: index of the first non-zero element (or -1 if all zeros)
+      - name: end_index
+        value: index of the last non-zero element (or -1 if all zeros)
+  - object: leading_zeros_segment
+    properties:
+      - type: sequence_segment
+      - location: start_of_sequence up to start_index (exclusive)
+      - content: only_zeros (can be empty)
+      - role: prefix
+  - object: core_segment
+    properties:
+      - type: sequence_segment
+      - location: from start_index to end_index (inclusive)
+      - content: contains all non-zero digits and potentially interspersed zeros
+      - role: segment_to_be_transformed
+      - condition: exists only if start_index is not -1
+  - object: trailing_zeros_segment
+    properties:
+      - type: sequence_segment
+      - location: after end_index to end_of_sequence
+      - content: only_zeros (can be empty)
+      - role: suffix
+actions:
+  - action: identify_boundaries
+    inputs: input_sequence
+    outputs:
+      - start_index
+      - end_index
+    description: >
+      Iterate through the sequence to find the index of the first element not equal to 0 (start_index).
+      Iterate backwards through the sequence to find the index of the last element not equal to 0 (end_index).
+      If no non-zero elements are found, both indices indicate this (e.g., -1).
+  - action: handle_all_zeros_case
+    inputs: start_index
+    outputs: original_input_sequence
+    condition: if start_index is -1
+    description: If the sequence contains only zeros, no transformation is applied.
+  - action: segment_sequence
+    inputs:
+      - input_sequence
+      - start_index
+      - end_index
+    outputs:
+      - leading_zeros_segment
+      - core_segment
+      - trailing_zeros_segment
+    condition: if start_index is not -1
+    description: >
+      Split the input sequence into three parts:
+      1. Prefix: Elements before start_index.
+      2. Core: Elements from start_index to end_index (inclusive).
+      3. Suffix: Elements after end_index.
+  - action: reverse_segment
+    inputs: core_segment
+    outputs: reversed_core_segment
+    description: Reverse the order of elements within the core_segment.
+  - action: concatenate_segments
+    inputs:
+      - leading_zeros_segment
+      - reversed_core_segment
+      - trailing_zeros_segment
+    outputs: output_sequence
+    description: Combine the segments in order (prefix, reversed core, suffix) to form the final output sequence.
+relationships:
+  - type: positional_invariance
+    elements: [leading_zeros_segment, trailing_zeros_segment]
+    description: The prefix and suffix segments maintain their position and content relative to the sequence boundaries.
+  - type: transformation
+    elements: [core_segment]
+    action: reverse_segment
+    description: The core_segment is the only part of the sequence whose element order is modified.

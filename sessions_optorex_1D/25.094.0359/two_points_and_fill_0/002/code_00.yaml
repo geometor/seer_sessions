@@ -1,0 +1,72 @@
+objects:
+  - name: input_sequence
+    type: numpy.ndarray (1D, integer)
+    description: The input 1D NumPy array containing integers. Consists primarily of zeros with exactly two identical non-zero values at distinct positions.
+  - name: output_sequence
+    type: numpy.ndarray (1D, integer)
+    description: The transformed 1D NumPy array, having the same shape and dtype as the input.
+  - name: non_zero_value
+    type: integer
+    description: The unique non-zero integer value found in the input_sequence.
+  - name: zero_value
+    type: integer
+    value: 0
+    description: The background value in the sequence.
+  - name: non_zero_indices
+    type: numpy.ndarray (1D, integer)
+    description: A NumPy array containing the indices where the non_zero_value appears in the input_sequence. Expected to contain exactly two elements based on task examples.
+  - name: start_index
+    type: integer
+    description: The index of the first occurrence of the non_zero_value (minimum of non_zero_indices).
+  - name: end_index
+    type: integer
+    description: The index of the second (last) occurrence of the non_zero_value (maximum of non_zero_indices).
+  - name: fill_slice
+    type: slice
+    description: A Python slice object `slice(start_index, end_index + 1)` used for NumPy array indexing to represent the segment to be filled.
+
+actions:
+  - name: identify_non_zero
+    input: input_sequence
+    output: non_zero_value
+    description: Find the unique non-zero value in the input array. Can be done by finding unique values and filtering out zero.
+  - name: find_indices
+    input: input_sequence, non_zero_value
+    output: non_zero_indices
+    description: Locate all indices where the non_zero_value occurs using NumPy functions like `numpy.where`.
+  - name: determine_bounds
+    input: non_zero_indices
+    output: [start_index, end_index]
+    description: Calculate the minimum (`start_index`) and maximum (`end_index`) index from the `non_zero_indices` array. Assumes exactly two indices are present.
+  - name: copy_array
+    input: input_sequence
+    output: output_sequence (initial copy)
+    description: Create a modifiable copy of the input NumPy array using `numpy.copy`.
+  - name: fill_segment
+    input: output_sequence (copy), start_index, end_index, non_zero_value
+    output: modified_output_sequence
+    description: Assign the `non_zero_value` to the elements of the `output_sequence` corresponding to the `fill_slice` (`start_index` to `end_index` inclusive). This leverages NumPy's slice assignment.
+
+relationships:
+  - type: constraint
+    subject: input_sequence
+    property: content
+    description: Contains exactly two identical non-zero integer values; all other values are zero.
+  - type: constraint
+    subject: input_sequence
+    property: type
+    description: Is a 1D NumPy array of integers.
+  - type: derivation
+    from: [start_index, end_index]
+    to: fill_slice
+    description: The fill_slice is constructed using the start and end indices to cover the inclusive range.
+  - type: modification
+    action: fill_segment
+    target: output_sequence
+    using: [fill_slice, non_zero_value]
+    description: The `fill_segment` action modifies the `output_sequence` within the range defined by `fill_slice` using the `non_zero_value`.
+  - type: invariance
+    from: input_sequence
+    to: output_sequence
+    property: [shape, dtype]
+    description: The output array retains the same shape and data type as the input array.

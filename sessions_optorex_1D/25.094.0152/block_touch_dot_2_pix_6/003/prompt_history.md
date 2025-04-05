@@ -1,0 +1,846 @@
+
+## train_1
+
+**input:**
+```
+0 0 3 3 0 0 0 0 0 0 2 0
+```
+
+
+**output:**
+```
+0 0 0 0 3 3 0 0 0 0 2 0
+```
+
+
+## train_2
+
+**input:**
+```
+5 5 5 0 2 0 0 0 0 0 0 0
+```
+
+
+**output:**
+```
+0 5 5 5 2 0 0 0 0 0 0 0
+```
+
+
+## train_3
+
+**input:**
+```
+0 7 0 0 0 0 0 0 2 0 0 0
+```
+
+
+**output:**
+```
+0 0 0 7 0 0 0 0 2 0 0 0
+```
+
+
+## train_4
+
+**input:**
+```
+1 1 1 1 1 2 0 0 0 0 0 0
+```
+
+
+**output:**
+```
+1 1 1 1 1 2 0 0 0 0 0 0
+```
+
+
+## train_5
+
+**input:**
+```
+0 2 0 0 0 0 0 1 1 1 1 1
+```
+
+
+**output:**
+```
+0 2 0 0 0 1 1 1 1 1 0 0
+```
+
+
+## train_6
+
+**input:**
+```
+6 6 6 6 6 6 6 6 2 0 0 0
+```
+
+
+**output:**
+```
+6 6 6 6 6 6 6 6 2 0 0 0
+```
+
+
+## train_7
+
+**input:**
+```
+0 0 2 0 8 8 8 8 8 8 8 8
+```
+
+
+**output:**
+```
+0 0 2 8 8 8 8 8 8 8 8 0
+```
+
+Okay, let's analyze the provided examples to understand the transformation rule.
+
+**Perception of Elements:**
+
+1.  **Data Structure:** The input and output are sequences (lists) of 12 integers.
+2.  **Key Element '2':** The number `2` appears exactly once in every input and output sequence. Its position remains unchanged during the transformation. It acts as a fixed pivot point.
+3.  **Data Block:** Apart from the `2` and `0`s, there is typically a contiguous block of other non-zero integers (e.g., `3 3`, `5 5 5`, `7`, `1 1 1 1 1`, `8 8 8 8 8 8 8 8`). Let's call this the "data block". In some cases (`train_4`, `train_6`), the `2` is immediately adjacent to this block.
+4.  **Zeros:** Zeros act as background or padding elements.
+5.  **Transformation:** The core transformation involves shifting the "data block" relative to the fixed position of the `2`. Zeros fill the space created or displaced by the shift.
+6.  **Shift Logic:**
+    *   If the data block is to the left of the `2`, it shifts rightwards towards the `2`.
+    *   If the data block is to the right of the `2`, it shifts leftwards towards the `2`.
+    *   If the data block is already adjacent to the `2` (or if there's no data block other than `2`), no shift occurs.
+7.  **Shift Amount:** The amount of the shift depends on the gap (number of zeros) between the data block and the `2`.
+    *   If the gap is 0 (adjacent), the shift is 0.
+    *   If the gap is 1, the shift is 1 position (towards the `2`).
+    *   If the gap is greater than 1, the shift is 2 positions (towards the `2`).
+
+**YAML Facts:**
+
+
+```yaml
+Objects:
+  - Sequence:
+      Properties:
+        - Type: List of Integers
+        - Length: 12
+  - Pivot:
+      Properties:
+        - Value: 2
+        - Count: 1
+        - Position: Fixed (remains same in output as input)
+  - DataBlock:
+      Properties:
+        - Type: Contiguous sub-sequence of non-zero integers (excluding Pivot)
+        - Existence: Typically one per sequence (can be absent or adjacent to Pivot)
+        - Position: Relative to Pivot (Left, Right, Adjacent)
+        - Length: Variable
+  - Filler:
+      Properties:
+        - Value: 0
+        - Role: Background, occupies space not used by Pivot or DataBlock
+
+Relationships:
+  - RelativePosition: Between DataBlock and Pivot (Left, Right, Adjacent)
+  - Gap:
+      Properties:
+        - Type: Number of Fillers (zeros) strictly between DataBlock and Pivot
+        - Value: Integer >= 0
+
+Actions:
+  - LocatePivot: Find the index of the Pivot (value 2).
+  - IdentifyDataBlock: Find the start index, end index, and values of the contiguous non-zero sequence (excluding Pivot).
+  - CalculateGap: Determine the number of zeros between the DataBlock and the Pivot based on their indices.
+  - DetermineShift:
+      Based on Gap:
+        - If Gap = 0, Shift Amount = 0
+        - If Gap = 1, Shift Amount = 1
+        - If Gap > 1, Shift Amount = 2
+      Based on RelativePosition:
+        - If DataBlock is Left of Pivot, Shift Direction = Right
+        - If DataBlock is Right of Pivot, Shift Direction = Left
+        - If DataBlock is Adjacent or Absent, Shift Direction = None
+  - ApplyShift: Calculate the new start and end indices for the DataBlock.
+  - ConstructOutput: Create a new sequence of length 12, place the Pivot at its original index, place the shifted DataBlock at its new indices, and fill remaining positions with Filler (0).
+
+```
+
+
+**Natural Language Program:**
+
+1.  Receive the input sequence of 12 integers.
+2.  Find the index (position) of the integer `2`; this is the `pivot_index`.
+3.  Scan the input sequence to locate the contiguous block of non-zero integers, excluding the `2`. Record its starting index (`block_start`), ending index (`block_end`), and the sequence of values (`block_values`). If no such block exists, proceed to step 8.
+4.  Determine the relative position of the block to the `pivot_index`:
+    *   If `block_end < pivot_index`, the block is "Left".
+    *   If `block_start > pivot_index`, the block is "Right".
+    *   Otherwise, the block is "Adjacent".
+5.  Calculate the `gap` (number of zeros strictly between the block and the `2`):
+    *   If "Left", `gap = pivot_index - block_end - 1`.
+    *   If "Right", `gap = block_start - pivot_index - 1`.
+    *   If "Adjacent", `gap = 0`.
+6.  Calculate the `shift_amount`:
+    *   If `gap == 0`, `shift_amount = 0`.
+    *   If `gap == 1`, `shift_amount = 1`.
+    *   If `gap > 1`, `shift_amount = 2`.
+7.  Calculate the new indices for the block (`new_block_start`, `new_block_end`):
+    *   If "Left", `new_block_start = block_start + shift_amount`, `new_block_end = block_end + shift_amount`.
+    *   If "Right", `new_block_start = block_start - shift_amount`, `new_block_end = block_end - shift_amount`.
+    *   If "Adjacent", `new_block_start = block_start`, `new_block_end = block_end`.
+8.  Create the output sequence, initially filled with 12 zeros.
+9.  Place the integer `2` at the `pivot_index` in the output sequence.
+10. If a data block was found in step 3, place the `block_values` into the output sequence starting at `new_block_start` and ending at `new_block_end`.
+11. Return the completed output sequence.
+```python
+import re
+
+"""
+Transformation Rule Natural Language Description:
+
+1.  Identify the fixed pivot element '2' within the 12-integer sequence. Its position remains unchanged.
+2.  Locate the contiguous block of non-zero integers (excluding the '2'), referred to as the 'data block'. Note its start index, end index, and values. If no such block exists, the sequence remains unchanged except for the pivot.
+3.  Determine the relative position of the data block with respect to the pivot ('Left', 'Right', or 'Adjacent').
+4.  Calculate the gap, defined as the number of zeros strictly between the data block and the pivot.
+5.  Determine the shift amount based on the gap: 0 if the gap is 0 (adjacent), 1 if the gap is 1, and 2 if the gap is greater than 1.
+6.  Calculate the new start and end indices for the data block by shifting it towards the pivot by the calculated shift amount.
+7.  Construct the output sequence by placing the pivot '2' at its original position, placing the data block at its new calculated position, and filling all other positions with zeros.
+"""
+
+def find_pivot(sequence):
+    """Finds the index of the pivot element (2)."""
+    try:
+        return sequence.index(2)
+    except ValueError:
+        # Should not happen based on problem description, but good practice
+        return -1 
+
+def find_data_block(sequence, pivot_index):
+    """
+    Finds the first contiguous block of non-zero, non-pivot integers.
+    Returns (start_index, end_index, values) or (None, None, None) if no block found.
+    """
+    block_start = -1
+    block_values = []
+    
+    for i, val in enumerate(sequence):
+        is_block_element = (val != 0 and i != pivot_index)
+        
+        if is_block_element and block_start == -1:
+            # Start of a potential block
+            block_start = i
+            block_values.append(val)
+        elif is_block_element and block_start != -1:
+            # Continuing a block
+            block_values.append(val)
+        elif not is_block_element and block_start != -1:
+            # End of the block found
+            block_end = i - 1
+            return block_start, block_end, block_values
+            
+    # Check if block runs to the end of the sequence
+    if block_start != -1:
+        block_end = len(sequence) - 1
+        return block_start, block_end, block_values
+        
+    # No block found
+    return None, None, None
+
+
+def transform(input_str):
+    """
+    Applies the transformation rule to the input sequence string.
+    
+    Args:
+        input_str: A string containing 12 space-separated integers.
+
+    Returns:
+        A string containing the 12 space-separated integers of the transformed sequence.
+    """
+    # Parse input string into a list of integers
+    input_sequence = [int(x) for x in input_str.split()]
+    n = len(input_sequence)
+    
+    # Initialize output_sequence with zeros
+    output_sequence = [0] * n
+
+    # 1. Find the pivot index
+    pivot_index = find_pivot(input_sequence)
+    if pivot_index == -1:
+        # Handle error case if pivot '2' is not found (though examples imply it always exists)
+        return " ".join(map(str, input_sequence)) # Return original if no pivot
+
+    # Place pivot in the output sequence (it never moves)
+    output_sequence[pivot_index] = 2
+
+    # 2. Find the data block
+    block_start, block_end, block_values = find_data_block(input_sequence, pivot_index)
+
+    # If no data block found, the transformation is just placing the pivot
+    if block_start is None:
+        return " ".join(map(str, output_sequence))
+
+    # 3. Determine relative position and 4. Calculate gap
+    gap = 0
+    relative_position = "Adjacent" # Default assumption
+    if block_end < pivot_index:
+        relative_position = "Left"
+        gap = pivot_index - block_end - 1
+    elif block_start > pivot_index:
+        relative_position = "Right"
+        gap = block_start - pivot_index - 1
+        
+    # Ensure gap isn't negative (can happen if adjacent)
+    gap = max(0, gap) 
+
+    # 5. Calculate shift amount
+    shift_amount = 0
+    if gap == 1:
+        shift_amount = 1
+    elif gap > 1:
+        shift_amount = 2
+        
+    # 6. Calculate new block indices
+    new_block_start = block_start
+    new_block_end = block_end
+
+    if relative_position == "Left":
+        new_block_start += shift_amount
+        new_block_end += shift_amount
+    elif relative_position == "Right":
+        new_block_start -= shift_amount
+        new_block_end -= shift_amount
+        
+    # Ensure indices stay within bounds (shouldn't be necessary with correct logic, but safe)
+    new_block_start = max(0, new_block_start)
+    new_block_end = min(n - 1, new_block_end)
+
+    # 7. Construct output: Place the shifted data block
+    # Make sure the target slice has the correct length
+    block_len = len(block_values)
+    # Recalculate end based on start and length for safety
+    actual_new_block_end = new_block_start + block_len -1 
+
+    # Check potential index overlap with pivot before placing
+    current_idx = new_block_start
+    for val in block_values:
+         # Ensure we don't overwrite the pivot's fixed position
+         # If the target index is the pivot index, skip writing this value
+         # (This implicitly handles cases where block 'collides' with pivot)
+        if current_idx != pivot_index and 0 <= current_idx < n:
+             output_sequence[current_idx] = val
+        current_idx += 1
+
+    # Return the transformed sequence as a space-separated string
+    return " ".join(map(str, output_sequence))
+
+```
+
+Previous Code:
+```python
+import re
+
+"""
+Transformation Rule Natural Language Description:
+
+1.  Identify the fixed pivot element '2' within the 12-integer sequence. Its position remains unchanged.
+2.  Locate the contiguous block of non-zero integers (excluding the '2'), referred to as the 'data block'. Note its start index, end index, and values. If no such block exists, the sequence remains unchanged except for the pivot.
+3.  Determine the relative position of the data block with respect to the pivot ('Left', 'Right', or 'Adjacent').
+4.  Calculate the gap, defined as the number of zeros strictly between the data block and the pivot.
+5.  Determine the shift amount based on the gap: 0 if the gap is 0 (adjacent), 1 if the gap is 1, and 2 if the gap is greater than 1.
+6.  Calculate the new start and end indices for the data block by shifting it towards the pivot by the calculated shift amount.
+7.  Construct the output sequence by placing the pivot '2' at its original position, placing the data block at its new calculated position, and filling all other positions with zeros.
+"""
+
+def find_pivot(sequence):
+    """Finds the index of the pivot element (2)."""
+    try:
+        return sequence.index(2)
+    except ValueError:
+        # Should not happen based on problem description, but good practice
+        return -1 
+
+def find_data_block(sequence, pivot_index):
+    """
+    Finds the first contiguous block of non-zero, non-pivot integers.
+    Returns (start_index, end_index, values) or (None, None, None) if no block found.
+    """
+    block_start = -1
+    block_values = []
+    
+    for i, val in enumerate(sequence):
+        is_block_element = (val != 0 and i != pivot_index)
+        
+        if is_block_element and block_start == -1:
+            # Start of a potential block
+            block_start = i
+            block_values.append(val)
+        elif is_block_element and block_start != -1:
+            # Continuing a block
+            block_values.append(val)
+        elif not is_block_element and block_start != -1:
+            # End of the block found
+            block_end = i - 1
+            return block_start, block_end, block_values
+            
+    # Check if block runs to the end of the sequence
+    if block_start != -1:
+        block_end = len(sequence) - 1
+        return block_start, block_end, block_values
+        
+    # No block found
+    return None, None, None
+
+
+def transform(input_str):
+    """
+    Applies the transformation rule to the input sequence string.
+    
+    Args:
+        input_str: A string containing 12 space-separated integers.
+
+    Returns:
+        A string containing the 12 space-separated integers of the transformed sequence.
+    """
+    # Parse input string into a list of integers
+    input_sequence = [int(x) for x in input_str.split()]
+    n = len(input_sequence)
+    
+    # Initialize output_sequence with zeros
+    output_sequence = [0] * n
+
+    # 1. Find the pivot index
+    pivot_index = find_pivot(input_sequence)
+    if pivot_index == -1:
+        # Handle error case if pivot '2' is not found (though examples imply it always exists)
+        return " ".join(map(str, input_sequence)) # Return original if no pivot
+
+    # Place pivot in the output sequence (it never moves)
+    output_sequence[pivot_index] = 2
+
+    # 2. Find the data block
+    block_start, block_end, block_values = find_data_block(input_sequence, pivot_index)
+
+    # If no data block found, the transformation is just placing the pivot
+    if block_start is None:
+        return " ".join(map(str, output_sequence))
+
+    # 3. Determine relative position and 4. Calculate gap
+    gap = 0
+    relative_position = "Adjacent" # Default assumption
+    if block_end < pivot_index:
+        relative_position = "Left"
+        gap = pivot_index - block_end - 1
+    elif block_start > pivot_index:
+        relative_position = "Right"
+        gap = block_start - pivot_index - 1
+        
+    # Ensure gap isn't negative (can happen if adjacent)
+    gap = max(0, gap) 
+
+    # 5. Calculate shift amount
+    shift_amount = 0
+    if gap == 1:
+        shift_amount = 1
+    elif gap > 1:
+        shift_amount = 2
+        
+    # 6. Calculate new block indices
+    new_block_start = block_start
+    new_block_end = block_end
+
+    if relative_position == "Left":
+        new_block_start += shift_amount
+        new_block_end += shift_amount
+    elif relative_position == "Right":
+        new_block_start -= shift_amount
+        new_block_end -= shift_amount
+        
+    # Ensure indices stay within bounds (shouldn't be necessary with correct logic, but safe)
+    new_block_start = max(0, new_block_start)
+    new_block_end = min(n - 1, new_block_end)
+
+    # 7. Construct output: Place the shifted data block
+    # Make sure the target slice has the correct length
+    block_len = len(block_values)
+    # Recalculate end based on start and length for safety
+    actual_new_block_end = new_block_start + block_len -1 
+
+    # Check potential index overlap with pivot before placing
+    current_idx = new_block_start
+    for val in block_values:
+         # Ensure we don't overwrite the pivot's fixed position
+         # If the target index is the pivot index, skip writing this value
+         # (This implicitly handles cases where block 'collides' with pivot)
+        if current_idx != pivot_index and 0 <= current_idx < n:
+             output_sequence[current_idx] = val
+        current_idx += 1
+
+    # Return the transformed sequence as a space-separated string
+    return " ".join(map(str, output_sequence))
+
+```
+Results for code_00.py:
+
+Train Set Results:
+
+## Example 1:
+Error: 'numpy.ndarray' object has no attribute 'split'
+
+## Example 2:
+Error: 'numpy.ndarray' object has no attribute 'split'
+
+## Example 3:
+Error: 'numpy.ndarray' object has no attribute 'split'
+
+## Example 4:
+Error: 'numpy.ndarray' object has no attribute 'split'
+
+## Example 5:
+Error: 'numpy.ndarray' object has no attribute 'split'
+
+## Example 6:
+Error: 'numpy.ndarray' object has no attribute 'split'
+
+## Example 7:
+Error: 'numpy.ndarray' object has no attribute 'split'
+
+Test Set Results:
+
+## Example 1:
+Error: 'numpy.ndarray' object has no attribute 'split'
+**General Assessment and Strategy**
+
+The primary issue identified is a type mismatch error (`'numpy.ndarray' object has no attribute 'split'`). This means the `transform` function was designed to accept a space-separated string but received a NumPy array (or similar list-like structure) during testing.
+
+The strategy is straightforward:
+1.  Modify the `transform` function signature and internal parsing logic to directly accept a list or array of integers, eliminating the need for `.split()`.
+2.  Re-verify the core transformation logic (identify pivot '2', identify data block, calculate gap, determine shift amount, apply shift) against all training examples to ensure its accuracy and robustness. The logic appears sound based on manual re-evaluation.
+3.  Update the YAML facts and Natural Language Program to reflect the corrected input type assumption and the confirmed transformation steps.
+
+**Metrics Gathering**
+
+Let's use code execution to verify the key parameters for each training example based on the proposed logic.
+
+
+
+*code_execution:*
+```python
+import numpy as np
+
+def analyze_sequence(sequence):
+    """Analyzes a sequence to extract pivot, block, gap, and shift details."""
+    results = {}
+    n = len(sequence)
+
+    # Find pivot
+    try:
+        pivot_index = sequence.index(2)
+        results['pivot_index'] = pivot_index
+    except ValueError:
+        results['error'] = "Pivot '2' not found"
+        return results
+
+    # Find data block
+    block_start, block_end, block_values = -1, -1, []
+    in_block = False
+    for i, val in enumerate(sequence):
+        is_block_element = (val != 0 and i != pivot_index)
+        if is_block_element and not in_block:
+            block_start = i
+            in_block = True
+            block_values.append(val)
+        elif is_block_element and in_block:
+            block_values.append(val)
+        elif not is_block_element and in_block:
+            block_end = i - 1
+            break # Found the first contiguous block
+    if in_block and block_end == -1: # Block runs to the end
+         block_end = n - 1
+
+    if block_start != -1:
+        results['block_start'] = block_start
+        results['block_end'] = block_end
+        results['block_values'] = block_values
+        results['block_len'] = len(block_values)
+
+        # Determine relative position and calculate gap
+        gap = 0
+        relative_position = "Adjacent"
+        if block_end < pivot_index:
+            relative_position = "Left"
+            gap = pivot_index - block_end - 1
+        elif block_start > pivot_index:
+            relative_position = "Right"
+            gap = block_start - pivot_index - 1
+        gap = max(0, gap)
+        results['relative_position'] = relative_position
+        results['gap'] = gap
+
+        # Calculate shift amount
+        shift_amount = 0
+        if gap == 1:
+            shift_amount = 1
+        elif gap > 1:
+            shift_amount = 2
+        results['shift_amount'] = shift_amount
+
+        # Calculate new block indices
+        new_block_start = block_start
+        if relative_position == "Left":
+            new_block_start += shift_amount
+        elif relative_position == "Right":
+            new_block_start -= shift_amount
+        results['new_block_start'] = new_block_start
+        results['new_block_end'] = new_block_start + results['block_len'] - 1
+
+        # Construct simulated output (conceptual)
+        output_sequence = [0] * n
+        output_sequence[pivot_index] = 2
+        current_idx = new_block_start
+        for val in block_values:
+             if current_idx != pivot_index and 0 <= current_idx < n:
+                  output_sequence[current_idx] = val
+             current_idx += 1
+        results['simulated_output'] = output_sequence
+
+    else:
+        results['block_found'] = False
+        results['simulated_output'] = [0] * n
+        results['simulated_output'][pivot_index] = 2
+
+
+    return results
+
+# Training Data
+train_inputs = [
+    [0, 0, 3, 3, 0, 0, 0, 0, 0, 0, 2, 0],
+    [5, 5, 5, 0, 2, 0, 0, 0, 0, 0, 0, 0],
+    [0, 7, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0],
+    [1, 1, 1, 1, 1, 2, 0, 0, 0, 0, 0, 0],
+    [0, 2, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1],
+    [6, 6, 6, 6, 6, 6, 6, 6, 2, 0, 0, 0],
+    [0, 0, 2, 0, 8, 8, 8, 8, 8, 8, 8, 8],
+]
+
+train_outputs = [
+    [0, 0, 0, 0, 3, 3, 0, 0, 0, 0, 2, 0],
+    [0, 5, 5, 5, 2, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 7, 0, 0, 0, 0, 2, 0, 0, 0],
+    [1, 1, 1, 1, 1, 2, 0, 0, 0, 0, 0, 0],
+    [0, 2, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0],
+    [6, 6, 6, 6, 6, 6, 6, 6, 2, 0, 0, 0],
+    [0, 0, 2, 8, 8, 8, 8, 8, 8, 8, 8, 0],
+]
+
+# Analyze each training example
+all_metrics = []
+for i, input_seq in enumerate(train_inputs):
+    metrics = analyze_sequence(list(input_seq)) # Ensure it's a list
+    metrics['example_index'] = i + 1
+    metrics['input'] = input_seq
+    metrics['expected_output'] = train_outputs[i]
+    metrics['output_matches'] = (metrics.get('simulated_output') == train_outputs[i])
+    all_metrics.append(metrics)
+
+# Print metrics for review
+for m in all_metrics:
+    print(f"--- Example {m['example_index']} ---")
+    print(f"Input: {m['input']}")
+    print(f"Pivot Index: {m.get('pivot_index')}")
+    if m.get('block_found', True): # If block was found or not checked
+        print(f"Block Indices (Start, End): ({m.get('block_start')}, {m.get('block_end')})")
+        print(f"Block Values: {m.get('block_values')}")
+        print(f"Relative Position: {m.get('relative_position')}")
+        print(f"Gap: {m.get('gap')}")
+        print(f"Shift Amount: {m.get('shift_amount')}")
+        print(f"New Block Indices (Start, End): ({m.get('new_block_start')}, {m.get('new_block_end')})")
+    else:
+        print("Block Found: False")
+    print(f"Simulated Output: {m.get('simulated_output')}")
+    print(f"Expected Output:  {m['expected_output']}")
+    print(f"Output Matches: {m['output_matches']}")
+    print("-" * 20)
+```
+
+*code_execution_result:*
+outcome: OUTCOME_OK
+```
+--- Example 1 ---
+Input: [0, 0, 3, 3, 0, 0, 0, 0, 0, 0, 2, 0]
+Pivot Index: 10
+Block Indices (Start, End): (2, 3)
+Block Values: [3, 3]
+Relative Position: Left
+Gap: 6
+Shift Amount: 2
+New Block Indices (Start, End): (4, 5)
+Simulated Output: [0, 0, 0, 0, 3, 3, 0, 0, 0, 0, 2, 0]
+Expected Output:  [0, 0, 0, 0, 3, 3, 0, 0, 0, 0, 2, 0]
+Output Matches: True
+--------------------
+--- Example 2 ---
+Input: [5, 5, 5, 0, 2, 0, 0, 0, 0, 0, 0, 0]
+Pivot Index: 4
+Block Indices (Start, End): (0, 2)
+Block Values: [5, 5, 5]
+Relative Position: Left
+Gap: 1
+Shift Amount: 1
+New Block Indices (Start, End): (1, 3)
+Simulated Output: [0, 5, 5, 5, 2, 0, 0, 0, 0, 0, 0, 0]
+Expected Output:  [0, 5, 5, 5, 2, 0, 0, 0, 0, 0, 0, 0]
+Output Matches: True
+--------------------
+--- Example 3 ---
+Input: [0, 7, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0]
+Pivot Index: 8
+Block Indices (Start, End): (1, 1)
+Block Values: [7]
+Relative Position: Left
+Gap: 6
+Shift Amount: 2
+New Block Indices (Start, End): (3, 3)
+Simulated Output: [0, 0, 0, 7, 0, 0, 0, 0, 2, 0, 0, 0]
+Expected Output:  [0, 0, 0, 7, 0, 0, 0, 0, 2, 0, 0, 0]
+Output Matches: True
+--------------------
+--- Example 4 ---
+Input: [1, 1, 1, 1, 1, 2, 0, 0, 0, 0, 0, 0]
+Pivot Index: 5
+Block Indices (Start, End): (0, 4)
+Block Values: [1, 1, 1, 1, 1]
+Relative Position: Left
+Gap: 0
+Shift Amount: 0
+New Block Indices (Start, End): (0, 4)
+Simulated Output: [1, 1, 1, 1, 1, 2, 0, 0, 0, 0, 0, 0]
+Expected Output:  [1, 1, 1, 1, 1, 2, 0, 0, 0, 0, 0, 0]
+Output Matches: True
+--------------------
+--- Example 5 ---
+Input: [0, 2, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
+Pivot Index: 1
+Block Indices (Start, End): (7, 11)
+Block Values: [1, 1, 1, 1, 1]
+Relative Position: Right
+Gap: 5
+Shift Amount: 2
+New Block Indices (Start, End): (5, 9)
+Simulated Output: [0, 2, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0]
+Expected Output:  [0, 2, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0]
+Output Matches: True
+--------------------
+--- Example 6 ---
+Input: [6, 6, 6, 6, 6, 6, 6, 6, 2, 0, 0, 0]
+Pivot Index: 8
+Block Indices (Start, End): (0, 7)
+Block Values: [6, 6, 6, 6, 6, 6, 6, 6]
+Relative Position: Left
+Gap: 0
+Shift Amount: 0
+New Block Indices (Start, End): (0, 7)
+Simulated Output: [6, 6, 6, 6, 6, 6, 6, 6, 2, 0, 0, 0]
+Expected Output:  [6, 6, 6, 6, 6, 6, 6, 6, 2, 0, 0, 0]
+Output Matches: True
+--------------------
+--- Example 7 ---
+Input: [0, 0, 2, 0, 8, 8, 8, 8, 8, 8, 8, 8]
+Pivot Index: 2
+Block Indices (Start, End): (4, 11)
+Block Values: [8, 8, 8, 8, 8, 8, 8, 8]
+Relative Position: Right
+Gap: 1
+Shift Amount: 1
+New Block Indices (Start, End): (3, 10)
+Simulated Output: [0, 0, 2, 8, 8, 8, 8, 8, 8, 8, 8, 0]
+Expected Output:  [0, 0, 2, 8, 8, 8, 8, 8, 8, 8, 8, 0]
+Output Matches: True
+--------------------
+
+```
+The metrics gathered confirm that the hypothesized logic (pivot '2', data block identification, gap calculation, shift amount rule [0 for gap 0, 1 for gap 1, 2 for gap > 1], shifting towards the pivot) correctly reproduces the output for all training examples. The primary fix needed is adjusting the function to accept a list/array input instead of a string.
+
+**YAML Facts**
+
+
+```yaml
+Objects:
+  - Sequence:
+      Type: Input/Output Data
+      Structure: List or Array of Integers
+      Properties:
+        - Length: 12 (fixed)
+  - Pivot:
+      Type: Special Element
+      Value: 2
+      Properties:
+        - Count: Exactly 1 per Sequence
+        - Position: Fixed (index remains constant between input and output)
+  - DataBlock:
+      Type: Sub-sequence
+      Structure: Contiguous sequence of non-zero integers within the Sequence
+      Exclusion: Does not include the Pivot value (2)
+      Properties:
+        - Existence: Zero or one per Sequence
+        - Position: Relative to Pivot (Left, Right, Adjacent)
+        - Indices: Start Index, End Index
+        - Values: List of integers in the block
+        - Length: Variable
+  - Filler:
+      Type: Background Element
+      Value: 0
+      Properties:
+        - Role: Occupies positions not taken by Pivot or DataBlock
+
+Relationships:
+  - RelativePosition: Between DataBlock and Pivot (Left, Right, Adjacent)
+      Definition: Determined by comparing DataBlock indices to Pivot index.
+  - Gap:
+      Type: Spatial Separation Metric
+      Definition: Number of Fillers (zeros) strictly located between the DataBlock and the Pivot.
+      Properties:
+        - Value: Integer >= 0
+        - Calculation: Depends on RelativePosition and indices.
+          - Left: `Pivot_Index - Block_End_Index - 1`
+          - Right: `Block_Start_Index - Pivot_Index - 1`
+          - Adjacent: `0`
+
+Actions:
+  - InitializeOutput: Create a new sequence of length 12, filled with Filler (0).
+  - LocatePivot: Find the index of the Pivot (value 2) in the input Sequence.
+  - PlacePivot: Copy the Pivot value (2) to its original index in the output Sequence.
+  - IdentifyDataBlock: Scan the input Sequence to find the first contiguous DataBlock (non-zero, non-Pivot values). Record its start index, end index, and values.
+  - CheckBlockExistence: If no DataBlock is found, finalize the output (it only contains the Pivot and Fillers).
+  - CalculateGap: Determine the Gap between the identified DataBlock and the Pivot based on their indices and relative position.
+  - DetermineShiftAmount: Calculate the number of positions to shift the DataBlock based on the Gap:
+      - If Gap = 0, Shift Amount = 0
+      - If Gap = 1, Shift Amount = 1
+      - If Gap > 1, Shift Amount = 2
+  - CalculateNewBlockPosition: Determine the new start index for the DataBlock by adding (if Left) or subtracting (if Right) the ShiftAmount from the original start index.
+  - PlaceDataBlock: Copy the DataBlock values into the output Sequence, starting at the calculated new start index, ensuring not to overwrite the Pivot's position.
+  - FinalizeOutput: Return the constructed output Sequence.
+
+```
+
+
+**Natural Language Program**
+
+1.  Accept the input sequence (a list or array of 12 integers).
+2.  Create a new output sequence of 12 zeros.
+3.  Find the index (`pivot_index`) of the integer `2` in the input sequence.
+4.  Place the integer `2` at the `pivot_index` in the output sequence.
+5.  Scan the input sequence to find the *first* contiguous block of non-zero integers, excluding the integer at `pivot_index`. Record its starting index (`block_start`), ending index (`block_end`), and the list of values (`block_values`).
+6.  If no such data block is found, return the output sequence (which currently contains only the `2` and zeros).
+7.  Determine the relative position of the block with respect to the `pivot_index`:
+    *   If `block_end < pivot_index`, the block is "Left". Calculate `gap = pivot_index - block_end - 1`.
+    *   If `block_start > pivot_index`, the block is "Right". Calculate `gap = block_start - pivot_index - 1`.
+    *   Otherwise (adjacent), the `gap = 0`.
+8.  Calculate the `shift_amount`:
+    *   If `gap == 0`, `shift_amount = 0`.
+    *   If `gap == 1`, `shift_amount = 1`.
+    *   If `gap > 1`, `shift_amount = 2`.
+9.  Calculate the `new_block_start` index for the output sequence:
+    *   If the block was "Left", `new_block_start = block_start + shift_amount`.
+    *   If the block was "Right", `new_block_start = block_start - shift_amount`.
+    *   If the block was "Adjacent" (`gap == 0`), `new_block_start = block_start`.
+10. Iterate through the `block_values`. For each value, calculate its target index in the output sequence (starting from `new_block_start`). If the target index is *not* equal to `pivot_index`, place the value at that target index in the output sequence.
+11. Return the completed output sequence.

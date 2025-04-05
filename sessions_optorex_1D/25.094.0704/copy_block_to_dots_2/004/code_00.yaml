@@ -1,0 +1,69 @@
+objects:
+  - name: input_sequence
+    type: list_of_integers
+    properties:
+      - length: 12
+      - content: Contains zeros and a single repeating non-zero integer (N).
+      - structure: Typically starts with [N, N, N, ...], but the core logic applies regardless of the start.
+  - name: output_sequence
+    type: list_of_integers
+    properties:
+      - length: 12 (same as input)
+      - derivation: Created by modifying a copy of the input_sequence based on identified trigger points.
+  - name: non_zero_integer
+    symbol: N
+    properties:
+      - value: The first non-zero integer found in the input_sequence.
+      - role: Used for pattern identification and replacement value.
+  - name: zero
+    symbol: 0
+    properties:
+      - value: 0
+      - role: Background value, part of the trigger condition (preceding element must not be N, often is 0).
+  - name: trigger_point
+    type: concept
+    properties:
+      - location: An index `i` in the input_sequence.
+      - condition: `i >= 3` AND `input_sequence[i] == N` AND `input_sequence[i-1] != N`.
+      - boundary_condition: The index `i` must be less than `length - 1` to allow replacement at `i+1`.
+
+actions:
+  - name: identify_non_zero_integer
+    actor: rule_processor
+    input: input_sequence
+    output: non_zero_integer (N)
+    description: Find the first element in the sequence that is not zero.
+  - name: find_trigger_indices
+    actor: rule_processor
+    input: input_sequence, non_zero_integer (N)
+    output: list_of_indices
+    description: >
+      Iterate through the input_sequence from index `i = 3` up to `length - 2`.
+      Collect all indices `i` that satisfy the trigger_point condition.
+  - name: initialize_output
+    actor: rule_processor
+    input: input_sequence
+    output: mutable_output_sequence
+    description: Create an independent, modifiable copy of the input_sequence.
+  - name: apply_transformation
+    actor: rule_processor
+    target: mutable_output_sequence
+    using: list_of_trigger_indices, non_zero_integer (N)
+    description: >
+      For each trigger index `i` found in the 'find_trigger_indices' step:
+      Set the elements at indices `i-1`, `i`, and `i+1` in the
+      mutable_output_sequence to the value N.
+
+relationships:
+  - type: derivation
+    from: input_sequence
+    to: output_sequence
+    rule: >
+      The output_sequence is derived from the input_sequence by first creating a copy.
+      Then, identify all trigger_point indices 'i' within the original input_sequence.
+      Finally, for each identified trigger index 'i', modify the copied sequence by
+      setting the values at indices [i-1, i, i+1] to N.
+  - type: dependency
+    action: apply_transformation
+    depends_on: find_trigger_indices, initialize_output
+    description: The transformation can only be applied after triggers are found and the output sequence is initialized.

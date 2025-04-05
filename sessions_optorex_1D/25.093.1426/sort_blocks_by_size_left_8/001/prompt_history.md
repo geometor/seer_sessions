@@ -1,0 +1,159 @@
+
+## train_1
+
+**input:**
+```
+3 3 3 0 0 0 0 0 0 0 0 3
+```
+
+
+**output:**
+```
+0 0 0 0 0 0 0 3 3 3 0 3
+```
+
+
+## train_2
+
+**input:**
+```
+0 0 2 0 0 0 2 2 2 2 0 0
+```
+
+
+**output:**
+```
+0 0 0 0 0 0 2 2 2 2 0 2
+```
+
+
+## train_3
+
+**input:**
+```
+7 7 7 7 0 0 0 0 7 7 0 0
+```
+
+
+**output:**
+```
+0 0 0 0 0 7 7 7 7 0 7 7
+```
+
+
+## train_4
+
+**input:**
+```
+2 2 2 0 0 0 0 0 0 0 2 2
+```
+
+
+**output:**
+```
+0 0 0 0 0 0 2 2 2 0 2 2
+```
+
+
+## train_5
+
+**input:**
+```
+0 0 0 0 3 3 0 0 3 3 3 3
+```
+
+
+**output:**
+```
+0 0 0 0 0 3 3 3 3 0 3 3
+```
+
+
+## train_6
+
+**input:**
+```
+0 0 7 7 0 7 7 7 0 0 0 0
+```
+
+
+**output:**
+```
+0 0 0 0 0 0 7 7 7 0 7 7
+```
+
+
+## train_7
+
+**input:**
+```
+0 1 1 1 0 0 0 0 1 1 1 1
+```
+
+
+**output:**
+```
+0 0 0 0 1 1 1 1 0 1 1 1
+```
+
+**Perception:**
+
+The input is a sequence of single-digit integers, typically containing zeros and non-zero numbers. The non-zero numbers appear to form two distinct contiguous blocks, separated by one or more zeros. The core task involves identifying these two blocks, potentially reordering them based on their relative lengths, and then placing them at the right end of the output sequence, separated by a single zero. The remaining positions in the output sequence are filled with zeros. The length of the sequence remains constant.
+
+**Facts:**
+
+
+```yaml
+task_elements:
+  - object: sequence
+    properties:
+      - type: list_of_integers
+      - length: fixed (e.g., 12 in examples)
+      - contains: zeros, non_zero_numbers
+  - object: zero
+    properties:
+      - value: 0
+      - role: background_or_separator
+  - object: non_zero_block
+    properties:
+      - type: contiguous_subsequence
+      - composed_of: identical_non_zero_integers
+      - identified_by: order_of_appearance (first, second)
+      - property: length (number of elements)
+      - property: value (the non-zero integer)
+    relationships:
+      - appears_twice_per_input: Two distinct blocks are present in each input sequence.
+      - separated_by_zeros: The two blocks are separated by at least one zero in the input.
+actions:
+  - identify_blocks:
+      actor: system
+      input: input_sequence
+      output: first_block (A), second_block (B)
+      conditions: Find the first and second contiguous non-zero blocks.
+  - compare_lengths:
+      actor: system
+      input: first_block (A), second_block (B)
+      output: boolean (is length B > length A?)
+  - determine_output_order:
+      actor: system
+      input: first_block (A), second_block (B), comparison_result
+      output: ordered_pair_of_blocks (X, Y)
+      logic: If len(B) > len(A), order is (B, A). Else, order is (A, B).
+  - construct_output:
+      actor: system
+      input: sequence_length, ordered_blocks (X, Y)
+      output: output_sequence
+      steps:
+        - Create zero-filled sequence of input length.
+        - Place block Y at the rightmost end.
+        - Place block X to the left of Y, separated by a single zero.
+relationships:
+  - input_output_length: The length of the output sequence is identical to the length of the input sequence.
+  - block_separation_output: The two non-zero blocks in the output are always separated by exactly one zero.
+  - block_placement_output: The reordered blocks (X, Y) are placed at the far right of the output sequence, preceded by zeros.
+```
+
+
+**Natural Language Program:**
+
+1.  Initialize an output

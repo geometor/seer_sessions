@@ -1,0 +1,66 @@
+task_description: "Shift a trailing sub-sequence (starting from the first non-zero digit) left by 3 positions within a fixed-length (12) integer sequence."
+constants:
+  - sequence_length: 12
+  - shift_amount: 3 # Positive value indicates left shift
+elements:
+  - object: digit_sequence
+    properties:
+      - type: list or array
+      - item_type: integer (0-9)
+      - length: 12
+      - role: input or output container
+  - object: zero_digit
+    properties:
+      - value: 0
+      - role: padding (leading/trailing), potential part of active_block
+  - object: non_zero_digit
+    properties:
+      - value: integer (1-9)
+      - role: marker for start of active_block, content
+  - object: active_block
+    properties:
+      - type: sub-sequence (list or array)
+      - definition: The portion of the input sequence starting from the index of the first non-zero digit found, extending to the end of the sequence.
+      - contains: The first non-zero digit and all subsequent digits (including zeros) from the input.
+    relationships:
+      - determined_by: position (index) of the first non-zero digit
+  - object: position
+    properties:
+      - type: index (0-based integer)
+      - role: location identifier within the sequence
+actions:
+  - action: identify_first_non_zero_index
+    description: Find the index of the first digit greater than 0 in the input sequence.
+    inputs: input_sequence (list/array)
+    outputs: start_index (integer, or -1 if none found)
+  - action: extract_active_block
+    description: Get the sub-sequence from the identified start_index to the end of the input sequence.
+    inputs: input_sequence, start_index
+    outputs: active_block (sub-sequence/list/array)
+  - action: calculate_new_start_index
+    description: Calculate the target starting index for the active_block in the output.
+    inputs: start_index, shift_amount
+    calculation: new_start_index = start_index - shift_amount
+    constraint: result clamped at minimum 0 (new_start_index = max(0, start_index - shift_amount))
+    outputs: new_start_index (integer)
+  - action: construct_output_sequence
+    description: Assemble the final 12-digit output sequence.
+    inputs: new_start_index, active_block, sequence_length
+    outputs: output_sequence (list/array)
+    steps:
+      - Initialize an empty list for the output.
+      - Append 'new_start_index' number of zeros to the list.
+      - Append the elements of the 'active_block' to the list.
+      - Calculate the number of trailing zeros needed: trailing_count = sequence_length - current_length_of_output_list.
+      - If trailing_count > 0, append 'trailing_count' number of zeros.
+      - If trailing_count < 0 (block is too long after shift), truncate the list to 'sequence_length'.
+  - action: handle_all_zeros_case
+    description: If identify_first_non_zero_index returns -1, the output is a direct copy of the input.
+    inputs: input_sequence
+    outputs: output_sequence (copy of input)
+relationships:
+  - type: positional_shift
+    subject: active_block
+    direction: left
+    magnitude: 3 indices (shift_amount)
+    reference_point: start_index of the block in the input vs. new_start_index in the output

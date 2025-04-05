@@ -1,0 +1,56 @@
+# YAML representation of observed facts
+
+Objects:
+  - InputSequence:
+      type: List[int] or numpy.ndarray # Input is a sequence of integers
+      length: 12
+      properties:
+        - DataPart: indices 0-8
+        - ControlPart: indices 9-11
+  - OutputSequence:
+      type: List[int] or numpy.ndarray # Output is also a sequence of integers
+      length: 12
+      derivation: Modified copy of InputSequence
+  - DataElement:
+      type: int
+      location: InputSequence.DataPart
+  - ControlElement:
+      type: int
+      location: InputSequence.ControlPart
+  - TargetValue:
+      value: 5
+      scope: InputSequence.DataPart
+  - InvariantDataValue:
+      # Any value other than TargetValue (5) found in DataPart
+      # Examples show only 0, but logic applies generally.
+      condition: value != 5
+      scope: InputSequence.DataPart
+  - ReplacementValueSource:
+      type: List[int]
+      source: InputSequence.ControlPart
+      constraints:
+        - Filtered to exclude 0
+        - Order preserved from original ControlPart
+  - GroupOfTargets:
+      # Represents a contiguous sequence of TargetValue (5) in DataPart
+      type: List[Dict{'start': int, 'end': int}] # List of groups identified by start/end index
+      ordering: Based on 'start' index
+
+Actions:
+  - Initialize: Create OutputSequence as a copy of InputSequence.
+  - Extract Controls: Get ControlElements from InputSequence.ControlPart.
+  - Filter Controls: Create ReplacementValueSource by taking non-zero ControlElements in order.
+  - Identify Groups: Find all contiguous GroupOfTargets in InputSequence.DataPart.
+  - Map Replacements: Associate the k-th GroupOfTargets with the k-th value in ReplacementValueSource.
+  - Apply Replacements:
+      - Iterate through the identified GroupOfTargets (up to the number of available ReplacementValueSource values).
+      - For the k-th group, update the corresponding elements (from 'start' to 'end' index) in OutputSequence.DataPart with the k-th value from ReplacementValueSource.
+  - Preserve Invariants:
+      - Elements in OutputSequence.DataPart that were not part of a replaced GroupOfTargets remain unchanged (from the initial copy).
+      - Elements in OutputSequence.ControlPart remain unchanged (from the initial copy).
+
+Relationships:
+  - OutputSequence is derived from InputSequence.
+  - The transformation modifies OutputSequence.DataPart based on InputSequence.ControlPart.
+  - The number of groups replaced is the minimum of (total groups found) and (number of non-zero control elements).
+  - Replacement order depends on the sequential order of groups and the sequential order of non-zero control elements.

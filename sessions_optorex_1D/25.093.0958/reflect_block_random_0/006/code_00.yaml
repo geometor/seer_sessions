@@ -1,0 +1,62 @@
+task_elements:
+  - object: sequence
+    properties:
+      - type: list_of_integers (represented as space-separated string or 1D array)
+      - length: variable, preserved between input and output
+      - elements: single-digit integers (0-9)
+  - object: element
+    properties:
+      - value: integer (0-9)
+      - attribute: is_zero (boolean)
+      - attribute: is_non_zero (boolean)
+      - position: index within the sequence
+  - object: non_zero_subsequence
+    properties:
+      - definition: The contiguous block of elements starting at the first non-zero element and ending at the last non-zero element in the sequence.
+      - existence: May not exist if all elements are zero. May consist of a single element if only one non-zero element exists.
+    identification:
+      - Requires finding the index of the first non-zero element (start_index).
+      - Requires finding the index of the last non-zero element (end_index).
+  - object: leading_zeros
+    properties:
+      - definition: Sequence of zero elements preceding the first non-zero element.
+      - existence: May be empty if the sequence starts with a non-zero element or if the sequence contains only zeros.
+  - object: trailing_zeros
+    properties:
+      - definition: Sequence of zero elements following the last non-zero element.
+      - existence: May be empty if the sequence ends with a non-zero element or if the sequence contains only zeros.
+
+transformation_rule:
+  - action: identify_non_zero_indices
+    inputs: input_sequence
+    outputs: list_of_indices_of_non_zero_elements
+    description: Find the indices of all elements that are not equal to zero.
+  - action: determine_subsequence_boundaries
+    inputs: list_of_indices_of_non_zero_elements
+    outputs: start_index, end_index
+    description: >
+      If the list of indices is empty or contains only one index, the sequence remains unchanged.
+      Otherwise, the start_index is the minimum index in the list, and the end_index is the maximum index.
+  - action: segment_sequence
+    inputs: input_sequence, start_index, end_index
+    outputs: leading_part, middle_part, trailing_part
+    description: >
+      Split the input sequence into three parts based on the identified boundaries:
+      1. leading_part: Elements from the beginning up to (but not including) start_index.
+      2. middle_part: Elements from start_index up to and including end_index.
+      3. trailing_part: Elements from end_index + 1 to the end of the sequence.
+      Note: If the sequence remains unchanged (step 2), this segmentation is effectively skipped, or the middle_part encompasses the whole sequence relative to itself.
+  - action: reverse_middle_part
+    inputs: middle_part
+    outputs: reversed_middle_part
+    description: Reverse the order of elements within the middle_part segment.
+  - action: reconstruct_sequence
+    inputs: leading_part, reversed_middle_part, trailing_part
+    outputs: output_sequence
+    description: Concatenate the leading_part, the reversed_middle_part, and the trailing_part in that order to form the final output sequence. If the sequence was determined to remain unchanged in the boundary step, this reconstruction simply yields the original sequence.
+
+edge_cases:
+  - condition: Sequence contains no non-zero elements.
+    result: Output sequence is identical to the input sequence.
+  - condition: Sequence contains exactly one non-zero element.
+    result: Output sequence is identical to the input sequence.

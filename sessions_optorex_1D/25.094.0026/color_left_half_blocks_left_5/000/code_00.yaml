@@ -1,0 +1,48 @@
+task_name: TransformSequenceByTwoBlocks
+description: Modifies a sequence of digits by changing trailing '2's within contiguous blocks of '2's based on block length.
+
+input_domain:
+  type: sequence
+  element_type: integer
+  allowed_values: [0, 2]
+  separator: space
+  description: A space-separated sequence of 0s and 2s.
+
+output_domain:
+  type: sequence
+  element_type: integer
+  allowed_values: [0, 2, 8]
+  separator: space
+  description: A space-separated sequence where some 2s from the input might be changed to 8s.
+
+components:
+  - object: sequence_element
+    properties:
+      - value: { type: integer, description: The digit (0, 2, or 8) }
+      - index: { type: integer, description: Position in the sequence (0-based) }
+  - object: contiguous_two_block
+    properties:
+      - start_index: { type: integer, description: Index of the first '2' in the block }
+      - end_index: { type: integer, description: Index of the last '2' in the block }
+      - length: { type: integer, description: Number of '2's in the block (end_index - start_index + 1) }
+
+transformation:
+  action: modify_elements
+  target: sequence_element
+  condition: The element is part of a contiguous_two_block.
+  rule:
+    - name: process_short_blocks
+      condition: contiguous_two_block.length == 2 OR contiguous_two_block.length == 3
+      action: change_value
+      target_element_condition: sequence_element.index == contiguous_two_block.end_index
+      new_value: 8
+    - name: process_long_blocks
+      condition: contiguous_two_block.length >= 4
+      action: change_value
+      target_element_condition: sequence_element.index == contiguous_two_block.end_index OR sequence_element.index == (contiguous_two_block.end_index - 1)
+      new_value: 8
+
+relationships:
+  - The output sequence is derived from the input sequence.
+  - The value of an output element depends on the value and context (membership in a contiguous_two_block and the block's length) of the corresponding input element.
+  - Elements with value '0' in the input remain '0' in the output.

@@ -1,0 +1,62 @@
+objects:
+  - name: input_sequence
+    type: list_or_array_of_integers
+    properties:
+      - length: 12 # Consistently observed
+      - contains_zeros: true
+      - contains_single_non_zero_block: true
+  - name: output_sequence
+    type: list_or_array_of_integers
+    properties:
+      - length: 12 # Same as input
+      - contains_zeros: true
+      - contains_single_non_zero_block: true # Shifted block
+  - name: non_zero_block
+    type: sub_sequence_of_integers
+    properties:
+      - contiguous: true
+      - elements_are_identical: true
+      - elements_are_non_zero: true
+    location:
+      - property: start_index_input
+      - property: end_index_input
+      - property: start_index_output
+      - property: end_index_output
+      - property: value # The non-zero integer in the block
+      - property: block_length
+  - name: background
+    type: integer
+    value: 0
+
+actions:
+  - name: find_block
+    source: input_sequence
+    target: non_zero_block
+    outputs: start_index_input, end_index_input, value, block_length
+  - name: initialize_output
+    target: output_sequence
+    properties:
+      - length: from input_sequence.length
+      - fill_value: 0
+  - name: shift_and_copy_block
+    source: non_zero_block (from input)
+    target: output_sequence
+    properties:
+      - shift_direction: right
+      - shift_amount: 2
+      - copy_indices: from (start_index_input + 2) up to min(end_index_input + 2, length - 1)
+
+relationships:
+  - type: transformation
+    from: input_sequence
+    to: output_sequence
+    rule: find_block -> initialize_output -> shift_and_copy_block
+  - type: positional_change
+    object: non_zero_block
+    details: start_index_output = start_index_input + 2
+  - type: content_preservation
+    object: non_zero_block
+    details: value and relative order of elements within the block are preserved during the shift.
+  - type: length_constraint
+    objects: [input_sequence, output_sequence]
+    details: output_sequence.length == input_sequence.length

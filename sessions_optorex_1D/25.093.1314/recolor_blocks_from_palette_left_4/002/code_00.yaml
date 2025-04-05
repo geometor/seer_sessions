@@ -1,0 +1,65 @@
+# YAML representation of observed facts
+
+Objects:
+  - InputSequence:
+      type: List[int] # Corrected type assumption
+      length: 12
+      properties:
+        - DataPart: indices 0-8
+        - ControlPart: indices 9-11
+  - OutputSequence:
+      type: List[int]
+      length: 12
+  - DataDigit:
+      type: int
+      location: InputSequence.DataPart
+      possible_values: [0, 5] # Based on examples
+  - ControlDigit:
+      type: int
+      location: InputSequence.ControlPart
+  - TargetDigitValue:
+      value: 5
+  - InvariantDigitValue:
+      value: 0 # Based on examples in DataPart
+  - GroupOfFives:
+      type: List[Tuple[int, int]] # List of (start_index, end_index) for contiguous 5s in DataPart
+  - ReplacementValues:
+      type: List[int]
+      source: InputSequence.ControlPart
+      constraints:
+        - derived from ControlPart in order (index 9, 10, 11)
+        - filtered to exclude 0
+
+Actions:
+  - AcceptInput: Receive the InputSequence as a list or array of 12 integers.
+  - InitializeOutput: Create the OutputSequence as a copy of the InputSequence.
+  - IdentifyReplacements: Create the ReplacementValues list by taking ControlDigits from InputSequence.ControlPart in order, excluding any 0s.
+  - IterateAndReplace:
+      parameters:
+          - InputSequence.DataPart
+          - OutputSequence # (to modify)
+          - ReplacementValues
+      steps:
+          - Initialize a replacement index `k` to 0.
+          - Initialize a variable `current_replacement` to None.
+          - Loop through InputSequence.DataPart from index `i = 0` to 8:
+              - If input digit at `i` is TargetDigitValue (5):
+                  - If it's the start of a new group (i=0 or input[i-1] != 5):
+                      - If `k` is less than the length of ReplacementValues:
+                          - Set `current_replacement` to `ReplacementValues[k]`.
+                          - Increment `k`.
+                      - Else:
+                          - Set `current_replacement` to None (no more replacements available).
+                  - If `current_replacement` is not None:
+                      - Set the digit at index `i` in OutputSequence to `current_replacement`.
+              - Else (input digit is not 5):
+                  - Output digit at `i` remains unchanged (from initial copy).
+  - FinalizeControlPart: Ensure OutputSequence indices 9-11 match InputSequence indices 9-11 (already handled by InitializeOutput).
+  - ReturnOutput: Provide the modified OutputSequence.
+
+
+Relationships:
+  - OutputSequence is derived from InputSequence.
+  - The transformation primarily affects the DataPart based on values in the ControlPart.
+  - The number of groups of 5s replaced is limited by the number of non-zero values in the ControlPart.
+  - The order of replacement follows the order of GroupOfFives (implicitly by iterating left-to-right) and the order of non-zero ReplacementValues.

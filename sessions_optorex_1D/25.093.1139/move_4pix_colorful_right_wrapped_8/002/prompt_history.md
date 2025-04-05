@@ -1,0 +1,185 @@
+
+## train_1
+
+**input:**
+```
+3 5 0 0 0 0 0 0 0 0 0 0
+```
+
+
+**output:**
+```
+0 0 0 0 3 5 0 0 0 0 0 0
+```
+
+
+## train_2
+
+**input:**
+```
+6 3 6 0 0 0 0 0 6 7 3 9
+```
+
+
+**output:**
+```
+6 7 3 9 6 3 6 0 0 0 0 0
+```
+
+
+## train_3
+
+**input:**
+```
+0 0 0 3 4 4 9 8 3 4 0 0
+```
+
+
+**output:**
+```
+3 4 0 0 0 0 0 3 4 4 9 8
+```
+
+
+## train_4
+
+**input:**
+```
+0 0 0 0 0 0 0 5 7 6 0 0
+```
+
+
+**output:**
+```
+7 6 0 0 0 0 0 0 0 0 0 5
+```
+
+
+## train_5
+
+**input:**
+```
+0 0 0 8 7 3 5 4 6 2 6 0
+```
+
+
+**output:**
+```
+6 2 6 0 0 0 0 8 7 3 5 4
+```
+
+
+## train_6
+
+**input:**
+```
+7 2 9 5 0 0 0 0 0 0 0 0
+```
+
+
+**output:**
+```
+0 0 0 0 7 2 9 5 0 0 0 0
+```
+
+
+## train_7
+
+**input:**
+```
+5 0 0 0 0 0 0 0 0 0 0 0
+```
+
+
+**output:**
+```
+0 0 0 0 5 0 0 0 0 0 0 0
+```
+
+*   **Perception of task elements:**
+    *   The input and output are sequences of 12 integers each.
+    *   The transformation involves rearranging the elements of the input sequence to produce the output sequence.
+    *   The sequence appears to be treated as three distinct blocks of four elements each.
+    *   The rearrangement follows a consistent pattern across all examples: the blocks are reordered.
+
+*   **Facts:**
+    
+```yaml
+    task_elements:
+      - object: input_list
+        properties:
+          - type: list
+          - item_type: integer
+          - length: 12
+      - object: output_list
+        properties:
+          - type: list
+          - item_type: integer
+          - length: 12
+      - object: blocks
+        properties:
+          - count: 3
+          - size: 4 elements each
+          - source: derived from input_list by splitting it into three equal parts
+            - block_1: elements at indices 0-3
+            - block_2: elements at indices 4-7
+            - block_3: elements at indices 8-11
+    actions:
+      - name: rearrange_blocks
+        inputs:
+          - block_1
+          - block_2
+          - block_3
+        outputs:
+          - output_list
+        rule: Concatenate the blocks in the order: block_3, block_1, block_2.
+    relationships:
+      - The output_list is composed of the same elements as the input_list, but rearranged.
+      - The rearrangement rule is based on splitting the input_list into three fixed-size blocks and reordering these blocks.
+    ```
+
+
+*   **Natural Language Program:**
+    1.  Take the input list of 12 integers.
+    2.  Divide the input list into three consecutive blocks, each containing 4 elements:
+        *   Block 1 consists of the first 4 elements (indices 0-3).
+        *   Block 2 consists of the next 4 elements (indices 4-7).
+        *   Block 3 consists of the last 4 elements (indices 8-11).
+    3.  Construct the output list by concatenating these blocks in the following order: Block 3, then Block 1, then Block 2.
+```python
+import numpy as np
+
+def transform(input_str: str) -> str:
+    """
+    Takes an input list of 12 integers, represented as a space-separated string.
+    Divides the input list into three consecutive blocks of 4 elements each.
+    Constructs the output list by concatenating these blocks in the order:
+    Block 3, then Block 1, then Block 2.
+    Returns the output list as a space-separated string.
+    """
+
+    # Parse the input string into a list of integers
+    input_list = [int(x) for x in input_str.split()]
+
+    # Define block size
+    block_size = 4
+    num_blocks = len(input_list) // block_size
+
+    # Ensure the input list length is a multiple of block_size
+    if len(input_list) % block_size != 0:
+        raise ValueError("Input list length must be a multiple of block size (4)")
+
+    # Divide the input list into three blocks
+    block_1 = input_list[0 * block_size : 1 * block_size] # Elements 0-3
+    block_2 = input_list[1 * block_size : 2 * block_size] # Elements 4-7
+    block_3 = input_list[2 * block_size : 3 * block_size] # Elements 8-11
+
+    # Construct the output list by concatenating blocks in the order 3, 1, 2
+    output_list = block_3 + block_1 + block_2
+
+    # Format the output list back into a space-separated string
+    output_str = " ".join(map(str, output_list))
+
+    return output_str
+
+```

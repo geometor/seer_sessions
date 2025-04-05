@@ -1,0 +1,77 @@
+objects:
+  - name: sequence
+    type: list
+    properties:
+      - element_type: integer
+      - length: 12 (observed)
+      - elements: single digits (0-9)
+  - name: pivot
+    type: integer
+    value: 2
+    properties:
+      - role: defines transformation boundary
+  - name: zero
+    type: integer
+    value: 0
+    properties:
+      - role: part of trigger patterns, shifts position
+  - name: non_zero_block
+    type: list_segment
+    properties:
+      - element_type: integer (1-9)
+      - contiguity: yes
+      - role: part of trigger patterns, shifts as a unit
+  - name: pattern_before
+    type: list_segment
+    structure: [non_zero_block, zero]
+    properties:
+      - location: must end before the pivot index
+      - role: triggers right cyclic shift
+  - name: pattern_after
+    type: list_segment
+    structure: [zero, non_zero_block]
+    properties:
+      - location: must start after the pivot index
+      - role: triggers left cyclic shift
+  - name: segment_to_shift
+    type: list_segment
+    properties:
+      - composition: derived from the found pattern (pattern_before or pattern_after)
+      - role: target of the cyclic shift action
+
+actions:
+  - name: find_pivot
+    input: sequence
+    output: index of the first '2' or indication of absence
+  - name: search_before_pivot
+    input: sequence, pivot_index
+    output: indices of the first 'pattern_before' found, or none
+    details: Searches from left-to-right in the sequence slice before pivot_index.
+  - name: search_after_pivot
+    input: sequence, pivot_index
+    output: indices of the first 'pattern_after' found, or none
+    details: Searches from left-to-right in the sequence slice after pivot_index.
+  - name: right_cyclic_shift
+    input: sequence, segment_to_shift_indices
+    output: modified sequence
+    details: Moves the last element (zero) of the segment to the first position.
+  - name: left_cyclic_shift
+    input: sequence, segment_to_shift_indices
+    output: modified sequence
+    details: Moves the first element (zero) of the segment to the last position.
+
+flow:
+  - step: Receive the input sequence (list of integers).
+  - step: Execute find_pivot.
+  - step: If pivot is not found, return the original sequence.
+  - step: Execute search_before_pivot.
+  - step: If pattern_before is found:
+      - Identify segment_to_shift.
+      - Execute right_cyclic_shift on the segment.
+      - Return the modified sequence.
+  - step: Execute search_after_pivot.
+  - step: If pattern_after is found:
+      - Identify segment_to_shift.
+      - Execute left_cyclic_shift on the segment.
+      - Return the modified sequence.
+  - step: If neither pattern was found, return the original sequence.

@@ -1,0 +1,75 @@
+objects:
+  - name: input_sequence
+    type: list
+    properties:
+      length: 12
+      elements: integer
+      structure: Contains a main sequence followed by two control values.
+  - name: output_sequence
+    type: list
+    properties:
+      length: 12
+      elements: integer
+      structure: Contains a transformed sequence followed by the original two control values.
+  - name: target_subsequence
+    type: list slice
+    source: input_sequence
+    indices: 0-9 (first 10 elements)
+  - name: control_values
+    type: list slice
+    source: input_sequence
+    indices: 10-11 (last 2 elements)
+    elements:
+      - name: val1
+        index: 10 (relative to input_sequence)
+        role: Primary replacement value for first group, or single group if val1 is non-zero.
+      - name: val2
+        index: 11 (relative to input_sequence)
+        role: Replacement value for second group, or single group if val1 is zero.
+  - name: target_value
+    type: integer
+    value: 5
+    description: The specific integer value within the target_subsequence that is subject to replacement.
+  - name: ignored_value
+    type: integer
+    value: 0
+    description: An integer value within the target_subsequence that is preserved in its position. (Note: Other non-5 values might also be ignored, but only 0 is explicitly shown).
+  - name: groups_of_target
+    type: list of tuples
+    description: >
+      Represents contiguous sequences (runs) of the target_value within the target_subsequence.
+      Each tuple contains the start and end index (inclusive) of a group.
+
+actions:
+  - name: parse_input
+    input: raw_input_data (e.g., string of space-separated integers)
+    output: input_sequence (list of 12 integers)
+    description: Convert the input into a standardized list format.
+  - name: extract_components
+    input: input_sequence
+    output: target_subsequence, val1, val2
+    description: Separate the input list into its main parts.
+  - name: identify_groups
+    input: target_subsequence, target_value
+    output: groups_of_target
+    description: Find all contiguous blocks of the target_value (5) within the first 10 elements.
+  - name: apply_replacement
+    input: target_subsequence (mutable copy), groups_of_target, val1, val2
+    output: modified_target_subsequence
+    description: >
+      Iterate through the identified groups and replace the target_value (5) within them
+      based on the number of groups found:
+      1. If one group exists: Replace 5s in the group with val1 if val1 != 0, otherwise replace with val2.
+      2. If two (or more) groups exist: Replace 5s in the first group with val1. Replace 5s in the second group with val2.
+      Elements not matching target_value remain unchanged.
+  - name: construct_output
+    input: modified_target_subsequence, val1, val2
+    output: output_sequence
+    description: Concatenate the modified_target_subsequence with the original val1 and val2.
+
+relationships:
+  - The first 10 elements of the output_sequence are derived from the first 10 elements of the input_sequence (target_subsequence).
+  - The last 2 elements of the output_sequence are identical to the last 2 elements of the input_sequence (control_values).
+  - The transformation of the target_subsequence depends critically on the number and position of contiguous groups of the target_value (5).
+  - The control_values (val1, val2) dictate the replacement values used in the apply_replacement action.
+  - Elements in the target_subsequence that are not the target_value (specifically 0 in examples) are preserved.

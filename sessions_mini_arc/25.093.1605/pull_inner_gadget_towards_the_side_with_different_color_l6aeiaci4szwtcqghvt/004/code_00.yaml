@@ -1,0 +1,62 @@
+# Task Components and Relationships (Refined)
+
+# --- Grid Definition ---
+grid:
+  type: 2D array
+  content: single-digit integers (0-9)
+  role: defines the space where transformation occurs
+
+# --- Identified Objects ---
+background:
+  digit: 0
+  role: represents empty space
+  behavior: static, fills vacated cells
+
+target_object:
+  digit: 7
+  role: defines the destination boundary/attractor for movement
+  identification: all cells containing the digit 7
+  behavior: static, acts as the sole stopping trigger for movable_object(s) via adjacency
+
+movable_object:
+  role: the object(s) that undergo translation
+  identification:
+    - Heuristic: Find unique digits excluding 0 and 7.
+    - Heuristic: Identify potential border digit (e.g., surrounding frame).
+    - Heuristic: Select the remaining digit. If ambiguity (multiple remain), choose the least frequent one.
+    - Composition: One or more contiguous blocks of the identified movable digit.
+  properties:
+    - digit_value: varies per example (e.g., 8, 9, 3, 6, 1)
+    - shape: defined by contiguous cells of the movable digit
+    - count: can be one or more separate blocks of the same digit (treated as a single logical object for movement)
+  behavior: moves step-by-step within the grid
+
+static_obstacles:
+  role: elements that remain fixed but do *not* stop movement upon adjacency
+  identification: all non-zero cells that are neither the target_object (7) nor the movable_object. Often forms the outer border.
+  behavior: static, unchanged during transformation, does not impede movement unless directly blocking the path (object cannot move *into* an obstacle cell).
+
+# --- Transformation Details ---
+transformation:
+  type: translation
+  actor: movable_object(s) (all cells with the movable digit)
+  action: move iteratively (step-by-step)
+  direction:
+    determination: Calculated based on the primary cardinal axis (Up, Down, Left, Right) from the centroid of the movable_object(s) towards the centroid of the target_object(s).
+    calculation: (dr, dc) representing the unit vector in the determined direction.
+  iteration_logic:
+    - Start loop.
+    - Check stop condition: Is any cell currently occupied by the movable_object adjacent (sharing edge) to any cell occupied by the target_object (7)?
+    - If yes, break loop (movement finished).
+    - If no, calculate potential next coordinates by adding (dr, dc) to current coordinates.
+    - Check path validity: Would moving to potential next coordinates cause any part of the movable_object to go out of bounds or land on a static_obstacle cell?
+    - If path is invalid (out of bounds or collision), break loop (movement blocked).
+    - If path is valid, execute move:
+        - Update grid: Change original positions of movable_object(s) to the background digit (0).
+        - Update grid: Place the movable digit in the calculated new positions.
+        - Update current coordinates of the movable_object.
+    - Repeat loop.
+  effect:
+    - movable_object(s) occupy new positions closer to the target_object.
+    - original positions of movable_object(s) are filled with the background digit (0).
+    - target_object, static_obstacles, and background remain otherwise unchanged.

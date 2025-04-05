@@ -1,0 +1,58 @@
+task_description: Process a 2D grid containing digit patterns, specifically identifying horizontal patterns and scattered digits relative to horizontal lines, and applying distinct transformations based on the object type.
+
+objects:
+  - name: Grid
+    properties:
+      - type: 2D array of integers
+      - background_digit: 0
+
+  - name: HorizontalPattern (HP)
+    properties:
+      - constituting_digit: D (non-zero integer, e.g., 4)
+      - structure: sequence of D and 0 within a single row (e.g., [4, 0, 4, 0, 4])
+      - location: row_index (R_D), start_column, end_column
+    identification: A contiguous horizontal sequence in one row involving a single non-zero digit D, potentially separated by 0s.
+
+  - name: HorizontalLine (HL)
+    properties:
+      - constituting_digit: L (non-zero integer, e.g., 2)
+      - structure: solid block of L in a single row (e.g., [2, 2, 2, ...])
+      - location: row_index (R_L), start_column, end_column
+      - derived: length, center_column_index
+    identification: A contiguous horizontal sequence in one row consisting solely of the same non-zero digit L.
+
+  - name: ScatteredDigits (SD)
+    properties:
+      - constituting_digit: D (non-zero integer, e.g., 8)
+      - count: N (number of instances)
+      - locations: list of (row, column) tuples
+    identification: Instances of a non-zero digit D that are not part of an identified HP or HL.
+
+actions:
+  - name: Identify Objects
+    description: Scan the input grid to find instances of HP, HL, and SD. Prioritize identifying HP and HL first.
+  - name: Move Horizontal Pattern
+    actor: HP
+    parameters:
+      - distance: value of the HP's constituting_digit (D)
+      - direction: right
+    effect: Clears original HP location and redraws HP at the new location in the output grid.
+  - name: Reposition Scattered Digits
+    actor: SD
+    parameters:
+      - reference_object: HL
+      - count: N (from SD)
+      - digit: D (from SD)
+    effect: Clears original SD locations. Calculates new positions based on HL's location (row R_L, center) and N. Places N digits D diagonally starting at (R_L + 1, calculated_start_column) with step (+2 rows, -2 columns) in the output grid.
+
+relationships:
+  - type: Spatial Reference
+    from: SD placement
+    to: HL location
+    description: SD are repositioned relative to the row below HL (R_L + 1) and horizontally centered based on HL's center column.
+  - type: Parameter Dependency
+    from: HP movement distance
+    to: HP constituting digit (D)
+    description: The horizontal shift distance for an HP is equal to its digit D.
+  - type: Exclusivity
+    description: A non-zero cell can belong to at most one identified object (HP, HL, or SD) for the purpose of applying a transformation rule. An HL might serve as a reference for SD without being modified itself.

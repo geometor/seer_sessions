@@ -1,0 +1,95 @@
+## Perception
+
+The task involves transforming a sequence of single-digit integers into another sequence of the same length. The core transformation appears to target sequences of the digit '5'. The first two digits of the input sequence play a special role in determining the replacement values for these '5' sequences. Other digits, particularly '0', seem to remain unchanged in their positions.
+
+## Facts
+
+
+```yaml
+objects:
+  - name: input_sequence
+    type: List[int]
+    description: The initial sequence of integers.
+  - name: output_sequence
+    type: List[int]
+    description: The resulting sequence after transformation.
+  - name: key1
+    type: int
+    description: The first integer in the input_sequence.
+  - name: key2
+    type: int
+    description: The second integer in the input_sequence.
+  - name: target_digit
+    type: int
+    value: 5
+    description: The digit in the input_sequence that triggers replacement.
+  - name: target_blocks
+    type: List[Tuple[int, int]] # List of (start_index, length)
+    description: Contiguous blocks of the target_digit (5) within the input_sequence.
+
+properties:
+  - object: input_sequence
+    property: length
+    description: The number of elements in the input sequence.
+  - object: output_sequence
+    property: length
+    description: The number of elements in the output sequence (always equals input length).
+  - object: target_blocks
+    property: count
+    description: The number of identified contiguous blocks of the target_digit.
+  - object: target_blocks
+    property: order
+    description: Blocks are processed based on their appearance order (first, second).
+
+actions:
+  - name: identify_keys
+    inputs: [input_sequence]
+    outputs: [key1, key2]
+    description: Extract the first and second elements from the input_sequence.
+  - name: identify_target_blocks
+    inputs: [input_sequence, target_digit]
+    outputs: [target_blocks]
+    description: Find all contiguous sequences of the target_digit (5) in the input.
+  - name: replace_first_block
+    inputs: [input_sequence, target_blocks, key1]
+    outputs: [modified_sequence]
+    condition: target_blocks count >= 1
+    description: Replace the elements of the first identified target_block with key1.
+  - name: replace_second_block
+    inputs: [modified_sequence, target_blocks, key2]
+    outputs: [output_sequence]
+    condition: target_blocks count >= 2
+    description: Replace the elements of the second identified target_block with key2.
+  - name: copy_unchanged
+    inputs: [input_sequence, target_blocks]
+    outputs: [output_sequence]
+    description: Elements not part of the first or second target_block are copied directly from input to output at the same position.
+
+relationships:
+  - type: replacement
+    subject: first target_block
+    object: key1
+    description: The first block of 5s is replaced by key1 repeated for the block's length.
+  - type: replacement
+    subject: second target_block
+    object: key2
+    description: The second block of 5s is replaced by key2 repeated for the block's length.
+  - type: positional_invariance
+    subject: non-target elements
+    description: Digits other than the 5s in the identified blocks maintain their original position in the output.
+```
+
+
+## Natural Language Program
+
+1.  Initialize the output sequence as a copy of the input sequence.
+2.  Identify the first number in the input sequence as `key1`.
+3.  Identify the second number in the input sequence as `key2`.
+4.  Find all contiguous blocks (sequences) of the number 5 in the input sequence, noting their starting positions and lengths.
+5.  If at least one block of 5s exists:
+    *   Take the first identified block of 5s.
+    *   Replace the elements in the output sequence corresponding to this block's position and length with the value `key1`.
+6.  If at least two blocks of 5s exist:
+    *   Take the second identified block of 5s.
+    *   Replace the elements in the output sequence corresponding to this block's position and length with the value `key2`.
+7.  Return the modified output sequence.

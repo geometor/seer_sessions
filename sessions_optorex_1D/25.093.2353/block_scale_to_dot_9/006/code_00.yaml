@@ -1,0 +1,52 @@
+elements:
+  - type: sequence
+    properties:
+      - item_type: integer
+      - item_range: 0-9
+      - description: Represents the input and output grid state. Assumed fixed length based on examples (12).
+objects:
+  - id: marker
+    value: 2
+    description: A fixed digit acting as a central reference point. Its value and position relative to neighbors define fill boundaries. It is never overwritten, nor does it fill other cells.
+  - id: fillable_space
+    value: 0
+    description: Represents positions within the sequence that are candidates for being overwritten by a neighbor's value.
+  - id: fill_source
+    value: N (any digit from 1, 3, 4, 5, 6, 7, 8, 9)
+    description: A non-zero, non-marker digit. Acts as the source of the value used to fill adjacent 'fillable_space' cells towards the 'marker'.
+relationships:
+  - type: spatial_position
+    description: The relative indices of 'marker', 'fillable_space', and 'fill_source' determine the transformation.
+  - type: nearest_neighbor
+    description: The 'fill_source' closest to the 'marker' on the left and right sides dictates the fill value for that side.
+  - type: intervening_zeros
+    description: The sequence of 'fillable_space' (0) digits located strictly between a 'marker' and its nearest 'fill_source' neighbor (on either side).
+actions:
+  - name: initialize_output
+    actor: system
+    target: input_sequence
+    effect: Create a mutable copy of the input sequence.
+  - name: locate_marker
+    actor: system
+    target: input_sequence
+    output: marker_index (integer or -1 if not found)
+    description: Find the index of the first occurrence of the 'marker' (value 2).
+  - name: find_nearest_fill_neighbor
+    actor: system
+    target: input_sequence
+    parameters:
+      - marker_index: integer
+      - direction: string ('left' or 'right')
+    output: tuple (fill_value, fill_index) or (None, -1)
+    description: Starting from the position adjacent to 'marker_index' in the specified 'direction', search for the first cell containing a 'fill_source' value. Return the value and its index.
+  - name: fill_intervening_zeros
+    actor: system
+    target: output_sequence # The mutable copy
+    condition: A nearest 'fill_source' neighbor was found on a given side (left or right).
+    parameters:
+      - fill_value: integer (the value of the neighbor)
+      - neighbor_index: integer (the index of the neighbor)
+      - marker_index: integer
+      - direction: string ('left' or 'right')
+      - source_sequence: input_sequence # Used to check for original zeros
+    effect: Iterate through the indices strictly between 'neighbor_index' and 'marker_index'. For each index `i`, if the value in the 'source_sequence' at index `i` is 'fillable_space' (0), update the 'output_sequence' at index `i` with the 'fill_value'. This action is performed independently for the left and right sides.

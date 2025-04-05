@@ -1,0 +1,71 @@
+task_elements:
+  - item: grid
+    properties:
+      - type: numpy.ndarray
+      - content: single-digit integers (0-9)
+      - shape: potentially 2D (e.g., 1xN, Nx1, or MxN), treated as 1D sequence for transformation logic
+      - role: input and output
+objects:
+  - object: input_grid
+    properties:
+      - contains digits (0-9)
+      - may represent a sequence with leading zeros
+      - may represent a sequence with trailing zeros
+  - object: sequence_1d # Derived from input_grid
+    derivation: Flattening the input_grid if it's 2D (1xN or Nx1)
+    properties:
+      - type: 1D list or numpy array of integers
+  - object: output_grid
+    properties:
+      - contains the same digits as input_grid
+      - same shape as input_grid
+  - object: non_zero_subsequence
+    derivation: The contiguous block of digits in sequence_1d starting from the first non-zero digit and ending at the last non-zero digit.
+    properties:
+      - may be the entire sequence if no leading/trailing zeros exist
+      - may be empty if sequence_1d contains only zeros
+relationships:
+  - relationship: shape_preservation
+    between: input_grid
+    and: output_grid
+    description: The output grid must have the same dimensions (shape) as the input grid.
+  - relationship: position_preservation
+    between: leading zeros in sequence_1d
+    and: corresponding positions in the final output grid
+    description: Leading zeros (before the first non-zero) maintain their positions relative to the start.
+  - relationship: position_preservation
+    between: trailing zeros in sequence_1d
+    and: corresponding positions in the final output grid
+    description: Trailing zeros (after the last non-zero) maintain their positions relative to the end.
+actions:
+  - action: check_dimensions
+    on: input_grid
+    produces: original_shape, is_effectively_1d
+  - action: flatten_grid (conditional)
+    on: input_grid
+    if: is_effectively_1d and input_grid.ndim > 1
+    produces: sequence_1d
+  - action: identify_boundaries
+    on: sequence_1d
+    produces: start_index (index of first non-zero), end_index (index of last non-zero)
+  - action: handle_all_zeros (conditional)
+    on: sequence_1d
+    if: no non-zero element exists (start_index is -1)
+    produces: original input_grid as output
+  - action: extract_parts
+    on: sequence_1d
+    using: start_index, end_index
+    produces: leading_part, middle_part, trailing_part
+  - action: reverse_sequence
+    on: middle_part
+    produces: reversed_middle_part
+  - action: construct_1d_output
+    using:
+      - leading_part
+      - reversed_middle_part
+      - trailing_part
+    produces: output_sequence_1d (concatenated 1D array)
+  - action: reshape_output
+    on: output_sequence_1d
+    using: original_shape
+    produces: output_grid

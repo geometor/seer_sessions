@@ -1,0 +1,47 @@
+task_elements:
+  - object: input_sequence
+    properties:
+      - type: numpy_array # Assumed based on code context
+      - dimensions: potentially_2d # e.g., (1, N) representing a single row
+      - length: 12 # N = 12 in examples
+      - contains: zeros, non_zero_block
+  - object: non_zero_block
+    properties:
+      - type: contiguous_subsequence
+      - elements: identical_non_zero_integers
+      - location: defined_by_start_and_end_index_within_row
+    relationships:
+      - contained_within: input_sequence
+  - object: zeros
+    properties:
+      - value: 0
+      - role: background_padding
+    relationships:
+      - fills_remaining_space_in: sequence
+actions:
+  - action: preprocess
+    actor: rule
+    target: input_sequence
+    details: Flatten the input array to ensure it is 1D for consistent processing.
+  - action: identify
+    actor: rule
+    target: non_zero_block (within flattened sequence)
+    attributes:
+      - start_index
+      - length
+      - value
+  - action: calculate_shift
+    actor: rule
+    target: non_zero_block
+    attributes:
+      - direction: right
+      - distance: 4_positions
+    output: new_start_index
+  - action: construct
+    actor: rule
+    target: output_sequence
+    attributes:
+      - type: 1d_numpy_array
+      - length: same_as_input
+      - initial_state: all_zeros
+    details: Place the identified non_zero_block into the output sequence starting at the calculated new_start_index.

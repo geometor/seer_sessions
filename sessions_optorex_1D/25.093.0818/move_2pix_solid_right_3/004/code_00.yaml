@@ -1,0 +1,68 @@
+Data:
+  - type: sequence
+    format: space-separated integers string
+    elements: integers
+    length_constraint: fixed between input and output (observed length 12 in examples)
+
+Objects:
+  - name: input_sequence
+    type: list of integers
+    source: input string parsed by space
+  - name: active_block
+    type: sub-sequence (list of integers)
+    definition: The contiguous portion of the input_sequence starting from the index of the first non-zero integer and ending at the index of the last non-zero integer (inclusive). If no non-zero integers exist, this block is considered empty or non-existent for the purpose of transformation.
+    properties:
+      - start_index_input: index of the first non-zero integer in input_sequence. (-1 if none).
+      - end_index_input: index of the last non-zero integer in input_sequence. (-1 if none).
+      - content: the sequence of integers within the block.
+      - length: number of elements in the block (end_index_input - start_index_input + 1).
+  - name: background_element
+    type: integer
+    value: 0
+  - name: output_sequence
+    type: list of integers
+    properties:
+      - length: same as input_sequence length.
+      - content: Constructed by placing the active_block at a shifted position within a list initially filled with background_elements.
+
+Parameters:
+  - name: shift_amount
+    type: integer
+    value: 2
+    direction: right
+
+Actions:
+  - name: parse_input
+    inputs: input_string
+    outputs: input_sequence (list of integers), original_length
+  - name: find_nonzero_indices
+    inputs: input_sequence
+    outputs: first_nz_idx, last_nz_idx
+    description: Finds the indices of the first and last non-zero elements. Returns indicator values (e.g., -1) if no non-zero elements are found.
+  - name: extract_active_block
+    inputs: input_sequence, first_nz_idx, last_nz_idx
+    outputs: active_block_content
+    condition: Only if first_nz_idx is not -1.
+  - name: initialize_output
+    inputs: original_length, background_element
+    outputs: output_sequence (initially all background_element)
+  - name: calculate_target_position
+    inputs: first_nz_idx, shift_amount
+    outputs: target_start_idx
+    rule: target_start_idx = first_nz_idx + shift_amount
+  - name: place_block
+    inputs: output_sequence, active_block_content, target_start_idx
+    outputs: modified output_sequence
+    description: Overwrites elements in output_sequence starting at target_start_idx with active_block_content. Assumes target placement is within bounds based on examples.
+  - name: format_output
+    inputs: output_sequence
+    outputs: output_string (space-separated integers)
+
+Edge Cases:
+  - Input contains only zeroes: The output is identical to the input (no block to shift).
+
+Relationships:
+  - The output_sequence is a transformation of the input_sequence.
+  - The active_block maintains its content and length but changes position.
+  - The start position of the active_block in the output is shifted `shift_amount` (2) positions to the right relative to its start position in the input.
+  - Elements outside the placed active_block in the output are background_elements (0).

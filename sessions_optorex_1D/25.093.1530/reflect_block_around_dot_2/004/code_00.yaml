@@ -1,0 +1,61 @@
+task_description: Mirror the position of a contiguous block of identical non-zero digits relative to a fixed pivot digit '2', preserving the distance (number of zeros) between the pivot and the nearest edge of the block.
+input_format: List of 12 integers (0-9).
+output_format: List of 12 integers (0-9).
+constraints:
+  - Each input sequence contains exactly one digit '2'.
+  - Each input sequence contains exactly one contiguous block of identical digits (value != 0 and != 2).
+  - All other elements are '0'.
+  - The block does not overlap or touch the pivot '2'.
+elements:
+  - object: sequence
+    properties:
+      format: list of 12 integers (0-9)
+      role: input/output container
+      length: 12
+  - object: pivot
+    properties:
+      value: 2
+      occurrence: exactly one per sequence
+      behavior: position is fixed between input and output
+      identifier: pivot_idx (index of the pivot)
+  - object: block
+    properties:
+      value: integer (val != 0 and val != 2)
+      occurrence: one contiguous block per sequence
+      structure: sequence of identical digits
+      length: variable (>= 1)
+      identifier: block_val, block_start_in, block_end_in, block_len
+  - object: gap
+    properties:
+      value: 0
+      role: fills positions between pivot and block, and remaining empty space
+      identifier: distance (number of zeros between pivot and nearest block edge)
+action:
+  name: mirror_block_position
+  inputs:
+    - input_sequence (list of integers)
+  output: output_sequence (list of integers)
+  logic: |
+    1. Initialize an output sequence of the same length (12) with all zeros.
+    2. Locate the index of the pivot digit '2' (`pivot_idx`) in the input sequence.
+    3. Place the pivot digit '2' at the same index (`pivot_idx`) in the output sequence.
+    4. Locate the contiguous block of identical non-zero digits (not '2') in the input sequence, determining its value (`block_val`), start index (`block_start_in`), end index (`block_end_in`), and length (`block_len`).
+    5. Determine if the block is before or after the pivot in the input sequence.
+    6. Calculate the distance (`distance`) as the number of zeros strictly between the pivot and the nearest edge of the block.
+        - If block is before pivot (`block_end_in < pivot_idx`): `distance = pivot_idx - block_end_in - 1`
+        - If block is after pivot (`block_start_in > pivot_idx`): `distance = block_start_in - pivot_idx - 1`
+    7. Calculate the new start index (`new_block_start`) for the block in the output sequence by mirroring its position across the pivot, preserving the calculated `distance`.
+        - If block was before pivot: `new_block_start = pivot_idx + distance + 1`
+        - If block was after pivot: `new_block_end = pivot_idx - distance - 1`, `new_block_start = new_block_end - block_len + 1`
+    8. Place the block (using `block_val` and `block_len`) into the output sequence starting at `new_block_start`.
+    9. Ensure the final output sequence contains the placed pivot and the repositioned block, with all other positions filled with zeros.
+relationships:
+  - type: relative_position
+    object1: block
+    object2: pivot
+    condition: Determines the direction of mirroring (block before pivot vs. block after pivot).
+  - type: separation_distance
+    object1: block (nearest edge)
+    object2: pivot
+    measure: Number of zeros between them (`distance`).
+    condition: This distance is preserved during the mirroring transformation.

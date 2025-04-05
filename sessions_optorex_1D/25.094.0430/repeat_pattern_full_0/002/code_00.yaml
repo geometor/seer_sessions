@@ -1,0 +1,38 @@
+objects:
+  - name: input_sequence
+    properties:
+      - type: numpy.ndarray of integers
+      - contains: a repeating pattern followed by zero padding
+      - length: L (e.g., 12 in the examples)
+  - name: output_sequence
+    properties:
+      - type: numpy.ndarray of integers
+      - length: L (same as input)
+      - contains: repetitions of the fundamental pattern from the input
+  - name: fundamental_pattern
+    properties:
+      - type: numpy.ndarray (or list) of integers (subset of input_sequence)
+      - derived_from: the initial non-zero part of the input_sequence
+      - characteristic: the shortest sequence that repeats to form the non-zero part of the input
+
+actions:
+  - name: identify_non_zero_prefix
+    inputs: input_sequence (NumPy array)
+    outputs: sequence of numbers before the first zero (NumPy array slice)
+    logic: Iterate through the input array until the first zero is encountered. The slice before this index is the non-zero prefix. If no zeros are present, the entire input array is the prefix.
+  - name: find_fundamental_pattern
+    inputs: non_zero_prefix (NumPy array)
+    outputs: fundamental_pattern (NumPy array or list)
+    logic: Iterate through possible lengths 'p_len' from 1 up to half the length of the non_zero_prefix. The pattern is the slice of length 'p_len' if the elements from index 0 to p_len-1 are identical (using `np.array_equal`) to the elements from index p_len to 2*p_len-1. If no such repetition is found, the entire non_zero_prefix is the fundamental_pattern.
+  - name: generate_output
+    inputs:
+      - fundamental_pattern (NumPy array or list)
+      - original_input_length (L)
+    outputs: output_sequence (NumPy array)
+    logic: Create an empty list. Repeatedly extend the list with the `fundamental_pattern` until the list's length is greater than or equal to L. Convert the list to a NumPy array and truncate it to length L.
+
+relationships:
+  - The output_sequence is derived from the fundamental_pattern identified in the input_sequence.
+  - The length of the output_sequence is identical to the length of the input_sequence.
+  - The fundamental_pattern is determined by finding the shortest repetition within the non-zero prefix of the input_sequence.
+  - Input and output data types are NumPy arrays.

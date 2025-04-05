@@ -1,0 +1,47 @@
+task_description: "Shift a contiguous block of numbers, defined by the first and last non-zero elements, within a fixed-length sequence."
+elements:
+  - object: sequence
+    type: integer_sequence
+    properties:
+      length: 12
+      role: input/output
+      representation_note: "Visually appears as 1D, but implementation may need to handle framework-specific structures (e.g., 1x12 or 12x1 array) to avoid runtime errors."
+  - object: segment
+    type: sub_sequence
+    definition: "The contiguous part of the input sequence starting from the index of the first non-zero element and ending at the index of the last non-zero element (inclusive)."
+    properties:
+      content: integers (including any zeros between the first and last non-zero element)
+      relative_order: preserved
+      existence: "Only defined if the input sequence contains at least one non-zero element."
+relationships:
+  - type: derivation
+    from: input_sequence
+    to: output_sequence
+  - type: transformation
+    action: identify_segment_bounds
+    input: input_sequence
+    outputs: first_nz_index, last_nz_index
+    condition: "Returns indicators (e.g., None) if no non-zero elements exist."
+  - type: conditional_transformation
+    condition: "Non-zero elements exist in input_sequence."
+    steps:
+      - action: extract_segment
+        inputs: input_sequence, first_nz_index, last_nz_index
+        output: segment
+      - action: calculate_target_start_index
+        input: first_nz_index
+        parameter: shift_amount (constant +4)
+        output: target_start_index
+      - action: construct_output_sequence
+        inputs: sequence_length, segment, target_start_index
+        process: "Create a sequence of zeros of the defined length, then place the extracted segment starting at the target_start_index."
+  - type: conditional_transformation
+    condition: "No non-zero elements exist in input_sequence."
+    steps:
+      - action: copy_input
+        input: input_sequence
+        output: output_sequence
+constants:
+  sequence_length: 12
+  shift_amount: 4
+  padding_value: 0

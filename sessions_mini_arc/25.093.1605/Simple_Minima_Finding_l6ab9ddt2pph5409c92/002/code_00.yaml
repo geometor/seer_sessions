@@ -1,0 +1,50 @@
+task_elements:
+  - object: grid
+    properties:
+      - type: 2D array of integers (likely NumPy array based on errors)
+      - dimensions: 5x5 in all examples
+      - cells: contain single-digit integers (0-9)
+      - structure: rows and columns
+  - object: input_grid
+    relation: source data for transformation
+  - object: output_grid
+    relation: result of transformation applied to input_grid
+    properties:
+      - same dimensions as input_grid
+  - object: first_column
+    relation: column 0 of the input_grid
+    properties:
+      - contains_non_zero: boolean (True for Ex1, Ex3; False for Ex2)
+  - object: center_cell
+    relation: cell at index (2, 2) of the input_grid (assuming 5x5)
+    properties:
+      - value: integer (2 for Ex1, 5 for Ex2, 0 for Ex3)
+  - object: fill_value
+    relation: the integer used to populate the first row of the output_grid
+    derivation: determined by a conditional rule based on input_grid
+
+actions:
+  - action: copy_rows
+    source: input_grid
+    destination: output_grid
+    details: Rows from index 1 to the end are copied verbatim.
+  - action: determine_fill_value
+    source: input_grid
+    process:
+      - Find the first non-zero value scanning column-major (col 0 top-bottom, col 1 top-bottom, ...). Call this `v_first`.
+      - Check if the first column (index 0) contains only zeros.
+      - IF first column contains any non-zero value: `fill_value` = `v_first`.
+      - ELSE (first column is all zeros):
+          - Get the value `v_center` at the center cell (index 2, 2).
+          - IF `v_center` is non-zero: `fill_value` = `v_center`.
+          - ELSE (`v_center` is zero): `fill_value` = `v_first`.
+    result: fill_value (an integer)
+    condition: Assumes grid dimensions allow for a center cell at (2,2) or a generalized center. Requires at least one non-zero value exists in the grid if the first column is all zero.
+  - action: modify_first_row
+    target: output_grid
+    details: Replace every element in the first row (index 0) with the determined `fill_value`.
+
+relationships:
+  - The output grid's rows from index 1 onwards are identical to the input grid's corresponding rows.
+  - The `fill_value` depends initially on the first non-zero value found scanning column-major (`v_first`).
+  - If the first column of the input grid contains only zeros, the `fill_value` might instead be taken from the center cell `(2, 2)`, overriding `v_first` only if the center cell itself is non-zero.

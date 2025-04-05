@@ -1,0 +1,52 @@
+task_elements:
+  - object: input_grid
+    properties:
+      - type: list of lists or 2D NumPy array # Inferred from error
+      - element_type: list or NumPy array (representing a row)
+      - contains: integers
+      - shape: variable N x M (Examples appear N=12, M potentially >=1)
+  - object: output_grid
+    properties:
+      - type: list of lists or 2D NumPy array
+      - element_type: list or NumPy array (representing a row)
+      - contains: integers
+      - shape: same as input_grid
+      - derived_from: input_grid
+  - object: non_zero_row_block
+    properties:
+      - type: sublist or sub-array
+      - derived_from: input_grid
+      - content: sequence of rows starting from the first row containing any non-zero element to the last row containing any non-zero element.
+      - relative_order: preserved from input_grid
+      - values: preserved from input_grid
+  - object: zero_row
+    properties:
+      - type: list or NumPy array
+      - content: row containing only zero(s)
+      - role: fills positions in output_grid not occupied by the non_zero_row_block
+      - shape: same width (M) as input_grid rows
+actions:
+  - name: identify_block_rows
+    input: input_grid
+    output: non_zero_row_block, start_row_index, end_row_index
+    description: Find the indices of the first and last rows in the input_grid that contain at least one non-zero element. Define the block of rows. If no such rows exist, the block is empty.
+  - name: calculate_new_row_position
+    input: start_row_index, shift_amount (constant: 3)
+    output: new_start_row_index
+    description: Add the shift_amount to the original start_row_index.
+  - name: construct_output_grid
+    input: non_zero_row_block, new_start_row_index, grid_dimensions (N, M), zero_row
+    output: output_grid
+    description: Create a new grid of the specified dimensions (N x M), filled initially with zero_rows. Place the non_zero_row_block starting at the calculated new_start_row_index. Ensure indices stay within bounds (truncate block if necessary).
+relationships:
+  - type: transformation
+    from: input_grid
+    to: output_grid
+    rule: shift non_zero_row_block down by 3 rows
+  - type: positional_shift
+    object: non_zero_row_block
+    direction: down (increasing row index)
+    amount: 3 rows
+constants:
+  - shift_amount: 3
+  - padding_value: 0 # Value within rows

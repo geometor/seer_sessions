@@ -1,0 +1,79 @@
+objects:
+  - name: sequence
+    type: list of integers
+    description: Represents the input and output data as an ordered sequence.
+  - name: trigger_digit
+    type: integer
+    value: 2
+    description: The digit whose first occurrence dictates the starting point for a conditional search.
+  - name: target_digit_for_removal
+    type: integer
+    value: 0
+    description: The digit value ('0') that is a candidate for removal if specific conditions are met.
+  - name: adjacency_condition_digit
+    type: integer
+    value_constraint: '!= 0'
+    description: A non-zero digit that must immediately follow the target_digit_for_removal for the transformation rule to apply.
+  - name: padding_digit
+    type: integer
+    value: 0
+    description: The digit appended to the end of the sequence if, and only if, a removal occurs, maintaining sequence length.
+
+properties:
+  - name: index
+    applies_to: [sequence element]
+    description: The zero-based position of a digit within the sequence.
+  - name: value
+    applies_to: [sequence element]
+    description: The integer value of a digit.
+  - name: length
+    applies_to: [sequence]
+    description: The number of digits in the sequence. This property remains constant throughout the transformation.
+  - name: is_first_occurrence
+    applies_to: [trigger_digit]
+    description: Identifies the specific instance of the trigger_digit that anchors the search.
+
+actions:
+  - name: find_index_of_first
+    actor: rule_logic
+    target: sequence
+    parameters: [value: trigger_digit (2)]
+    result: index (integer >= 0) or indication_of_absence (e.g., -1)
+    description: Locate the index of the first '2'. If none exists, the process terminates, returning the original sequence.
+  - name: search_subsequence
+    actor: rule_logic
+    target: sequence
+    parameters: [start_index: (index_of_first_2 + 1), end_index: (length - 2)]
+    description: Iterate through the sequence segment starting immediately after the first '2' up to the second-to-last element.
+  - name: identify_first_removable_zero
+    actor: rule_logic
+    target: sequence element (within searched subsequence)
+    condition: |
+      Current element value == target_digit_for_removal (0)
+      AND Next element value == adjacency_condition_digit (non-zero)
+    result: index of the first element meeting the condition, or indication_of_absence.
+    description: Within the search subsequence, find the index of the *first* '0' that is immediately followed by a non-zero digit. Stop searching once found.
+  - name: remove_element
+    actor: rule_logic
+    target: sequence
+    parameters: [index: (index_of_removable_zero)]
+    precondition: identify_first_removable_zero returned a valid index.
+    effect: Element at the specified index is removed; subsequent elements shift left by one position.
+    description: Delete the identified target '0' from the sequence.
+  - name: append_zero
+    actor: rule_logic
+    target: sequence
+    parameters: [value: padding_digit (0)]
+    precondition: remove_element action was performed.
+    effect: Adds a '0' to the end of the sequence.
+    description: Append a '0' to compensate for the removed element and maintain sequence length.
+
+relationships:
+  - type: control_flow
+    description: The entire transformation process is conditional on finding a '2' initially.
+  - type: spatial_dependency
+    description: The search for the removable '0' is spatially constrained to the part of the sequence *after* the first '2'.
+  - type: sequential_dependency
+    description: The append_zero action only occurs if the remove_element action occurred.
+  - type: adjacency_requirement
+    description: The condition for removal depends on the value of the immediately following element.

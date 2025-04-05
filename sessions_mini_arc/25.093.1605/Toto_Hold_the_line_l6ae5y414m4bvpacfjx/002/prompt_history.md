@@ -1,0 +1,156 @@
+
+## train_1
+
+**input:**
+```
+0 0 0 0 0
+0 8 0 8 0
+0 0 0 0 0
+0 8 0 0 0
+0 0 8 0 0
+```
+
+
+**output:**
+```
+0 0 0 0 0
+0 8 8 8 0
+0 8 0 0 0
+0 8 0 0 0
+0 0 8 0 0
+```
+
+
+## train_2
+
+**input:**
+```
+8 0 0 0 0
+0 0 8 0 8
+0 0 0 0 0
+8 0 0 0 0
+0 0 0 8 0
+```
+
+
+**output:**
+```
+8 0 0 0 0
+8 0 8 8 8
+8 0 0 0 0
+8 0 0 0 0
+0 0 0 8 0
+```
+
+
+## train_3
+
+**input:**
+```
+0 0 0 0 8
+0 8 0 8 0
+0 0 0 0 0
+0 8 0 8 0
+0 0 0 0 0
+```
+
+
+**output:**
+```
+0 0 0 0 8
+0 8 8 8 0
+0 8 0 8 0
+0 8 8 8 0
+0 0 0 0 0
+```
+
+**Perception of the Elements:**
+
+The task involves transforming a 2D grid of numbers. The grids contain only the numbers 0 and 8. The transformation modifies some of the 0s in the input grid into 8s in the output grid, while the positions of the original 8s remain unchanged. The core logic appears to involve identifying specific 0s based on their neighboring 8s. Specifically, a 0 seems to turn into an 8 if it lies directly between two 8s, either horizontally or vertically.
+
+**YAML Facts:**
+
+
+```yaml
+Grid:
+  type: object
+  properties:
+    - cells:
+        type: array
+        description: A 2D array representing the grid structure.
+    - dimensions:
+        type: tuple
+        description: The height and width of the grid (e.g., 5x5).
+Cell:
+  type: object
+  properties:
+    - value:
+        type: integer
+        description: The number contained in the cell (0 or 8).
+    - position:
+        type: tuple
+        description: The (row, column) coordinates of the cell within the grid.
+Relationships:
+  - type: Neighborhood
+    description: Cells have adjacent cells (up, down, left, right).
+  - type: Betweenness
+    description: A cell can be situated directly between two other cells along a horizontal or vertical line.
+Transformation:
+  action: Modify Cell Value
+  condition: If a cell contains 0 AND ((the cell above it contains 8 AND the cell below it contains 8) OR (the cell to its left contains 8 AND the cell to its right contains 8)).
+  result: The cell's value is changed to 8.
+  preservation: Cells originally containing 8 retain their value. Cells containing 0 that do not meet the condition retain their value.
+```
+
+
+**Natural Language Program:**
+
+1.  Initialize an output grid with the same dimensions and values as the input grid.
+2.  Iterate through each cell of the input grid, excluding the border cells (first/last row and first/last column) as they cannot be 'between' two neighbors within the grid bounds.
+3.  For each considered cell at position (row, col):
+    a.  Check if the value of the cell in the *input* grid at (row, col) is 0.
+    b.  If it is 0, check its vertical neighbors: Does the cell at (row-1, col) contain 8 AND the cell at (row+1, col) contain 8?
+    c.  If it is 0, also check its horizontal neighbors: Does the cell at (row, col-1) contain 8 AND the cell at (row, col+1) contain 8?
+    d.  If the condition in step 3b OR the condition in step 3c is true, update the value of the cell at (row, col) in the *output* grid to 8.
+4.  Return the final output grid.
+```python
+import numpy as np
+
+def transform(input_grid):
+    """
+    Transforms a 2D grid based on the following rule:
+    A cell containing 0 is changed to 8 if it lies directly between two 8s,
+    either horizontally or vertically. Cells originally containing 8 remain unchanged.
+    Cells containing 0 that do not meet the condition also remain unchanged.
+    """
+    # Convert input list of lists to a NumPy array for easier manipulation
+    input_array = np.array(input_grid)
+    # Initialize output_grid as a copy of the input_grid
+    output_array = np.copy(input_array)
+
+    # Get the dimensions of the grid
+    height, width = input_array.shape
+
+    # Iterate through each cell of the input grid, excluding the borders
+    # Border cells cannot be 'between' two neighbors within the grid
+    for r in range(1, height - 1):
+        for c in range(1, width - 1):
+            # Check if the current cell in the input grid is 0
+            if input_array[r, c] == 0:
+                # Check vertical neighbors: if the cell above and below are both 8
+                is_between_vertical = (input_array[r - 1, c] == 8 and input_array[r + 1, c] == 8)
+                
+                # Check horizontal neighbors: if the cell to the left and right are both 8
+                is_between_horizontal = (input_array[r, c - 1] == 8 and input_array[r, c + 1] == 8)
+
+                # If the cell is 0 and is between two 8s either vertically or horizontally
+                if is_between_vertical or is_between_horizontal:
+                    # Update the corresponding cell in the output grid to 8
+                    output_array[r, c] = 8
+
+    # Convert the NumPy array back to a list of lists for the final output
+    output_grid = output_array.tolist()
+    
+    return output_grid
+
+```

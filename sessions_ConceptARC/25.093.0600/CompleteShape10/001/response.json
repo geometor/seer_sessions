@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom scipy.ndimage import label\nimport collections\n\n\"\"\"\nIdentifies the largest connected region of non-zero colored cells in the input grid.\nThen, identifies all connected regions of background cells (color 0).\nAny background region that does not touch the grid's boundary is considered an internal hole.\nThese internal holes are filled with the color of the largest foreground region.\n\"\"\"\n\ndef find_connected_components(grid, value, structure=None):\n    \"\"\"\n    Finds connected components of a specific value in the grid.\n\n    Args:\n        grid (np.array): The input grid.\n        value (int): The value to find components for (e.g., 0 for background).\n        structure (np.array, optional): Connectivity structure for labeling.\n                                       Defaults to 4-connectivity if None.\n\n    Returns:\n        tuple: (labeled_array, num_labels) from scipy.ndimage.label\n    \"\"\"\n    if structure is None:\n        # Define 4-connectivity (horizontal and vertical neighbors)\n        structure = np.array([[0, 1, 0],\n                              [1, 1, 1],\n                              [0, 1, 0]], dtype=bool)\n    mask = (grid == value)\n    labeled_array, num_labels = label(mask, structure=structure)\n    return labeled_array, num_labels\n\ndef find_largest_foreground_region_color(input_grid, structure):\n    \"\"\"\n    Finds the color of the largest connected foreground region.\n\n    Args:\n        input_grid (np.array): The input grid.\n        structure (np.array): Connectivity structure.\n\n    Returns:\n        int: The color of the largest foreground region, or 0 if no foreground.\n    \"\"\"\n    foreground_mask = input_grid > 0\n    labeled_fg, num_fg_labels = label(foreground_mask, structure=structure)\n\n    if num_fg_labels == 0:\n        return 0 # No foreground objects\n\n    # Count the size of each labeled foreground region (excluding label 0 - background)\n    component_sizes = np.bincount(labeled_fg.ravel())\n    # Index 0 corresponds to the background (or areas not part of any foreground component)\n    # Find the label with the maximum size among foreground components (indices > 0)\n    if len(component_sizes) > 1:\n        largest_fg_label = np.argmax(component_sizes[1:]) + 1\n        # Find the coordinates of the first pixel belonging to the largest component\n        coords = np.argwhere(labeled_fg == largest_fg_label)\n        if coords.size > 0:\n            # Get the color from the original grid at these coordinates\n            return input_grid[coords[0, 0], coords[0, 1]]\n        else:\n             return 0 # Should not happen if largest_fg_label exists\n    else:\n        return 0 # Only background found\n\ndef transform(input_grid):\n    \"\"\"\n    Fills internal holes (background regions not touching the border) within the input grid\n    with the color of the largest connected foreground region.\n\n    Args:\n        input_grid (list of lists): The input grid representation.\n\n    Returns:\n        list of lists: The transformed grid with internal holes filled.\n    \"\"\"\n    # Convert input to numpy array for efficient processing\n    grid_np = np.array(input_grid, dtype=int)\n    output_grid = grid_np.copy()\n    rows, cols = grid_np.shape\n\n    # Define 4-connectivity structure\n    structure = np.array([[0, 1, 0],\n                          [1, 1, 1],\n                          [0, 1, 0]], dtype=bool)\n\n    # --- Step 1: Find the color of the largest foreground region ---\n    fill_color = find_largest_foreground_region_color(grid_np, structure)\n\n    # If there's no foreground region or the only color is 0, no filling needed\n    if fill_color == 0:\n        return output_grid.tolist()\n\n    # --- Step 2: Identify background regions (potential holes) ---\n    # Create a mask for background cells (value 0)\n    background_mask = (grid_np == 0)\n    # Label connected components of background cells\n    labeled_bg, num_bg_labels = label(background_mask, structure=structure)\n\n    # --- Step 3: Identify which background regions touch the boundary ---\n    boundary_labels = set()\n    # Check top and bottom rows\n    boundary_labels.update(labeled_bg[0, :])\n    boundary_labels.update(labeled_bg[rows - 1, :])\n    # Check left and right columns\n    boundary_labels.update(labeled_bg[:, 0])\n    boundary_labels.update(labeled_bg[:, cols - 1])\n    # Remove 0 if it's in the set (it represents non-background areas)\n    boundary_labels.discard(0)\n\n\n    # --- Step 4: Fill internal holes ---\n    # Iterate through all potential background labels found\n    for label_idx in range(1, num_bg_labels + 1):\n        # If a background component's label was NOT found on the boundary...\n        if label_idx not in boundary_labels:\n            # ...it's an internal hole. Fill cells with this label.\n            output_grid[labeled_bg == label_idx] = fill_color\n\n    # Convert back to list of lists for the expected output format\n    return output_grid.tolist()\n\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 3504,
+    "candidates_token_count": 1286,
+    "total_token_count": 4790,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 26.304731,
+  "retries": 1
+}

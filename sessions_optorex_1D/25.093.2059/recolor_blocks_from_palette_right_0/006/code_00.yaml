@@ -1,0 +1,71 @@
+objects:
+  - name: input_sequence
+    type: list_of_integers
+    properties:
+      - structure: ordered sequence
+      - elements: integers including 0 and 5
+  - name: output_sequence
+    type: list_of_integers
+    properties:
+      - structure: ordered sequence, same length as input
+      - derivation: transformed version of input_sequence
+  - name: marker_value
+    type: integer
+    value: 5
+    properties:
+      - role: indicates positions to be replaced
+      - occurrence: can appear in consecutive sequences (e.g., [5], [5, 5], [5, 5, 5])
+  - name: zero_value
+    type: integer
+    value: 0
+    properties:
+      - role: separator or padding
+      - transformation: preserved at its original position
+  - name: replacement_pool
+    type: list_of_integers
+    properties:
+      - source: extracted from input_sequence
+      - extraction_rule: all non-zero, non-5 integers from input, maintaining original relative order
+      - role: provides values used to replace sequences of marker_value (5)
+  - name: five_sequence
+    type: concept
+    properties:
+      - description: a contiguous block of one or more '5's in the input_sequence
+      - identification: ordered sequentially from left to right in the input_sequence
+      - attributes: start_index, length
+
+relationships:
+  - type: preservation
+    from: input_sequence
+    to: output_sequence
+    rule: elements that are 0 or are members of the replacement_pool retain their value and position in the output_sequence, unless they are part of a five_sequence. (Correction: The pool members *do not* necessarily retain their position if they are replaced by the logic, only 0s and non-pool, non-5 numbers do. Rephrasing: Elements that are 0 retain their value and position. Non-zero, non-5 elements *also* retain their value and position).
+  - type: replacement
+    target: five_sequence
+    rule: the k-th identified five_sequence in the input_sequence is replaced by the k-th value from the replacement_pool.
+    details:
+      - The replacement value is repeated to match the length of the five_sequence being replaced.
+      - This replacement happens only if a corresponding k-th value exists in the replacement_pool.
+      - If there are more five_sequences than values in the replacement_pool, the excess five_sequences remain unchanged (i.e., keep their '5' values).
+
+actions:
+  - name: initialize_output
+    input: input_sequence
+    output: output_sequence (initially a copy of input_sequence)
+  - name: build_replacement_pool
+    input: input_sequence
+    output: ordered list of non-zero, non-5 integers (replacement_pool)
+  - name: identify_five_sequences
+    input: input_sequence
+    output: ordered list of five_sequence details (start_index, length)
+  - name: apply_replacements
+    inputs:
+      - output_sequence (initialized)
+      - replacement_pool
+      - five_sequences list
+    output: modified output_sequence
+    process:
+      - Iterate from k = 0 up to min(len(five_sequences), len(replacement_pool)) - 1.
+      - For each k:
+        - Get the k-th five_sequence details (start, length).
+        - Get the k-th replacement value from the replacement_pool.
+        - Update the output_sequence by setting the slice output_sequence[start : start + length] to the replacement value.

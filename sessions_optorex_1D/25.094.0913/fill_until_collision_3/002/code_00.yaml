@@ -1,0 +1,64 @@
+elements:
+  - type: grid
+    properties:
+      - content: list of lists of integers
+      - rows: 1 (in all observed examples)
+      - columns: variable
+      - role: input or output
+  - type: row
+    properties:
+      - content: list of integers
+      - source: extracted from the first row of the grid
+  - type: number
+    properties:
+      - value: integer (0-9)
+      - position: column index within the row
+      - category: zero or non-zero
+      - role: first element (determines rule)
+      - role: non-zero neighbor (left or right)
+relations:
+  - type: positional
+    properties:
+      - relationship: first element (of the row)
+      - relationship: non-zero elements (and their indices within the row)
+      - relationship: sequence of zeros between consecutive non-zeros
+      - relationship: leading zeros (before first non-zero)
+      - relationship: trailing zeros (after last non-zero)
+actions:
+  - name: extract_row
+    inputs: input grid
+    outputs: first row (list of integers)
+  - name: determine_rule
+    inputs: first element value of the row
+    outputs: fill direction (forward or backward)
+    condition: value == 5 results in backward fill, otherwise forward fill
+  - name: find_non_zero_indices
+    inputs: row
+    outputs: list of indices of non-zero elements
+  - name: fill_zeros_between_non_zeros
+    inputs: row_copy, non_zero_indices, fill_direction, original_row_values
+    outputs: modified row_copy
+    steps:
+      - iterate through consecutive pairs of indices in non_zero_indices (idx_left, idx_right)
+      - identify the segment of the row_copy between idx_left + 1 and idx_right - 1
+      - if fill_direction is forward: get fill_value from original_row_values[idx_left]
+      - if fill_direction is backward: get fill_value from original_row_values[idx_right]
+      - replace elements in the identified segment of row_copy with fill_value
+  - name: wrap_row_in_grid
+    inputs: modified row
+    outputs: output grid (list containing the modified row)
+transformation_rule:
+  - description: Processes a grid containing a single row of integers. Zeros located between non-zero numbers are filled based on a rule determined by the row's first element.
+  - steps:
+    - 1. Extract the first row from the input grid.
+    - 2. Check the value of the first element in the extracted row.
+    - 3. Find the indices of all non-zero elements in the row.
+    - 4. If there are fewer than two non-zero elements, skip filling.
+    - 5. Create a copy of the row.
+    - 6. Iterate through consecutive pairs of non-zero indices (idx_left, idx_right).
+    - 7. For the segment between `idx_left + 1` and `idx_right - 1`:
+        - If the first element of the original row was 5 (Backward Fill): Fill the segment in the row copy with the value of the element at `idx_right` in the original row.
+        - Otherwise (Forward Fill): Fill the segment in the row copy with the value of the element at `idx_left` in the original row.
+    - 8. Wrap the modified row copy into a single-row grid.
+    - 9. Return the resulting grid.
+  - unchanged: Zeros before the first non-zero element and zeros after the last non-zero element in the row remain zero.

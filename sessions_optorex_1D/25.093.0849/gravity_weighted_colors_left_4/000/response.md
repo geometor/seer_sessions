@@ -1,0 +1,34 @@
+*   **Perception:** The input is a string consisting of digits (0, 1, 2) separated by spaces. The output is also a string of space-separated digits. Observing the examples, the output string appears to contain the same digits as the input string, but rearranged. Specifically, the digits in the output string are always sorted in non-decreasing order (all 0s, then all 1s, then all 2s). The number of occurrences of each digit (0, 1, 2) seems to be preserved between the input and the output.
+
+*   **Facts:**
+    
+```yaml
+    task_type: transformation
+    input_format: string
+      components:
+        - type: sequence
+          element_type: digit
+          valid_digits: [0, 1, 2]
+          separator: space
+          length: fixed (12 in examples)
+    output_format: string
+      components:
+        - type: sequence
+          element_type: digit
+          valid_digits: [0, 1, 2]
+          separator: space
+          length: same as input
+    transformation: rearrangement
+      property: sorting
+      order: non-decreasing (ascending)
+      preserves_elements: true
+      preserves_counts: true
+    ```
+
+
+*   **Natural Language Program:**
+    1.  Read the input string containing space-separated digits.
+    2.  Split the input string by spaces to get a list of digit characters.
+    3.  Sort the list of digit characters numerically in non-decreasing (ascending) order.
+    4.  Join the sorted list of digit characters back into a single string, using a space as the separator between digits.
+    5.  Output the resulting string.

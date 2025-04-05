@@ -1,0 +1,58 @@
+task_description: "Shift a single contiguous block of non-zero, non-2 digits within a 1D sequence to be immediately adjacent to the unique digit '2', preserving the block's internal order and the '2's position. If the block is already adjacent, or if no such block exists, the sequence remains unchanged."
+elements:
+  - object: Sequence
+    description: "A 1D list/array of single-digit integers."
+    properties:
+      - length: Integer, the number of digits.
+      - digits: List of integers [0-9].
+  - object: Separator
+    description: "The unique digit '2' which serves as a fixed anchor point."
+    properties:
+      - value: 2
+      - index: Integer, the position of '2' in the sequence (remains constant). Assumption: '2' appears at most once.
+  - object: NumberBlock
+    description: "A contiguous sub-sequence of digits that are not '0' and not '2'. Assumption: At most one such block exists per sequence."
+    properties:
+      - digits: List of non-zero, non-2 integers.
+      - start_index: Integer, the starting position in the input sequence.
+      - end_index: Integer, the ending position in the input sequence.
+      - length: Integer, the number of digits in the block.
+      - relative_position: String, ('left' or 'right') indicating the block's position relative to the Separator in the input.
+      - is_adjacent: Boolean, true if the block is immediately next to the Separator in the input (end_index == separator_index - 1 or start_index == separator_index + 1).
+  - object: Zero
+    description: "The digit '0' representing empty space."
+    properties:
+      - value: 0
+actions:
+  - action: FindSeparator
+    description: "Locate the index of the digit '2' in the input sequence."
+    inputs: [InputSequence]
+    outputs: [separator_index (or null/indicator if not found)]
+  - action: FindNumberBlock
+    description: "Identify the single contiguous block of non-zero, non-2 digits, its properties (digits, start/end indices, length), and determine if it's adjacent to the separator and its relative position (left/right)."
+    inputs: [InputSequence, separator_index]
+    outputs: [NumberBlock object (containing properties like digits, start, end, length, is_adjacent, relative_position) or null if no valid block exists]
+  - action: CheckConditions
+    description: "Determine if a shift is needed. A shift is performed only if a NumberBlock exists AND its 'is_adjacent' property is false."
+    inputs: [NumberBlock object (or null)]
+    outputs: [Boolean (shift_required)]
+  - action: ShiftBlockAndConstructOutput
+    description: >
+      If shift_required is true:
+      Calculate the target start/end indices for the NumberBlock in the output sequence, placing it adjacent to the Separator based on its original relative_position.
+      Create the output sequence by placing the Separator at its original index, the NumberBlock at its target indices, and filling remaining positions with '0'.
+      If shift_required is false:
+      The output sequence is identical to the input sequence.
+    inputs: [InputSequence, separator_index, NumberBlock object, shift_required]
+    outputs: [OutputSequence]
+relationships:
+  - type: Adjacency (Output)
+    description: "If a shift occurs, the NumberBlock in the output sequence is positioned immediately next to the Separator."
+    condition_left_shift: "If NumberBlock relative_position was 'left', its target_end_index in output is separator_index - 1."
+    condition_right_shift: "If NumberBlock relative_position was 'right', its target_start_index in output is separator_index + 1."
+  - type: Preservation
+    description: "The Separator ('2') maintains its original index. The relative order of digits within the NumberBlock is preserved during a shift. The sequence length is preserved."
+  - type: Replacement
+    description: "Positions not occupied by the Separator or the (potentially shifted) NumberBlock in the output sequence are filled with Zero ('0')."
+  - type: Invariance
+    description: "If no NumberBlock is found, or if the found NumberBlock is already adjacent to the Separator in the input, the output sequence is identical to the input sequence."

@@ -1,0 +1,60 @@
+task_description: Shift a defined segment within a NumPy array of integers to the left.
+input_type: numpy_array_of_integers
+output_type: numpy_array_of_integers
+constants:
+  - shift_amount: 4
+  - shift_direction: left
+constraints:
+  - input_shape == output_shape # Using shape for NumPy arrays
+  - array_length: 12 # Observed in examples
+objects:
+  - name: input_array
+    type: numpy.ndarray
+    dtype: int
+    properties:
+      - dimensionality: 1
+  - name: output_array
+    type: numpy.ndarray
+    dtype: int
+    properties:
+      - shape: same_as_input
+      - content: derived_from_input
+      - initialization: all_zeros
+  - name: active_segment
+    description: The contiguous sub-array from the first non-zero element to the last non-zero element in the input_array.
+    properties:
+      - source: input_array
+      - start_index_in_input: index of the first non-zero element (found via np.nonzero)
+      - end_index_in_input: index of the last non-zero element (found via np.nonzero)
+      - values: preserve relative order and values from input segment (extracted via slicing)
+  - name: padding
+    description: Zero elements used to fill the array outside the active_segment.
+    properties:
+      - value: 0
+actions:
+  - name: identify_segment_indices
+    input: input_array
+    output: first_nz_idx, last_nz_idx
+    method: Use `np.nonzero()` to get indices of non-zero elements. If any exist, take the first and last index from the result.
+    edge_case: If no non-zero elements, indices are None.
+  - name: extract_segment
+    input: input_array, first_nz_idx, last_nz_idx
+    output: segment_array
+    method: Slice the input_array from first_nz_idx to last_nz_idx (inclusive). `input_array[first_nz_idx : last_nz_idx + 1]`
+    condition: Only if first_nz_idx is not None.
+  - name: calculate_output_position
+    input: first_nz_idx, shift_amount
+    output: target_start_idx
+    formula: target_start_idx = first_nz_idx - shift_amount
+    condition: Only if first_nz_idx is not None.
+  - name: generate_output
+    input: array_shape, segment_array, target_start_idx
+    output: output_array
+    steps:
+      - Create a NumPy array of zeros with the target array_shape (`np.zeros(shape)`).
+      - If segment_array is not empty and target_start_idx is non-negative:
+        - Calculate the target end index: `target_end_idx = target_start_idx + len(segment_array)`.
+        - Assign the segment_array to the output_array slice: `output_array[target_start_idx:target_end_idx] = segment_array`. (Handle potential boundary conditions if necessary, though examples fit within bounds).
+      - Return the output_array.
+relationships:
+  - The output_array is constructed by placing the active_segment (extracted from the input_array) at a new position, shifted left by the shift_amount, within an array of zeros having the same shape as the input.

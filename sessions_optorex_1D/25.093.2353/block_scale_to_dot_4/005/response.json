@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom typing import Optional, Tuple\n\n\"\"\"\nTransforms a 1D NumPy array of single-digit integers. The transformation hinges on \nthe location of the integer 2. If 2 is present, the algorithm scans left and right \nfrom the position of 2 for the *first* non-zero integer encountered. All zero elements \nsituated strictly *between* the 2 and the found non-zero element are replaced with \nthe value of that non-zero element, but only if the non-zero element is not \nimmediately adjacent to the 2. If 2 is not present, or if no non-zero element \nexists to the left/right, or if the nearest non-zero element is immediately \nadjacent to 2, no filling occurs on that side.\n\"\"\"\n\ndef _find_first_occurrence_np(data: np.ndarray, value: int) -> Optional[int]:\n    \"\"\"Finds the index of the first occurrence of a value in a NumPy array.\"\"\"\n    indices = np.where(data == value)[0]\n    if indices.size > 0:\n        return indices[0]\n    else:\n        return None\n\ndef _scan_and_find_non_zero_np(data: np.ndarray, start_index: int, end_index: int, step: int) -> Optional[Tuple[int, int]]:\n    \"\"\"\n    Scans a portion of the NumPy array for the first non-zero element.\n\n    Args:\n        data: The NumPy array to scan.\n        start_index: The starting index for the scan (inclusive).\n        end_index: The ending index for the scan (exclusive for step=1, inclusive for step=-1). \n                   Note: range needs careful handling for numpy.\n        step: The step direction (-1 for left, 1 for right).\n\n    Returns:\n        A tuple (value, index) of the first non-zero element found, or None.\n    \"\"\"\n    if step == 1:\n        # Scan right: start_index to end_index (exclusive)\n        indices = np.arange(start_index, end_index)\n    elif step == -1:\n        # Scan left: start_index down to end_index (inclusive)\n        # We want to check indices from start_index down to 0 if end_index is -1\n        actual_end = end_index # should be -1 for full left scan\n        indices = np.arange(start_index, actual_end, step) \n    else:\n        return None # Should not happen\n\n    for i in indices:\n        # Check bounds explicitly for safety, although range should handle it\n        if 0 <= i < len(data): \n            if data[i] != 0:\n                return data[i], i\n    return None\n\n\ndef transform(input_grid: np.ndarray) -> np.ndarray:\n    \"\"\"\n    Applies the fill transformation based on the position of '2'.\n\n    Args:\n        input_grid: A 1D NumPy array representing the input sequence.\n\n    Returns:\n        A 1D NumPy array representing the transformed sequence.\n    \"\"\"\n    # Initialize output_grid as a copy of input_grid\n    output_grid = np.copy(input_grid)\n    n = len(output_grid)\n\n    # 1. Find the index of the number 2\n    index_of_2 = _find_first_occurrence_np(input_grid, 2)\n\n    # 2. If 2 is not present, return the original sequence unchanged\n    if index_of_2 is None:\n        return output_grid\n\n    # 3. Left Fill Scan & Fill\n    # Scan leftwards from the index immediately preceding 2 down to index 0\n    left_scan_result = _scan_and_find_non_zero_np(input_grid, index_of_2 - 1, -1, -1)\n    if left_scan_result is not None:\n        left_fill_value, left_fill_index = left_scan_result\n        # Check if the found non-zero is not adjacent to 2\n        if left_fill_index < index_of_2 - 1:\n            # Replace elements from non-zero index + 1 up to (but not including) 2's index\n            # Only replace if the element is currently 0 (redundant check if logic correct, but safe)\n            fill_slice = output_grid[left_fill_index + 1 : index_of_2]\n            fill_slice[fill_slice == 0] = left_fill_value # Apply fill only to zeros in the slice\n\n\n    # 4. Right Fill Scan & Fill\n    # Scan rightwards from the index immediately following 2 up to the end\n    right_scan_result = _scan_and_find_non_zero_np(input_grid, index_of_2 + 1, n, 1)\n    if right_scan_result is not None:\n        right_fill_value, right_fill_index = right_scan_result\n        # Check if the found non-zero is not adjacent to 2\n        if right_fill_index > index_of_2 + 1:\n            # Replace elements from 2's index + 1 up to (but not including) non-zero index\n            # Only replace if the element is currently 0\n            fill_slice = output_grid[index_of_2 + 1 : right_fill_index]\n            fill_slice[fill_slice == 0] = right_fill_value # Apply fill only to zeros in the slice\n\n\n    # 5. Return the modified output grid\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 6907,
+    "candidates_token_count": 1735,
+    "total_token_count": 8642,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 15.706262,
+  "retries": 1
+}

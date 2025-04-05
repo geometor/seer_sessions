@@ -1,0 +1,68 @@
+task_description: >
+  Transforms a sequence of 12 integers by replacing the first two contiguous 
+  blocks of the target value '5' found within the first 10 elements. 
+  The replacement values are taken from the last two elements of the sequence.
+input_elements:
+  - name: input_sequence
+    type: list of integers
+    length: 12
+    description: The source sequence containing numbers, potentially including the target value and the replacement values.
+output_elements:
+  - name: output_sequence
+    type: list of integers
+    length: 12
+    description: >
+      The transformed sequence. It is a copy of the input_sequence, modified 
+      by replacing elements within identified target blocks.
+constants:
+  - name: target_value
+    value: 5
+    description: The integer value whose contiguous blocks are sought for replacement.
+  - name: sequence_length
+    value: 12
+    description: The required length of the input and output sequences.
+  - name: modification_range_length
+    value: 10
+    description: >
+      The number of elements from the start of the sequence (indices 0-9) 
+      within which blocks are identified and replaced.
+  - name: replacement_value_1_index
+    value: 10
+    description: The index in the input_sequence holding the value used for the first block replacement.
+  - name: replacement_value_2_index
+    value: 11
+    description: The index in the input_sequence holding the value used for the second block replacement.
+derived_values:
+  - name: replacement_value_1
+    source: input_sequence[replacement_value_1_index]
+    description: The actual value used to replace elements in the first identified block.
+  - name: replacement_value_2
+    source: input_sequence[replacement_value_2_index]
+    description: The actual value used to replace elements in the second identified block.
+actions:
+  - name: find_contiguous_target_blocks
+    input: 
+      - sequence (first modification_range_length elements)
+      - target_value
+    output: 
+      - list_of_blocks: A list containing tuples `(start_index, end_index_exclusive)` for each found block, ordered by start_index.
+    description: >
+      Scans the initial part of the sequence (up to modification_range_length) 
+      and identifies the start and end indices of all contiguous runs of the target_value.
+  - name: replace_elements_in_block
+    input:
+      - sequence (mutable copy)
+      - block_indices (start_index, end_index_exclusive)
+      - replacement_value
+    output: 
+      - modified_sequence
+    description: >
+      Iterates from the block's start_index up to (but not including) the 
+      end_index_exclusive and sets each element in the sequence to the replacement_value.
+relationships:
+  - The transformation operates on a copy of the input sequence.
+  - Replacements only occur within the first `modification_range_length` elements.
+  - Elements at indices `replacement_value_1_index` and `replacement_value_2_index` are used *as* replacement values but are *not* modified themselves in the output sequence.
+  - If zero blocks are found, the output sequence is identical to the input sequence.
+  - If one block is found, only `replacement_value_1` is used for replacement.
+  - If two or more blocks are found, the first block (by start index) is replaced using `replacement_value_1`, and the second block (by start index) is replaced using `replacement_value_2`. Subsequent blocks (third, fourth, etc.) are not modified.

@@ -1,0 +1,46 @@
+task_type: sequence transformation
+input_elements: integers (0, 1)
+output_elements: integers (0, 1, 3)
+data_structure: list/sequence
+transformation: conditional element replacement based on local pattern matching
+objects:
+  - name: input_sequence
+    type: list of integers
+  - name: output_sequence
+    type: list of integers
+  - name: element
+    type: integer
+    properties:
+      - value: (0, 1) in input, (0, 1, 3) in output
+      - index: position in the sequence
+relationships:
+  - type: adjacency
+    description: Elements have preceding and succeeding neighbors.
+  - type: pattern_match
+    description: Specific sub-sequences centered around a '0' element trigger transformations.
+    patterns:
+      - name: preceding_exact_two_ones
+        # Matches [X, 1, 1, 0] where X is not 1 or start of sequence
+        value: sequence slice [i-3:i+1] if i>=3, or [0:i+1] if i==2
+        condition: input[i]==0 and input[i-2]==1 and input[i-1]==1 and (i==2 or input[i-3]!=1)
+        target_index: i
+      - name: succeeding_exact_two_ones
+        # Matches [0, 1, 1, X] where X is not 1 or end of sequence
+        value: sequence slice [i:i+4] if i<=n-4, or [i:n] if i==n-3
+        condition: input[i]==0 and input[i+1]==1 and input[i+2]==1 and (i==n-3 or input[i+3]!=1)
+        target_index: i
+actions:
+  - name: replace_zero_with_three
+    target: element in input_sequence at index `i`
+    condition: |
+      The element's value input[i] is 0 AND
+      ( EITHER the 'preceding_exact_two_ones' pattern condition is met for index `i`
+        OR   the 'succeeding_exact_two_ones' pattern condition is met for index `i`
+      )
+    result: The element at index `i` in the output_sequence is set to 3.
+  - name: copy_value
+    target: element in input_sequence at index `i`
+    condition: The conditions for 'replace_zero_with_three' are not met.
+    result: The element at index `i` in the output_sequence retains the value from input[i].
+invariants:
+  - sequence length remains constant between input and output.

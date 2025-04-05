@@ -1,0 +1,57 @@
+task_description: Shift a defined segment within a sequence of integers 4 positions to the left.
+input_type: list_of_integers
+output_type: list_of_integers
+constants:
+  - shift_amount: 4
+  - shift_direction: left
+  - padding_value: 0
+constraints:
+  - input_length == output_length
+  - sequence_length: 12 # Observed in examples, assumed fixed
+objects:
+  - name: input_list
+    type: list_of_integers
+  - name: output_list
+    type: list_of_integers
+    properties:
+      - length: same_as_input_list
+      - content: derived_from_input_list
+  - name: active_segment
+    description: The contiguous sub-list from the first non-zero element to the last non-zero element in the input_list.
+    properties:
+      - source: input_list
+      - start_index_in_input: index of the first non-zero element (if any)
+      - end_index_in_input: index of the last non-zero element (if any)
+      - values: preserve relative order and values from input segment
+  - name: padding
+    description: Integer elements used to fill the sequence outside the active_segment.
+    properties:
+      - value: 0
+actions:
+  - name: find_segment_indices
+    input: input_list
+    output: first_nz_idx, last_nz_idx
+    description: Finds the indices of the first and last non-zero elements. Returns (None, None) if no non-zero elements exist.
+    steps:
+      - Iterate through the input_list with index.
+      - Record the index of the first non-zero element encountered.
+      - Continuously update the index of the last non-zero element encountered.
+      - Return the recorded first and last indices (or None if none found).
+  - name: calculate_output_start_position
+    input: first_nz_idx, shift_amount
+    output: target_start_idx
+    formula: target_start_idx = first_nz_idx - shift_amount
+    constraints:
+      - Assumes target_start_idx will be >= 0 based on examples.
+  - name: construct_output_list
+    input: sequence_length, padding_value, active_segment_values, target_start_idx
+    output: output_list
+    steps:
+      - Create a list of size sequence_length filled with padding_value (0).
+      - If an active_segment exists:
+        - Determine the segment length.
+        - Calculate the target end index (exclusive) for placing the segment: target_end_idx = target_start_idx + segment_length.
+        - Place the active_segment_values into the list using slicing assignment: `output_list[target_start_idx : target_end_idx] = active_segment_values`. (Python list slicing handles boundaries appropriately).
+      - Return the constructed list.
+relationships:
+  - The output_list is constructed by creating a list of zeros with the same length as the input_list, identifying the active_segment in the input_list, calculating its new start position by shifting left by shift_amount, and inserting the active_segment into the zero list at the calculated position. If no non-zero elements exist in the input, the output is the list of zeros.

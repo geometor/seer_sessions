@@ -1,0 +1,63 @@
+objects:
+  - input_list:
+      type: list
+      contains: integers (0-9)
+  - output_list:
+      type: list
+      contains: integers (0-9)
+      derivation: modified version of input_list
+  - element:
+      type: integer
+      value_range: 0-9
+  - non_zero_element:
+      type: dict
+      properties:
+        - value: integer (1-9)
+        - index: integer (position in list)
+  - non_zero_sequence:
+      type: list
+      contains: non_zero_element
+      ordering: by index (ascending)
+      derivation: extracted from input_list
+  - leading_zeros:
+      type: sublist
+      location: start of input_list (indices 0 to first_non_zero.index - 1)
+      condition: exists only if first_non_zero.index > 0
+  - trailing_zeros:
+      type: sublist
+      location: end of input_list (indices last_non_zero.index + 1 to end)
+      condition: exists only if last_non_zero.index < len(input_list) - 1
+
+actions:
+  - find_non_zeros:
+      input: input_list
+      output: non_zero_sequence
+  - check_left_fill_condition:
+      input: non_zero_sequence
+      output: boolean
+      logic: >
+        True if len(non_zero_sequence) == 1 OR
+        (len(non_zero_sequence) > 1 AND
+         non_zero_sequence[0].value != non_zero_sequence[1].value)
+  - check_right_fill_condition:
+      input: non_zero_sequence
+      output: boolean
+      logic: >
+        True if len(non_zero_sequence) == 1 OR
+        (len(non_zero_sequence) > 1 AND
+         non_zero_sequence[-1].value != non_zero_sequence[-2].value)
+  - fill_leading_zeros:
+      target: output_list
+      condition: check_left_fill_condition is True AND leading_zeros exist
+      range: indices from 0 up to (but not including) non_zero_sequence[0].index
+      value: non_zero_sequence[0].value
+  - fill_trailing_zeros:
+      target: output_list
+      condition: check_right_fill_condition is True AND trailing_zeros exist
+      range: indices from non_zero_sequence[-1].index + 1 to end of list
+      value: non_zero_sequence[-1].value
+
+relationships:
+  - fill_dependency: Filling leading/trailing zeros depends on the comparison of values between adjacent non-zero elements in the sequence (first vs second, last vs second-last).
+  - edge_case_single_nonzero: If only one non-zero element exists, both fill conditions are met (if corresponding zeros exist).
+  - existence_dependency: Filling only occurs if there are actual zero elements in the leading or trailing sections.

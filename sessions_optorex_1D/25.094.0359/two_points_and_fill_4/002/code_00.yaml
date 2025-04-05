@@ -1,0 +1,67 @@
+Data:
+  - type: nested sequence
+    format: list containing one list of integers, OR 2D numpy array (1xN)
+    content: input and output grids (representing single rows)
+
+Objects:
+  - name: grid_element
+    properties:
+      - value: integer (0 or non-zero)
+      - position: column index (integer) # Row index is effectively 0
+  - name: input_grid
+    properties:
+      - inner_sequence: list or 1D array of grid_element (representing the single row)
+      - dimensions: 1xN (rows x columns)
+  - name: output_grid
+    properties:
+      - inner_sequence: list or 1D array of grid_element (representing the single row)
+      - dimensions: 1xN (same as input)
+
+Derived_Properties:
+  - name: first_nonzero_element
+    on: input_grid.inner_sequence # Operating on the inner sequence
+    properties:
+      - index: integer (column position of the first element with value != 0)
+      - value: integer
+  - name: last_nonzero_element
+    on: input_grid.inner_sequence # Operating on the inner sequence
+    properties:
+      - index: integer (column position of the last element with value != 0)
+      - value: integer
+  - name: active_range
+    type: range of column indices
+    definition: from first_nonzero_element.index to last_nonzero_element.index (inclusive)
+
+Actions:
+  - name: extract_inner_sequence # Renamed for clarity
+    inputs: input_grid
+    outputs: inner_sequence (list or 1D array)
+    process: Access the first (and only) row/list from the input grid structure.
+  - name: identify_boundaries
+    inputs: inner_sequence
+    outputs: first_nonzero_element.index, last_nonzero_element.index
+  - name: propagate_fill
+    inputs:
+      - inner_sequence
+      - first_nonzero_element.index
+      - last_nonzero_element.index
+    process:
+      - Initialize output_sequence as a copy of inner_sequence.
+      - Initialize current_fill_value with the value of inner_sequence[first_nonzero_element.index].
+      - Iterate through column indices from first_nonzero_element.index to last_nonzero_element.index.
+      - At each index `i`:
+        - If inner_sequence[i] is non-zero, update current_fill_value = inner_sequence[i].
+        - If output_sequence[i] is 0, set output_sequence[i] = current_fill_value.
+    outputs: modified output_sequence
+  - name: reconstruct_grid
+    inputs:
+        - modified_output_sequence
+        - original_input_grid_structure (to determine output format: list of lists or numpy array)
+    outputs: output_grid
+    process: Place the modified output_sequence back into the same structure as the input_grid (e.g., `[modified_output_sequence]` or `np.array([modified_output_sequence])`).
+
+Relationships:
+  - The transformation applies only to the elements within the single row/list of the grid.
+  - Zeros within the active_range (columns) of the inner sequence are candidates for replacement.
+  - Zeros outside the active_range remain unchanged.
+  - The replacement value for a zero depends on the value of the most recent non-zero element encountered to its left (including itself) within the active_range of the inner sequence.

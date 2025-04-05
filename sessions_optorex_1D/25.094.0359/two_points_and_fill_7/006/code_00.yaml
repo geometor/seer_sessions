@@ -1,0 +1,58 @@
+objects:
+  - name: input_list
+    type: list
+    contains: integers (0-9)
+    assumptions:
+      - Flat (one-dimensional) list of standard Python integers.
+  - name: output_list
+    type: list
+    contains: integers (0-9)
+    derivation: Either a copy of input_list or a modified copy.
+  - name: non_zero_digit
+    type: integer
+    properties:
+      - value > 0
+      - count_in_list: The number of times it appears in input_list.
+      - indices_in_list: A list of indices where it appears.
+      - first_occurrence_index: The smallest index in indices_in_list.
+  - name: target_digit_candidate
+    type: non_zero_digit
+    condition: count_in_list == 2
+  - name: selected_target_digit
+    type: target_digit_candidate
+    selection_criteria: The candidate with the minimum first_occurrence_index among all candidates. Is None if no candidates exist.
+
+relationships:
+  - type: spatial
+    description: Elements located strictly between the two indices of the selected_target_digit.
+  - type: conditional
+    description: The transformation action depends on the existence of a selected_target_digit.
+
+actions:
+  - name: analyze_input
+    input: input_list
+    output: map of each non_zero_digit to its indices_in_list and first_occurrence_index.
+  - name: find_target_candidates
+    input: result of analyze_input
+    output: list of non_zero_digits where count_in_list == 2.
+  - name: select_target_digit
+    input: list of target_digit_candidates, map of first_occurrence_indices
+    output: the selected_target_digit (or None) and its indices.
+    logic: Choose the candidate with the minimum first_occurrence_index.
+  - name: fill_gap
+    input: input_list, selected_target_digit, indices_of_target
+    output: modified_list
+    condition: selected_target_digit is not None.
+    logic: Create a copy of input_list. Iterate from index `idx1 + 1` to `idx2` (exclusive), setting element value to selected_target_digit.
+  - name: return_output
+    input: result of fill_gap or original input_list
+    output: final output_list
+    logic: Return the modified list if fill_gap occurred, otherwise return a copy of the original input_list.
+
+error_observed:
+  - type: ValueError
+  - message: "The truth value of an array with more than one element is ambiguous. Use a.any() or a.all()"
+  - likely_cause: Input data being passed as a NumPy array (or similar) instead of a standard Python list, causing issues in boolean comparisons (e.g., `if value != 0:`).
+
+goal:
+  - Transform input_list to output_list according to the specified conditional gap-filling rule, ensuring robustness against potential input type variations if possible.

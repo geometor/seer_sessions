@@ -1,0 +1,35 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "Okay, let's break down this task.\n\n## Perception of Elements\n\n1.  **Input/Output:** Both are 2D grids of integers, representing colored pixels. 0 typically represents the background color.\n2.  **Core Transformation:** The primary change involves filling specific areas within the grid. These areas are initially color 0 (background).\n3.  **Shapes:** The non-zero colors form distinct shapes or boundaries in the grid.\n4.  **Enclosed Areas:** The transformation targets areas of color 0 that are completely surrounded or enclosed by a single, uniform non-zero color. These enclosed areas do not touch the boundary of the grid.\n5.  **Filling:** Enclosed areas identified in step 4 are filled with a new color in the output grid.\n6.  **Fill Colors:** The colors used for filling seem to be consistently 3 and 7 across the examples.\n7.  **Fill Color Determination:** The specific fill color (3 or 7) used for an enclosed area depends on the color of the shape enclosing it *and* the overall set of non-zero colors present in the entire input grid. The rule seems to change based on how many distinct non-zero colors are present.\n    *   If only two non-zero colors exist (e.g., {2, 4} in `train_1`), the lower color (2) encloses areas filled with 3, and the higher color (4) encloses areas filled with 7.\n    *   If three non-zero colors exist (e.g., {2, 4, 7} in `train_2`), the lowest color (2) encloses areas filled with 7, the middle color (4) encloses areas filled with 3, and the highest color (7) also encloses areas filled with 3.\n8.  **Integrity:** The original shapes (non-zero colors) and the background cells not part of an enclosed area remain unchanged in the output.\n\n## YAML Facts\n\n"
+          },
+          {
+            "text": "```yaml\nelements:\n  - object: grid\n    properties:\n      - type: 2D array of integers\n      - role: represents a colored canvas\n  - object: cell\n    properties:\n      - value: integer color (0 = background, non-zero = shape color)\n      - position: (row, column)\n  - object: shape\n    properties:\n      - composition: connected cells of the same non-zero color\n      - color: the specific non-zero integer value\n  - object: background_region\n    properties:\n      - composition: connected cells of color 0\n  - object: enclosed_region\n    properties:\n      - type: background_region\n      - condition_1: does not touch the grid boundary\n      - condition_2: all adjacent non-zero cells belong to a single shape (have the same 'boundary_color')\n  - object: fill_color\n    properties:\n      - possible_values: [3, 7]\n      - determination_rule: dependent on boundary_color and the set of all non-zero colors in the input grid\n\nproperties_ Mappings:\n  - name: input_color_set\n    description: The set of unique non-zero colors present in the input grid.\n  - name: fill_assignment_rule\n    description: A rule mapping a boundary_color to a fill_color (3 or 7).\n    details:\n      - case: if input_color_set has 2 colors {c1, c2} (c1<c2), map c1->3, c2->7.\n      - case: if input_color_set has 3 colors {c1, c2, c3} (c1<c2<c3), map c1->7, c2->3, c3->3.\n\nactions:\n  - identify_unique_colors: Scan the input grid to find the set of unique non-zero colors.\n  - establish_fill_map: Based on the identified unique colors, determine the specific fill color (3 or 7) for each potential boundary color according to the fill_assignment_rule.\n  - detect_enclosed_regions:\n      - Iterate through background (0) cells.\n      - For each unvisited background cell, perform a search (like BFS/DFS) to find connected background cells.\n      - During the search, track if the region touches the grid boundary and collect the colors of all adjacent non-zero cells.\n      - If the region does not touch the boundary and all adjacent non-zero cells have the *same* color (the boundary_color), identify it as an enclosed_region.\n  - apply_fill: For each detected enclosed_region, find its boundary_color, look up the corresponding fill_color from the established fill_map, and update the cells of the region in the output grid with this fill_color.\n  - preserve_others: Copy all cells from the input to the output that are not part of a filled enclosed_region.\n\nrelationships:\n  - adjacency: Cells sharing an edge (not just a corner) are adjacent.\n  - connectivity: Cells of the same color form connected components/regions/shapes through adjacency.\n  - enclosure: A shape encloses a background_region if the region is finite and all adjacent cells outside the region belong to that single shape.\n  - dependency: The fill_color choice depends on both the local boundary_color and the global input_color_set.\n```"
+          },
+          {
+            "text": "\n\n## Natural Language Program\n\n1.  **Prepare Output:** Create a new grid by copying the input grid.\n2.  **Analyze Input Colors:** Find all unique non-zero integer colors present in the input grid. Store them in a sorted list, `unique_colors`.\n3.  **Define Fill Mapping:** Create a mapping (dictionary) called `color_to_fill`.\n    *   If `unique_colors` contains two colors, `c1` and `c2` (where `c1 < c2`): set `color_to_fill[c1] = 3` and `color_to_fill[c2] = 7`.\n    *   If `unique_colors` contains three colors, `c1`, `c2`, and `c3` (where `c1 < c2 < c3`): set `color_to_fill[c1] = 7`, `color_to_fill[c2] = 3`, and `color_to_fill[c3] = 3`.\n4.  **Identify and Fill Enclosed Regions:**\n    a.  Keep track of visited background cells to avoid redundant checks (e.g., using a boolean grid `visited_zeros`).\n    b.  Iterate through every cell `(r, c)` in the grid.\n    c.  If `input[r][c]` is 0 and `visited_zeros[r][c]` is false:\n        i.   Start a search (like BFS) from `(r, c)` to find all connected background cells forming a potential region.\n        ii.  During the search, record all cells belonging to this region (`region_cells`), check if any cell touches the grid boundary (`touches_boundary`), and collect all unique non-zero colors adjacent to any cell in the region (`adjacent_colors`). Mark visited background cells in `visited_zeros`.\n        iii. After the search for this connected component is complete: If `touches_boundary` is false and `adjacent_colors` contains exactly one color `b`, then `region_cells` represents an enclosed region.\n        iv.  Retrieve the appropriate fill color `f = color_to_fill[b]`.\n        v.   For every cell `(rr, cc)` in `region_cells`, update the output grid: `output[rr][cc] = f`.\n5.  **Return Result:** Return the modified output grid."
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 1741,
+    "candidates_token_count": 8082,
+    "total_token_count": 9823,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 73.783682,
+  "retries": 1
+}

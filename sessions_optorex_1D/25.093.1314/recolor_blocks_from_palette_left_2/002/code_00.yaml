@@ -1,0 +1,64 @@
+objects:
+  - name: input_sequence
+    type: list or space-separated string
+    properties:
+      length: 12 (when parsed to integers)
+      elements: integer
+  - name: output_sequence
+    type: list
+    properties:
+      length: 12
+      elements: integer
+  - name: target_subsequence
+    type: list slice
+    source: input_sequence (parsed)
+    indices: 0-9
+  - name: control_values
+    type: list slice
+    source: input_sequence (parsed)
+    indices: 10-11
+    elements:
+      - name: val1
+        index: 10 (relative to parsed input_sequence)
+      - name: val2
+        index: 11 (relative to parsed input_sequence)
+  - name: target_value
+    type: integer
+    value: 5
+  - name: ignored_value # Value explicitly ignored during replacement
+    type: integer
+    value: 0
+  - name: groups_of_target
+    type: list of tuples
+    description: Stores (start_index, end_index) inclusive for contiguous sequences of target_value within target_subsequence.
+
+actions:
+  - name: parse_input
+    input: input_sequence (string or list)
+    output: list of 12 integers
+    description: Convert the input into a list of 12 integers if it's not already.
+  - name: identify_groups
+    input: target_subsequence, target_value
+    output: groups_of_target
+    description: Find all contiguous blocks of the target_value (5).
+  - name: generate_output_prefix
+    input: target_subsequence, groups_of_target, val1, val2
+    output: list (length 10)
+    description: >
+      Create a copy of the target_subsequence.
+      Modify the copy based on the number of groups found:
+      If one group exists: Replace all target_values within that group with val1 if val1 is not 0, otherwise replace with val2.
+      If two (or more) groups exist: Replace target_values in the first group with val1, and in the second group with val2. (Examples only show up to two groups being affected).
+      Leave elements not equal to target_value unchanged.
+  - name: construct_output
+    input: generated_output_prefix, val1, val2
+    output: output_sequence
+    description: Concatenate the generated_output_prefix with the original val1 and val2.
+
+relationships:
+  - The output_sequence is derived from the parsed input_sequence.
+  - The first 10 elements of the output depend on the first 10 elements of the input and the control_values (val1, val2).
+  - The replacement logic specifically targets occurrences of target_value (5).
+  - The application of val1 and val2 depends on the count and order of groups_of_target.
+  - Elements equal to ignored_value (0) in the target_subsequence are preserved.
+  - The last two elements of the output_sequence are identical to the control_values (val1, val2) from the input.

@@ -1,0 +1,66 @@
+task_description: Transform a sequence of digits by replacing blocks of a target digit with parameter digits found at the end of the sequence.
+input_type: string
+  description: A space-separated sequence of single-digit integers.
+output_type: string
+  description: A space-separated sequence of single-digit integers, representing the transformed sequence.
+elements:
+  - name: input_sequence
+    type: list[int]
+    description: The sequence of integers derived from the input string.
+  - name: output_sequence
+    type: list[int]
+    description: The sequence of integers representing the final output.
+  - name: k
+    type: integer
+    description: The number of parameter digits, determined dynamically. It equals the number of blocks of the target digit in the main sequence.
+  - name: parameter_digits
+    type: list[int]
+    description: The last 'k' digits of the input_sequence. Used sequentially as replacement values.
+  - name: main_sequence
+    type: list[int]
+    description: The initial part of the input_sequence, excluding the last 'k' parameter_digits. (input_sequence[:-k])
+  - name: target_digit
+    type: integer
+    description: The digit within the main_sequence designated for replacement.
+    determination:
+      - Identify all non-zero digits in the main_sequence.
+      - If no non-zero digits exist, there is no target_digit.
+      - Calculate the frequency of each non-zero digit.
+      - The target_digit is the non-zero digit with the highest frequency.
+      - In case of a tie in frequency, the smallest digit among the most frequent ones is chosen as the target_digit.
+  - name: target_digit_blocks
+    type: list[list[integer]] # conceptually; represents groups
+    description: Consecutive groups (>=1) of the target_digit within the main_sequence. Blocks are separated by any digit that is not the target_digit (including 0).
+    properties:
+      - count: integer (equals k)
+      - index: integer (1 to k)
+transformation_steps:
+  - action: determine_k
+    description: >
+      Iteratively test potential values for 'k' (number of parameter digits), starting from a reasonable maximum (e.g., half the sequence length, capped) down to 1.
+      For each potential 'k':
+      1. Split the input_sequence into potential main_sequence (input[:-k]) and potential parameter_digits (input[-k:]).
+      2. Identify the potential target_digit in the potential main_sequence.
+      3. Count the blocks of the potential target_digit in the potential main_sequence.
+      4. If the block count equals the potential 'k', then this 'k' is confirmed. Stop searching.
+    inputs: input_sequence
+    outputs: k, main_sequence, parameter_digits, target_digit
+  - action: replace_blocks
+    description: >
+      Iterate through the confirmed main_sequence. Maintain a block counter (0-indexed).
+      When the first digit of a target_digit_block is encountered, increment the block counter.
+      Replace every occurrence of the target_digit within its block with the parameter_digit corresponding to the current block counter (parameter_digits[block_counter]).
+      Digits that are not the target_digit remain unchanged.
+    inputs: main_sequence, target_digit, parameter_digits
+    output: transformed_main_sequence (list[int])
+  - action: construct_output
+    description: Concatenate the transformed_main_sequence and the original parameter_digits list.
+    inputs: transformed_main_sequence, parameter_digits
+    output: output_sequence (list[int])
+  - action: format_output
+    description: Convert the final output_sequence list into a space-separated string.
+    inputs: output_sequence
+    output: output_string (final result)
+edge_cases:
+  - If the main_sequence contains only zeros (after determining k), there is no target_digit, and no replacement occurs. The output is input[:-k] + input[-k:].
+  - If the input sequence length is small, the iteration range for k needs careful handling (e.g., k must be less than n).

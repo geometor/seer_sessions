@@ -1,0 +1,48 @@
+task_description: Move one object adjacent to another based on enclosure and proximity.
+
+elements:
+  - element: grid
+    properties:
+      - type: 2D array of integers
+      - background_color: 0
+  - element: object
+    properties:
+      - type: connected component of non-zero integers
+      - color: the integer value making up the object
+      - bounding_box: the smallest rectangle containing the object
+      - position: coordinates of the object's pixels
+      - is_enclosed: boolean, true if all adjacent cells outside the object are background_color (0)
+      - is_static: boolean, true if not is_enclosed (typically touches grid edge or its bounding box does)
+      - is_moving: boolean, true if is_enclosed
+
+actions:
+  - action: identify_objects
+    inputs: grid
+    outputs: list of objects with their properties (color, pixels, bounding_box)
+  - action: classify_objects
+    inputs: list of objects, grid dimensions
+    outputs: updated list of objects with is_enclosed, is_static, is_moving flags set
+  - action: find_target_object
+    description: Find the static object closest to the moving object.
+    inputs: moving_object, list of static_objects
+    outputs: target_static_object
+  - action: calculate_movement
+    description: Determine the axis and distance to move the moving object so its bounding box is adjacent to the target static object's bounding box along the axis of the smallest initial gap.
+    inputs: moving_object, target_static_object
+    outputs: movement_vector (dx, dy)
+  - action: apply_movement
+    description: Create the output grid by erasing the moving object from its original position and drawing it at the new position defined by the movement_vector. Static objects remain unchanged.
+    inputs: input_grid, moving_object, static_objects, movement_vector
+    outputs: output_grid
+
+relationships:
+  - relationship: adjacency
+    description: The moving object is shifted until its bounding box is one unit away from the target static object's bounding box along the primary movement axis.
+  - relationship: selection_criteria
+    description: The object selected for movement is the one that is 'is_enclosed'. The target object is the closest 'is_static' object.
+  - relationship: movement_axis
+    description: Movement occurs along the axis (horizontal or vertical) with the smallest initial distance between the bounding boxes of the moving and target objects.
+
+assumptions:
+  - There is exactly one 'is_enclosed' (moving) object in the input grid.
+  - There is at least one 'is_static' (target) object in the input grid. (In the examples, there is exactly one).

@@ -1,0 +1,69 @@
+objects:
+  - name: input_list
+    type: list
+    contains: integers
+    properties:
+      - length: variable (observed length 12 in examples)
+      - elements: integers (observed 0 and positive integers)
+  - name: output_list
+    type: list
+    contains: integers
+    derivation: modification of input_list based on transformation rules
+  - name: non_zero_digit
+    type: integer
+    properties:
+      - value > 0
+      - appears_in: input_list
+  - name: target_digit
+    type: non_zero_digit
+    properties:
+      - count_in_input: exactly 2
+      - is_first_encountered: If multiple digits satisfy count=2, this is the one whose first index is minimal.
+  - name: indices
+    type: list
+    contains: integers
+    properties:
+      - represents: 0-based positions of a target_digit in input_list
+      - length: 2 (first_index, second_index)
+
+relationships:
+  - type: condition
+    description: Transformation occurs if and only if there exists at least one non_zero_digit whose count in input_list is exactly 2.
+  - type: selection
+    description: If multiple non_zero_digits have a count of 2, the target_digit is the one whose first occurrence (lower index) appears earliest in input_list.
+  - type: spatial
+    description: The transformation affects the segment of the list strictly between the first_index and second_index of the target_digit.
+
+actions:
+  - name: analyze_input
+    input: input_list
+    output: map of {non_zero_digit: [indices]}
+    steps:
+      - Iterate through input_list with index.
+      - If element is non-zero, record its value and index.
+      - Group indices by digit value.
+  - name: find_target_digit
+    input: map from analyze_input
+    output: target_digit or None
+    steps:
+      - Iterate through the map (preserving original encounter order if possible, e.g., using OrderedDict or tracking first index).
+      - Find the first non_zero_digit where the list of indices has length 2.
+      - If found, return that digit.
+      - If none found, return None.
+  - name: perform_fill
+    input: input_list, target_digit, indices (first_index, second_index)
+    output: output_list
+    steps:
+      - Create a copy of input_list.
+      - Iterate from index `first_index + 1` up to (but not including) `second_index`.
+      - Set the element at the current index in the copied list to the value of target_digit.
+      - Return the modified copy.
+  - name: identity_transform
+    input: input_list
+    output: output_list
+    condition: No target_digit was found.
+    steps:
+      - Return input_list unchanged (or an identical copy).
+
+goal:
+  - Implement the overall transformation logic: Analyze input, find target digit (if any), perform fill or identity transform accordingly.

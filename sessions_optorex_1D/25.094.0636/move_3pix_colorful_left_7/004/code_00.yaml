@@ -1,0 +1,85 @@
+task_elements:
+  - object: sequence
+    properties:
+      - type: list of integers
+      - length: 12
+      - contains: digits 0-9
+    roles:
+      - input_sequence
+      - output_sequence
+  - object: sub_sequence
+    properties:
+      - type: list of integers
+      - derived_from: input_sequence
+      - boundaries: defined by the index of the first non-zero digit and the index of the last non-zero digit (inclusive)
+      - content: sequence of digits between and including the first and last non-zero elements
+    role:
+      - core_data_block
+  - object: zero_digit
+    properties:
+      - value: 0
+    role:
+      - padding_element
+      - placeholder (within input/output)
+      - potential_element (can be part of the core_data_block if surrounded by non-zeros)
+  - object: non_zero_digit
+    properties:
+      - value: range 1-9
+    role:
+      - boundary_marker (first and last non-zero define the sub_sequence)
+      - data_element (part of the sub_sequence)
+constants:
+  - name: sequence_length
+    value: 12
+  - name: shift_amount
+    value: 3
+  - name: shift_direction
+    value: left
+  - name: padding_value
+    value: 0
+actions:
+  - name: find_boundaries
+    inputs:
+      - input_sequence
+    outputs:
+      - start_index: index of the first non-zero digit (or indication of none)
+      - end_index: index of the last non-zero digit (or indication of none)
+  - name: handle_all_zeros
+    condition: no non-zero digits found in input_sequence
+    action: return input_sequence unchanged
+  - name: extract_sub_sequence
+    condition: non-zero digits exist
+    inputs:
+      - input_sequence
+      - start_index
+      - end_index
+    outputs:
+      - core_data_block: the sub-sequence from start_index to end_index (inclusive)
+  - name: calculate_target_position
+    condition: non-zero digits exist
+    inputs:
+      - start_index
+      - shift_amount
+      - shift_direction
+    outputs:
+      - target_start_index: start_index - shift_amount
+  - name: construct_output
+    condition: non-zero digits exist
+    inputs:
+      - core_data_block
+      - target_start_index
+      - sequence_length
+      - padding_value
+    outputs:
+      - output_sequence: a sequence of sequence_length, padded with padding_value, containing the core_data_block potentially truncated/shifted according to boundary rules (target_start_index < 0 or target_start_index + length(core_data_block) > sequence_length).
+relationships:
+  - type: transformation
+    from: input_sequence
+    to: output_sequence
+    rule: |
+      Identify the sub-sequence spanning from the first non-zero digit to the last non-zero digit in the input sequence.
+      Calculate a target start index by subtracting 3 (shift_amount) from the index of the first non-zero digit.
+      Construct the output sequence of length 12, initially filled with zeros.
+      Place the identified sub-sequence into the output sequence starting at the target start index.
+      Handle boundary conditions: If the target start index is negative, truncate the beginning of the sub-sequence before placing it (starting placement at index 0). If placing the sub-sequence exceeds the sequence length, truncate the end of the sub-sequence.
+      If the input sequence contains no non-zero digits, the output sequence is identical to the input sequence.

@@ -1,0 +1,60 @@
+task_description: Shift the contiguous segment containing all non-zero elements 4 positions to the left within a fixed-length sequence, padding with zeros.
+input_type: sequence_of_integers (represented as a 1D NumPy array)
+output_type: sequence_of_integers (represented as a 1D NumPy array)
+constants:
+  - shift_amount: 4
+  - shift_direction: left
+  - padding_value: 0
+constraints:
+  - input_length == output_length # Example length is 12, assume constant
+objects:
+  - name: input_sequence
+    type: 1D NumPy array of integers
+    properties:
+      - length: fixed (e.g., 12)
+  - name: output_sequence
+    type: 1D NumPy array of integers
+    properties:
+      - length: same_as_input
+      - content: derived_from_input
+      - initial_state: all zeros
+  - name: active_segment
+    description: The contiguous sub-sequence from the first non-zero element to the last non-zero element in the input sequence.
+    properties:
+      - source: input_sequence
+      - start_index_in_input: index of the first non-zero element (if any)
+      - end_index_in_input: index of the last non-zero element (if any)
+      - values: preserve relative order and values from input segment
+      - existence: segment exists only if input contains at least one non-zero element
+  - name: padding
+    description: Zero elements used to fill the sequence outside the active_segment in the output.
+    properties:
+      - value: 0
+actions:
+  - name: find_non_zero_indices
+    input: input_sequence
+    output: array_of_indices
+    description: Identifies the indices of all elements not equal to zero.
+  - name: identify_segment_bounds
+    input: array_of_non_zero_indices
+    output: first_nz_idx, last_nz_idx
+    description: Determines the minimum and maximum index from the non-zero indices. Returns None if no non-zero indices exist.
+  - name: extract_segment
+    input: input_sequence, first_nz_idx, last_nz_idx
+    output: segment_values (1D NumPy array)
+    description: Extracts the sub-array from input_sequence between first_nz_idx and last_nz_idx (inclusive). Only performed if segment bounds exist.
+  - name: calculate_output_position
+    input: first_nz_idx, shift_amount
+    output: target_start_idx
+    description: Calculates the starting index for the segment in the output sequence. Formula target_start_idx = first_nz_idx - shift_amount. Only performed if segment bounds exist.
+  - name: generate_output
+    input: input_sequence_shape, segment_values, target_start_idx
+    output: output_sequence
+    steps:
+      - Create a NumPy array of zeros with the same shape as the input_sequence.
+      - If an active_segment exists AND target_start_idx is non-negative:
+        - Calculate the target end index: target_end_idx = target_start_idx + length(segment_values).
+        - Place the segment_values into the zero array starting at target_start_idx. Ensure slicing does not go out of bounds implicitly via NumPy behavior (or add explicit clipping if needed, though not required by examples).
+      - Return the resulting array.
+relationships:
+  - The output_sequence is constructed by initializing an array of zeros and then potentially overwriting a portion of it by placing the active_segment (if one exists) from the input_sequence at a position shifted left by the shift_amount. If no non-zero elements exist in the input, the output remains all zeros. If the calculated target start position is negative, the segment is effectively shifted off the left edge and does not appear in the output (resulting output remains zeros or is partially filled if only part shifts off, though examples don't show this).

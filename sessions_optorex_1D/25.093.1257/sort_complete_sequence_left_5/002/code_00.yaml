@@ -1,0 +1,78 @@
+task_elements:
+  - object: sequence
+    type: list_of_integers # Changed from string
+    source: input
+    properties:
+      length: 12
+  - object: sequence
+    type: list_of_integers # Changed from string
+    source: output
+    properties:
+      length: 12
+  - object: prefix
+    part_of: sequence
+    indices: 0-3
+    properties:
+      value: [0, 0, 0, 0]
+      constant: true
+      source: input
+      destination: output # Prefix is copied directly
+  - object: suffix
+    part_of: sequence
+    indices: 4-11
+    properties:
+      length: 8
+      variable: true
+      composition:
+        - type: non_zero_digit (X)
+          count: 6
+        - type: zero_digit (0)
+          count: 2
+      source: input
+  - object: target_pattern
+    description: The desired arrangement for the suffix.
+    value_template: "[X, X, X, 0, X, X, 0, X]" # Where X is the non-zero digit from input suffix
+    applies_to: suffix
+
+actions:
+  - name: identify_non_zero_digit
+    input: input_suffix # From input sequence[4:]
+    output: digit_X
+    description: Find the unique non-zero digit present in the input suffix.
+  - name: construct_target_suffix
+    input: digit_X
+    output: target_suffix_list
+    description: Create the target suffix list using the identified non-zero digit X based on the pattern [X, X, X, 0, X, X, 0, X].
+  - name: compare_suffixes
+    inputs: [input_suffix, target_suffix_list]
+    output: boolean (matches or not)
+    description: Check if the input suffix is identical to the constructed target suffix list.
+  - name: determine_output_suffix
+    condition: compare_suffixes result
+    branches:
+      - condition_value: true
+        action: use_input_suffix
+        output: output_suffix
+        description: If input suffix matches target, the output suffix is the same as the input suffix.
+      - condition_value: false
+        action: use_target_suffix
+        output: output_suffix
+        description: If input suffix does not match target, the output suffix is the constructed target suffix list.
+  - name: construct_output_sequence
+    inputs: [prefix, output_suffix]
+    output: output_sequence (list_of_integers)
+    description: Combine the original prefix ([0, 0, 0, 0]) with the determined output suffix.
+
+relationships:
+  - type: composition
+    subject: sequence (input and output)
+    objects: [prefix, suffix]
+  - type: transformation_logic
+    input: input_sequence
+    output: output_sequence
+    steps:
+      - identify_non_zero_digit from input_suffix
+      - construct_target_suffix using digit_X
+      - compare_suffixes
+      - determine_output_suffix based on comparison
+      - construct_output_sequence using prefix and determined output_suffix

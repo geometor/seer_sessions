@@ -1,0 +1,54 @@
+task_description: Moves the object with the minimum pixel count adjacent to the other object along the axis of smallest initial bounding box separation.
+
+elements:
+  - element: grid
+    properties:
+      - type: 2D array of integers
+      - background_color: 0
+  - element: object
+    properties:
+      - type: connected component of non-zero integers
+      - color: the integer value making up the object
+      - pixels: set of (row, col) coordinates
+      - pixel_count: the number of pixels in the object
+      - bounding_box: the smallest rectangle containing the object (min_row, max_row, min_col, max_col)
+      - role: identified as either 'mover' or 'target'
+
+actions:
+  - action: identify_objects
+    inputs: grid
+    outputs: list of exactly two objects with their properties (color, pixels, pixel_count, bounding_box)
+    preconditions:
+      - Grid must contain exactly two distinct non-zero objects.
+  - action: classify_objects
+    inputs: list of two objects
+    outputs: Assign 'mover' role to the object with min(pixel_count), assign 'target' role to the other.
+  - action: calculate_bounding_box_gaps
+    inputs: mover_object_bbox, target_object_bbox
+    outputs: horizontal_gap, vertical_gap (gap is distance between edges, -1 if overlapping)
+  - action: determine_movement_axis
+    inputs: horizontal_gap, vertical_gap
+    outputs: axis ('horizontal' or 'vertical') corresponding to the smallest non-negative gap.
+  - action: calculate_movement_vector
+    description: Determine the shift (dx, dy) needed to move the 'mover' object so its bounding box is adjacent (gap=1) to the 'target' bounding box along the determined movement_axis.
+    inputs: mover_object, target_object, movement_axis, horizontal_gap, vertical_gap
+    outputs: movement_vector (dx, dy)
+  - action: apply_movement
+    description: Create the output grid by erasing the 'mover' object from its original position and drawing it at the new position defined by the movement_vector. The 'target' object remains unchanged.
+    inputs: input_grid, mover_object, target_object, movement_vector
+    outputs: output_grid
+
+relationships:
+  - relationship: mover_selection
+    description: The object with the minimum pixel_count is selected as the 'mover'.
+  - relationship: target_selection
+    description: The object that is not the 'mover' is the 'target'.
+  - relationship: adjacency_goal
+    description: The 'mover' object is shifted until its bounding box is one unit away from the 'target' object's bounding box along the primary movement axis.
+  - relationship: movement_axis_determination
+    description: Movement occurs along the axis (horizontal or vertical) with the smallest non-negative gap between the initial bounding boxes.
+
+assumptions:
+  - The input grid contains exactly two distinct non-zero objects.
+  - The background color is 0.
+  - Objects are defined by 4-connectivity (only horizontal/vertical connections).

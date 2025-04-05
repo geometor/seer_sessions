@@ -1,0 +1,75 @@
+task_description: Fill the sequence segment between the first and last occurrence of each non-zero digit with that digit's value.
+
+data_structures:
+  - name: sequence
+    type: 1D list or array of integers
+    properties:
+      - elements: Single digits (0-9)
+      - length: Fixed for a given task instance (e.g., 12 in examples)
+      - role: Represents the state before and after transformation.
+
+elements:
+  - name: background_value
+    type: integer
+    value: 0
+    role: Represents empty or unchanged space. Does not trigger filling.
+
+  - name: marker_value
+    type: integer
+    properties:
+      - value_range: 1-9 (non-zero digits)
+      - role: Defines segments to potentially fill. Its value is used for filling.
+      - occurrences: Can appear zero, one, or multiple times in the sequence.
+
+actions:
+  - name: identify_markers
+    input: input_sequence
+    output: set of unique marker_values present
+    description: Find all unique non-zero digits in the input.
+
+  - name: find_marker_indices
+    input: input_sequence, marker_value (N)
+    output: list of indices where N appears
+    description: Locate all positions of a specific marker value N within the original input sequence.
+
+  - name: determine_fill_boundaries
+    input: list of indices
+    output: first_index, last_index (or null if < 2 indices)
+    condition: Requires the marker value to appear at least twice (list length >= 2).
+    description: Find the minimum (first) and maximum (last) index from the list of occurrences.
+
+  - name: check_fill_condition
+    input: first_index, last_index
+    output: boolean (true if gap exists, false otherwise)
+    condition: last_index > first_index + 1
+    description: Determines if there is at least one element strictly between the first and last indices.
+
+  - name: apply_fill
+    input: output_sequence (initially a copy of input), first_index, last_index, marker_value (N)
+    output: modified_output_sequence
+    condition: check_fill_condition must be true.
+    description: Modify the output_sequence by setting elements at indices from first_index + 1 up to (but not including) last_index to the value N.
+
+process_flow:
+  - step: Create a mutable copy of the input sequence (this will be the output sequence).
+  - step: Perform identify_markers on the input sequence.
+  - step: For each unique marker_value (N) found:
+      - Perform find_marker_indices for N using the *original* input sequence.
+      - Perform determine_fill_boundaries using the found indices.
+      - If boundaries (first_index, last_index) are determined (i.e., N appeared at least twice):
+          - Perform check_fill_condition using first_index and last_index.
+          - If the fill condition is true (a gap exists):
+              - Perform apply_fill on the *output* sequence using N, first_index, and last_index.
+  - step: Return the final modified output sequence.
+
+invariants:
+  - Sequence length remains constant.
+  - Values 0 remain 0 unless overwritten by a fill operation.
+  - Original positions of marker values that define the boundaries (first and last occurrences) remain unchanged in the output.
+  - Only the elements *strictly between* the first and last occurrence of a marker value can be changed.
+  - If a marker value appears only once, it causes no changes to the sequence.
+  - If a marker value appears multiple times but without any elements between its first and last occurrence (e.g., `...5 5...`), it causes no changes.
+
+validation_notes:
+  - Analysis confirms the rule: filling occurs only when a non-zero digit `N` appears multiple times and `last_index > first_index + 1`.
+  - The execution results provided show the code failed to perform the `apply_fill` action when required (e.g., `code_fill_performed` is `false` when `fill_indices` is non-empty and `expected_fill_correct` is `true` in examples 2, 3, 6, 7). This points to an issue in the previous execution/code, not the rule derived from visually comparing inputs and outputs.

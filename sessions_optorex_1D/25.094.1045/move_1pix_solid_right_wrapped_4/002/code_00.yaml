@@ -1,0 +1,56 @@
+objects:
+  - name: input_list
+    type: List[int]
+    properties:
+      - length: L (fixed for the task, e.g., 12 in examples)
+      - elements: integers
+  - name: output_list
+    type: List[int]
+    properties:
+      - length: L (same as input_list)
+      - elements: integers (a permutation of input_list elements)
+  - name: zero_element
+    type: int
+    value: 0
+    role: positional marker
+  - name: non_zero_element
+    type: int
+    properties:
+      - value: any integer != 0
+      - role: maintains value, fills remaining positions
+
+actions:
+  - name: identify_element_properties
+    input: input_list
+    outputs:
+      - zero_indices: List[int] containing indices `i` where `input_list[i] == 0`.
+      - non_zero_values: List[int] containing values `v` from `input_list` where `v != 0`, preserving original relative order.
+      - list_length: L
+  - name: calculate_target_zero_indices
+    inputs:
+      - zero_indices
+      - list_length: L
+    process: Map each index `i` in `zero_indices` to `(i + 1) % L`.
+    output: target_zero_indices: Set[int] containing the calculated target indices for zeros.
+  - name: calculate_target_non_zero_indices
+    inputs:
+      - target_zero_indices: Set[int]
+      - list_length: L
+    process: Determine all indices from `0` to `L-1` that are *not* in `target_zero_indices`. Sort these indices numerically.
+    output: target_non_zero_indices: List[int] (sorted).
+  - name: construct_output_list
+    inputs:
+      - list_length: L
+      - target_zero_indices: Set[int]
+      - target_non_zero_indices: List[int]
+      - non_zero_values: List[int]
+    process: |
+      1. Initialize an output list of size L (e.g., with placeholders).
+      2. Iterate through `target_non_zero_indices`. For each index `j` at position `k` in this sorted list, place the `k`-th element from `non_zero_values` into `output_list[j]`.
+      3. Iterate through `target_zero_indices`. Place the `zero_element` (0) into `output_list` at each of these indices.
+    output: output_list: List[int]
+
+relationships:
+  - `output_list` contains the exact same elements as `input_list`, including counts (it's a permutation).
+  - The indices containing `0` in `output_list` are determined solely by shifting the indices containing `0` in `input_list` one position to the right, with wrap-around at the end.
+  - The relative order of all non-zero elements is preserved between `input_list` and `output_list`.

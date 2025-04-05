@@ -1,0 +1,48 @@
+task_elements:
+  - object: input_sequence
+    properties:
+      - type: list_of_integers # Corrected from string
+      - length: fixed (e.g., 12 in examples)
+      - contains: zeros, non_zero_numbers
+      - structure: Contains exactly two contiguous blocks of identical non-zero numbers, separated by at least one zero.
+  - object: zero
+    properties:
+      - value: 0
+      - role: background_filler, separator
+  - object: non_zero_block
+    properties:
+      - type: contiguous_subsequence
+      - composed_of: identical_non_zero_integers
+      - identified_by: order_of_appearance (first_block 'A', second_block 'B')
+      - property: length (number of elements)
+      - property: value (the non-zero integer, consistent within a block)
+    relationships:
+      - appears_twice_per_input: Exactly two such blocks exist in each input.
+      - separated_by_zeros_input: The two blocks are separated by at least one zero in the input.
+actions:
+  - identify_blocks:
+      actor: system
+      input: input_sequence (list/array of integers)
+      output: first_block (A, as list), second_block (B, as list)
+      conditions: Find the first and second contiguous non-zero blocks sequentially.
+  - compare_lengths:
+      actor: system
+      input: first_block (A), second_block (B)
+      output: boolean (is length B strictly greater than length A?)
+  - determine_output_order:
+      actor: system
+      input: first_block (A), second_block (B), comparison_result
+      output: ordered_pair_of_blocks (X, Y) # X is left block, Y is right block in output
+      logic: If len(B) > len(A), the order is (B, A), so X=B, Y=A. Otherwise, the order is (A, B), so X=A, Y=B.
+  - construct_output:
+      actor: system
+      input: sequence_length (n), ordered_blocks (X, Y)
+      output: output_sequence (list of integers)
+      steps:
+        - Calculate required length: `req_len = len(X) + len(Y) + 1` (for the zero separator).
+        - Calculate number of leading zeros: `num_zeros = n - req_len`.
+        - Create output list: `[0] * num_zeros + X + [0] + Y`.
+relationships:
+  - input_output_length: The length of the output sequence is identical to the length of the input sequence.
+  - block_separation_output: The two non-zero blocks (X and Y) in the output are always separated by exactly one zero.
+  - block_placement_output: The reordered block pair (X, zero, Y) is placed at the far right of the output sequence, preceded by the calculated number of zeros.

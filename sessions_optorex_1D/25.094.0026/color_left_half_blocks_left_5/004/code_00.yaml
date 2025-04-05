@@ -1,0 +1,45 @@
+task_name: TransformSequenceByTwoBlocksFloorDiv
+description: Modifies a sequence of digits by changing a specific number of trailing '2's to '8's within contiguous blocks of '2's, based on the block's length.
+
+input_domain:
+  type: sequence
+  element_type: integer
+  allowed_values: [0, 2]
+  separator: space
+  description: A space-separated sequence of 0s and 2s.
+
+output_domain:
+  type: sequence
+  element_type: integer
+  allowed_values: [0, 2, 8]
+  separator: space
+  description: A space-separated sequence where some 2s from the input have been changed to 8s.
+
+components:
+  - object: sequence_element
+    properties:
+      - value: { type: integer, description: The digit (0, 2, or 8) }
+      - index: { type: integer, description: Position in the sequence (0-based) }
+  - object: contiguous_two_block
+    properties:
+      - start_index: { type: integer, description: Index of the first '2' in the block }
+      - end_index: { type: integer, description: Index of the last '2' in the block }
+      - length: { type: integer, description: Number of '2's in the block (L = end_index - start_index + 1) }
+
+transformation:
+  action: modify_elements
+  target: sequence_element
+  condition: The element is part of a contiguous_two_block.
+  rule:
+    - name: process_two_blocks
+      condition: contiguous_two_block identified
+      action: change_value
+      parameters:
+        - num_to_change: { value: floor(contiguous_two_block.length / 2), description: Calculate k, the number of trailing '2's to change.}
+      target_element_condition: sequence_element.index >= (contiguous_two_block.end_index - num_to_change + 1) AND sequence_element.index <= contiguous_two_block.end_index
+      new_value: 8
+
+relationships:
+  - The output sequence preserves the length and '0' positions of the input sequence.
+  - The value of an output element corresponding to an input '2' depends on its membership in a contiguous_two_block and the block's length.
+  - For each contiguous_two_block of length L, the last floor(L/2) elements within that block are changed from '2' to '8' in the output.

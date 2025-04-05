@@ -1,0 +1,57 @@
+# YAML representation of observed facts
+
+Format:
+  - Input: String of 12 space-separated single digits.
+  - Output: String of 12 space-separated single digits.
+
+Structure:
+  - InputSequence:
+      type: List[int] (after parsing the input string)
+      length: 12
+      parts:
+        - DataPart: indices 0-8
+        - ControlPart: indices 9-11
+  - OutputSequence:
+      type: List[int]
+      length: 12
+      parts:
+        - TransformedDataPart: indices 0-8
+        - CopiedControlPart: indices 9-11
+
+Objects:
+  - TargetDigit:
+      value: 5
+      location: InputSequence.DataPart
+  - OtherDataDigit:
+      values: [0] # Digits other than 5 observed in DataPart
+      behavior: Invariant (copied directly to OutputSequence.TransformedDataPart)
+  - ControlDigit:
+      type: int
+      location: InputSequence.ControlPart
+  - GroupOfTargetDigits:
+      type: List[Tuple[int, int]] # List of (start_index, end_index) for contiguous TargetDigits (5s) in DataPart
+  - ReplacementValues:
+      type: List[int]
+      source: InputSequence.ControlPart
+      derivation: Filtered list of ControlDigits, excluding 0, preserving original relative order.
+
+Actions:
+  - Parse: Convert the input string into a list of 12 integers (InputSequence).
+  - Initialize: Create OutputSequence initially as a copy of InputSequence.
+  - IdentifyGroups: Find all contiguous groups of TargetDigit (5) within InputSequence.DataPart. Record their start/end indices.
+  - FilterControls: Create the ReplacementValues list from InputSequence.ControlPart by keeping only non-zero digits in their original order.
+  - MapAndReplace:
+      - Iterate through the identified GroupOfTargetDigits (in order of appearance).
+      - For the k-th group, if k is less than the length of ReplacementValues:
+          - Get the k-th value from ReplacementValues.
+          - Replace all digits within the k-th group's indices in the OutputSequence.TransformedDataPart with this replacement value.
+  - CopyControls: Ensure OutputSequence.CopiedControlPart matches InputSequence.ControlPart (implicitly handled by Initialize and lack of modification).
+  - FormatOutput: Convert the final OutputSequence (list of integers) back into a space-separated string.
+
+Relationships:
+  - OutputSequence is derived from InputSequence.
+  - Transformation affects only the DataPart (indices 0-8).
+  - The last 3 digits (ControlPart) are copied unchanged.
+  - The replacement values are sourced exclusively from non-zero digits in the ControlPart.
+  - The order of replacement matches the order of appearance of the '5' groups and the order of the non-zero control digits.
+  - A group of '5's is only replaced if there is a corresponding unused non-zero control digit available.

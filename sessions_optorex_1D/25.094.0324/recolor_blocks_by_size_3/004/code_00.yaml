@@ -1,0 +1,55 @@
+task_elements:
+  - object: input_sequence
+    properties:
+      - type: sequence_of_integers # Can be list or numpy array
+      - allowed_values: [0, 3]
+      - length: 12
+      - structure: Contains exactly two distinct contiguous groups of the value 3, separated by one or more 0s or sequence boundaries.
+  - object: output_sequence
+    properties:
+      - type: list_of_integers # Output format expected as list
+      - allowed_values: [0, 1, 2]
+      - length: 12
+  - object: sequence_element
+    properties:
+      - value: integer
+      - position: index
+  - object: group_of_threes
+    properties:
+      - type: contiguous_subsequence
+      - element_value: 3
+      - length: integer
+      - start_index: integer
+      - end_index: integer
+relationships:
+  - type: mapping
+    from: input_sequence.element[i]
+    to: output_sequence.element[i]
+  - condition: input_sequence.element[i] == 0
+    implies: output_sequence.element[i] == 0
+  - condition: input_sequence.element[i] == 3
+    implies: output_sequence.element[i] in [1, 2]
+  - dependency: The output value (1 or 2) for an input element with value 3 depends on which group_of_threes it belongs to and the relative lengths of the two groups present in the input sequence.
+actions:
+  - action: preprocess_input
+    description: Ensure the input sequence is in a format suitable for processing (e.g., convert NumPy array to Python list).
+    inputs: input_sequence
+    outputs: processed_input_list
+  - action: identify_groups
+    description: Find the two contiguous subsequences consisting solely of the value 3 in the processed input list.
+    inputs: processed_input_list
+    outputs: list_of_two_groups_of_threes (each group represented by start, end, length)
+  - action: compare_group_lengths
+    description: Compare the lengths of the two identified groups. Designate one as 'longer' and the other as 'shorter'.
+    inputs: list_of_two_groups_of_threes
+    outputs: longer_group, shorter_group
+    tie_breaking_rule: If group lengths are equal, the group appearing earlier in the sequence (smaller start_index) is designated as the 'longer' group.
+  - action: transform_elements
+    description: Create the output sequence based on the processed input list and group comparison.
+    inputs: processed_input_list, longer_group, shorter_group
+    outputs: output_sequence
+    steps:
+      - Initialize output_sequence with zeros, same length as input.
+      - For elements in the processed_input_list corresponding to the longer_group indices, set their value to 1 in the output_sequence.
+      - For elements in the processed_input_list corresponding to the shorter_group indices, set their value to 2 in the output_sequence.
+      - Elements corresponding to input value 0 remain 0.

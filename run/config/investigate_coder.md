@@ -19,10 +19,10 @@ self as we converge on the solution
 
 {{ imports }}
 
-def transform(input_grid):
+def transform(input_grid: list[list[int]]) -> list[list[int]]:  
     # initialize output_grid
 
-    # change output pixels 
+    # perform transformations
 
     return output_grid
 

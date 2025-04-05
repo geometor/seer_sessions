@@ -1,0 +1,886 @@
+
+## train_1
+
+**input:**
+```
+0 0 5 5 5 0 0 0 0 0 0 0
+```
+
+
+**output:**
+```
+0 5 5 5 0 0 0 0 0 0 0 0
+```
+
+
+## train_2
+
+**input:**
+```
+0 0 0 0 0 0 0 0 0 0 0 9
+```
+
+
+**output:**
+```
+0 0 0 0 0 0 0 0 0 0 9 0
+```
+
+
+## train_3
+
+**input:**
+```
+0 0 0 0 0 0 1 0 0 0 0 0
+```
+
+
+**output:**
+```
+0 0 0 0 0 1 0 0 0 0 0 0
+```
+
+
+## train_4
+
+**input:**
+```
+0 0 0 0 0 2 2 0 0 0 0 0
+```
+
+
+**output:**
+```
+0 0 0 0 2 2 0 0 0 0 0 0
+```
+
+
+## train_5
+
+**input:**
+```
+0 0 0 0 0 0 5 5 5 5 5 5
+```
+
+
+**output:**
+```
+0 0 0 0 0 5 5 5 5 5 5 0
+```
+
+
+## train_6
+
+**input:**
+```
+0 0 5 5 5 5 5 5 5 5 0 0
+```
+
+
+**output:**
+```
+0 5 5 5 5 5 5 5 5 0 0 0
+```
+
+
+## train_7
+
+**input:**
+```
+0 0 0 0 0 0 0 2 2 2 2 2
+```
+
+
+**output:**
+```
+0 0 0 0 0 0 2 2 2 2 2 0
+```
+
+Okay, analyzing the provided examples.
+
+**Perception of Task Elements:**
+
+*   **Input/Output Format:** Both input and output are sequences (lists) of single-digit integers.
+*   **Key Feature:** Each input sequence contains a single contiguous block of identical non-zero digits, surrounded by zeros.
+*   **Transformation:** The core transformation observed across all examples is a positional shift of this non-zero block.
+*   **Direction:** The non-zero block consistently shifts one position to the left.
+*   **Padding:** Zeros act as padding or background. When the block shifts left, the zero immediately preceding the block is effectively consumed or overwritten, and a new zero appears at the end of the sequence to maintain the overall length.
+*   **Invariant:** The length of the sequence remains constant between input and output. The non-zero digits themselves and their order within the block remain unchanged.
+
+**YAML Facts:**
+
+
+```yaml
+task_elements:
+  - name: sequence
+    type: list_of_integers
+    role: input_output_container
+    properties:
+      - length_invariant: true
+      - contains_zeros: true
+      - contains_non_zeros: true
+  - name: non_zero_block
+    type: contiguous_subsequence
+    role: object_of_interest
+    properties:
+      - elements_are_identical: true
+      - elements_are_non_zero: true
+      - surrounded_by_zeros: true # Based on examples, always preceded by at least one zero.
+  - name: zero
+    type: integer
+    value: 0
+    role: padding_background
+actions:
+  - name: identify_block
+    input: sequence
+    output: start_index, end_index, value
+    description: Find the start and end indices of the contiguous non-zero block.
+  - name: shift_left
+    input: sequence, non_zero_block
+    output: modified_sequence
+    description: Shift the identified non_zero_block one position to the left within the sequence.
+relationships:
+  - type: positional
+    between: [non_zero_block, zero]
+    description: The non_zero_block is preceded and followed by zeros in the input (except possibly at sequence boundaries, though examples show internal blocks).
+  - type: transformation
+    input: input_sequence
+    output: output_sequence
+    rule: The non_zero_block in the input_sequence is shifted one position left to produce the output_sequence, maintaining sequence length by adding a zero at the end.
+constraints:
+  - item: sequence_length
+    value: constant
+  - item: block_internal_order
+    value: preserved
+  - item: block_values
+    value: preserved
+  - item: shift_amount
+    value: 1 position
+  - item: shift_direction
+    value: left
+```
+
+
+**Natural Language Program:**
+
+1.  **Identify** the contiguous block of non-zero numbers within the input sequence. Determine its starting index.
+2.  **Check** if the starting index is greater than 0 (i.e., the block is not at the very beginning of the sequence).
+3.  If the starting index is greater than 0:
+    a.  **Remove** the element (which will be a zero) at the index immediately preceding the start of the block (start\_index - 1).
+    b.  **Append** a zero (`0`) to the end of the resulting sequence.
+4.  If the starting index is 0 (or if no non-zero block is found), return the original input sequence unchanged.
+5.  **Return** the modified sequence.
+```python
+import math
+import numpy as np # Although not strictly necessary for this list logic, it's often useful.
+
+"""
+Identify the contiguous block of identical non-zero numbers in the input list.
+If the block starts at an index greater than 0, shift the block one position to the left
+by removing the zero immediately preceding it and appending a zero to the end of the list.
+If the block starts at index 0 or no non-zero block is found, return the list unchanged.
+"""
+
+def find_non_zero_block(data):
+    """
+    Finds the start index, end index (exclusive), and value of the first
+    contiguous block of identical non-zero numbers.
+
+    Args:
+        data: A list of numbers.
+
+    Returns:
+        A tuple (start_index, end_index, value) if a block is found,
+        otherwise returns (None, None, None).
+    """
+    start_index = -1
+    block_value = None
+    for i, val in enumerate(data):
+        if val != 0:
+            if start_index == -1: # Start of a potential block
+                start_index = i
+                block_value = val
+            elif val != block_value: # Found a different non-zero, previous block ended
+                 # This case shouldn't happen based on examples, but good to consider
+                 # For this problem, we assume only one block type exists.
+                 # If we hit a different non-zero, the block assumption is violated.
+                 # Let's stick to finding the *first* block.
+                 end_index = i
+                 return start_index, end_index, block_value
+        elif start_index != -1: # We were in a block, and hit a zero, so the block ended
+            end_index = i
+            return start_index, end_index, block_value
+
+    # Handle case where block goes to the end of the list
+    if start_index != -1:
+        end_index = len(data)
+        return start_index, end_index, block_value
+
+    # No non-zero block found
+    return None, None, None
+
+
+def transform(input_list):
+    """
+    Transforms the input list by shifting the non-zero block one step left.
+
+    Args:
+        input_list: The input list of integers.
+
+    Returns:
+        A new list with the non-zero block shifted left, or a copy of the
+        input list if no shift is possible/needed.
+    """
+    # Find the non-zero block
+    start_index, end_index, _ = find_non_zero_block(input_list)
+
+    # Check if a block was found and if it's not already at the beginning
+    if start_index is not None and start_index > 0:
+        # Create the output list by manipulating slices
+        # 1. Part before the zero preceding the block
+        part1 = input_list[:start_index - 1]
+        # 2. The block itself
+        block = input_list[start_index:end_index]
+        # 3. Part after the block
+        part3 = input_list[end_index:]
+        # 4. The new zero to append
+        padding_zero = [0]
+
+        # Concatenate parts to form the new list
+        output_list = part1 + block + part3 + padding_zero
+        return output_list
+    else:
+        # If no block found or block starts at index 0, return a copy
+        output_list = list(input_list) # Return a copy to avoid modifying original if it's mutable elsewhere
+        return output_list
+
+```
+```python
+import numpy as np
+import math
+
+"""
+Identifies a unique, contiguous block of identical non-zero integers within an input sequence (list or NumPy array).
+If this block starts at an index greater than 0, it is shifted one position to the left.
+This shift is achieved by removing the element (expected to be zero) immediately preceding the block
+and appending a zero to the end of the sequence to maintain its original length.
+If no non-zero block is found, or if the block starts at index 0, the original sequence is returned unchanged.
+"""
+
+def find_non_zero_block_indices(data_list):
+    """
+    Finds the start and end indices of the first contiguous block of
+    identical non-zero numbers.
+
+    Args:
+        data_list: A list of numbers.
+
+    Returns:
+        A tuple (start_index, end_index) if a block is found,
+        otherwise returns (None, None). end_index is exclusive.
+    """
+    start_index = -1
+    end_index = -1
+    block_value = None
+
+    for i, val in enumerate(data_list):
+        if val != 0:
+            # Found a non-zero value
+            if start_index == -1:
+                # This is the start of the block
+                start_index = i
+                block_value = val
+            elif val != block_value:
+                # Found a different non-zero value, ending the block search
+                # according to problem constraints (single block type).
+                # This case implies the previous block ended just before this index.
+                # But based on examples, we only expect 0s outside the block.
+                # Let's assume the block ends when we hit a 0.
+                 # Update: if we hit a *different* non-zero, the block ended *before* it.
+                 # However, the examples only show blocks ending with 0 or list end.
+                 # Sticking to the 'block ends at 0 or list end' rule.
+                pass # Continue, expecting identical values within the block
+        elif start_index != -1:
+            # Found a zero after starting a block. The block ends here.
+            end_index = i
+            return start_index, end_index
+
+    # If the loop finishes and we were in a block, it means the block extends to the end
+    if start_index != -1:
+        end_index = len(data_list)
+        return start_index, end_index
+
+    # No non-zero block was found at all
+    return None, None
+
+
+def transform(input_data):
+    """
+    Transforms the input sequence by shifting the non-zero block one step left.
+
+    Args:
+        input_data: The input list or NumPy array of integers.
+
+    Returns:
+        A new list with the non-zero block shifted left, or a copy of the
+        input list if no shift is performed.
+    """
+    # Ensure we are working with a standard Python list
+    if isinstance(input_data, np.ndarray):
+        input_list = input_data.tolist()
+    else:
+        # Make a copy to avoid modifying the original input if it's a list
+        input_list = list(input_data)
+
+    # Find the start and end indices of the non-zero block
+    start_index, end_index = find_non_zero_block_indices(input_list)
+
+    # Check if a block was found and if it's not already at the beginning
+    if start_index is not None and start_index > 0:
+        # Construct the output list by rearranging parts
+        # Part before the zero that precedes the block
+        part1 = input_list[:start_index - 1]
+        # The block itself
+        block = input_list[start_index:end_index]
+        # Part after the block
+        part3 = input_list[end_index:]
+        # The zero to append at the end
+        padding_zero = [0]
+
+        # Combine the parts to form the new shifted list
+        output_list = part1 + block + part3 + padding_zero
+        return output_list
+    else:
+        # If no block found, or block starts at index 0, return the list as is (as a copy)
+        return input_list
+```
+```python
+import numpy as np # Not strictly required for list manipulation, but often useful
+
+"""
+Transforms an input sequence (list of integers) by identifying the first contiguous block
+of identical non-zero integers. If this block starts at an index greater than 0,
+it is shifted one position to the left. This shift is achieved by effectively
+removing the element (expected to be zero) immediately preceding the block and
+appending a zero to the end of the sequence, maintaining its original length.
+If no non-zero block is found, or if the block starts at index 0, the original
+sequence is returned unchanged (as a new list).
+"""
+
+def find_non_zero_block_indices(data_list):
+    """
+    Finds the start and end indices of the first contiguous block of
+    identical non-zero numbers.
+
+    Args:
+        data_list: A list of numbers.
+
+    Returns:
+        A tuple (start_index, end_index) if a block is found,
+        otherwise returns (None, None). end_index is exclusive.
+    """
+    start_index = -1
+    end_index = -1
+    block_value = None
+
+    for i, val in enumerate(data_list):
+        if val != 0:
+            # Found a non-zero value
+            if start_index == -1:
+                # This is the start of the block
+                start_index = i
+                block_value = val
+            # Check if the current value is different from the block value
+            # (This shouldn't happen based on examples, implies block ended before)
+            elif val != block_value: 
+                 # According to examples, blocks are contiguous *identical* non-zeros
+                 # If we hit a different non-zero, the block ended at the previous index 'i'.
+                 # However, the examples strongly suggest blocks end only with 0 or list end.
+                 # Assuming block integrity means identical values until a 0 or list end.
+                 pass # Keep searching assuming identical values within the block
+
+        elif start_index != -1:
+            # Found a zero after starting a block. The block ends here.
+            end_index = i
+            # Return the found indices
+            return start_index, end_index
+
+    # If the loop finishes and we were in a block, it means the block extends to the end
+    if start_index != -1:
+        end_index = len(data_list)
+        # Return the found indices
+        return start_index, end_index
+
+    # No non-zero block was found at all
+    return None, None
+
+
+def transform(input_data):
+    """
+    Applies the left-shift transformation to the non-zero block in the input sequence.
+    """
+    # Ensure working with a list and create a copy to avoid modifying original
+    if isinstance(input_data, np.ndarray):
+        input_list = input_data.tolist()
+    else:
+        input_list = list(input_data) # Make a copy
+
+    # Find the start and end indices of the non-zero block
+    start_index, end_index = find_non_zero_block_indices(input_list)
+
+    # Check if a block was found and if it can be shifted left (i.e., not starting at index 0)
+    if start_index is not None and start_index > 0:
+        # Construct the new list by rearranging parts:
+        # 1. Slice before the element preceding the block
+        part1 = input_list[:start_index - 1]
+        # 2. Slice the block itself
+        block = input_list[start_index:end_index]
+        # 3. Slice the part after the block
+        part3 = input_list[end_index:]
+        # 4. Define the zero to append
+        padding_zero = [0]
+
+        # Combine the parts to create the shifted output list
+        output_list = part1 + block + part3 + padding_zero
+        return output_list
+    else:
+        # If no block found, or block starts at index 0, return the original list (as a copy)
+        return input_list
+```
+
+Previous Code:
+```python
+import numpy as np # Not strictly required for list manipulation, but often useful
+
+"""
+Transforms an input sequence (list of integers) by identifying the first contiguous block
+of identical non-zero integers. If this block starts at an index greater than 0,
+it is shifted one position to the left. This shift is achieved by effectively
+removing the element (expected to be zero) immediately preceding the block and
+appending a zero to the end of the sequence, maintaining its original length.
+If no non-zero block is found, or if the block starts at index 0, the original
+sequence is returned unchanged (as a new list).
+"""
+
+def find_non_zero_block_indices(data_list):
+    """
+    Finds the start and end indices of the first contiguous block of
+    identical non-zero numbers.
+
+    Args:
+        data_list: A list of numbers.
+
+    Returns:
+        A tuple (start_index, end_index) if a block is found,
+        otherwise returns (None, None). end_index is exclusive.
+    """
+    start_index = -1
+    end_index = -1
+    block_value = None
+
+    for i, val in enumerate(data_list):
+        if val != 0:
+            # Found a non-zero value
+            if start_index == -1:
+                # This is the start of the block
+                start_index = i
+                block_value = val
+            # Check if the current value is different from the block value
+            # (This shouldn't happen based on examples, implies block ended before)
+            elif val != block_value: 
+                 # According to examples, blocks are contiguous *identical* non-zeros
+                 # If we hit a different non-zero, the block ended at the previous index 'i'.
+                 # However, the examples strongly suggest blocks end only with 0 or list end.
+                 # Assuming block integrity means identical values until a 0 or list end.
+                 pass # Keep searching assuming identical values within the block
+
+        elif start_index != -1:
+            # Found a zero after starting a block. The block ends here.
+            end_index = i
+            # Return the found indices
+            return start_index, end_index
+
+    # If the loop finishes and we were in a block, it means the block extends to the end
+    if start_index != -1:
+        end_index = len(data_list)
+        # Return the found indices
+        return start_index, end_index
+
+    # No non-zero block was found at all
+    return None, None
+
+
+def transform(input_data):
+    """
+    Applies the left-shift transformation to the non-zero block in the input sequence.
+    """
+    # Ensure working with a list and create a copy to avoid modifying original
+    if isinstance(input_data, np.ndarray):
+        input_list = input_data.tolist()
+    else:
+        input_list = list(input_data) # Make a copy
+
+    # Find the start and end indices of the non-zero block
+    start_index, end_index = find_non_zero_block_indices(input_list)
+
+    # Check if a block was found and if it can be shifted left (i.e., not starting at index 0)
+    if start_index is not None and start_index > 0:
+        # Construct the new list by rearranging parts:
+        # 1. Slice before the element preceding the block
+        part1 = input_list[:start_index - 1]
+        # 2. Slice the block itself
+        block = input_list[start_index:end_index]
+        # 3. Slice the part after the block
+        part3 = input_list[end_index:]
+        # 4. Define the zero to append
+        padding_zero = [0]
+
+        # Combine the parts to create the shifted output list
+        output_list = part1 + block + part3 + padding_zero
+        return output_list
+    else:
+        # If no block found, or block starts at index 0, return the original list (as a copy)
+        return input_list
+```
+Results for code_00.py:
+
+Train Set Results:
+
+## Example 1:
+Input:
+```
+0 0 5 5 5 0 0 0 0 0 0 0
+```
+Expected Output:
+```
+0 5 5 5 0 0 0 0 0 0 0 0
+```
+Transformed Output:
+```
+0 0 5 5 5 0 0 0 0 0 0 0
+```
+Match: False
+Pixels Off: 2
+Size Correct: True
+Color Palette Correct: True
+Color Count Correct: True
+Score: 16.666666666666657
+
+## Example 2:
+Input:
+```
+0 0 0 0 0 0 0 0 0 0 0 9
+```
+Expected Output:
+```
+0 0 0 0 0 0 0 0 0 0 9 0
+```
+Transformed Output:
+```
+0 0 0 0 0 0 0 0 0 0 0 9
+```
+Match: False
+Pixels Off: 2
+Size Correct: True
+Color Palette Correct: True
+Color Count Correct: True
+Score: 16.666666666666657
+
+## Example 3:
+Input:
+```
+0 0 0 0 0 0 1 0 0 0 0 0
+```
+Expected Output:
+```
+0 0 0 0 0 1 0 0 0 0 0 0
+```
+Transformed Output:
+```
+0 0 0 0 0 0 1 0 0 0 0 0
+```
+Match: False
+Pixels Off: 2
+Size Correct: True
+Color Palette Correct: True
+Color Count Correct: True
+Score: 16.666666666666657
+
+## Example 4:
+Input:
+```
+0 0 0 0 0 2 2 0 0 0 0 0
+```
+Expected Output:
+```
+0 0 0 0 2 2 0 0 0 0 0 0
+```
+Transformed Output:
+```
+0 0 0 0 0 2 2 0 0 0 0 0
+```
+Match: False
+Pixels Off: 2
+Size Correct: True
+Color Palette Correct: True
+Color Count Correct: True
+Score: 16.666666666666657
+
+## Example 5:
+Input:
+```
+0 0 0 0 0 0 5 5 5 5 5 5
+```
+Expected Output:
+```
+0 0 0 0 0 5 5 5 5 5 5 0
+```
+Transformed Output:
+```
+0 0 0 0 0 0 5 5 5 5 5 5
+```
+Match: False
+Pixels Off: 2
+Size Correct: True
+Color Palette Correct: True
+Color Count Correct: True
+Score: 16.666666666666657
+
+## Example 6:
+Input:
+```
+0 0 5 5 5 5 5 5 5 5 0 0
+```
+Expected Output:
+```
+0 5 5 5 5 5 5 5 5 0 0 0
+```
+Transformed Output:
+```
+0 0 5 5 5 5 5 5 5 5 0 0
+```
+Match: False
+Pixels Off: 2
+Size Correct: True
+Color Palette Correct: True
+Color Count Correct: True
+Score: 16.666666666666657
+
+## Example 7:
+Input:
+```
+0 0 0 0 0 0 0 2 2 2 2 2
+```
+Expected Output:
+```
+0 0 0 0 0 0 2 2 2 2 2 0
+```
+Transformed Output:
+```
+0 0 0 0 0 0 0 2 2 2 2 2
+```
+Match: False
+Pixels Off: 2
+Size Correct: True
+Color Palette Correct: True
+Color Count Correct: True
+Score: 16.666666666666657
+
+Test Set Results:
+
+## Example 1:
+Input:
+```
+0 0 0 0 0 8 8 8 8 8 8 0
+```
+Expected Output:
+```
+0 0 0 0 8 8 8 8 8 8 0 0
+```
+Transformed Output:
+```
+0 0 0 0 0 8 8 8 8 8 8 0
+```
+Match: False
+Pixels Off: 2
+Size Correct: True
+Color Palette Correct: True
+Color Count Correct: True
+Score: 16.666666666666657
+**General Assessment:**
+
+The provided execution results indicate that the previous code failed to perform the intended transformation for all examples, consistently returning the original input sequence instead of the shifted sequence. Both the `find_non_zero_block_indices` function and the list manipulation logic within the `transform` function *appeared* correct upon manual tracing for the intended operation (shifting the block left by removing the preceding zero and appending one).
+
+However, the consistent failure across all examples, where the output matched the input, strongly suggests that the conditional block executing the shift (`if start_index is not None and start_index > 0:`) was either never entered or its result was discarded/overwritten, or there was an issue in the execution environment reporting.
+
+The strategy for resolving this is to:
+1. Re-verify the core perception of the task: A single contiguous block of identical non-zero digits needs to be shifted one position to the left, provided it's not already at the beginning. Zeros fill the rest of the sequence, maintaining length.
+2. Refine the implementation logic to be more direct and less prone to potential slicing/concatenation errors. Instead of removing/appending, construct the output list by placing the block at the new, shifted position (`start_index - 1`) within a zero-initialized list of the correct length.
+3. Confirm this revised logic works for the provided examples.
+
+**Metrics Gathering:**
+
+Let's analyze the block properties for each training example.
+
+
+
+*code_execution:*
+```python
+import numpy as np
+
+def find_non_zero_block_properties(data_list):
+    """
+    Finds the start index, end index (exclusive), value, and length
+    of the first contiguous block of identical non-zero numbers.
+    """
+    start_index = -1
+    end_index = -1
+    block_value = None
+    for i, val in enumerate(data_list):
+        if val != 0:
+            if start_index == -1:
+                start_index = i
+                block_value = val
+            elif val != block_value: # Should not happen based on examples
+                end_index = i # Block ended before this different non-zero
+                return start_index, end_index, block_value, end_index - start_index
+        elif start_index != -1: # Hit a zero after block started
+            end_index = i
+            return start_index, end_index, block_value, end_index - start_index
+    # Block extends to the end
+    if start_index != -1:
+        end_index = len(data_list)
+        return start_index, end_index, block_value, end_index - start_index
+    # No block found
+    return None, None, None, 0
+
+examples = {
+    "train_1_in": [0, 0, 5, 5, 5, 0, 0, 0, 0, 0, 0, 0],
+    "train_1_out": [0, 5, 5, 5, 0, 0, 0, 0, 0, 0, 0, 0],
+    "train_2_in": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9],
+    "train_2_out": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 0],
+    "train_3_in": [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+    "train_3_out": [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+    "train_4_in": [0, 0, 0, 0, 0, 2, 2, 0, 0, 0, 0, 0],
+    "train_4_out": [0, 0, 0, 0, 2, 2, 0, 0, 0, 0, 0, 0],
+    "train_5_in": [0, 0, 0, 0, 0, 0, 5, 5, 5, 5, 5, 5],
+    "train_5_out": [0, 0, 0, 0, 0, 5, 5, 5, 5, 5, 5, 0],
+    "train_6_in": [0, 0, 5, 5, 5, 5, 5, 5, 5, 5, 0, 0],
+    "train_6_out": [0, 5, 5, 5, 5, 5, 5, 5, 5, 0, 0, 0],
+    "train_7_in": [0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2],
+    "train_7_out": [0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 0],
+    "test_1_in":  [0, 0, 0, 0, 0, 8, 8, 8, 8, 8, 8, 0],
+    "test_1_out": [0, 0, 0, 0, 8, 8, 8, 8, 8, 8, 0, 0],
+}
+
+results = {}
+for name, data in examples.items():
+    if "_in" in name:
+        props = find_non_zero_block_properties(data)
+        results[name] = {
+            "start": props[0],
+            "end": props[1],
+            "value": props[2],
+            "length": props[3],
+            "seq_length": len(data)
+        }
+        # Calculate expected output start index
+        if props[0] is not None and props[0] > 0:
+             results[name]["expected_out_start"] = props[0] - 1
+        elif props[0] is not None: # Block exists but starts at 0
+             results[name]["expected_out_start"] = props[0] # No change expected
+        else: # No block
+             results[name]["expected_out_start"] = None # No change expected
+
+
+print(results)
+```
+
+*code_execution_result:*
+outcome: OUTCOME_OK
+```
+{'train_1_in': {'start': 2, 'end': 5, 'value': 5, 'length': 3, 'seq_length': 12, 'expected_out_start': 1}, 'train_2_in': {'start': 11, 'end': 12, 'value': 9, 'length': 1, 'seq_length': 12, 'expected_out_start': 10}, 'train_3_in': {'start': 6, 'end': 7, 'value': 1, 'length': 1, 'seq_length': 12, 'expected_out_start': 5}, 'train_4_in': {'start': 5, 'end': 7, 'value': 2, 'length': 2, 'seq_length': 12, 'expected_out_start': 4}, 'train_5_in': {'start': 6, 'end': 12, 'value': 5, 'length': 6, 'seq_length': 12, 'expected_out_start': 5}, 'train_6_in': {'start': 2, 'end': 10, 'value': 5, 'length': 8, 'seq_length': 12, 'expected_out_start': 1}, 'train_7_in': {'start': 7, 'end': 12, 'value': 2, 'length': 5, 'seq_length': 12, 'expected_out_start': 6}, 'test_1_in': {'start': 5, 'end': 11, 'value': 8, 'length': 6, 'seq_length': 12, 'expected_out_start': 4}}
+
+```
+**Observations from Metrics:**
+
+*   All input sequences have a length of 12.
+*   Each input sequence contains exactly one contiguous block of identical non-zero digits.
+*   The blocks vary in starting position, length, and the non-zero value used.
+*   In all cases where the block does *not* start at index 0, the expected output shows the block starting one index earlier.
+
+**YAML Facts:**
+
+
+```yaml
+task_description: Shift a contiguous block of identical non-zero numbers one position to the left within a sequence of fixed length, padding with zeros.
+task_elements:
+  - name: sequence
+    type: list_of_integers
+    role: input_output_container
+    properties:
+      - length: 12 # Observed in all examples
+      - length_invariant: true
+      - contains_zeros: true
+      - contains_single_non_zero_block: true # Based on examples
+  - name: non_zero_block
+    type: contiguous_subsequence
+    role: object_of_interest
+    properties:
+      - elements_are_identical: true
+      - elements_are_non_zero: true
+      - surrounded_by_zeros_or_boundary: true # Can touch start/end
+  - name: zero
+    type: integer
+    value: 0
+    role: padding_background
+actions:
+  - name: find_block
+    input: sequence
+    output: start_index, end_index
+    description: Find the start (inclusive) and end (exclusive) indices of the contiguous non-zero block.
+  - name: shift_block_left
+    input: sequence, start_index, end_index
+    output: modified_sequence
+    condition: start_index > 0
+    description: Create a new sequence of the same length, initially all zeros. Place the identified block (from start_index to end_index of the input) into the new sequence starting at index (start_index - 1).
+  - name: copy_sequence
+    input: sequence, start_index
+    output: copied_sequence
+    condition: start_index == 0 or block not found
+    description: If the block starts at index 0 or no block exists, return an unchanged copy of the sequence.
+relationships:
+  - type: positional
+    between: [non_zero_block, zero]
+    description: Zeros occupy positions outside the non_zero_block.
+  - type: transformation
+    input: input_sequence
+    output: output_sequence
+    rule: If the non_zero_block in the input_sequence starts after index 0, the output_sequence is generated by placing the block one position earlier in a zero-padded sequence of the same length. Otherwise, the output_sequence is a copy of the input_sequence.
+constraints:
+  - item: sequence_length
+    value: constant (12 in examples)
+  - item: block_internal_content
+    value: preserved
+  - item: shift_amount
+    value: 1 position
+  - item: shift_direction
+    value: left
+  - item: block_requirement
+    value: single contiguous block of identical non-zero digits
+```
+
+
+**Natural Language Program:**
+
+1.  **Examine** the input sequence (a list of integers).
+2.  **Identify** the start index and end index (exclusive) of the first contiguous block of identical non-zero numbers.
+3.  **Check** if a block was found and if its start index is greater than 0.
+4.  **If** a block was found and its start index is greater than 0:
+    a.  **Create** a new list of the same length as the input sequence, filled entirely with zeros.
+    b.  **Determine** the new start index for the block in the output list, which is `original_start_index - 1`.
+    c.  **Determine** the new end index for the block in the output list, which is `new_start_index + block_length` (where `block_length = original_end_index - original_start_index`).
+    d.  **Copy** the non-zero block values from the input sequence (from `original_start_index` to `original_end_index`) into the new list at the calculated new position (from `new_start_index` to `new_end_index`).
+    e.  **Return** the newly created list.
+5.  **Else** (if no block was found, or the block's start index is 0):
+    a.  **Return** a copy of the original input sequence.

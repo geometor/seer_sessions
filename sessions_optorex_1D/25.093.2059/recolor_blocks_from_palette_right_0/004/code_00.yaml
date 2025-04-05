@@ -1,0 +1,73 @@
+objects:
+  - name: input_sequence
+    type: list_of_integers
+    properties:
+      - length: variable (12 in examples)
+      - contains: integers, including special values 0 and 5
+  - name: output_sequence
+    type: list_of_integers
+    properties:
+      - length: same as input_sequence
+      - derived_from: input_sequence
+  - name: zero_value
+    type: integer
+    properties:
+      - value: 0
+      - role: separator/boundary/ignored
+      - transformation: remains unchanged
+  - name: five_value
+    type: integer
+    properties:
+      - value: 5
+      - role: placeholder when in consecutive sequence
+      - transformation: potentially replaced based on context (when part of a sequence)
+  - name: replacement_pool
+    type: list_of_integers
+    properties:
+      - source: ordered list of non-zero integers from input_sequence, excluding 5
+      - role: provides replacement values for sequences of 5s
+  - name: five_sequences
+    type: list_of_sequences
+    properties:
+      - item_type: sequence_info (dict with start_index, length)
+      - definition: identifies consecutive runs of the number 5 in the input_sequence
+      - role: defines the segments of the input_sequence that are candidates for replacement
+
+relationships:
+  - type: mapping
+    from: input_sequence
+    to: output_sequence
+    rule: element-wise transformation preserving non-5 values and zeros, replacing sequences of 5s based on the replacement_pool
+  - type: preservation
+    element: 0
+    rule: input[i] == 0 implies output[i] == 0
+  - type: preservation
+    element: non-zero values excluding 5
+    rule: if input[i] != 0 and input[i] != 5, then output[i] == input[i]
+  - type: replacement
+    element: k-th sequence in five_sequences
+    using: k-th element in replacement_pool
+    condition: if k is a valid index for both five_sequences and replacement_pool
+    action: replace all elements of the k-th sequence of 5s in the output with the value of the k-th element from the replacement_pool. Sequences beyond the length of the replacement_pool remain unchanged (as 5s).
+
+actions:
+  - name: build_replacement_pool
+    input: input_sequence
+    output: replacement_pool (ordered list of non-zero integers excluding 5)
+  - name: find_five_sequences
+    input: input_sequence
+    output: five_sequences (list of dicts: {start_index, length})
+  - name: generate_output
+    inputs:
+      - input_sequence
+      - replacement_pool
+      - five_sequences
+    output: output_sequence
+    process:
+      1. Initialize output_sequence as a copy of input_sequence.
+      2. Iterate through five_sequences using an index k (from 0).
+      3. If k is less than the length of replacement_pool:
+         a. Get the start_index and length for the k-th sequence.
+         b. Get the replacement value from replacement_pool[k].
+         c. Overwrite the segment in output_sequence from start_index for length elements with the replacement value.
+      4. Return the modified output_sequence.

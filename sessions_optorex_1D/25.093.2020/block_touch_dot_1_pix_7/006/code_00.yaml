@@ -1,0 +1,47 @@
+elements:
+  - object: sequence
+    description: A fixed-length list or 1D array of 12 integers representing the input and output state.
+    properties:
+      - length: Always 12.
+      - values: Integers, including 0, 2, and others.
+  - object: marker_2
+    description: The integer '2', acting as a static reference point.
+    properties:
+      - position: The index (0-11) of '2' within the sequence. Assumed to appear at most once.
+  - object: block
+    description: A contiguous subsequence of one or more non-zero integers, excluding the marker '2'.
+    properties:
+      - values: The sequence of integers comprising the block.
+      - start_index: The index of the first element of the block in the original input sequence.
+      - end_index: The index of the last element of the block in the original input sequence.
+      - location_relative_to_2: Whether the block appears entirely before (all indices < position of '2') or entirely after (all indices > position of '2') the marker_2.
+      - is_adjacent_to_2: Boolean indicating if the block's end_index is `position_of_2 - 1` or its start_index is `position_of_2 + 1`.
+  - object: integer_0
+    description: The integer '0', acting as background/filler and used to replace vacated positions during shifts.
+
+actions:
+  - action: initialize_output
+    description: Create a modifiable copy of the input sequence.
+  - action: locate_marker_2
+    description: Find the index of the integer '2' in the input sequence. Handle cases where '2' might be missing.
+  - action: identify_blocks
+    description: Iterate through the input sequence to find all contiguous blocks of non-zero integers (that are not '2'), recording their start and end indices.
+  - action: evaluate_block_condition
+    description: For each identified block, determine its location relative to '2' and whether it is adjacent to '2'.
+  - action: shift_block_right
+    description: If a block is before '2' and not adjacent, copy its elements one position to the right in the output sequence. Set the original start_index position in the output sequence to '0'. Check array bounds.
+  - action: shift_block_left
+    description: If a block is after '2' and not adjacent, copy its elements one position to the left in the output sequence. Set the original end_index position in the output sequence to '0'. Check array bounds.
+  - action: no_shift
+    description: If a block is adjacent to '2', make no changes related to this block in the output sequence.
+
+relationships:
+  - relationship: shift_logic
+    description: The transformation applied to a block depends on its position relative to '2' and its adjacency.
+    conditions:
+      - if: block.is_adjacent_to_2 == true
+        then: perform no_shift.
+      - if: block.is_adjacent_to_2 == false AND block.location_relative_to_2 == before
+        then: perform shift_block_right.
+      - if: block.is_adjacent_to_2 == false AND block.location_relative_to_2 == after
+        then: perform shift_block_left.

@@ -1,0 +1,52 @@
+elements:
+  - type: sequence
+    description: A fixed-length sequence of 12 digits.
+    length: 12
+  - type: digit
+    value_range: 0-9
+    properties:
+      - is_zero: boolean (true if value is 0)
+      - is_non_zero: boolean (true if value is 1-9)
+
+objects:
+  - name: input_sequence
+    type: sequence
+    description: The initial sequence of 12 digits.
+  - name: output_sequence
+    type: sequence
+    description: The transformed sequence, initialized as a copy of the input.
+  - name: non_zero_digit
+    type: digit
+    properties:
+      - is_non_zero: true
+  - name: single_non_zero_digit
+    type: non_zero_digit
+    description: A non-zero digit in the input_sequence whose immediate left neighbor (if existing) has a different value AND whose immediate right neighbor (if existing) has a different value. Identified based solely on the input_sequence.
+  - name: zero_digit
+    type: digit
+    properties:
+      - is_zero: true
+  - name: contiguous_zero_block
+    type: sequence
+    description: A subsequence within the input_sequence consisting only of one or more adjacent zero digits.
+
+relationships:
+  - type: adjacency
+    description: The property of digits being immediately next to each other (left or right) in the sequence. Used to define single_non_zero_digit and identify target blocks for propagation.
+  - type: neighbor_comparison
+    description: Comparing a digit's value to its immediate left and right neighbors to determine if it qualifies as a single_non_zero_digit.
+  - type: propagation_target
+    description: A contiguous_zero_block in the input_sequence is a target for propagation if it is immediately adjacent (left or right) to a single_non_zero_digit.
+
+actions:
+  - name: identify_singles
+    description: Iterate through the input_sequence. For each non-zero digit, check its left and right neighbors (within bounds). If both neighbors are different from the digit, record its index and value as a single_non_zero_digit.
+    input: input_sequence
+    output: list of indices and values of single_non_zero_digits
+  - name: propagate_value
+    description: For each identified single_non_zero_digit, modify the output_sequence. Fill adjacent zeros to the left (moving leftward from index-1) and adjacent zeros to the right (moving rightward from index+1) with the single_non_zero_digit's value. The check for zeros (`input_sequence[j] == 0`) must be done against the *original* input_sequence to determine the extent of propagation.
+    input:
+      - single_non_zero_digit (index and value)
+      - input_sequence (for checking propagation extent)
+      - output_sequence (to be modified)
+    output: modified output_sequence

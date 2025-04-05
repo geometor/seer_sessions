@@ -1,0 +1,60 @@
+task_elements:
+  - item: sequence
+    properties:
+      - type: list or NumPy array of integers
+      - content: single digits (0-9)
+      - length: constant between input and output
+  - item: segments
+    properties:
+      - type: contiguous sub-sequences
+      - definition: maximal runs of non-zero numbers within the input sequence
+      - boundaries: defined by the presence of zero(s) or the start/end of the sequence
+  - item: zero_digit
+    properties:
+      - value: 0
+      - role: delimiter
+      - behavior: remains unchanged in its position during transformation
+  - item: non_zero_digit
+    properties:
+      - value: 1-9
+      - role: part of transformable segments
+action:
+  - name: iterate_sequence
+    inputs:
+      - input sequence (list or NumPy array)
+    process:
+      - process each element individually
+    outputs:
+      - elements for conditional checks and segment building
+  - name: identify_segments_and_zeros
+    inputs:
+      - elements from iterate_sequence
+    process:
+      - Check if the current element is zero.
+      - If zero, finalize any current non-zero segment being built and record the zero's position.
+      - If non-zero, add it to the current non-zero segment.
+    outputs:
+      - list of identified non-zero segments (as lists of integers)
+      - list corresponding to the positions of zeros and processed non-zero segments
+  - name: find_most_frequent
+    inputs:
+      - a non-zero segment (list of integers)
+    outputs:
+      - the integer digit that appears most frequently within the segment (mode)
+    notes: Assumes `collections.Counter.most_common(1)` provides the desired tie-breaking (first encountered element among ties).
+  - name: transform_segment
+    inputs:
+      - a non-zero segment
+      - the most frequent digit (mode) for that segment
+    outputs:
+      - a new list of the same length as the input segment, filled entirely with the mode digit
+  - name: reconstruct_sequence
+    inputs:
+      - list of transformed segments
+      - list representing original structure (zeros and placeholders for segments)
+    outputs:
+      - the final output sequence (as a list of integers)
+relationships:
+  - The output sequence structure mirrors the input sequence structure concerning zero placement.
+  - Non-zero segments in the output are replaced versions of corresponding input segments, based on the mode calculation.
+  - Input data type might be NumPy array, requiring careful element handling during iteration and comparison.

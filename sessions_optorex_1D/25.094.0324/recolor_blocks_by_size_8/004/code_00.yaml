@@ -1,0 +1,61 @@
+objects:
+  - name: input_grid
+    type: numpy_ndarray
+    properties:
+      - dimensionality: potentially multi-dimensional (e.g., 2D)
+      - contains_values: [0, 3]
+      - interpretation: represents a sequence when flattened
+      - first_element_value: the value at index (0, 0) or the first element in flattened order
+  - name: output_grid
+    type: numpy_ndarray
+    properties:
+      - dimensionality: same as input_grid
+      - contains_values: [0, 1, 2]
+      - structure: preserves the shape of input_grid
+  - name: flattened_input_sequence
+    type: sequence_of_integers
+    derived_from: input_grid by flattening
+    properties:
+      - contains_values: [0, 3]
+  - name: block_of_3s
+    type: contiguous_subsequence
+    properties:
+      - composed_of: integer 3
+      - location: within flattened_input_sequence
+      - index: ordinal position (1st, 2nd, ...) among blocks of 3s in the flattened sequence
+
+relationships:
+  - type: mapping
+    from: input_grid element at index (r, c)
+    to: output_grid element at index (r, c)
+    conditions: derived by applying rules to the flattened_input_sequence
+      - rule 1: if flattened_input_sequence element is 0, output element is 0.
+      - rule 2: if flattened_input_sequence element is 3:
+          - mapping depends on whether the 3 belongs to the first block_of_3s or a subsequent block_of_3s in the flattened sequence.
+          - the specific rule (first_block -> 1 or first_block -> 2) depends on the first_element_value of the input_grid.
+
+actions:
+  - name: flatten_grid
+    actor: transformation_process
+    input: input_grid
+    output: flattened_input_sequence
+  - name: identify_first_element
+    actor: transformation_process
+    input: input_grid # or flattened_input_sequence
+    output: first_element_value
+  - name: determine_mapping_rule
+    actor: transformation_process
+    input: first_element_value
+    output: rule (e.g., first_block->2, subsequent->1 OR first_block->1, subsequent->2)
+  - name: identify_blocks_in_flattened
+    actor: transformation_process
+    input: flattened_input_sequence
+    output: identified blocks_of_3s with their ordinal index
+  - name: apply_mapping_to_flattened
+    actor: transformation_process
+    input: flattened_input_sequence, identified_blocks, mapping_rule
+    output: flattened_output_sequence
+  - name: reshape_output
+    actor: transformation_process
+    input: flattened_output_sequence, original_shape of input_grid
+    output: output_grid

@@ -1,0 +1,50 @@
+elements:
+  - type: sequence
+    description: A list of single digits (integers 0 or 1 in input, 0, 1, or 3 in output).
+    properties:
+      - length: Fixed at 12 for all provided examples, preserved between input and output.
+      - values_input: Contains only 0 and 1.
+      - values_output: Contains 0, 1, and 3.
+objects:
+  - object: digit_zero
+    description: The digit '0' in the sequence.
+    properties:
+      - mutable: Can change to '3' under specific conditions.
+      - immutable: Remains '0' if conditions are not met or if an exclusion rule applies.
+  - object: digit_one
+    description: The digit '1' in the sequence.
+    properties:
+      - immutable: Does not change value.
+      - role: Acts as part of the trigger pattern '1 1' for changing adjacent '0's.
+      - role_exclusion: Acts as part of the exclusion pattern '1 1 1'.
+  - object: digit_three
+    description: The digit '3' appearing only in the output sequence.
+    properties:
+      - origin: Replaces a '0' from the input sequence.
+relationships:
+  - relationship: adjacency
+    description: The relative positioning of digits.
+    property: Critical for determining the transformation of '0'. A '0' must be immediately next to a '1 1' sub-sequence.
+  - relationship: sub-sequence_trigger
+    description: The specific pattern '1 1'.
+    property: The presence of '1 1' immediately adjacent (before or after) a '0' triggers the potential for change.
+  - relationship: sub-sequence_exclusion
+    description: The specific pattern '1 1 1'.
+    property: If the '1 1' trigger pattern is part of a '1 1 1' sequence, the adjacent '0' is *not* changed. This means '1 1 1 0' remains unchanged, and we infer '0 1 1 1' would also remain unchanged.
+actions:
+  - action: iterate_sequence
+    description: Process the input sequence element by element using an index.
+  - action: identify_zero
+    description: Check if the element at the current index is '0'.
+  - action: check_left_neighbor_pattern
+    description: If the current element is '0', check if the two preceding elements (at index-2 and index-1) are both '1'. Boundary conditions (index >= 2) must be checked.
+  - action: check_right_neighbor_pattern
+    description: If the current element is '0', check if the two succeeding elements (at index+1 and index+2) are both '1'. Boundary conditions (index <= length-3) must be checked.
+  - action: check_left_exclusion
+    description: If the left neighbor pattern ('1 1') is found before a '0', check if the element at index-3 is also '1'. If it is, the exclusion applies (it's a '1 1 1 0' pattern), and the '0' should not change based on this condition. Handle boundary case where index is 2 (no element at index-3).
+  - action: check_right_exclusion
+    description: If the right neighbor pattern ('1 1') is found after a '0', check if the element at index+3 is also '1'. If it is, the exclusion applies (it's a '0 1 1 1' pattern), and the '0' should not change based on this condition. Handle boundary case where index is length-3 (no element at index+3).
+  - action: replace_zero_with_three
+    description: If a '0' is found, and (the left neighbor pattern '1 1' exists AND the left exclusion does not apply) OR (the right neighbor pattern '1 1' exists AND the right exclusion does not apply), change the '0' to '3' in the output sequence.
+  - action: copy_unaffected_digits
+    description: All '1's, and any '0's that do not meet the transformation criteria (including those subject to exclusion rules), are copied directly from input to output.

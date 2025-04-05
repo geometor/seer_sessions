@@ -1,0 +1,32 @@
+task_type: grid_transformation
+input_elements:
+  - type: grid
+    description: 2D grid of integers.
+    properties:
+      - contains_zeros: True (can be background or target)
+      - contains_non_zeros: True (can be target or noise within target bbox)
+output_elements:
+  - type: grid
+    description: A subgrid extracted from the input, potentially filtered.
+transformation:
+  action: extract_and_filter_subgrid
+  selection_criteria:
+    target: integer_value (can be 0)
+    method: find all occurrences of each unique integer value present in the input grid.
+    metric: density = (count_of_occurrences) / (area_of_minimal_bounding_box_enclosing_occurrences)
+    rule: choose the integer value with the highest density.
+    tie_breaking:
+        - 1st: highest count of occurrences
+        - 2nd: smallest bounding box area
+        - 3rd: smallest integer value (arbitrary but consistent)
+  subgrid_definition:
+    type: bounding_box
+    description: Minimal rectangular area enclosing all occurrences of the selected target integer value.
+  filtering:
+    action: mask_subgrid
+    source: extracted subgrid based on bounding_box
+    mask_condition: keep cells if the corresponding cell in the original input grid (at the same absolute coordinates) contained the selected target integer value.
+    replacement_value: 0 (for cells not matching the mask condition)
+relationships:
+  - output grid dimensions are determined by the bounding box of the selected target value's occurrences.
+  - output grid content is a filtered version of the input grid within the bounding box, keeping only the target value and replacing others with 0.

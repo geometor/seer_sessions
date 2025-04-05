@@ -1,0 +1,62 @@
+task_description: Transform sequences of 0s and 3s based on the relative lengths of contiguous groups of 3s.
+elements:
+  - type: sequence
+    description: A list of single-digit integers.
+    properties:
+      - contains_zeros: True
+      - contains_threes: True (input only)
+      - contains_ones: True (output only)
+      - contains_twos: True (output only)
+  - type: number
+    value: 0
+    role: separator/unchanged background
+  - type: number
+    value: 3
+    role: input value subject to transformation
+  - type: number
+    value: 1
+    role: output value replacing 3s
+  - type: number
+    value: 2
+    role: output value replacing 3s
+  - type: object
+    name: group_of_threes
+    description: A contiguous subsequence containing only the number 3.
+    properties:
+      - start_index: integer
+      - end_index: integer
+      - length: integer (count of 3s)
+      - order: position relative to other groups (e.g., first, second)
+relationships:
+  - type: mapping
+    from: group_of_threes (input)
+    to: group_of_ones_or_twos (output)
+    properties:
+      - preserves_length: True
+      - preserves_position: True
+  - type: comparison
+    objects: [group_of_threes (first), group_of_threes (second)]
+    property: length
+    determines: which output value (1 or 2) replaces each group.
+actions:
+  - name: identify_groups
+    input: input_sequence
+    output: list of group_of_threes objects (with properties like index, length)
+    condition: Assumes exactly two groups exist in the input examples.
+  - name: compare_lengths
+    input: two group_of_threes objects (first and second)
+    output: boolean (is first group longer than second?)
+  - name: assign_output_values
+    input: comparison_result, two group_of_threes objects
+    output: mapping of input group to output value (1 or 2)
+    rule: |
+      If first group is longer, assign 1 to first group, 2 to second group.
+      Otherwise (first group is shorter or equal), assign 2 to first group, 1 to second group.
+  - name: construct_output
+    input: input_sequence, group_assignments
+    output: output_sequence
+    process: |
+      Initialize output as a copy of input.
+      Iterate through identified groups.
+      Replace the 3s within each group's range in the output sequence with the assigned output value (1 or 2).
+      Keep 0s unchanged.

@@ -1,0 +1,60 @@
+objects:
+  - name: input_array
+    type: numpy.ndarray
+    properties:
+      - ndim: 1 # 1-dimensional array
+      - dtype: int
+      - length: variable (fixed per task instance, e.g., 12)
+  - name: output_array
+    type: numpy.ndarray
+    properties:
+      - ndim: 1
+      - dtype: int
+      - length: same as input_array
+      - elements: derived from input_array based on zero shifts
+  - name: zero_element
+    type: int
+    value: 0
+    role: marker for positional shift
+  - name: non_zero_element
+    type: int
+    properties:
+      - value: != 0
+      - role: preserves value, position determined by zero_element shifts
+
+actions:
+  - name: identify_zero_indices
+    input: input_array
+    process: Use `numpy.where(input_array == 0)` to get indices where the element is 0.
+    output: 1D numpy array of zero indices.
+  - name: identify_non_zero_elements
+    input: input_array
+    process: Use boolean indexing `input_array[input_array != 0]` to get non-zero elements.
+    output: 1D numpy array of non-zero elements, preserving relative order.
+  - name: calculate_target_zero_indices
+    input: array of zero indices, length of input_array
+    process: Apply the transformation `(index + 1) % length` to each zero index using NumPy vectorized operations.
+    output: 1D numpy array of target indices for zeros in the output_array.
+  - name: determine_non_zero_target_indices
+    input: array of target zero indices, length of input_array
+    process: |
+      1. Create a boolean mask of the same length as the input_array, initialized to True.
+      2. Set the elements at the target_zero_indices in the mask to False.
+      3. Use `numpy.where(mask)` to find the indices where the mask is True.
+    output: 1D numpy array of sorted target indices for non-zero elements.
+  - name: construct_output_array
+    inputs:
+      - target_zero_indices
+      - non_zero_elements (ordered array)
+      - non_zero_target_indices (sorted array)
+      - length of array
+    process: |
+      1. Create an empty numpy array of the specified length and integer dtype (e.g., using `numpy.zeros` or `numpy.empty`).
+      2. Place the non_zero_elements into the output array at the non_zero_target_indices.
+      3. Place the zero_element (0) into the output array at the target_zero_indices. (Note: If initialized with zeros, this step might only involve overwriting non-zeros). Ensure the final values at target_zero_indices are 0.
+    output: output_array
+
+relationships:
+  - The set of indices occupied by `zero_element` in `output_array` is derived by shifting the indices of `zero_element` in `input_array` one position to the right (modulo array length).
+  - The relative order of `non_zero_element` values is preserved between `input_array` and `output_array`.
+  - The `output_array` contains the same elements as the `input_array`, but potentially rearranged according to the zero-shifting rule.

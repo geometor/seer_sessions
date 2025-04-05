@@ -1,0 +1,59 @@
+task_elements:
+  - type: sequence
+    format: list of integers (derived from space-separated string)
+    role: input & output
+objects:
+  - name: digit_sequence
+    properties:
+      - elements: single digits (0-9)
+      - order: significant
+      - length: variable
+  - name: zero_digit
+    properties:
+      - value: 0
+  - name: non_zero_digit
+    properties:
+      - value: 1-9
+  - name: mobile_zero_block
+    properties:
+      - composition: one or more contiguous zero_digits
+      - context: must be immediately preceded by a non_zero_digit (L) and immediately followed by a non_zero_digit (R) within the sequence.
+      - identification_indices: list of original indices occupied by the zeros in the block
+  - name: static_element 
+    properties:
+      - value: any digit (0-9)
+      - context: not part of a mobile_zero_block (includes non-zeros and zeros not meeting L-0...0-R criteria)
+      - behavior: maintains relative order with other static_elements
+relationships:
+  - type: adjacency
+    between: digits in the sequence (defines neighbors)
+  - type: pattern_match
+    definition: non_zero_digit (L), one_or_more_zero_digits, non_zero_digit (R)
+    identifies: mobile_zero_block
+  - type: comparison
+    between: L and R non_zero_digits of a matched pattern
+    determines: relocation_destination of the mobile_zero_block
+actions:
+  - name: scan_and_identify
+    target: digit_sequence
+    purpose: find all mobile_zero_blocks based on the L-0...0-R pattern
+    details: Iterates through the sequence. When a potential block start (non-zero followed by zero) is found, scans forward to find the end of the zero block and checks for a subsequent non-zero digit.
+  - name: categorize_and_collect
+    target: identified mobile_zero_blocks
+    based_on: comparison(L, R)
+    outputs:
+      - list: zeros_to_prepend (grows if L > R)
+      - list: zeros_to_append (grows if L < R)
+      - set: indices_to_remove (stores original indices of all mobile zeros)
+    details: For each identified block, compares L and R, adds the correct number of zeros to the appropriate relocation list, and adds the block's original indices to the removal set.
+  - name: build_core_sequence
+    target: original digit_sequence
+    filter: exclude elements whose indices are in indices_to_remove
+    output: list: result_core (contains all static_elements in original relative order)
+  - name: assemble_final_sequence
+    inputs: zeros_to_prepend, result_core, zeros_to_append
+    operation: concatenate lists in the specified order
+    output: final transformed digit_sequence (as list)
+  - name: format_output_string
+    target: final transformed digit_sequence (list)
+    output: space-separated string representation

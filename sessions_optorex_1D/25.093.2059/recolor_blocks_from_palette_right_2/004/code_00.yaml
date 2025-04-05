@@ -1,0 +1,84 @@
+objects:
+  - name: input_sequence
+    type: List[int] # or np.ndarray[int]
+    description: The initial sequence of single-digit integers.
+  - name: output_sequence
+    type: List[int] # or np.ndarray[int]
+    description: The resulting sequence after transformation, initially a copy of the input.
+  - name: key1
+    type: int
+    description: The first integer in the input_sequence. Extracted from index 0.
+  - name: key2
+    type: int
+    description: The second integer in the input_sequence. Extracted from index 1.
+  - name: target_digit
+    type: int
+    value: 5
+    description: The specific digit in the input_sequence that identifies blocks for replacement.
+  - name: target_blocks
+    type: List[Tuple[int, int]] # List of (start_index, length)
+    description: Ordered list of contiguous blocks of the target_digit (5) found within the input_sequence.
+
+properties:
+  - object: input_sequence
+    property: length
+    description: The number of elements.
+  - object: output_sequence
+    property: length
+    description: The number of elements (always equals input length).
+  - object: target_blocks
+    property: count
+    description: The number of identified contiguous blocks of the target_digit.
+  - object: target_blocks
+    property: order
+    description: Blocks are indexed based on their appearance order (0-indexed: first block is index 0, second is index 1, etc.).
+
+actions:
+  - name: initialize_output
+    inputs: [input_sequence]
+    outputs: [output_sequence]
+    description: Create the output_sequence as an element-by-element copy of the input_sequence.
+  - name: identify_keys
+    inputs: [input_sequence]
+    outputs: [key1, key2]
+    preconditions: [input_sequence length >= 2]
+    description: Extract the element at index 0 as key1 and the element at index 1 as key2.
+  - name: find_target_blocks
+    inputs: [input_sequence, target_digit]
+    outputs: [target_blocks]
+    description: Scan the input_sequence from start to end, identifying all contiguous sequences of the target_digit (5). Record the start index and length of each block found, preserving the order of discovery.
+  - name: replace_first_block
+    inputs: [output_sequence, target_blocks, key1]
+    outputs: [output_sequence] # Modified in place or returned as new
+    condition: target_blocks count >= 1
+    description: Identify the first block (index 0) in target_blocks. Replace every element in the output_sequence within the range [start_index, start_index + length) of this block with the value key1.
+  - name: replace_second_block
+    inputs: [output_sequence, target_blocks, key2]
+    outputs: [output_sequence] # Modified in place or returned as new
+    condition: target_blocks count >= 2
+    description: Identify the second block (index 1) in target_blocks. Replace every element in the output_sequence within the range [start_index, start_index + length) of this block with the value key2.
+
+relationships:
+  - type: derivation
+    subject: key1
+    object: input_sequence[0]
+    description: key1 is the value of the first element.
+  - type: derivation
+    subject: key2
+    object: input_sequence[1]
+    description: key2 is the value of the second element.
+  - type: transformation
+    subject: first target_block in input_sequence
+    object: segment in output_sequence corresponding to the first block
+    predicate: replaced_by
+    value: key1 (repeated)
+    description: The segment of the output_sequence corresponding to the first block of 5s is overwritten with key1.
+  - type: transformation
+    subject: second target_block in input_sequence
+    object: segment in output_sequence corresponding to the second block
+    predicate: replaced_by
+    value: key2 (repeated)
+    description: The segment of the output_sequence corresponding to the second block of 5s is overwritten with key2.
+  - type: positional_invariance
+    subject: elements not in first or second target_block
+    description: All elements in the input_sequence that are not part of the first or second block of 5s retain their original value and position in the output_sequence.

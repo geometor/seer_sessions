@@ -1,0 +1,56 @@
+objects:
+  - name: input_sequence
+    properties:
+      - type: numpy.ndarray
+      - shape: (12,)
+      - dtype: int
+      - elements: integers from 0 to 9
+  - name: output_sequence
+    properties:
+      - type: numpy.ndarray
+      - shape: (12,)
+      - dtype: int
+      - derived_from: input_sequence
+  - name: target_number
+    properties:
+      - value: 5
+  - name: groups_of_target
+    properties:
+      - type: list_of_lists_of_indices
+      - description: Each inner list contains the indices of consecutive 'target_number' (5) values in the input_sequence. Order matters.
+  - name: replacement_values
+    properties:
+      - type: list_of_integers (or numpy.ndarray slice)
+      - source: The last 'k' elements of the input_sequence, where 'k' is the count of groups_of_target.
+      - order: Preserved from the input_sequence (left-to-right).
+
+actions:
+  - name: identify_groups
+    input: input_sequence
+    output: groups_of_target
+    description: Finds consecutive sequences of the target_number (5) in the input_sequence and returns their indices as a list of lists.
+  - name: determine_replacement_count
+    input: groups_of_target
+    output: k (integer count of groups)
+  - name: extract_replacement_values
+    input: input_sequence, k
+    output: replacement_values
+    description: Takes the last 'k' elements from the input_sequence. Returns empty list/array if k=0.
+  - name: replace_groups
+    input: input_sequence, groups_of_target, replacement_values
+    output: output_sequence
+    description: Creates a copy of the input_sequence. Iterates through groups_of_target and replacement_values simultaneously. For the i-th group, replaces all elements in the copied sequence at the indices specified by the group with the i-th replacement value. If no groups exist (k=0), returns the original input_sequence copy.
+
+relationships:
+  - type: correspondence
+    source: groups_of_target
+    target: replacement_values
+    description: The i-th group of '5's (ordered by appearance) corresponds to the i-th replacement value (ordered as extracted from the end).
+  - type: dependency
+    source: replacement_values_count (k)
+    target: groups_of_target_count
+    description: The number of replacement values needed is equal to the number of groups of consecutive '5's found.
+  - type: location
+    source: replacement_values
+    target: input_sequence
+    description: Replacement values are sourced from the tail end of the input_sequence.

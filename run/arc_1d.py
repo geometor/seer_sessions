@@ -8,26 +8,20 @@ from geometor.seer.tasks.tasks import get_unsolved_tasks
 
 
 def run():
-    #  config_file = "thinker.yaml"
-    config_dir = Path("./config") # Or Path("path/to/your/config_directory")
+    config_dir = Path("./config") 
 
     try:
-        # Instantiate the Config object, passing the directory path
         config = Config(config_dir)
         print(f"Configuration loaded successfully from: {config_dir}")
     except (FileNotFoundError, ConfigError) as e:
         print(f"FATAL: Failed to load configuration from {config_dir}: {e}")
-        sys.exit(1) # Exit if configuration fails to load
-    # --- End Configuration Loading ---
+        sys.exit(1) 
 
-    # Seer now expects the Config object directly
     try:
         seer = Seer(config)
     except (ValueError, RuntimeError) as e:
-        # Catch errors during Seer initialization (e.g., missing roles, client init failure)
         print(f"FATAL: Failed to initialize Seer: {e}")
         sys.exit(1)
-
 
     output_dir = Path("../sessions_optorex_1D/")
 

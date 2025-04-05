@@ -1,0 +1,65 @@
+task_elements:
+  - type: sequence
+    description: Input and output are sequences of single-digit integers.
+    format: Space-separated string (assumed correct format based on examples).
+objects:
+  - name: input_sequence
+    properties:
+      - digits: list of integers
+      - length: integer (n)
+  - name: output_sequence
+    properties:
+      - digits: list of integers
+      - length: integer (n)
+  - name: parameter_digits
+    description: The last 'k' digits of the input_sequence. 'k' is determined dynamically.
+    properties:
+      - count: integer (k)
+      - values: list of integers
+  - name: main_sequence
+    description: The initial part of the input sequence, excluding the parameter_digits (input_sequence[:-k]).
+    properties:
+      - values: list of integers
+  - name: target_digit
+    description: The digit within the main_sequence designated for replacement.
+    determination: Most frequent non-zero digit in main_sequence. If tie in frequency, the numerically smallest digit is chosen. If main_sequence contains only zeros or is empty, there is no target_digit.
+  - name: target_digit_blocks
+    description: Consecutive groups of the target_digit within the main_sequence. Blocks are separated by any digit that is *not* the target_digit.
+    properties:
+      - count: integer (must equal k)
+      - index: integer (1 to k)
+  - name: transformed_main_sequence
+    description: The main_sequence after replacement.
+    properties:
+      - values: list of integers
+actions:
+  - name: determine_k
+    input: input_sequence
+    output: integer k, main_sequence, parameter_digits, target_digit
+    logic: >
+      Iterate potential values for k (number of parameters) downwards from a reasonable maximum (e.g., n // 2 + 1, but at least 1).
+      For each potential k:
+        1. Split input_sequence into potential_main_sequence (first n-k digits) and potential_parameter_digits (last k digits).
+        2. Find the potential_target_digit in potential_main_sequence (most frequent non-zero, smallest on tie).
+        3. If a potential_target_digit exists, count its blocks in potential_main_sequence.
+        4. If block_count equals k, this is the correct k. Return k, potential_main_sequence, potential_parameter_digits, and potential_target_digit.
+      If no such k is found (and the sequence is not all zeros), the pattern is not met (treat as no-op or error). If sequence is all zeros, k=0.
+  - name: replace_blocks
+    input: main_sequence, target_digit, parameter_digits
+    output: transformed_main_sequence
+    logic: >
+      Iterate through main_sequence. Keep track of the current block index (0-based) for target_digit blocks encountered.
+      When a target_digit is found, replace it with parameter_digits[current_block_index].
+      Increment block index only when transitioning from a non-target_digit to a target_digit.
+      Keep all non-target_digits (including zeros) unchanged.
+  - name: construct_output
+    input: transformed_main_sequence, parameter_digits
+    output: output_sequence (list of integers)
+    logic: Concatenate transformed_main_sequence and parameter_digits.
+  - name: format_output_string
+    input: output_sequence (list)
+    output: space-separated string representation
+relationships:
+  - The number of parameter_digits (k) must equal the number of target_digit_blocks found in the corresponding main_sequence.
+  - Digits that are not the target_digit (including zeros) act as separators for target_digit_blocks and remain unchanged during the replacement phase within the main_sequence.
+  - The final output sequence is formed by concatenating the transformed_main_sequence and the original parameter_digits.

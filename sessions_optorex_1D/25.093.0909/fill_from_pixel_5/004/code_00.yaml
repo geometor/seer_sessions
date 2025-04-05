@@ -1,0 +1,61 @@
+elements:
+  - type: sequence
+    description: A fixed-length sequence of 12 digits (0-9).
+    length: 12
+  - type: digit
+    value_range: 0-9
+    properties:
+      - is_zero: boolean
+      - is_non_zero: boolean
+      - value: integer
+
+objects:
+  - name: input_sequence
+    type: sequence
+    description: The initial 12-digit sequence.
+  - name: output_sequence
+    type: sequence
+    description: The transformed 12-digit sequence, initialized as a copy of the input.
+  - name: position
+    type: index
+    value_range: 0-11
+    description: Location within the sequence.
+  - name: single_non_zero_digit
+    type: object
+    description: A non-zero digit in the input_sequence whose immediate neighbors (if they exist within bounds) have different values.
+    properties:
+      - value: integer (1-9)
+      - index: integer (0-11)
+  - name: zero_block
+    type: sequence_segment
+    description: A contiguous subsequence of one or more zeros in the input_sequence.
+
+relationships:
+  - type: adjacency
+    description: Defines immediate left/right neighbors for a digit at a given index.
+  - type: boundary_condition
+    description: The first (index 0) and last (index 11) digits have only one neighbor.
+  - type: context_for_singleness
+    description: A non-zero digit's status as "single" depends on the values of its immediate neighbors in the input_sequence.
+  - type: propagation_target
+    description: Zero blocks immediately adjacent (left or right) to a single_non_zero_digit in the input_sequence are targets for value propagation.
+
+actions:
+  - name: initialize_output
+    input: input_sequence
+    output: output_sequence
+    description: Create a mutable copy of the input_sequence to serve as the initial state of the output_sequence.
+  - name: identify_singles
+    input: input_sequence
+    output: list of single_non_zero_digit objects (value and index)
+    description: Iterate through the input_sequence. For each non-zero digit, check if its left neighbor (if exists) has a different value AND its right neighbor (if exists) has a different value. If both conditions are true, record it as a single.
+  - name: propagate_value
+    input: single_non_zero_digit (value and index), input_sequence, output_sequence
+    output: modified output_sequence
+    description: For a given single_non_zero_digit found in the input_sequence:
+      1. Scan leftwards from the position adjacent to the single digit's index. While the position is within bounds and the digit in the *input_sequence* at that position is zero, update the digit in the *output_sequence* at that position with the single digit's value.
+      2. Scan rightwards from the position adjacent to the single digit's index. While the position is within bounds and the digit in the *input_sequence* at that position is zero, update the digit in the *output_sequence* at that position with the single digit's value.
+  - name: process_all_singles
+    input: input_sequence, list of single_non_zero_digits
+    output: final output_sequence
+    description: Initialize the output_sequence from the input_sequence. Then, for each identified single_non_zero_digit, perform the propagate_value action, updating the output_sequence. The checks for propagation targets (zeros) are always based on the original input_sequence.

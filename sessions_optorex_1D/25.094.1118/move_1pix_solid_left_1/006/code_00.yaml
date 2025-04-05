@@ -1,0 +1,51 @@
+task_description: Shift the first contiguous block of identical non-zero digits one position to the left within a fixed-length 1D integer array, padding with zeros.
+
+input_object:
+  name: input_array
+  type: 1D numpy array
+  element_type: integer
+  properties:
+    - length: fixed (observed as 12)
+    - contains_pattern: Contains zeros and exactly one contiguous block of identical non-zero digits.
+
+output_object:
+  name: output_array
+  type: 1D numpy array
+  element_type: integer
+  properties:
+    - length: fixed (same as input, 12)
+    - content: Derived from input_array by shifting the non_zero_block.
+
+derived_elements:
+  - name: non_zero_block
+    source: input_array
+    type: contiguous sub-sequence
+    properties:
+      - value: a single non-zero integer (e.g., 1, 2, 5, 6, 7, 8)
+      - start_index: index of the first element of the block
+      - end_index: index immediately after the last element of the block
+      - length: number of elements in the block (end_index - start_index)
+
+transformation_actions:
+  - name: find_block_details
+    input: input_array
+    output: start_index, end_index, block_value
+    description: Locates the first non-zero element, determines its value, and finds the end index of the contiguous sequence of elements matching that value. Returns None if no non-zero block exists.
+  - name: initialize_output
+    input: input_array (for size)
+    output: output_array
+    description: Creates a new numpy array of the same size as the input, filled entirely with zeros.
+  - name: calculate_shifted_position
+    input: start_index, end_index
+    output: new_start_index, new_end_index
+    description: Calculates the target start and end indices for the block in the output array by subtracting 1 from the original indices.
+  - name: place_shifted_block
+    input: output_array, new_start_index, new_end_index, block_value
+    output: modified output_array
+    description: Fills the elements of the output_array from `max(0, new_start_index)` to `min(length, new_end_index)` with the `block_value`. This handles boundary conditions (shifting from index 1 to 0 is valid; shifting from index 0 would result in `new_start_index = -1`, and the effective placement starts at index 0, potentially truncating the block if the original `start_index` was 0 - though this case wasn't observed).
+
+relationships:
+  - The output_array length is identical to the input_array length.
+  - If a non_zero_block exists in input_array starting at index `s` >= 1, the output_array contains the same block (identical value and length) starting at index `s-1`.
+  - All positions in output_array not occupied by the shifted block are zeros.
+  - If input_array contains no non_zero_block, output_array is all zeros.

@@ -1,0 +1,67 @@
+task_description: Swap the relative position of a target block of identical non-zero numbers with respect to a fixed pivot element '2', preserving the gap (number of zeros) between them. The pivot '2' maintains its original absolute position.
+
+elements:
+  - object: sequence
+    properties:
+      - type: list of integers
+      - length: 12 (consistent across examples)
+  - object: pivot
+    properties:
+      - value: 2
+      - count: 1 per sequence
+      - role: fixed reference point (its index remains unchanged)
+  - object: target_block
+    properties:
+      - type: contiguous subsequence
+      - content: identical non-zero integers (value != 2)
+      - length: variable (>= 1)
+      - count: 1 per sequence
+      - role: element to be repositioned
+  - object: zero
+    properties:
+      - value: 0
+      - role: filler/spacer element defining the gap
+
+relationships:
+  - type: position
+    between: [target_block, pivot]
+    states: [target_block_left_of_pivot, target_block_right_of_pivot]
+    determination: Based on block end index vs pivot index.
+  - type: separation
+    between: [target_block, pivot]
+    properties:
+      - name: gap
+      - definition: Number of zeros strictly between the block and the pivot in the input.
+      - conserved: Yes (this number of zeros is maintained between them in the output).
+
+actions:
+  - action: identify_pivot
+    target: input_sequence
+    outputs: pivot_value (2), pivot_index
+  - action: identify_target_block
+    target: input_sequence
+    inputs: pivot_value (to exclude it)
+    outputs: block_value, block_start_index, block_end_index, block_length
+  - action: determine_relative_position
+    inputs: block_end_index, pivot_index
+    outputs: is_left (boolean)
+  - action: calculate_gap
+    inputs: input_sequence, block_start_index, block_end_index, pivot_index
+    outputs: gap_size (integer count of zeros between block and pivot)
+  - action: initialize_output
+    details: Create a new sequence of the same length as input, filled with zeros.
+  - action: place_pivot_in_output
+    inputs: output_sequence, pivot_value, pivot_index
+    details: Place the pivot at its original index in the output.
+  - action: calculate_new_block_position
+    inputs: pivot_index, gap_size, block_length, is_left (relative position in input)
+    outputs: new_block_start_index
+    logic: |
+      if block was left in input (is_left is True):
+        new_start = pivot_index + 1 + gap_size
+      else (block was right in input):
+        new_end = pivot_index - 1 - gap_size
+        new_start = new_end - block_length + 1
+  - action: place_target_block_in_output
+    inputs: output_sequence, block_value, new_block_start_index, block_length
+    details: Place the block's elements at the calculated new position in the output. Check for boundary conditions.

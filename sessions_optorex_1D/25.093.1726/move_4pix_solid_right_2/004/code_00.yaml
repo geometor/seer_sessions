@@ -1,0 +1,67 @@
+objects:
+  - name: input_sequence
+    type: 1D array-like structure (e.g., list or NumPy array)
+    properties:
+      - length: 12
+      - elements: single-digit integers (0-9)
+  - name: output_sequence
+    type: 1D list # The desired output format is typically a standard list
+    properties:
+      - length: 12
+      - elements: single-digit integers (0-9)
+  - name: non_zero_block
+    type: sub-sequence
+    properties:
+      - elements: identical non-zero digits
+      - contiguous: true
+      - uniqueness: Only one such block exists per input sequence.
+      - location: variable within the input sequence
+      - length: variable (1 or more)
+  - name: zero_elements
+    type: integer
+    value: 0
+    role: background/padding
+
+actions:
+  - name: receive_input
+    actor: system
+    input: 1D array-like structure
+    output: internal representation (potentially convert to standard list)
+  - name: identify_block
+    actor: system
+    input: internal sequence representation
+    output: block_value (integer), start_index (integer), block_length (integer)
+    process: Iterate through the sequence to find the first non-zero element. Record its value and start index. Continue iterating while subsequent elements match the block value to determine the length. Stop after the first block is fully identified.
+  - name: initialize_output
+    actor: system
+    output: 1D list of length 12, filled with zeros.
+  - name: calculate_new_position
+    actor: system
+    input: original_start_index
+    properties:
+      - shift_distance: 4
+      - direction: right
+    output: new_start_index
+  - name: place_block
+    actor: system
+    input:
+      - output_sequence (initialized)
+      - block_value
+      - new_start_index
+      - block_length
+    output: output_sequence (modified)
+    process: Populate the elements of the output sequence from `new_start_index` up to `new_start_index + block_length - 1` with the `block_value`. Ensure operations stay within the sequence bounds (length 12).
+  - name: return_output
+    actor: system
+    output: final 1D list
+
+relationships:
+  - type: positional_change
+    subject: non_zero_block
+    details: The start index of the block increases by exactly 4 positions from input to output.
+  - type: value_preservation
+    subject: non_zero_block
+    details: The digit value and length of the non_zero_block remain the same.
+  - type: structure_preservation
+    subject: sequence
+    details: The length of the sequence (12) and the count of non-zero elements remain the same.

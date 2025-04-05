@@ -1,0 +1,53 @@
+task_elements:
+  - object: input_sequence
+    properties:
+      - type: list_of_integers # Changed from sequence to be more specific, confirmed by error/fix
+      - length: fixed (e.g., 12 in examples)
+      - contains: zeros, non_zero_numbers
+      - structure: Contains exactly two distinct contiguous blocks of identical non-zero numbers, separated by at least one zero.
+  - object: zero
+    properties:
+      - value: 0
+      - role: background_filler_or_separator
+  - object: non_zero_block
+    properties:
+      - type: contiguous_subsequence (list of integers)
+      - composed_of: identical_non_zero_integers
+      - identified_by: order_of_appearance (first_block 'A', second_block 'B')
+      - property: length (number of elements)
+      - property: value (the non-zero integer)
+    relationships:
+      - appears_twice_per_input: Exactly two blocks (A, B) are present in each input sequence.
+      - separated_by_zeros_input: Blocks A and B are separated by at least one zero in the input sequence.
+  - object: output_sequence
+    properties:
+      - type: list_of_integers
+      - length: same_as_input_sequence
+      - structure: Starts with zero or more zeros, followed by an ordered pair of non-zero blocks (X, Y) separated by a single zero `[..., 0, X, 0, Y]`.
+actions:
+  - identify_blocks:
+      actor: system
+      input: input_sequence (list of integers)
+      output: first_block (A), second_block (B) # Both as lists of integers
+      conditions: Find the first and second contiguous blocks of identical non-zero numbers.
+  - compare_lengths:
+      actor: system
+      input: first_block (A), second_block (B)
+      output: boolean (is length(B) > length(A)?)
+  - determine_output_order:
+      actor: system
+      input: first_block (A), second_block (B), comparison_result
+      output: ordered_pair_of_blocks (X, Y) # X is the block placed to the left, Y to the right in the output structure
+      logic: If length(B) > length(A), the output order is (X=B, Y=A). Otherwise (if length(B) <= length(A)), the output order is (X=A, Y=B).
+  - construct_output:
+      actor: system
+      input: input_sequence_length (n), ordered_blocks (X, Y)
+      output: output_sequence (list of integers)
+      steps:
+        - Calculate required space: len(X) + len(Y) + 1 (for the separator zero).
+        - Calculate number of leading zeros: n - (len(X) + len(Y) + 1).
+        - Create the output list: `[0] * num_leading_zeros + X + [0] + Y`.
+relationships:
+  - input_output_length: The length of the output sequence is identical to the length of the input sequence.
+  - block_separation_output: The two non-zero blocks (X and Y) in the output are always separated by exactly one zero.
+  - block_placement_output: The reordered blocks (X, Y) and their single zero separator are placed at the far right of the output sequence, preceded by leading zeros filling the remaining space.

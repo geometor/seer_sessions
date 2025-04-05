@@ -1,0 +1,47 @@
+task_elements:
+  - object: grid
+    type: 2D array of integers
+    role: input/output canvas
+  - object: cell
+    properties:
+      - color: integer (0 for background)
+      - position: (row, column)
+  - object: boundary_shape
+    properties:
+      - color: non-zero integer (boundary_color)
+      - topology: forms a closed loop separating an inner region from the grid edges.
+      - role: defines the enclosed region.
+    identification: Heuristically, the non-zero color that partitions the grid such that the largest connected component of '0' cells is not reachable from the grid edges without crossing this color.
+  - object: enclosed_background_region
+    definition: The set of background (color 0) cells that are inside the boundary_shape.
+    determination: Perform a flood fill (e.g., BFS) starting from all '0' cells at the grid edges. Any '0' cell not reached by this fill and not having the boundary_color is considered enclosed.
+  - object: inner_pattern
+    properties:
+      - content: A 2D array of integers (can include 0s).
+      - source_location: Bounding box (min_row, min_col, max_row, max_col) in the input grid from where the pattern is extracted.
+      - origin: Top-left coordinate (min_row, min_col) of the source bounding box.
+      - dimensions: (height, width)
+    role: The template to be tiled onto the enclosed_background_region.
+    determination:
+      1. Identify candidate cells: Non-zero cells located within the region enclosed by the boundary (not reachable from the edge without crossing the boundary) or adjacent to enclosed_background_region cells.
+      2. Filter candidates: Exclude cells clearly part of the main boundary structure (e.g., adjacent to reachable '0's). Prioritize non-boundary colors, but allow internal boundary-colored cells (like test 3).
+      3. Determine bounding box of the final candidate pattern cells.
+      4. Extract the rectangular region from the input grid corresponding to this bounding box.
+  - action: identify_boundary_color
+    input: grid
+    output: boundary_color (integer)
+  - action: identify_enclosed_background_cells
+    input: grid, boundary_color
+    output: list of (row, col) tuples
+  - action: extract_inner_pattern
+    input: grid, enclosed_background_cells, boundary_color
+    output: pattern_array, pattern_origin (min_row, min_col)
+  - action: tile_pattern
+    input: output_grid, enclosed_background_cells, pattern_array, pattern_origin
+    output: modified output_grid
+    description: For each cell (r, c) in enclosed_background_cells, calculate pattern indices `pr = (r - origin_r) % pattern_h`, `pc = (c - origin_c) % pattern_w`. If `pattern[pr, pc]` is non-zero, set `output_grid[r, c] = pattern[pr, pc]`.
+
+relationships:
+  - boundary_shape encloses enclosed_background_region
+  - boundary_shape encloses the source_location of the inner_pattern
+  - inner_pattern is tiled onto enclosed_background_region to produce the filled areas in the output grid.

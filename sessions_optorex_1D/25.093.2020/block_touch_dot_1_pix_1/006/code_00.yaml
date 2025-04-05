@@ -1,0 +1,83 @@
+objects:
+  - name: sequence
+    type: list of integers
+    description: Represents the input and output data, a fixed-length sequence.
+  - name: trigger_digit
+    type: integer
+    value: 2
+    description: The digit whose first occurrence defines the start point for the conditional search.
+  - name: target_digit
+    type: integer
+    value: 0
+    description: The digit to be potentially removed if the condition is met.
+  - name: condition_digit
+    type: integer
+    value_constraint: '!= 0'
+    description: A non-zero digit that must immediately follow the target_digit for the removal condition to be true.
+  - name: appended_digit
+    type: integer
+    value: 0
+    description: The digit appended to the end of the sequence if a transformation occurs.
+
+properties:
+  - name: index
+    applies_to: [sequence element]
+    description: The zero-based position of a digit within the sequence.
+  - name: value
+    applies_to: [sequence element]
+    description: The integer value of a digit at a specific index.
+  - name: length
+    applies_to: [sequence]
+    description: The number of digits in the sequence (remains constant throughout the process).
+  - name: adjacency
+    applies_to: [sequence element]
+    description: The relationship between a digit at index `j` and the digit at index `j + 1`.
+
+actions:
+  - name: find_first_trigger_index
+    actor: rule_logic
+    target: sequence
+    parameter: trigger_digit (value=2)
+    result: index `i` of the first trigger_digit, or -1 if not found.
+    description: Locate the index `i` of the first '2'.
+  - name: search_for_condition
+    actor: rule_logic
+    target: sequence
+    parameters: [start_index] # index `i + 1`
+    description: Iterate through the sequence from start_index up to the second-to-last element (index length - 2).
+  - name: evaluate_removal_condition
+    actor: rule_logic
+    target: sequence
+    parameters: [current_index] # index `j` during the search
+    condition: |
+      Is the element at current_index `j` equal to target_digit (0)?
+      AND Is the element at index `j + 1` a condition_digit (non-zero)?
+    result: boolean (True if condition met, False otherwise)
+    description: Check if a '0' is immediately followed by a non-'0'.
+  - name: find_first_target_index
+    actor: rule_logic
+    target: sequence (portion after first trigger_digit)
+    action_sequence: [search_for_condition, evaluate_removal_condition]
+    result: index `j` of the first target_digit (0) that meets the condition, or -1 if none found.
+    description: Identify the index `j` of the specific '0' to be removed. The search stops once the first match is found.
+  - name: apply_transformation
+    actor: rule_logic
+    target: sequence
+    parameter: target_index # index `j` found in the previous step
+    effect:
+      - Removes the element at target_index `j`.
+      - Appends appended_digit (0) to the end.
+    result: modified sequence
+    description: Perform the removal and appending operations to create the output sequence.
+
+relationships:
+  - type: primary_condition
+    description: The entire transformation process is conditional on finding the trigger_digit ('2') in the input sequence. If not found, the input is returned unchanged.
+  - type: secondary_condition
+    description: The transformation (removal and appending) only occurs if the search finds a target_digit ('0') immediately followed by a condition_digit (non-'0') within the specified search range (after the first '2').
+  - type: search_boundary
+    description: The search for the target '0' begins at the index immediately following the first '2' and ends before the last element (to allow checking the next element).
+  - type: first_match_priority
+    description: If multiple instances of '0' followed by non-'0' exist after the first '2', only the *first* one encountered triggers the transformation.
+  - type: length_conservation
+    description: The removal of one element and appending of another ensures the output sequence always has the same length as the input sequence.

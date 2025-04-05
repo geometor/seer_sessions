@@ -1,0 +1,71 @@
+task_elements:
+  - object: sequence
+    type: 1D_array_of_integers # Updated assumption based on error
+    role: input
+    properties:
+      - length: fixed (12 in examples)
+      - content: contains zeros and potentially a core_block
+  - object: sequence
+    type: list_of_integers # Assuming list output is desired
+    role: output
+    properties:
+      - length: same as input sequence
+      - content: derived from input sequence via transformation
+  - object: core_block
+    definition: contiguous subsequence from the first non-zero element to the last non-zero element (inclusive) in the input sequence.
+    properties:
+      - location: defined by start_index and end_index in the input sequence
+      - content: sequence of integers (including any zeros within the block)
+  - object: zero
+    type: integer
+    value: 0
+    role: padding_element / background_element
+  - object: shift_amount
+    type: integer
+    value: 4
+    role: constant_parameter
+    context: defines the magnitude of the leftward shift
+
+actions:
+  - action: identify_non_zero_bounds
+    input: input_sequence (numpy array)
+    output: tuple (start_index, end_index) or None
+    method: Use np.nonzero to find indices of non-zero elements, then take the min and max index.
+  - action: handle_no_non_zeros
+    condition: identify_non_zero_bounds returns None
+    output: sequence of zeros with the same length as input
+  - action: extract_core_block
+    input: input_sequence, start_index, end_index
+    output: core_block (numpy array slice)
+    method: Array slicing `input_sequence[start_index : end_index + 1]`
+  - action: calculate_output_indices
+    input: start_index_input, end_index_input, shift_amount, sequence_length
+    output: start_index_output, end_index_output, start_index_core_adjusted, end_index_core_adjusted
+    logic:
+      - tentative_output_start = start_index_input - shift_amount
+      - tentative_output_end = end_index_input - shift_amount
+      - Adjust indices and core block slice boundaries to fit within [0, sequence_length - 1]
+      - Determine the actual range in the output array to place the (potentially truncated) core block.
+  - action: construct_output_sequence
+    inputs:
+      - sequence_length
+      - core_block (potentially truncated)
+      - output_placement_indices (start, end)
+    steps:
+      - Create a numpy array of zeros with sequence_length.
+      - Place the core_block into the zero array at the calculated output indices using slicing.
+    output: output_sequence (numpy array)
+  - action: convert_to_list # Optional, if list output is strictly required
+    input: output_sequence (numpy array)
+    output: output_sequence (list of integers)
+
+relationships:
+  - relationship: transformation
+    process:
+      1. Identify non-zero bounds in the input array.
+      2. If bounds exist, extract the core block.
+      3. Calculate the target placement indices in the output array by subtracting the shift_amount (4) from the input bounds, adjusting for array boundaries (0 and length-1).
+      4. Create a zero array of the same length.
+      5. Place the (potentially truncated) core block into the zero array at the target indices.
+      6. If no non-zero bounds exist, create a zero array.
+      7. Convert the final array to a list.

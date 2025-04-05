@@ -1,0 +1,65 @@
+objects:
+  - name: input_sequence
+    type: list
+    properties:
+      length: 12
+      elements: integer
+      structure: Consists of a target subsequence followed by two control values.
+  - name: output_sequence
+    type: list
+    properties:
+      length: 12
+      elements: integer
+      structure: Consists of a modified target subsequence followed by the original control values.
+  - name: target_subsequence
+    type: list slice
+    source: input_sequence
+    indices: 0-9 (first 10 elements)
+  - name: control_values
+    type: list slice
+    source: input_sequence
+    indices: 10-11 (last 2 elements)
+    elements:
+      - name: val1
+        index: 10 # The 11th element
+      - name: val2
+        index: 11 # The 12th element
+  - name: target_value
+    type: integer
+    value: 5
+    role: Value to be replaced within the target_subsequence.
+  - name: groups_of_target
+    type: list of tuples
+    description: Stores (start_index, end_index) inclusive for each contiguous block of target_value found within target_subsequence.
+
+actions:
+  - name: parse_input
+    input: raw_input (string or list)
+    output: input_sequence (list of 12 integers)
+    description: Convert the input into a standardized list format. Validate length.
+  - name: extract_components
+    input: input_sequence
+    output: target_subsequence (list copy), val1 (int), val2 (int)
+    description: Separate the input into its working parts. Create a mutable copy of the target subsequence.
+  - name: identify_groups
+    input: target_subsequence, target_value
+    output: groups_of_target
+    description: Find all contiguous blocks of the target_value (5).
+  - name: apply_replacement_logic
+    input: target_subsequence (mutable copy), groups_of_target, val1, val2
+    output: modified_target_subsequence (list)
+    description: >
+      Modify the target_subsequence based on the number of groups found:
+      If one group exists: Replace all target_values within that group's range with val2.
+      If two or more groups exist: Replace target_values in the first group's range with val1, and in the second group's range with val2.
+      If no groups exist: Make no changes.
+  - name: construct_output
+    input: modified_target_subsequence, val1, val2
+    output: output_sequence
+    description: Concatenate the modified_target_subsequence with the original val1 and val2.
+
+relationships:
+  - The first 10 elements of the output_sequence are derived from the target_subsequence by selectively replacing target_values.
+  - The last 2 elements of the output_sequence are identical to the control_values from the input_sequence.
+  - The replacement value(s) and logic depend on the number of groups_of_target and the specific values of val1 and val2.
+  - Elements in the target_subsequence not equal to target_value are preserved in their original positions.

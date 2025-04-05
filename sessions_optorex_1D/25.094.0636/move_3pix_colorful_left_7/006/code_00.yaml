@@ -1,0 +1,97 @@
+task_elements:
+  - object: sequence
+    properties:
+      - type: list or numpy array of integers
+      - length: 12
+      - contains: digits 0-9
+    roles:
+      - input_sequence
+      - output_sequence
+  - object: sub_sequence
+    properties:
+      - type: list or numpy array of integers
+      - derived_from: input_sequence
+      - boundaries: defined by the first and last non-zero digits (inclusive)
+      - content: contiguous sequence of digits between the first and last non-zero elements of the input
+    role:
+      - core_data_block
+  - object: zero_digit
+    properties:
+      - value: 0
+    role:
+      - padding_element
+      - internal_element (within sub_sequence, e.g., [1, 0, 2])
+  - object: non_zero_digit
+    properties:
+      - value: range 1-9
+    role:
+      - boundary_marker (first and last non-zero define the sub_sequence)
+      - data_element (part of the sub_sequence)
+  - object: index
+    properties:
+      - type: integer
+    roles:
+      - start_index (of first non-zero in input)
+      - end_index (of last non-zero in input)
+      - output_start_index (calculated target placement index in output)
+constants:
+  - name: sequence_length
+    value: 12
+  - name: shift_amount
+    value: 3
+    direction: left
+  - name: padding_value
+    value: 0
+actions:
+  - name: find_non_zero_indices
+    inputs:
+      - input_sequence
+    outputs:
+      - list_of_indices: indices where elements are not zero
+    notes: Handle empty list if all zeros.
+  - name: determine_sub_sequence_boundaries
+    inputs:
+      - list_of_indices
+    outputs:
+      - start_index: first index in list_of_indices (or indicator of none)
+      - end_index: last index in list_of_indices (or indicator of none)
+  - name: extract_sub_sequence
+    inputs:
+      - input_sequence
+      - start_index
+      - end_index
+    outputs:
+      - core_data_block: the sub-sequence from start_index to end_index (inclusive)
+    condition: Only if start_index and end_index are valid.
+  - name: calculate_output_position
+    inputs:
+      - start_index
+    constants:
+      - shift_amount
+    outputs:
+      - output_start_index: start_index - shift_amount
+    condition: Only if start_index is valid.
+  - name: construct_output_sequence
+    inputs:
+      - core_data_block
+      - output_start_index
+    constants:
+      - sequence_length
+      - padding_value
+    outputs:
+      - output_sequence
+    process:
+      - Initialize sequence of sequence_length with padding_value.
+      - Calculate effective placement range in output (adjusting for boundaries 0 and sequence_length-1).
+      - Calculate corresponding source range from core_data_block (adjusting for boundaries).
+      - Place the adjusted portion of core_data_block into the adjusted output range.
+    condition: Only if core_data_block exists. If input was all zeros, output is all zeros.
+relationships:
+  - type: transformation
+    from: input_sequence
+    to: output_sequence
+    rule: >
+      Identify the sub-sequence spanning from the first non-zero digit to the last non-zero digit.
+      Shift this sub-sequence 3 positions to the left.
+      Place the (potentially truncated due to boundary conditions) sub-sequence into an output sequence of length 12, padded with zeros.
+      If the input has no non-zero digits, the output is identical to the input.

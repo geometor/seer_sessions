@@ -1,0 +1,53 @@
+objects:
+  - name: input_array
+    type: numpy.ndarray (1D, integers)
+    description: The initial sequence of integers provided.
+  - name: output_array
+    type: numpy.ndarray (1D, integers)
+    description: The resulting sequence after applying the transformation rule. It has the same shape and dtype as the input_array.
+  - name: replacement_pool
+    type: list[int] # Order matters
+    description: An ordered list containing all non-zero integers extracted from the input_array, preserving their original relative order.
+  - name: target_blocks
+    type: list[tuple[int, int]] # (start_index, end_index) inclusive
+    description: A list identifying the start and end indices of contiguous blocks within the input_array composed of two or more '5's. Ordered by start_index.
+
+properties:
+  - object: input_array / output_array
+    property: shape
+    value: (N,) where N is the length of the sequence.
+  - object: input_array / output_array
+    property: elements
+    value: int (typically 0-9)
+  - object: target_blocks
+    property: minimum_length
+    value: 2
+  - object: replacement_pool
+    property: order
+    value: Preserves relative order of non-zero elements from input_array.
+
+actions:
+  - name: extract_replacement_pool
+    input: input_array
+    output: replacement_pool
+    description: Iterate through the input_array and collect all elements not equal to 0 into a list, maintaining their order.
+  - name: identify_target_blocks
+    input: input_array
+    output: target_blocks
+    description: Scan the input_array to find consecutive sequences composed solely of the number 5, where the sequence length is 2 or greater. Record the start and end index (inclusive) of each such block.
+  - name: apply_replacements
+    inputs:
+      - input_array
+      - target_blocks
+      - replacement_pool
+    output: output_array
+    description: Create a copy of the input_array. Iterate through the identified target_blocks. For the k-th block (0-indexed), replace all elements within its index range in the copied array with the value from replacement_pool at index (k % length(replacement_pool)). Ensure NumPy operations are used correctly.
+
+relationships:
+  - type: mapping
+    source: k-th element of target_blocks
+    target: (k % length(replacement_pool))-th element of replacement_pool
+    description: The value used to replace a specific target block is determined cyclically from the ordered list of all non-zero numbers from the input.
+  - type: preservation
+    elements: Numbers in input_array that are 0, single 5s, or non-zero numbers not part of a target block.
+    condition: These numbers retain their original values and positions in the output_array.

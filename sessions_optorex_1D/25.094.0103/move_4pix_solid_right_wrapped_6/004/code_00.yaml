@@ -1,0 +1,67 @@
+Data:
+  - type: sequence
+    format: space-separated integers string
+    length: 12
+    role: input/output container
+Elements:
+  - type: integer
+    value: 0
+    role: background/empty placeholder
+  - type: integer
+    value: non-zero (1, 4, 5, 6, 7, 9)
+    role: object/marker
+    properties:
+      - value (N): The specific non-zero integer identity.
+      - count: The total number of occurrences of N in the input sequence.
+      - first_index: The 0-based index of the first occurrence of N in the input sequence.
+Constraints:
+  - conservation: The count of N and the count of 0s are preserved between input and output.
+  - homogeneity: Each input sequence contains exactly one unique non-zero integer value (N).
+  - length: Input and output sequences always contain exactly 12 integer elements.
+Transformation:
+  type: rearrangement
+  logic: rule-based placement dependent on the non-zero integer value (N)
+  description: >
+    The transformation rearranges the elements of the input sequence to produce the output sequence.
+    An output sequence of 12 zeros is initialized. The non-zero elements (N) from the input
+    are then placed into the output sequence according to rules determined by the value of N.
+  rules:
+    - condition: N is 1 or 9
+      action: collect_and_place_relative_offset
+      parameters:
+        - object: all N's from input
+        - count: number of N's
+        - relative_offset: 4
+        - reference_index: first_index (of N in input)
+      output_placement: Calculate target_start_index = reference_index + relative_offset. Place 'count' copies of N contiguously into the output sequence, starting at target_start_index.
+    - condition: N is 4 or 5
+      action: collect_and_place_fixed_offset
+      parameters:
+        - object: all N's from input
+        - count: number of N's
+        - fixed_start_index: 1
+      output_placement: Place 'count' copies of N contiguously into the output sequence, starting at index 1.
+    - condition: N is 6
+      sub_rules:
+        - condition: count == 2
+          action: place_at_specific_indices
+          parameters:
+            - object: N
+            - indices: [3, 4]
+          output_placement: Place one N at index 3 and one N at index 4 in the output sequence.
+        - condition: count > 2
+          action: collect_and_place_at_start
+          parameters:
+            - object: all N's from input
+            - count: number of N's
+            - fixed_start_index: 0
+          output_placement: Place 'count' copies of N contiguously into the output sequence, starting at index 0.
+    - condition: N is 7
+      action: split_block_place_ends
+      parameters:
+        - object: all N's from input
+        - count: number of N's
+        - sequence_length: 12
+        - size1_calc: ceiling(count / 2)
+        - size2_calc: floor(count / 2) # or (count - size1)
+      output_placement: Calculate size1 and size2. Place 'size1' copies of N contiguously starting at index 0. Calculate the start index for the second block: end_start_index = sequence_length - size2. Place 'size2' copies of N contiguously starting at end_start_index.

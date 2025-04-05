@@ -1,0 +1,64 @@
+task_elements:
+  - item: input_sequence
+    description: A fixed-length 1D sequence (list) of single-digit integers.
+    properties:
+      - type: list[int]
+      - length: fixed (e.g., 12 in examples)
+      - contains: background_digit, object_block
+  - item: output_sequence
+    description: A fixed-length 1D sequence (list) of single-digit integers derived from the input.
+    properties:
+      - type: list[int]
+      - length: same as input_sequence
+      - contains: background_digit, shifted_object_block
+  - item: background_digit
+    properties:
+      - value: 0
+      - role: Fills the sequence outside the object_block.
+  - item: object_block
+    description: A contiguous subsequence within the input_sequence.
+    properties:
+      - type: subsequence
+      - elements: identical non-zero integers
+      - value: the non-zero integer (e.g., 1, 4, 5, 3, 6, 7)
+      - length: number of elements in the block (L)
+      - start_index_input: the starting position (0-based index) in the input_sequence (S_in)
+  - item: shifted_object_block
+    description: The object_block placed at a new location in the output_sequence.
+    properties:
+      - type: subsequence
+      - elements: identical to object_block elements
+      - value: same as object_block.value
+      - length: same as object_block.length (L)
+      - start_index_output: the starting position (0-based index) in the output_sequence (S_out)
+
+relationships:
+  - type: transformation
+    action: shift_left
+    source: object_block (from input_sequence)
+    target: shifted_object_block (in output_sequence)
+    parameters:
+      - shift_amount: Derived from object_block.length.
+
+derivation_rules:
+  - rule: calculate_shift_amount
+    input: object_block.length (L)
+    output: shift_amount
+    formula: shift_amount = L
+  - rule: calculate_output_start_index
+    input:
+      - object_block.start_index_input (S_in)
+      - shift_amount (L)
+    output: shifted_object_block.start_index_output (S_out)
+    formula: S_out = S_in - L
+  - rule: construct_output_sequence
+    steps:
+      - Initialize output_sequence with background_digit (0).
+      - Copy object_block (value and length L) into output_sequence starting at index S_out. Ensure placement respects sequence boundaries (indices 0 to length-1).
+
+constraints:
+  - Each input_sequence contains exactly one object_block.
+  - The object_block consists of identical non-zero digits.
+  - The background is always 0.
+  - The shift operation is purely based on the block's properties (length and starting position).
+  - Elements are placed within the bounds [0, length-1]; shifting beyond index 0 results in placement starting at index 0.

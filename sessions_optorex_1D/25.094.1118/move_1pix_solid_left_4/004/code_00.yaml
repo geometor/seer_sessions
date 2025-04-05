@@ -1,0 +1,56 @@
+task_elements:
+  - type: sequence
+    format: list_of_integers (derived from space-separated string)
+    role: input_output
+    properties:
+      - length: 12 (consistent across examples)
+      - element_type: integer
+      - value_range: 0-9 (observed)
+
+identified_objects:
+  - object: background_element
+    value: 0
+    role: padding
+  - object: non_zero_block
+    description: A single, contiguous sequence of identical non-zero digits within the sequence.
+    properties:
+      - identity: All digits within the block are the same non-zero value.
+      - contiguity: The digits form an unbroken sequence.
+      - uniqueness: Only one such block exists per sequence (observed).
+      - location: Always preceded by at least one background_element (value 0) in the input.
+    role: subject_of_transformation
+
+actions:
+  - action: find_block_start
+    target: non_zero_block
+    description: Identify the index of the first element of the non_zero_block.
+  - action: find_preceding_zero
+    target: background_element
+    condition: Only if find_block_start index > 0.
+    description: Identify the index of the background_element (value 0) immediately before the block_start_index. This index is block_start_index - 1.
+  - action: shift_block_left
+    target: non_zero_block
+    mechanism:
+      - step: remove_element
+        description: Remove the element at the preceding_zero_index from the sequence.
+      - step: append_element
+        description: Add a background_element (value 0) to the end of the sequence.
+    result: The non_zero_block is effectively shifted one position to the left, and the sequence length is preserved.
+
+relationships:
+  - type: position
+    element1: non_zero_block
+    element2: sequence
+    description: The non_zero_block is a sub-sequence located within the main sequence.
+  - type: adjacency
+    element1: background_element (value 0)
+    element2: non_zero_block
+    description: A background_element must exist immediately before the non_zero_block in the input sequence for the shift to occur.
+  - type: length_conservation
+    element1: input_sequence
+    element2: output_sequence
+    description: The length of the sequence remains unchanged after the transformation.
+
+constraints:
+  - The input sequence always contains exactly one contiguous block of identical non-zero digits.
+  - The non-zero block in the input is always preceded by at least one zero.

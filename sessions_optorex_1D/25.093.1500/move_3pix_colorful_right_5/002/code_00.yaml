@@ -1,0 +1,48 @@
+objects:
+  - name: input_array
+    type: numpy.ndarray
+    properties:
+      - dtype: integer
+      - shape: (12,) # Fixed length of 12
+      - contains: A single contiguous block of non-zero integers, potentially surrounded by zeros. Can also be all zeros.
+  - name: output_array
+    type: numpy.ndarray
+    properties:
+      - dtype: integer
+      - shape: (12,) # Fixed length of 12
+      - contains: The non-zero block from input_array shifted, or all zeros.
+  - name: non_zero_block
+    type: numpy.ndarray (sub-array)
+    properties:
+      - extracted_from: input_array
+      - contains_only: integers != 0
+      - contiguous: yes
+  - name: shift_amount
+    type: integer
+    value: 3
+    description: The fixed number of positions the non_zero_block is shifted to the right.
+  - name: sequence_length
+    type: integer
+    value: 12
+    description: The fixed length of the input and output arrays.
+actions:
+  - name: find_first_non_zero_block
+    actor: system
+    input: input_array
+    output: start_index, end_index, non_zero_block (or None if no non-zeros)
+    description: Iterates through the input_array to find the start and end indices (exclusive) of the first contiguous sequence of non-zero numbers and extracts this sequence.
+  - name: calculate_new_indices
+    actor: system
+    input: start_index, block_length, shift_amount
+    output: new_start_index, new_end_index
+    description: Calculates the target start and end indices for the block in the output array by adding the shift_amount to the original start_index.
+  - name: construct_output_array
+    actor: system
+    input: non_zero_block, new_start_index, new_end_index, sequence_length
+    output: output_array
+    description: Creates a new NumPy array of zeros with the specified sequence_length. Places the non_zero_block into this array at the calculated new_start_index, ensuring it does not exceed array bounds. If no non_zero_block was found in the input, returns an all-zero array.
+relationships:
+  - The output_array is derived from the input_array.
+  - If a non_zero_block exists in the input_array starting at index `i`, it appears in the output_array starting at index `i + 3`.
+  - The relative order and values of the numbers within the non_zero_block are preserved.
+  - Elements in the output_array corresponding to positions before the new_start_index or after the new_end_index are zero.

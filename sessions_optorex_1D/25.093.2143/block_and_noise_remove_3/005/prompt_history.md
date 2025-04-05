@@ -1,0 +1,794 @@
+
+## train_1
+
+**input:**
+```
+0 0 0 9 9 0 0 0 0 9 0 0
+```
+
+
+**output:**
+```
+0 0 0 9 9 0 0 0 0 0 0 0
+```
+
+
+## train_2
+
+**input:**
+```
+0 0 0 0 1 1 1 0 1 0 0 0
+```
+
+
+**output:**
+```
+0 0 0 0 1 1 1 0 0 0 0 0
+```
+
+
+## train_3
+
+**input:**
+```
+0 0 8 8 8 8 8 0 8 0 8 0
+```
+
+
+**output:**
+```
+0 0 8 8 8 8 8 0 0 0 0 0
+```
+
+
+## train_4
+
+**input:**
+```
+0 3 0 0 3 0 3 0 3 3 3 0
+```
+
+
+**output:**
+```
+0 0 0 0 0 0 0 0 3 3 3 0
+```
+
+
+## train_5
+
+**input:**
+```
+0 4 4 0 4 0 0 4 0 4 0 0
+```
+
+
+**output:**
+```
+0 4 4 0 0 0 0 0 0 0 0 0
+```
+
+
+## train_6
+
+**input:**
+```
+4 0 0 0 4 0 4 0 0 4 4 4
+```
+
+
+**output:**
+```
+0 0 0 0 0 0 0 0 0 4 4 4
+```
+
+
+## train_7
+
+**input:**
+```
+0 0 1 1 1 1 1 0 0 0 0 1
+```
+
+
+**output:**
+```
+0 0 1 1 1 1 1 0 0 0 0 0
+```
+
+Okay, let's analyze the provided examples to understand the transformation logic.
+
+**Perception of Elements:**
+
+1.  **Input/Output Data Type:** Both input and output are sequences (lists) of single-digit integers. They are presented as space-separated strings but represent numerical lists.
+2.  **Core Operation:** The transformation seems to involve identifying specific patterns within the input sequence and selectively preserving parts of that pattern while replacing others.
+3.  **Key Feature:** The non-zero digits and their contiguous occurrences (runs) appear crucial. The lengths of these runs seem to determine what is kept in the output.
+4.  **Filtering/Selection:** The process filters the input based on the longest contiguous sequence of a non-zero digit. Only the elements belonging to this longest sequence are retained in their original positions; all other elements become zero.
+5.  **Zero Handling:** Zeros in the input act as separators between sequences of non-zero digits and are generally preserved in the output unless they are replaced by a digit from the selected longest sequence (which doesn't happen in the examples, as the longest sequence only replaces non-zeros or other parts of shorter sequences).
+6.  **Tie-breaking (Implicit):** Although not explicitly shown with conflicting examples, if multiple non-zero digit sequences share the maximum length, a rule must exist. Common defaults would be to keep the first occurrence or the last. Based on the provided examples, it's consistent that *a* longest sequence is chosen, but the specific tie-breaker isn't definitively tested. Let's assume for now the *first* longest sequence encountered is kept.
+
+**YAML Facts:**
+
+
+```yaml
+task_description: Identify and isolate the longest contiguous sequence of a single non-zero digit within a list of digits.
+elements:
+  - name: input_list
+    type: list_of_integers
+    description: The initial sequence of digits provided.
+  - name: output_list
+    type: list_of_integers
+    description: The resulting sequence after applying the transformation.
+    relationship: derived from input_list by isolating the longest run.
+  - name: non_zero_digit
+    type: integer
+    properties:
+      - value > 0
+    description: Digits that can form sequences.
+  - name: zero_digit
+    type: integer
+    properties:
+      - value == 0
+    description: Acts as a separator and default background value in the output.
+  - name: contiguous_run
+    type: object
+    properties:
+      - digit_value: integer (must be non-zero)
+      - start_index: integer
+      - end_index: integer
+      - length: integer (end_index - start_index + 1)
+    description: A sequence of identical, adjacent non-zero digits within the input_list.
+    relationship: Found within input_list.
+actions:
+  - name: find_runs
+    input: input_list
+    output: list_of_contiguous_runs
+    description: Scan the input_list to identify all contiguous_runs of non-zero digits.
+  - name: find_longest_run
+    input: list_of_contiguous_runs
+    output: longest_run (a single contiguous_run object, or potentially null if no non-zero digits exist)
+    description: Determine the run with the maximum length. If multiple runs share the maximum length, select the one with the smallest start_index.
+  - name: generate_output
+    input:
+      - input_list_length
+      - longest_run
+    output: output_list
+    description: Create a list of zeros with the same length as the input_list. If a longest_run was found, populate the corresponding indices (from start_index to end_index) in the output_list with the digit_value of the longest_run.
+```
+
+
+**Natural Language Program:**
+
+1.  Receive the input list of digits.
+2.  Initialize an empty list to store identified contiguous runs of non-zero digits.
+3.  Iterate through the input list, identifying the start index, end index, digit value, and length of every contiguous sequence (run) of identical non-zero digits. Store these runs (e.g., as objects with digit, start, end, length).
+4.  If no non-zero runs were found, return a list of zeros with the same length as the input list.
+5.  If runs were found, determine the maximum length among all identified runs.
+6.  Select the run(s) that have this maximum length.
+7.  If there is only one run with the maximum length, choose it as the "target run".
+8.  If there are multiple runs with the same maximum length, choose the one that appears earliest in the input list (i.e., the one with the minimum start index) as the "target run".
+9.  Create an output list of the same length as the input list, initially filled entirely with zeros.
+10. Iterate from the start index to the end index (inclusive) of the "target run". For each index in this range, set the value in the output list at that index to the digit value of the "target run".
+11. Return the generated output list.
+```python
+import re
+from collections import namedtuple
+
+"""
+Identify and isolate the longest contiguous sequence of a single non-zero digit within a list of digits.
+If multiple sequences share the maximum length, the one appearing earliest (smallest start index) is chosen.
+The output list retains only the digits from this chosen sequence in their original positions, with all other positions set to zero.
+"""
+
+# Define a structure to hold information about a run
+RunInfo = namedtuple("RunInfo", ["digit", "start", "end", "length"])
+
+def find_runs(digit_list):
+    """
+    Scans the input list to identify all contiguous runs of non-zero digits.
+
+    Args:
+        digit_list: A list of integers.
+
+    Returns:
+        A list of RunInfo objects, each describing a contiguous run.
+    """
+    runs = []
+    if not digit_list:
+        return runs
+
+    current_run_digit = None
+    current_run_start = -1
+
+    for i, digit in enumerate(digit_list):
+        if digit != 0:
+            if digit == current_run_digit:
+                # Continue existing run
+                pass
+            else:
+                # End previous run if exists
+                if current_run_digit is not None:
+                    runs.append(RunInfo(current_run_digit, current_run_start, i - 1, i - current_run_start))
+                # Start new run
+                current_run_digit = digit
+                current_run_start = i
+        else:
+            # End previous run if exists
+            if current_run_digit is not None:
+                runs.append(RunInfo(current_run_digit, current_run_start, i - 1, i - current_run_start))
+            # Reset run tracking
+            current_run_digit = None
+            current_run_start = -1
+
+    # Add the last run if the list ends with a non-zero sequence
+    if current_run_digit is not None:
+        runs.append(RunInfo(current_run_digit, current_run_start, len(digit_list) - 1, len(digit_list) - current_run_start))
+
+    return runs
+
+def find_longest_run(runs):
+    """
+    Determines the run with the maximum length from a list of runs.
+    If multiple runs share the maximum length, selects the one with the smallest start index.
+
+    Args:
+        runs: A list of RunInfo objects.
+
+    Returns:
+        The selected RunInfo object, or None if the input list is empty.
+    """
+    if not runs:
+        return None
+
+    # Find the maximum length
+    max_length = 0
+    for run in runs:
+        if run.length > max_length:
+            max_length = run.length
+
+    # Filter runs to keep only those with the maximum length
+    longest_runs = [run for run in runs if run.length == max_length]
+
+    # Select the one with the minimum start index if there's a tie
+    best_run = longest_runs[0]
+    for run in longest_runs[1:]:
+        if run.start < best_run.start:
+            best_run = run
+
+    return best_run
+
+
+def transform(input_str):
+    """
+    Transforms an input string of space-separated digits by isolating the
+    longest contiguous run of a non-zero digit.
+    """
+    # Parse the input string into a list of integers
+    input_list = [int(d) for d in input_str.split()]
+    n = len(input_list)
+
+    # Find all contiguous runs of non-zero digits
+    runs = find_runs(input_list)
+
+    # Find the target run (longest, then earliest)
+    target_run = find_longest_run(runs)
+
+    # Initialize the output list with zeros
+    output_list = [0] * n
+
+    # If a target run was found, populate the output list
+    if target_run:
+        for i in range(target_run.start, target_run.end + 1):
+            output_list[i] = target_run.digit
+
+    # Format the output list back into a space-separated string
+    return " ".join(map(str, output_list))
+
+```
+```python
+import numpy as np
+from collections import namedtuple
+
+"""
+Identifies and isolates the longest contiguous sequence (run) of a single 
+non-zero digit within an input sequence of digits. If multiple runs share 
+the maximum length, the one appearing earliest (smallest start index) is chosen. 
+The output sequence retains only the digits from this chosen run in their 
+original positions, with all other positions set to zero. The output sequence
+has the same length as the input sequence.
+"""
+
+# Define a structure to hold information about a run
+RunInfo = namedtuple("RunInfo", ["digit", "start", "end", "length"])
+
+def find_runs(digit_sequence):
+    """
+    Scans the input sequence to identify all contiguous runs of non-zero digits.
+
+    Args:
+        digit_sequence: A list or NumPy array of integers.
+
+    Returns:
+        A list of RunInfo objects, each describing a contiguous run.
+    """
+    runs = []
+    if len(digit_sequence) == 0:
+        return runs
+
+    current_run_digit = None
+    current_run_start = -1
+
+    # Iterate through the sequence with index
+    for i, digit in enumerate(digit_sequence):
+        # Convert potential numpy types to standard int for comparison
+        current_digit_int = int(digit) 
+        
+        if current_digit_int != 0:
+            # Check if we are continuing a run or starting a new one
+            if current_digit_int == current_run_digit:
+                # Continue existing run - no action needed here
+                pass
+            else:
+                # End previous run if one exists
+                if current_run_digit is not None:
+                    runs.append(RunInfo(current_run_digit, current_run_start, i - 1, i - current_run_start))
+                
+                # Start a new run
+                current_run_digit = current_digit_int
+                current_run_start = i
+        else:
+            # Current digit is zero, end any active run
+            if current_run_digit is not None:
+                runs.append(RunInfo(current_run_digit, current_run_start, i - 1, i - current_run_start))
+            
+            # Reset run tracking
+            current_run_digit = None
+            current_run_start = -1
+
+    # After the loop, check if a run was active at the end of the sequence
+    if current_run_digit is not None:
+        runs.append(RunInfo(current_run_digit, current_run_start, len(digit_sequence) - 1, len(digit_sequence) - current_run_start))
+
+    return runs
+
+def find_longest_run(runs):
+    """
+    Determines the run with the maximum length from a list of runs.
+    If multiple runs share the maximum length, selects the one with the 
+    smallest start index.
+
+    Args:
+        runs: A list of RunInfo objects.
+
+    Returns:
+        The selected RunInfo object representing the target run, 
+        or None if the input list of runs is empty.
+    """
+    if not runs:
+        return None
+
+    # Find the maximum length among all runs
+    max_length = 0
+    for run in runs:
+        if run.length > max_length:
+            max_length = run.length
+
+    # Filter runs to keep only those with the maximum length
+    longest_runs = [run for run in runs if run.length == max_length]
+
+    # If there's only one longest run, it's the target
+    if len(longest_runs) == 1:
+        return longest_runs[0]
+
+    # If there are multiple runs with the same max length, find the earliest one
+    best_run = longest_runs[0]
+    for run in longest_runs[1:]:
+        if run.start < best_run.start:
+            best_run = run
+
+    return best_run
+
+
+def transform(input_sequence):
+    """
+    Transforms an input sequence of digits based on the longest run rule.
+
+    Args:
+        input_sequence: A list or NumPy array of integers.
+
+    Returns:
+        A NumPy array of integers representing the transformed sequence.
+    """
+    # Ensure input is treated as a sequence (handles lists and numpy arrays)
+    sequence = np.array(input_sequence) 
+    n = len(sequence)
+
+    # Initialize the output sequence with zeros, matching input length and type
+    output_sequence = np.zeros_like(sequence)
+
+    # Find all contiguous runs of non-zero digits in the input
+    runs = find_runs(sequence)
+
+    # Determine the target run (longest, then earliest)
+    target_run = find_longest_run(runs)
+
+    # If a target run was identified, populate the output sequence
+    if target_run:
+        # Iterate through the indices covered by the target run
+        for i in range(target_run.start, target_run.end + 1):
+            # Set the corresponding elements in the output sequence to the run's digit
+            output_sequence[i] = target_run.digit
+
+    # Return the resulting sequence
+    return output_sequence
+```
+
+Previous Code:
+```python
+import numpy as np
+from collections import namedtuple
+
+"""
+Identifies and isolates the longest contiguous sequence (run) of a single 
+non-zero digit within an input sequence of digits. If multiple runs share 
+the maximum length, the one appearing earliest (smallest start index) is chosen. 
+The output sequence retains only the digits from this chosen run in their 
+original positions, with all other positions set to zero. The output sequence
+has the same length as the input sequence.
+"""
+
+# Define a structure to hold information about a run
+RunInfo = namedtuple("RunInfo", ["digit", "start", "end", "length"])
+
+def find_runs(digit_sequence):
+    """
+    Scans the input sequence to identify all contiguous runs of non-zero digits.
+
+    Args:
+        digit_sequence: A list or NumPy array of integers.
+
+    Returns:
+        A list of RunInfo objects, each describing a contiguous run.
+    """
+    runs = []
+    if len(digit_sequence) == 0:
+        return runs
+
+    current_run_digit = None
+    current_run_start = -1
+
+    # Iterate through the sequence with index
+    for i, digit in enumerate(digit_sequence):
+        # Convert potential numpy types to standard int for comparison
+        current_digit_int = int(digit) 
+        
+        if current_digit_int != 0:
+            # Check if we are continuing a run or starting a new one
+            if current_digit_int == current_run_digit:
+                # Continue existing run - no action needed here
+                pass
+            else:
+                # End previous run if one exists
+                if current_run_digit is not None:
+                    runs.append(RunInfo(current_run_digit, current_run_start, i - 1, i - current_run_start))
+                
+                # Start a new run
+                current_run_digit = current_digit_int
+                current_run_start = i
+        else:
+            # Current digit is zero, end any active run
+            if current_run_digit is not None:
+                runs.append(RunInfo(current_run_digit, current_run_start, i - 1, i - current_run_start))
+            
+            # Reset run tracking
+            current_run_digit = None
+            current_run_start = -1
+
+    # After the loop, check if a run was active at the end of the sequence
+    if current_run_digit is not None:
+        runs.append(RunInfo(current_run_digit, current_run_start, len(digit_sequence) - 1, len(digit_sequence) - current_run_start))
+
+    return runs
+
+def find_longest_run(runs):
+    """
+    Determines the run with the maximum length from a list of runs.
+    If multiple runs share the maximum length, selects the one with the 
+    smallest start index.
+
+    Args:
+        runs: A list of RunInfo objects.
+
+    Returns:
+        The selected RunInfo object representing the target run, 
+        or None if the input list of runs is empty.
+    """
+    if not runs:
+        return None
+
+    # Find the maximum length among all runs
+    max_length = 0
+    for run in runs:
+        if run.length > max_length:
+            max_length = run.length
+
+    # Filter runs to keep only those with the maximum length
+    longest_runs = [run for run in runs if run.length == max_length]
+
+    # If there's only one longest run, it's the target
+    if len(longest_runs) == 1:
+        return longest_runs[0]
+
+    # If there are multiple runs with the same max length, find the earliest one
+    best_run = longest_runs[0]
+    for run in longest_runs[1:]:
+        if run.start < best_run.start:
+            best_run = run
+
+    return best_run
+
+
+def transform(input_sequence):
+    """
+    Transforms an input sequence of digits based on the longest run rule.
+
+    Args:
+        input_sequence: A list or NumPy array of integers.
+
+    Returns:
+        A NumPy array of integers representing the transformed sequence.
+    """
+    # Ensure input is treated as a sequence (handles lists and numpy arrays)
+    sequence = np.array(input_sequence) 
+    n = len(sequence)
+
+    # Initialize the output sequence with zeros, matching input length and type
+    output_sequence = np.zeros_like(sequence)
+
+    # Find all contiguous runs of non-zero digits in the input
+    runs = find_runs(sequence)
+
+    # Determine the target run (longest, then earliest)
+    target_run = find_longest_run(runs)
+
+    # If a target run was identified, populate the output sequence
+    if target_run:
+        # Iterate through the indices covered by the target run
+        for i in range(target_run.start, target_run.end + 1):
+            # Set the corresponding elements in the output sequence to the run's digit
+            output_sequence[i] = target_run.digit
+
+    # Return the resulting sequence
+    return output_sequence
+```
+Results for code_00.py:
+
+Train Set Results:
+
+## Example 1:
+Error: only length-1 arrays can be converted to Python scalars
+
+## Example 2:
+Error: only length-1 arrays can be converted to Python scalars
+
+## Example 3:
+Error: only length-1 arrays can be converted to Python scalars
+
+## Example 4:
+Error: only length-1 arrays can be converted to Python scalars
+
+## Example 5:
+Error: only length-1 arrays can be converted to Python scalars
+
+## Example 6:
+Error: only length-1 arrays can be converted to Python scalars
+
+## Example 7:
+Error: only length-1 arrays can be converted to Python scalars
+
+Test Set Results:
+
+## Example 1:
+Error: only length-1 arrays can be converted to Python scalars
+## General Assessment
+
+The previous code execution failed on all examples with a `TypeError: only length-1 arrays can be converted to Python scalars`. This error typically occurs in NumPy when an operation expecting a single numerical value (a scalar) is given an array containing more than one element. Given that the error occurred consistently across all examples, it strongly suggests an issue with how the input data is being handled or interpreted within the `transform` function or its helper functions, likely related to data types or array dimensions.
+
+The core logic derived previously—identifying contiguous runs of non-zero digits, finding the longest run (using the earliest start index as a tie-breaker), and constructing the output with only that run preserved—appears conceptually correct based on the input/output pairs. The trace and metric calculations performed internally confirm this logic matches the expected outputs for the provided examples when assuming a 1D list/array input.
+
+**Strategy for Resolution:**
+
+1.  **Input Format Assumption:** The primary hypothesis is that the testing environment passes the input not as a simple 1D list or array, but potentially as a 2D array (e.g., a single row within a 2D structure, like `[[0, 0, 0, 9, 9, ...]]`). The iteration `for i, digit in enumerate(digit_sequence)` in `find_runs` would then yield an entire array for `digit` on the first iteration if `digit_sequence` were 2D, causing `int(digit)` to fail with the observed `TypeError`.
+2.  **Code Adjustment:** The `transform` function needs modification to explicitly handle this potential input format. It should check if the input is 2D with a single row and, if so, extract that row as the 1D sequence to be processed by the existing `find_runs` and `find_longest_run` logic.
+3.  **Verification:** Re-run the adjusted code against the examples to confirm the fix.
+
+## Metrics and Verification
+
+The following code simulates the core logic (run finding and selection) on the provided examples, assuming 1D list inputs, to verify the underlying algorithm's correctness independent of the likely input format error.
+
+
+
+*code_execution:*
+```python
+import numpy as np
+from collections import namedtuple
+
+# Define RunInfo named tuple (as used in the previous code)
+RunInfo = namedtuple("RunInfo", ["digit", "start", "end", "length"])
+
+# Function to find runs (copied from previous attempt for verification)
+def find_runs(digit_sequence):
+    runs = []
+    if len(digit_sequence) == 0: return runs
+    current_run_digit = None
+    current_run_start = -1
+    for i, digit in enumerate(digit_sequence):
+        # Assume digit is a scalar here for logic verification
+        current_digit_int = int(digit)
+        if current_digit_int != 0:
+            if current_digit_int == current_run_digit: pass
+            else:
+                if current_run_digit is not None: runs.append(RunInfo(current_run_digit, current_run_start, i - 1, i - current_run_start))
+                current_run_digit = current_digit_int
+                current_run_start = i
+        else:
+            if current_run_digit is not None: runs.append(RunInfo(current_run_digit, current_run_start, i - 1, i - current_run_start))
+            current_run_digit = None
+            current_run_start = -1
+    if current_run_digit is not None: runs.append(RunInfo(current_run_digit, current_run_start, len(digit_sequence) - 1, len(digit_sequence) - current_run_start))
+    return runs
+
+# Function to find the longest run (copied from previous attempt for verification)
+def find_longest_run(runs):
+    if not runs: return None
+    max_length = 0
+    for run in runs:
+        if run.length > max_length: max_length = run.length
+    longest_runs = [run for run in runs if run.length == max_length]
+    # Tie-breaking: minimum start index
+    best_run = longest_runs[0]
+    for run in longest_runs[1:]:
+        if run.start < best_run.start: best_run = run
+    return best_run
+
+# Example inputs and outputs
+inputs = [
+    [0, 0, 0, 9, 9, 0, 0, 0, 0, 9, 0, 0],
+    [0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0],
+    [0, 0, 8, 8, 8, 8, 8, 0, 8, 0, 8, 0],
+    [0, 3, 0, 0, 3, 0, 3, 0, 3, 3, 3, 0],
+    [0, 4, 4, 0, 4, 0, 0, 4, 0, 4, 0, 0],
+    [4, 0, 0, 0, 4, 0, 4, 0, 0, 4, 4, 4],
+    [0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1]
+]
+
+outputs = [
+    [0, 0, 0, 9, 9, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0],
+    [0, 0, 8, 8, 8, 8, 8, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0],
+    [0, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 4, 4],
+    [0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0]
+]
+
+results = []
+print("Verifying core logic against examples (assuming 1D input):")
+for i, data in enumerate(inputs):
+    input_list = data
+    expected_output = outputs[i]
+    runs = find_runs(input_list)
+    target_run = find_longest_run(runs)
+
+    output_list = [0] * len(input_list)
+    if target_run:
+        for idx in range(target_run.start, target_run.end + 1):
+            output_list[idx] = target_run.digit
+
+    match = output_list == expected_output
+    results.append({
+        "example": i + 1,
+        "input_len": len(input_list),
+        "num_runs": len(runs),
+        "longest_run_len": target_run.length if target_run else 0,
+        "longest_run_digit": target_run.digit if target_run else None,
+        "longest_run_start": target_run.start if target_run else -1,
+        "match": match
+    })
+    print(f"Example {i+1}: Input Len={len(input_list)}, Runs Found={len(runs)}, Longest Run={target_run}, Calculated Output Matches Expected={match}")
+
+print("\nSummary Metrics:")
+print(f"Total examples verified: {len(results)}")
+print(f"All examples matched expected output based on core logic: {all(r['match'] for r in results)}")
+```
+
+*code_execution_result:*
+outcome: OUTCOME_OK
+```
+Verifying core logic against examples (assuming 1D input):
+Example 1: Input Len=12, Runs Found=2, Longest Run=RunInfo(digit=9, start=3, end=4, length=2), Calculated Output Matches Expected=True
+Example 2: Input Len=12, Runs Found=2, Longest Run=RunInfo(digit=1, start=4, end=6, length=3), Calculated Output Matches Expected=True
+Example 3: Input Len=12, Runs Found=3, Longest Run=RunInfo(digit=8, start=2, end=6, length=5), Calculated Output Matches Expected=True
+Example 4: Input Len=12, Runs Found=4, Longest Run=RunInfo(digit=3, start=8, end=10, length=3), Calculated Output Matches Expected=True
+Example 5: Input Len=12, Runs Found=4, Longest Run=RunInfo(digit=4, start=1, end=2, length=2), Calculated Output Matches Expected=True
+Example 6: Input Len=12, Runs Found=4, Longest Run=RunInfo(digit=4, start=9, end=11, length=3), Calculated Output Matches Expected=True
+Example 7: Input Len=12, Runs Found=2, Longest Run=RunInfo(digit=1, start=2, end=6, length=5), Calculated Output Matches Expected=True
+
+Summary Metrics:
+Total examples verified: 7
+All examples matched expected output based on core logic: True
+
+```
+**Conclusion from Metrics:** The simulation confirms that the implemented logic for finding runs, selecting the longest (and earliest in case of ties), and generating the output correctly transforms the input to the expected output for all provided examples *when the input is treated as a 1D sequence*. This reinforces the hypothesis that the execution error stems from the input format provided by the test harness, not a flaw in the transformation logic itself.
+
+## YAML Facts
+
+
+```yaml
+task_description: Identify and isolate the longest contiguous sequence (run) of a single non-zero digit within an input sequence of digits. If multiple runs share the maximum length, the one appearing earliest (smallest start index) is chosen. The output sequence retains only the digits from this chosen run in their original positions, with all other positions set to zero. The output sequence has the same length as the input sequence.
+input_format_note: Input might be provided as a 2D array with one row; the processing logic should target the single row as the 1D sequence.
+elements:
+  - name: input_sequence
+    type: sequence_of_integers # Can be list or 1D numpy array derived from potentially 2D input
+    description: The initial sequence of digits to be processed.
+  - name: output_sequence
+    type: sequence_of_integers # Typically numpy array
+    description: The resulting sequence after applying the transformation.
+    relationship: derived from input_sequence by isolating the longest run. Has the same length as input_sequence.
+  - name: non_zero_digit
+    type: integer
+    properties:
+      - value > 0
+    description: Digits that form the basis of contiguous runs.
+  - name: zero_digit
+    type: integer
+    properties:
+      - value == 0
+    description: Acts as a separator between runs and the default background value in the output.
+  - name: contiguous_run
+    type: object
+    properties:
+      - digit_value: integer (non-zero)
+      - start_index: integer
+      - end_index: integer
+      - length: integer (end_index - start_index + 1)
+    description: A sequence of identical, adjacent non-zero digits within the input_sequence.
+    relationship: Identified within input_sequence.
+actions:
+  - name: extract_1d_sequence
+    input: raw_input_data # Potentially 2D array
+    output: input_sequence # Guaranteed 1D sequence
+    description: Ensure the input data is treated as a 1D sequence (e.g., extract the first row if input is 2D).
+  - name: find_runs
+    input: input_sequence (1D)
+    output: list_of_contiguous_runs
+    description: Scan the 1D input_sequence to identify all contiguous_runs of non-zero digits.
+  - name: find_longest_run
+    input: list_of_contiguous_runs
+    output: target_run (a single contiguous_run object, or null/None if no non-zero runs exist)
+    description: Determine the run with the maximum length. If multiple runs share the maximum length, select the one with the smallest start_index.
+  - name: generate_output
+    input:
+      - input_sequence_length
+      - target_run
+    output: output_sequence
+    description: Create a sequence of zeros with the same length as the input_sequence. If a target_run was found, populate the corresponding indices (from start_index to end_index) in the output_sequence with the digit_value of the target_run.
+```
+
+
+## Natural Language Program
+
+1.  Receive the input data, which might be a multi-dimensional array but represents a single sequence (assume it's the first row if multi-dimensional). Extract this primary sequence of digits. Let its length be N.
+2.  Initialize an empty list to store identified contiguous runs of non-zero digits found within the primary sequence.
+3.  Iterate through the primary sequence from start to end:
+    *   Identify the start index, end index, digit value, and length of every contiguous block (run) consisting of the *same* non-zero digit.
+    *   Store information about each identified run (digit, start, end, length).
+4.  If no non-zero runs were found, create and return an output sequence of length N containing only zeros.
+5.  If runs were found:
+    *   Determine the maximum length among all identified runs.
+    *   Select all runs that have this maximum length.
+    *   If there is only one such run, designate it as the "target run".
+    *   If there are multiple runs with the maximum length, compare their start indices and designate the run with the *smallest* start index as the "target run".
+6.  Create an output sequence of length N, initially filled entirely with zeros.
+7.  Using the "target run" information (digit value D, start index S, end index E): Iterate from index S to index E (inclusive). For each index `i` in this range, set the value in the output sequence at index `i` to D.
+8.  Return the generated output sequence.

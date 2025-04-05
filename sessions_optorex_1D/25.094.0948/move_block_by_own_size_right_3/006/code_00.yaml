@@ -1,0 +1,80 @@
+task_elements:
+  - type: Grid
+    properties:
+      - name: shape
+        description: The dimensions of the grid (rows, columns). Inferred to be (1, N) for all examples.
+      - name: dtype
+        description: Data type of elements (likely integer, e.g., numpy.int64).
+      - role: input
+      - role: output
+  - type: Sequence
+    properties:
+      - name: elements
+        description: A 1D sequence of single-digit integers, corresponding to the single row of the Grid.
+      - name: length
+        description: The total number of elements (columns) in the sequence/row.
+  - type: Block
+    properties:
+      - name: value
+        description: The non-zero digit composing the block.
+      - name: length
+        description: The number of times the digit repeats contiguously in the Sequence.
+      - name: start_index
+        description: The column index of the first element of the block within the Sequence.
+      - name: end_index
+        description: The column index of the last element of the block within the Sequence.
+    relationships:
+      - description: The Sequence contains exactly one Block.
+      - description: The Block is composed of identical non-zero digits.
+      - description: The output Grid's Sequence contains the same Block (identical value and length), shifted.
+  - type: Zero
+    properties:
+      - name: value
+        value: 0
+    relationships:
+      - description: Zeros occupy all positions in the Sequence outside the Block.
+
+actions:
+  - name: Extract Sequence
+    inputs:
+      - Input Grid (shape 1,N)
+    outputs:
+      - Sequence (1D array/list of length N)
+    description: Get the first (and only) row from the input Grid.
+  - name: Identify Block
+    inputs:
+      - Sequence
+    outputs:
+      - Block (value, length, start_index)
+    description: Find the contiguous segment of identical non-zero digits in the Sequence.
+  - name: Calculate Shift
+    inputs:
+      - Block length
+    outputs:
+      - Shift amount
+    description: The shift amount is equal to the Block length.
+  - name: Calculate New Position
+    inputs:
+      - Block start_index
+      - Shift amount
+    outputs:
+      - New start_index (column index)
+    description: Add the Shift amount to the original start_index.
+  - name: Construct Output Grid
+    inputs:
+      - Original Grid shape (1, N)
+      - Block (value, length)
+      - New start_index
+    outputs:
+      - Output Grid (shape 1, N)
+    description: Create a new grid of the same shape as the input, filled with zeros, and place the Block into its single row at the calculated New start_index. Ensure placement respects grid boundaries.
+
+transformation_rule:
+  goal: Shift the block of non-zero digits found in the input grid's single row to the right by a distance equal to its own length.
+  steps:
+    - Assume the input is a 2D grid with one row. Extract this row as a 1D sequence.
+    - Identify the contiguous block of identical non-zero digits within this sequence. Record its value, length, and starting column index.
+    - Determine the shift distance, which is equal to the block's length.
+    - Calculate the new starting column index by adding the shift distance to the original starting index.
+    - Create an output grid of the same shape as the input grid (1 row, same number of columns), initially filled with zeros.
+    - Place the original block (same value, same length) into the row of the output grid, starting at the new calculated column index. Handle boundary conditions (i.e., if the shifted block would extend beyond the grid width, only place the part that fits).

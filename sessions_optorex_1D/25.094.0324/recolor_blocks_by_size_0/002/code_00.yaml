@@ -1,0 +1,57 @@
+task_description: Transform sequences of 0s and 3s based on the relative lengths of contiguous groups of 3s, assuming exactly two such groups exist.
+input_type: Sequence of integers (e.g., list or NumPy array).
+output_type: Sequence of integers (same length as input).
+elements:
+  - type: number
+    value: 0
+    role: background/separator (unchanged in output)
+  - type: number
+    value: 3
+    role: input value subject to transformation
+  - type: number
+    value: 1
+    role: output value replacing a group of 3s
+  - type: number
+    value: 2
+    role: output value replacing a group of 3s
+  - type: object
+    name: group_of_threes
+    description: A contiguous subsequence within the input containing only the number 3.
+    properties:
+      - start_index: integer (0-based)
+      - end_index: integer (inclusive)
+      - length: integer (count of 3s)
+      - order: position relative to other groups (first or second based on start_index)
+relationships:
+  - type: mapping
+    from: group_of_threes (input)
+    to: group_of_ones_or_twos (output)
+    properties:
+      - preserves_length: True
+      - preserves_position: True
+  - type: comparison
+    objects: [group_of_threes (first), group_of_threes (second)]
+    property: length
+    determines: which output value (1 or 2) replaces each group.
+actions:
+  - name: identify_groups
+    input: input_sequence (list/array of integers)
+    output: list containing exactly two group_of_threes objects (ordered by start_index)
+    precondition: Input sequence must contain exactly two distinct groups of 3s.
+  - name: compare_lengths
+    input: two group_of_threes objects (first_group, second_group)
+    output: determination of which group is longer
+  - name: assign_output_values
+    input: comparison_result, two group_of_threes objects
+    output: mapping of input group to output value (1 or 2)
+    rule: |
+      If first_group.length > second_group.length, assign 1 to first_group, 2 to second_group.
+      Otherwise (first_group.length <= second_group.length), assign 2 to first_group, 1 to second_group.
+  - name: construct_output
+    input: input_sequence, group_assignments
+    output: output_sequence
+    process: |
+      Initialize output sequence as a copy of the input sequence.
+      For the range of indices corresponding to the first group, replace elements in the output sequence with its assigned output value (1 or 2).
+      For the range of indices corresponding to the second group, replace elements in the output sequence with its assigned output value (1 or 2).
+      Ensure 0s remain unchanged.

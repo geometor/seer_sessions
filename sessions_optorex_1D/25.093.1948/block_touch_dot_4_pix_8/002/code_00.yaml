@@ -1,0 +1,78 @@
+task_description: Rearrange a sequence of digits based on the relative positions of a 'value block' and the digit '2'.
+input_type: list of integers
+output_type: list of integers
+elements:
+  - object: sequence
+    properties:
+      - type: list of integers
+      - fixed_length (observed in examples)
+  - object: pivot_digit
+    properties:
+      - value: 2
+      - role: anchor point for rearrangement
+      - count: exactly one per sequence (observed)
+  - object: filler_digit
+    properties:
+      - value: 0
+      - role: movable spacer
+      - count: variable
+  - object: value_block
+    properties:
+      - type: contiguous sub-sequence of identical digits
+      - constraint: digit value is not 0 and not 2
+      - count: at most one per sequence (observed)
+      - role: primary element to be moved
+  - object: intermediate_zeros
+    properties:
+      - type: sub-sequence consisting only of the filler_digit (0)
+      - location: strictly between the value_block and the pivot_digit
+      - role: secondary element to be moved
+relations:
+  - type: spatial
+    subject: value_block
+    object: pivot_digit
+    states:
+      - left_of: value_block ends before pivot_digit starts
+      - right_of: value_block starts after pivot_digit ends
+      - adjacent_to: value_block ends immediately before pivot_digit starts, or starts immediately after pivot_digit ends.
+actions:
+  - name: identify_elements
+    inputs: sequence (list of integers)
+    outputs:
+      - pivot_index (integer)
+      - value_block_indices (tuple: start, end) or None
+      - value_block_value (integer) or None
+  - name: identify_intermediate_zeros
+    inputs:
+      - sequence
+      - pivot_index
+      - value_block_indices
+      - relative_position (left_of / right_of)
+    outputs:
+      - list_of_zeros (list of integers)
+  - name: rearrange_sequence
+    condition: A non-adjacent value_block exists.
+    inputs:
+      - original_sequence
+      - pivot_index
+      - value_block_indices
+      - value_block_value
+      - list_of_zeros
+      - relative_position (left_of / right_of)
+    outputs:
+      - rearranged_sequence (list of integers)
+    logic:
+      - 1. Create a temporary sequence by removing the value_block and intermediate_zeros from the original_sequence.
+      - 2. Locate the new index of the pivot_digit in the temporary sequence.
+      - 3. If relative_position is left_of:
+          - a. Prepend the list_of_zeros to the temporary sequence.
+          - b. Find the pivot index again after prepending.
+          - c. Insert the value_block elements immediately before the pivot_digit.
+      - 4. If relative_position is right_of:
+          - a. Insert the value_block elements immediately after the pivot_digit in the temporary sequence.
+          - b. Append the list_of_zeros to the end of the sequence.
+      - 5. Return the final sequence.
+  - name: handle_no_change
+    condition: No value_block exists, or the value_block is adjacent_to the pivot_digit.
+    inputs: original_sequence
+    outputs: original_sequence

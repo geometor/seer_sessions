@@ -1,0 +1,67 @@
+Okay, analyzing the provided examples.
+
+**Perception of Elements:**
+
+*   **Input/Output Format:** Both input and output are sequences (lists) of 12 integers.
+*   **Content:** The sequences primarily contain the digit 0, acting as padding or empty space. They also contain a contiguous sub-sequence of non-zero digits (or potentially zeros within that block, e.g., `train_6`).
+*   **Transformation:** The core operation appears to be a positional shift of the entire sequence content to the right. The non-zero block maintains its relative structure but changes its starting position.
+*   **Shift Amount:** Comparing the start index of the non-zero block (or the first non-zero digit if easier to track) in the input versus the output reveals a consistent shift.
+    *   train\_1: `6` at index 0 -> index 4 (shift +4)
+    *   train\_2: `3` at index 3 -> index 7 (shift +4)
+    *   train\_3: `5` at index 1 -> index 5 (shift +4)
+    *   train\_4: `6` at index 4 -> index 8 (shift +4)
+    *   train\_5: `6` at index 2 -> index 6 (shift +4)
+    *   train\_6: `4` at index 2 -> index 6 (shift +4)
+    *   train\_7: `1` at index 4 -> index 8 (shift +4)
+    The shift is consistently 4 positions to the right.
+*   **Handling Boundaries:** Elements shifted beyond the end of the 12-element sequence are truncated (lost). The positions vacated at the beginning of the sequence are filled with zeros.
+
+**YAML Facts:**
+
+
+```yaml
+task_description: "Shift a sequence of 12 integers 4 positions to the right."
+elements:
+  - object: sequence
+    properties:
+      - type: list
+      - data_type: integer
+      - length: 12
+      - role: input
+  - object: sequence
+    properties:
+      - type: list
+      - data_type: integer
+      - length: 12
+      - role: output
+relationships:
+  - type: transformation
+    applies_to: input_sequence
+    results_in: output_sequence
+    details: "Content is shifted rightwards."
+actions:
+  - action: shift_right
+    target: input_sequence
+    parameter:
+      - name: amount
+        value: 4
+    constraints:
+      - type: truncation
+        details: "Elements shifted past the end boundary (index 11) are removed."
+      - type: padding
+        details: "Vacated positions at the start (indices 0-3) are filled with 0."
+constants:
+  - name: sequence_length
+    value: 12
+  - name: shift_amount
+    value: 4
+```
+
+
+**Natural Language Program:**
+
+1.  Initialize an output sequence of 12 zeros.
+2.  Take the first 8 elements (from index 0 to 7) of the input sequence.
+3.  Place these 8 elements into the output sequence, starting at index 4 and ending at index 11.
+4.  The first 4 elements of the output sequence remain zeros.
+5.  Return the completed output sequence.

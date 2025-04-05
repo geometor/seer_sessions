@@ -1,0 +1,38 @@
+*   **Perception of Elements:**
+    *   The input and output are both sequences of integers, specifically digits from 0 to 9.
+    *   Both input and output sequences have a fixed length of 12 elements.
+    *   The core transformation appears to be a positional shift of the elements within the sequence.
+    *   Comparing inputs and outputs, the sequence of numbers in the input seems to move one position to the right in the output.
+    *   A '0' is always present at the beginning of the output sequence.
+    *   The last element of the input sequence is consistently absent from the output sequence.
+
+*   **YAML Facts:**
+    
+```yaml
+    task_type: sequence_transformation
+    input_object:
+      type: list
+      element_type: integer
+      length: 12
+      element_range: 0-9
+    output_object:
+      type: list
+      element_type: integer
+      length: 12
+      element_range: 0-9
+    transformation:
+      action: right_shift
+      amount: 1
+      padding_element: 0
+      padding_position: start
+      truncation: remove_last_element
+    relationship:
+      description: Output is the input sequence shifted one position to the right, with a 0 inserted at the beginning and the last element removed.
+    ```
+
+
+*   **Natural Language Program:**
+    1.  Given an input sequence of 12 integers.
+    2.  Create a new sequence by taking the first 11 integers from the input sequence (discarding the 12th integer).
+    3.  Insert the integer 0 at the beginning of this new sequence.
+    4.  Return the resulting 12-integer sequence as the output.

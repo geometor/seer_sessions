@@ -1,0 +1,54 @@
+objects:
+  - name: sequence
+    type: 1D_numpy_array
+    properties:
+      - contains_integers (likely 0-9 based on examples)
+      - fixed_length (12 in all examples)
+      - dtype (int64 in examples)
+      - contains_a_single_contiguous_block_of_non_zero_integers
+  - name: non_zero_block
+    type: sub_array (slice of sequence)
+    properties:
+      - extracted_from_input_sequence
+      - contains_only_non_zero_integers
+      - maintains_relative_order_of_elements
+      - has_a_start_index_in_input
+      - has_an_end_index_in_input
+      - length_varies_by_example
+  - name: zero_integer
+    type: integer
+    properties:
+      - value_is_0
+      - acts_as_padding_element
+
+actions:
+  - name: find_non_zero_indices
+    input: input_array
+    output: array_of_indices
+    description: Identify the indices of all non-zero elements in the input array.
+  - name: identify_contiguous_block_bounds
+    input: array_of_non_zero_indices
+    output: start_index, end_index
+    description: Determine the minimum (start) and maximum (end) index from the array of non-zero indices. Handle the case where there are no non-zero elements.
+  - name: extract_non_zero_block
+    input: input_array, start_index, end_index
+    output: non_zero_sub_array
+    description: Slice the input array from the start index to the end index (inclusive) to get the non_zero block.
+  - name: calculate_target_start_index
+    input: start_index
+    parameter: shift_amount (constant value of 3)
+    output: new_start_index
+    description: Calculate the target starting index for the block in the output array by subtracting the shift_amount (3) from the original start_index. Clamp the result at 0 (cannot be negative).
+  - name: construct_output_array
+    input: non_zero_sub_array, new_start_index, array_length, dtype
+    output: output_array
+    description: Create a new array of the original length and dtype, initialized with zeros. Place the non_zero_sub_array into the output array starting at the calculated new_start_index. Ensure the block fits within the array bounds.
+
+relationships:
+  - input_array contains non_zero_block
+  - output_array contains the same non_zero_block shifted left
+  - shape(input_array) == shape(output_array)
+  - dtype(input_array) == dtype(output_array)
+  - shift_amount is constant (3) across all examples
+  - relative_order(non_zero_elements_in_input) == relative_order(non_zero_elements_in_output)
+  - The non_zero block in the input is always contiguous (contains no internal zeros).

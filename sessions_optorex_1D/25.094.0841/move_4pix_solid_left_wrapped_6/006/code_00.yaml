@@ -1,0 +1,78 @@
+task_elements:
+  - object: input_sequence
+    properties:
+      - type: list of integers # Assumed interpretation. String initially, potentially NumPy array in execution env.
+      - length: 12
+      - elements: single digits (0-9)
+  - object: output_sequence
+    properties:
+      - type: list of integers
+      - length: 12
+      - elements: single digits (0-9)
+      - derived_from: input_sequence via transformation
+  - object: non_zero_subsequence
+    properties:
+      - type: list of integers
+      - elements: non-zero digits extracted from input_sequence
+      - order: relative order preserved from input_sequence
+      - count: N
+  - object: sequence_properties
+    properties:
+      - length: 12 (constant for input and output)
+      - first_non_zero_index: index (0-based) of the first non-zero element in input_sequence. (-1 if none)
+      - non_zero_count: N (count of non-zero elements in input_sequence)
+  - object: shift_rule
+    properties:
+      - input: N (non_zero_count)
+      - output: shift_amount (integer offset)
+      - mapping: # Defines the cyclic shift based on the count of non-zeros
+          {
+            1: 8,
+            2: 8,
+            3: 8,
+            4: 8,
+            5: 4,
+            7: 5,
+            8: 2
+          }
+      - default: 0 # For counts not explicitly listed (e.g., 0, 6, 9, 10, 11, 12)
+relationship:
+  - type: transformation
+    description: Cyclically shifts the subsequence of non-zero elements within a fixed-length sequence of 12 digits.
+    applies_to: input_sequence
+    results_in: output_sequence
+    steps:
+      - action: initialize
+        actor: system
+        output: output_sequence (list of 12 zeros), non_zero_subsequence (empty list), first_non_zero_index (-1)
+      - action: process_input
+        actor: system
+        input: input_sequence
+        output: updated non_zero_subsequence, updated first_non_zero_index
+        details: Iterate through input_sequence. Append non-zero elements to non_zero_subsequence. Record index of the first non-zero element found.
+      - action: calculate_properties
+        actor: system
+        input: non_zero_subsequence
+        output: N (count of non-zero elements)
+      - action: handle_all_zeros
+        actor: system
+        condition: N == 0
+        output: Returns the initialized output_sequence (all zeros).
+      - action: determine_shift
+        actor: system
+        input: N
+        output: shift_amount
+        details: Apply the shift_rule mapping based on N.
+      - action: calculate_start_position
+        actor: system
+        input: first_non_zero_index, shift_amount, sequence_length (12)
+        output: output_start_idx
+        details: Computes (first_non_zero_index + shift_amount) % 12.
+      - action: place_subsequence
+        actor: system
+        input: non_zero_subsequence, output_start_idx, sequence_length (12)
+        output: updated output_sequence
+        details: Iterates through non_zero_subsequence, placing each element `value` at index `(output_start_idx + index_in_subsequence) % 12` in the output_sequence.
+      - action: finalize
+        actor: system
+        output: final output_sequence

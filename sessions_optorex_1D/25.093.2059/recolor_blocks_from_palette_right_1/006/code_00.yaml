@@ -1,0 +1,67 @@
+objects:
+  - name: input_sequence
+    type: list[int]
+    description: A sequence of integers provided as input.
+  - name: output_sequence
+    type: list[int]
+    description: A sequence of integers generated as output.
+  - name: key_sequence
+    type: list[int]
+    description: The sequence of initial non-zero integers found at the beginning of the input_sequence before the first zero.
+  - name: initial_segment
+    type: list[int]
+    description: The portion of the input_sequence from the start up to and including the first zero (or the entire sequence if no zero exists).
+  - name: subsequent_segment
+    type: list[int]
+    description: The portion of the input_sequence immediately following the first zero.
+  - name: placeholder_value
+    type: int
+    value: 5
+    description: The integer in the subsequent_segment that gets replaced.
+  - name: separator_value
+    type: int
+    value: 0
+    description: The integer that primarily acts as a separator between the initial_segment and subsequent_segment, and remains unchanged.
+  - name: block_of_placeholders
+    type: list[int]
+    description: A contiguous sequence of placeholder_value (5) within the subsequent_segment.
+
+properties:
+  - object: input_sequence
+    property: elements
+    description: Contains integers, including key_sequence numbers, placeholder_value (5), and separator_value (0). Can be conceptually divided into initial_segment and subsequent_segment based on the first zero.
+  - object: output_sequence
+    property: elements
+    description: Contains integers. The initial_segment is copied directly from the input. In the subsequent_segment, blocks of placeholder_value are replaced by corresponding key_sequence numbers.
+  - object: key_sequence
+    property: order
+    description: The order of numbers in this sequence determines the replacement value for successive blocks_of_placeholders found in the subsequent_segment.
+  - object: placeholder_value
+    property: replacement_condition
+    description: Only instances of placeholder_value (5) located in the subsequent_segment are subject to replacement. Instances within the initial_segment are preserved.
+
+actions:
+  - name: identify_segments_and_key_sequence
+    input: input_sequence
+    output: [key_sequence, initial_segment, subsequent_segment]
+    description: Find the index of the first zero. Extract the key_sequence from the part before the first zero. Define initial_segment (up to and including the first zero) and subsequent_segment (the rest).
+  - name: copy_initial_segment
+    input: initial_segment
+    output: partial output_sequence
+    description: Append all elements from the initial_segment to the output_sequence without modification.
+  - name: iterate_and_replace_subsequent
+    input: [subsequent_segment, key_sequence]
+    output: remaining part of output_sequence
+    description: Process the subsequent_segment element by element. If an element is the placeholder_value (5), replace it with the appropriate number from the key_sequence based on which block_of_placeholders it belongs to within this segment. Otherwise, keep the element unchanged. Manage a key_index for replacement, incrementing it after each block of 5s is processed.
+  - name: advance_key_index
+    trigger: End of a block_of_placeholders within subsequent_segment
+    description: Move to the next number in the key_sequence when transitioning from one block_of_placeholders to the next within the subsequent_segment.
+
+relationships:
+  - type: mapping
+    from: n-th block_of_placeholders in subsequent_segment
+    to: n-th element in key_sequence
+    description: Each block of 5s found *after* the first zero in the input is replaced by replicating the corresponding element from the key_sequence.
+  - type: preservation
+    elements: initial_segment, non-placeholder values in subsequent_segment
+    description: All elements in the initial_segment, and elements in the subsequent_segment that are not the placeholder_value (5), retain their value and position in the output_sequence.

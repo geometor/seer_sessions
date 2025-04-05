@@ -1,0 +1,53 @@
+task_elements:
+  - object: grid
+    properties:
+      - type: numpy.ndarray
+      - shape: (12,)
+      - dtype: integer
+  - object: element
+    properties:
+      - type: integer
+      - value: specific numbers (0, 1, 6 are key triggers)
+      - position: index (0-11)
+  - object: block
+    properties:
+      - type: contiguous sequence of identical non-zero elements (esp. 6)
+      - value: the repeated integer (6)
+      - start_index: position of the first element
+      - end_index: position of the last element
+      - length: number of elements in the block
+actions:
+  - name: find_elements
+    description: Locate indices of specific values (e.g., 1, 6) using `np.where`.
+  - name: find_blocks_6
+    description: Identify start and end indices of contiguous blocks of 6s.
+  - name: check_neighbors
+    description: Examine elements adjacent to an element or block using NumPy slicing.
+    parameters:
+      - location: index or slice
+      - direction: left or right
+      - count: number of adjacent positions (1 or 2)
+      - condition: check required (e.g., `np.all(slice == 0)`)
+  - name: modify_grid
+    description: Create a copy of the grid and perform element swaps or block shifts.
+    parameters:
+      - grid: the numpy array copy
+      - source_indices: indices/slice of elements to move
+      - target_indices: indices/slice where elements move to
+rules:
+  - rule: movement_rule_6_left
+    description: A block of `6`s moves 2 positions left if immediately preceded by `[0, 0]`.
+    condition: block_value == 6 AND start_index >= 2 AND np.all(grid[start_index-2 : start_index] == 0)
+    action: Shift block and zeros on a copy of the grid. Execute and stop.
+  - rule: movement_rule_6_right
+    description: A block of `6`s moves 2 positions right if immediately followed by `[0, 0]`.
+    condition: block_value == 6 AND end_index <= len(grid)-3 AND np.all(grid[end_index+1 : end_index+3] == 0)
+    action: Shift block and zeros on a copy of the grid. Execute and stop.
+  - rule: movement_rule_1_right
+    description: An element `1` moves 1 position right if immediately followed by a `0`.
+    condition: element_value == 1 AND index < len(grid)-1 AND grid[index+1] == 0
+    action: Swap elements at `index` and `index+1` on a copy of the grid. Execute and stop.
+  - rule: priority
+    description: Rules are checked and executed in the order 6-left, 6-right, 1-right. Only the first applicable rule is executed per input grid.
+  - rule: default
+    description: If no movement rules apply, the output grid is identical to the input grid.

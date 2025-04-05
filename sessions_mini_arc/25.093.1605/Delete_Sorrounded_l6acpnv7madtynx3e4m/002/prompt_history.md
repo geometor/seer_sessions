@@ -1,0 +1,177 @@
+
+## train_1
+
+**input:**
+```
+0 2 3 0 0
+3 3 2 3 0
+2 0 3 0 3
+0 0 3 2 3
+0 2 0 0 2
+```
+
+
+**output:**
+```
+0 2 3 0 0
+3 3 0 3 0
+2 0 3 0 3
+0 0 3 2 3
+0 2 0 0 2
+```
+
+
+## train_2
+
+**input:**
+```
+0 4 5 0 0
+5 5 4 4 5
+4 4 4 5 5
+4 5 4 5 4
+4 4 4 5 5
+```
+
+
+**output:**
+```
+0 4 5 0 0
+5 5 4 4 5
+4 4 4 5 5
+4 0 4 5 4
+4 4 4 5 5
+```
+
+
+## train_3
+
+**input:**
+```
+8 8 8 2 2
+8 2 8 8 2
+8 8 8 2 2
+8 2 8 8 2
+8 8 2 8 2
+```
+
+
+**output:**
+```
+8 8 8 2 2
+8 0 8 8 2
+8 8 8 2 2
+8 0 8 8 2
+8 8 2 8 2
+```
+
+
+## train_4
+
+**input:**
+```
+0 3 3 3 8
+3 8 3 3 8
+3 8 3 3 8
+3 8 3 3 8
+3 3 3 3 3
+```
+
+
+**output:**
+```
+0 3 3 3 8
+3 0 3 3 8
+3 0 3 3 8
+3 0 3 3 8
+3 3 3 3 3
+```
+
+*   **Perception of the elements:**
+    *   The inputs and outputs are 5x5 grids containing single-digit integers.
+    *   The transformation modifies specific cells within the grid, changing their value to 0.
+    *   The changes only occur in columns 1, 2, and 3 (0-indexed), never in the first or last column.
+    *   The modification of a cell seems dependent on the values of its immediate horizontal neighbors (left and right).
+    *   In all examples, a cell's value is changed to 0 if, and only if, its left neighbor and right neighbor have the exact same non-zero value.
+
+*   **YAML Facts:**
+    
+```yaml
+    task_elements:
+      - object: grid
+        properties:
+          - type: 2D array
+          - dimensions: 5x5
+          - content: single-digit integers (0-9)
+      - object: cell
+        properties:
+          - value: integer (0-9)
+          - position: row_index, column_index
+        relationships:
+          - type: horizontal_adjacency
+            to: cell
+            properties:
+              - direction: left (column_index - 1)
+              - direction: right (column_index + 1)
+    actions:
+      - name: modify_cell_value
+        target: cell
+        condition:
+          - property: target cell's left neighbor's value
+            equals: target cell's right neighbor's value
+          - property: target cell's left neighbor's value
+            is_not: 0
+        effect:
+          - set target cell's value to 0
+    constraints:
+      - The modification check only applies to cells in columns 1 through 3 (inclusive, 0-indexed). Cells in columns 0 and 4 are never modified.
+      - The input grid is the starting state, and the output grid is the state after applying the modification rule to all eligible cells simultaneously (or iteratively without affecting subsequent checks in the same pass).
+    ```
+
+
+*   **Natural Language Program:**
+    1.  Iterate through each cell in the input grid, focusing on cells located in columns 1, 2, and 3 (from the second column to the second-to-last column).
+    2.  For each selected cell at position (row, column):
+        a.  Identify the value of the cell immediately to its left, `left_neighbor_value` (at position (row, column-1)).
+        b.  Identify the value of the cell immediately to its right, `right_neighbor_value` (at position (row, column+1)).
+        c.  Check if `left_neighbor_value` is equal to `right_neighbor_value`.
+        d.  Check if `left_neighbor_value` (and therefore `right_neighbor_value`) is not equal to 0.
+        e.  If both conditions (c and d) are true, change the value of the current cell (at position (row, column)) to 0 in the output grid.
+    3.  If the conditions are not met, or if the cell is in the first or last column, copy the cell's original value from the input grid to the output grid.
+    4.  The final output grid contains the results of these checks and modifications for all cells.
+```python
+import numpy as np
+
+def transform(input_grid):
+  """
+  Iterates through each cell in the input grid, focusing on cells in columns 1, 2, and 3.
+  If a cell's left and right neighbors have the same non-zero value, the cell's value is changed to 0 in the output grid.
+  Otherwise, the cell's original value is retained. Cells in the first (0) and last columns are never modified.
+  """
+  # Convert input list of lists to a numpy array for easier indexing
+  input_array = np.array(input_grid)
+  # Create a copy to store the output, so modifications don't affect subsequent checks
+  output_array = np.copy(input_array)
+  
+  # Get the dimensions of the grid
+  rows, cols = input_array.shape
+  
+  # Iterate through rows (index r)
+  for r in range(rows):
+    # Iterate through columns (index c) from 1 to cols-2 (inclusive)
+    # This focuses on the columns that can potentially be modified (cols 1, 2, 3 for a 5x5 grid)
+    for c in range(1, cols - 1):
+      # Get the value of the left neighbor
+      left_neighbor_value = input_array[r, c - 1]
+      # Get the value of the right neighbor
+      right_neighbor_value = input_array[r, c + 1]
+      
+      # Check if the neighbors have the same value and that value is not zero
+      if left_neighbor_value == right_neighbor_value and left_neighbor_value != 0:
+        # If conditions are met, set the current cell's value in the output grid to 0
+        output_array[r, c] = 0
+        
+  # Convert the numpy array back to a list of lists for the final output format
+  output_grid = output_array.tolist()
+  
+  return output_grid
+```

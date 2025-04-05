@@ -1,0 +1,54 @@
+objects:
+  - name: sequence
+    type: List[int] or numpy.ndarray
+    description: A 1D sequence of single-digit integers.
+  - name: element
+    type: int
+    properties:
+      - value: The integer value (0-9).
+      - index: The position of the element in the sequence.
+      - is_zero: Boolean, true if value is 0.
+      - is_two: Boolean, true if value is 2.
+      - is_boundary: Boolean, true if value is non-zero.
+  - name: zero_segment
+    type: sub-sequence
+    description: A contiguous sub-sequence containing only zeros, located strictly between two non-zero elements.
+    properties:
+      - start_index: Index immediately following the left boundary.
+      - end_index: Index immediately preceding the right boundary.
+      - length: Number of zeros in the segment.
+      - left_boundary_value: The value of the non-zero element at index start_index - 1.
+      - right_boundary_value: The value of the non-zero element at index end_index + 1.
+
+actions:
+  - name: find_non_zero_indices
+    description: Identify the indices of all non-zero elements in the sequence.
+  - name: identify_potential_segments
+    description: Iterate through consecutive pairs of non-zero indices (i, j) to find potential segments between them (where j > i + 1).
+  - name: check_if_zero_segment
+    description: Verify if all elements in the sequence between index i+1 and j-1 are exclusively zeros.
+  - name: apply_fill_rule
+    description: >
+      Based on the values of the left boundary (at i) and right boundary (at j)
+      of a confirmed zero segment, determine if filling is needed and with which value.
+    inputs:
+      - left_boundary_value: Value at index i.
+      - right_boundary_value: Value at index j.
+      - segment_start_index: i + 1
+      - segment_end_index: j - 1
+    outputs:
+      - fill_value: The value to fill the segment with, or an indicator for no fill.
+      - target_indices: The range of indices (i+1 to j-1) to be filled.
+  - name: update_sequence
+    description: Modify a copy of the input sequence by filling the identified segments with the determined fill value.
+
+rules:
+  - description: A zero segment between non-zero boundaries `L` (at index `i`) and `R` (at index `j`) is filled if exactly one of `L` or `R` is the value 2.
+    condition: A sequence segment from index `i+1` to `j-1` exists (j > i+1) and consists solely of zeros.
+    sub_rules:
+      - condition: L != 2 and R == 2
+        action: Fill the segment (indices i+1 to j-1) with the value of L.
+      - condition: L == 2 and R != 2
+        action: Fill the segment (indices i+1 to j-1) with the value of R.
+      - condition: (L == 2 and R == 2) or (L != 2 and R != 2)
+        action: Do not modify the zero segment.

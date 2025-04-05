@@ -1,0 +1,46 @@
+task_description: "Shift a contiguous block within a fixed-length NumPy array."
+elements:
+  - object: array
+    type: numpy.ndarray
+    properties:
+      dtype: integer
+      shape: (12,) # Fixed length of 12
+      role: input/output
+  - object: segment
+    type: numpy.ndarray (subarray)
+    definition: "The contiguous subarray of the input array starting from the index of the first non-zero element and ending at the index of the last non-zero element (inclusive)."
+    properties:
+      content: integers (non-zero and potentially intervening zeros)
+      relative_order: preserved
+relationships:
+  - type: derivation
+    from: input_array
+    to: output_array
+  - type: transformation
+    action: identify_non_zero_bounds
+    input: input_array
+    library: numpy
+    function: np.nonzero
+    output: first_nz_idx, last_nz_idx # Indices of first/last non-zero elements
+    notes: "Returns None, None if the array contains only zeros."
+  - type: transformation
+    action: extract_segment
+    input: input_array, first_nz_idx, last_nz_idx
+    process: "Slice the input array from first_nz_idx to last_nz_idx + 1."
+    output: segment # Subarray
+  - type: transformation
+    action: calculate_new_position
+    input: first_nz_idx
+    parameter: shift_amount (constant +4)
+    output: new_start_idx
+  - type: transformation
+    action: construct_output
+    inputs: array_length, segment, new_start_idx, dtype
+    library: numpy
+    process: "Create a NumPy array of zeros with the specified length and dtype, then place the extracted segment at the new_start_idx."
+constants:
+  array_length: 12
+  shift_amount: 4
+special_conditions:
+  - condition: Input array contains only zeros.
+    action: Return a copy of the input array.
