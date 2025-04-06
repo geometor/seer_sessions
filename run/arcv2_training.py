@@ -25,11 +25,12 @@ def run():
 
     output_dir = Path("../sessions_ARCv2_train/")
 
-    tasks = Tasks("../tasks/ARCv2/training")
-    #  #  tasks = get_unsolved_tasks(Path("../sessions"))
+    #  tasks = Tasks("../tasks/ARCv2/training")
+    tasks = get_unsolved_tasks(output_dir)
     tasks = tasks.get_ordered_tasks()
 
-    seer.run(tasks[0:10], output_dir, "ARCv2 training")
+    #  seer.run(tasks[0:100], output_dir, "ARCv2 training 000:100")
+    seer.run(tasks, output_dir, "unsolved")
     
 
 

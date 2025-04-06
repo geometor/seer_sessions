@@ -1,0 +1,76 @@
+elements:
+  - element: Grid
+    properties:
+      - rows: integer
+      - columns: integer
+      - cells: list of list of integers
+  - element: Cell
+    properties:
+      - value: integer (0-9)
+      - row_index: integer
+      - column_index: integer
+      - is_background: boolean (true if value is 7)
+  - element: Component
+    properties:
+      - cells: list of Cell objects (represented by row, col tuples)
+      - value: integer (the common value of cells in the component, must not be 7)
+      - size: integer (number of cells in the component)
+      - neighbor_cells: set of Cell objects (adjacent cells not in the component)
+      - neighbor_count: integer (number of unique neighbor cells)
+      - connectivity: 4-directional (horizontal and vertical adjacency)
+
+actions:
+  - action: Identify Components and Neighbors
+    description: Scan the input grid to find connected regions of cells sharing the same non-7 value. Use 4-directional adjacency. For each component, identify all unique adjacent cells that are not part of the component.
+    inputs:
+      - input_grid: Grid
+    outputs:
+      - components: list of Component objects (each including value, size, cells, neighbor_count)
+
+  - action: Determine Transformation Value
+    description: Calculate the new value for a component based on its original value, size, and neighbor count according to the transformation rules.
+    inputs:
+      - component: Component
+    outputs:
+      - new_value: integer
+
+  - action: Apply Transformation
+    description: Update the value of all cells within a component in the output grid to the determined new value.
+    inputs:
+      - component: Component
+      - new_value: integer
+      - output_grid: Grid
+    outputs:
+      - updated_output_grid: Grid
+
+transformation_rules:
+  - rule: Background Preservation
+    condition: Cell value is 7.
+    action: Keep cell value as 7 in the output.
+  - rule: Isolated Non-6 Transformation
+    condition: Component value is NOT 6 AND Component size is 1.
+    action: Change the value of the component's cell(s) to 7.
+  - rule: Default Non-6 Preservation
+    condition: Component value is NOT 6 AND Component size is > 1.
+    action: Keep the original value of the component's cells.
+  - rule: Value 6 Transformation (Size/Neighbor Dependent)
+    condition: Component value IS 6.
+    sub_rules:
+      - condition: Component size is 2.
+        action: Change the value of the component's cells to 3.
+      - condition: Component size is 4 AND Component neighbor_count is 5.
+        action: Keep the value 6.
+      - condition: Component size is 4 AND Component neighbor_count is 6.
+        action: Change the value of the component's cells to 1.
+      - condition: Component size is 5.
+        action: Change the value of the component's cells to 4.
+      - condition: Otherwise (covers size 1, size 3, other size 4 neighbor counts, sizes > 5).
+        action: Keep the value 6.
+
+relationships:
+  - relationship: Adjacency
+    description: Cells are adjacent if they share an edge (horizontally or vertically).
+  - relationship: Component Membership
+    description: A cell belongs to a component if it shares the same non-7 value as other cells in the component and is connected to them through a path of adjacent cells with that same value.
+  - relationship: Neighborship
+    description: A cell is a neighbor of a component if it is adjacent to at least one cell in the component but is not part of the component itself.

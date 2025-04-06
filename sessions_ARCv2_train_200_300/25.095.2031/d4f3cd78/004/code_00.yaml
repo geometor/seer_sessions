@@ -1,0 +1,66 @@
+task_description: Fill the interior of a shape defined by color 5 with color 8, respecting the shape as a boundary. Then, identify a horizontal gap (5,0,5) in column 5. Draw a vertical line (color 8) in column 5 extending from the gap row towards the nearest grid edge (top or bottom), directed away from the main filled interior region. The line should not overwrite the original shape pixels (5).
+
+elements:
+  - object: Grid
+    properties:
+      - size: 10x10
+      - type: 2D array of integers
+  - object: Background
+    properties:
+      - color_value: 0
+      - role: The default color, can be replaced by Fill/Line.
+  - object: ShapeBoundary
+    properties:
+      - color_value: 5
+      - role: Defines the boundary of a region to be filled. Remains unmodified.
+      - structure: Forms a single connected component, typically U/C shaped, containing a specific gap feature.
+  - object: Gap
+    properties:
+      - pattern: Horizontal sequence [ShapeBoundary(5), Background(0), ShapeBoundary(5)]
+      - column_index: 5 (0-indexed) # Based on examples
+      - role: Anchor point for the vertical line and helps identify interior/exterior relative position.
+  - object: Fill
+    properties:
+      - color_value: 8
+      - role: Fills the interior region enclosed by ShapeBoundary. Replaces Background(0).
+  - object: VerticalLine
+    properties:
+      - color_value: 8
+      - column_index: 5 # Based on examples
+      - role: Extends vertically from the Gap's row towards the nearest edge (top/bottom), away from the main filled area. Replaces Background(0) or existing Fill(8), but critically *not* ShapeBoundary(5).
+
+actions:
+  - action: FindGapRow
+    input: Grid, ShapeBoundaryColor(5), BackgroundColor(0), GapColumn(5)
+    output: RowIndexOfGap or None
+    description: Locate the row index containing the specific horizontal gap pattern [5, 0, 5] centered in the designated column (5).
+  - action: FindInteriorSeedPoint
+    input: Grid, GapRow, GapColumn, BackgroundColor(0)
+    output: SeedPointCoordinates (row, col) or None
+    description: Identify a Background(0) pixel adjacent (preferably vertically) to the gap, positioned inside the shape boundary, to initiate the fill.
+  - action: FloodFillInterior
+    input: GridToModify, SeedPoint, FillColor(8), TargetColor(0), BoundaryColor(5)
+    output: Modified Grid with InteriorRegion filled
+    description: Starting from the SeedPoint, perform a 4-directional flood fill. Change connected TargetColor(0) pixels to FillColor(8). Treat BoundaryColor(5) pixels as impassable walls; do not cross or modify them. Modifies the grid in place.
+  - action: GetFilledOrShapeAreaBounds
+    input: Grid, FillColor(8), ShapeColor(5)
+    output: MinRow, MaxRow or None, None
+    description: Find the minimum and maximum row indices containing the FillColor. If no FillColor exists, find bounds based on ShapeColor. Return bounds, handling cases where neither exists.
+  - action: DrawVerticalLine
+    input: GridToModify, OriginalGrid, GapRow, GapColumn(5), MinBoundRow, MaxBoundRow, LineColor(8), ShapeBoundaryColor(5)
+    output: Modified Grid with vertical line added
+    description: Determine direction based on GapRow relative to Min/MaxBoundRow (away from main bounded area). Draw LineColor(8) pixels in GapColumn(5) from GapRow towards the nearest edge (row 0 or last row) in that direction. Critically, only modify pixels in GridToModify if the corresponding pixel in OriginalGrid was *not* ShapeBoundaryColor(5).
+
+relationships:
+  - type: Enclosure
+    subject: ShapeBoundary (5)
+    object: InteriorRegion (0 changing to 8 via FloodFillInterior)
+    description: The ShapeBoundary spatially contains the InteriorRegion. The FloodFillInterior action respects this boundary.
+  - type: Anchoring
+    subject: VerticalLine (8)
+    object: Gap
+    description: The VerticalLine originates at the row of the Gap in column 5.
+  - type: Directionality
+    subject: VerticalLine (8)
+    object: FilledOrShapeAreaBounds
+    description: The VerticalLine extends away from the main area (defined by Min/MaxBoundRow) relative to the GapRow, towards the closer vertical grid edge.

@@ -1,0 +1,84 @@
+task_elements:
+  - element: grid
+    description: A 2D array of integers representing the input and output state.
+    properties:
+      - dimensions: [rows, columns]
+      - values: integers, with 0 as background, 4 as axis identifier.
+  - element: axis
+    description: A line (row or column) within the grid composed entirely of the integer 4.
+    properties:
+      - type: 'horizontal' or 'vertical'
+      - index: The row or column index.
+      - identifier_value: 4
+    relationships:
+      - divides: the grid into regions or quadrants.
+  - element: region
+    description: A section of the grid defined relative to an axis (e.g., above/below, left/right).
+    properties:
+      - location_relative_to_axis: 'above', 'below', 'left', 'right'
+      - grid_slice: The row/column indices defining the region.
+    relationships:
+      - defined_by: axis
+  - element: quadrant
+    description: A section of the grid defined by the intersection of horizontal and vertical axes.
+    properties:
+      - location: 'top_left', 'top_right', 'bottom_left', 'bottom_right'
+      - grid_slice: The row/column indices defining the quadrant.
+    relationships:
+      - defined_by: horizontal_axis, vertical_axis
+
+actions:
+  - action: identify_axes
+    description: Scan the input grid to find the indices of rows and columns composed entirely of 4.
+    inputs: input_grid
+    outputs: horizontal_axis_index (Optional), vertical_axis_index (Optional)
+  - action: copy_block
+    description: Copy cell values from a source block (region/quadrant) in the input grid to a target block in the output grid.
+    inputs: input_grid, source_slice, target_slice, output_grid
+    outputs: modified_output_grid
+  - action: copy_axis
+    description: Copy an axis line (row or column) from the input grid to the output grid.
+    inputs: input_grid, axis_index, axis_type ('horizontal' or 'vertical'), output_grid
+    outputs: modified_output_grid
+  - action: fill_block_with_zeros
+    description: Set all cells within a specified block (region/quadrant) of the output grid to 0.
+    inputs: target_slice, output_grid
+    outputs: modified_output_grid
+
+transformation_scenarios:
+  - scenario: no_axes
+    condition: No horizontal or vertical axis found.
+    steps:
+      - Create output grid identical to input grid.
+  - scenario: horizontal_axis_only
+    condition: Only horizontal axis `h` found.
+    steps:
+      - Initialize output grid with zeros, same dimensions as input.
+      - Define source region: input rows < h (slice_src).
+      - Define target region 1: output rows < h (slice_tgt1).
+      - Define target region 2: output rows > h (slice_tgt2).
+      - Perform: copy_block(input, slice_src, slice_tgt1, output)
+      - Perform: copy_block(input, slice_src, slice_tgt2, output)
+      - Perform: copy_axis(input, h, 'horizontal', output)
+  - scenario: vertical_axis_only
+    condition: Only vertical axis `v` found.
+    steps:
+      - Initialize output grid with zeros, same dimensions as input.
+      - Define source region: input cols < v (slice_src).
+      - Define target region 1: output cols < v (slice_tgt1).
+      - Define target region 2: output cols > v (slice_tgt2).
+      - Perform: copy_block(input, slice_src, slice_tgt1, output)
+      - Perform: copy_block(input, slice_src, slice_tgt2, output)
+      - Perform: copy_axis(input, v, 'vertical', output)
+  - scenario: both_axes
+    condition: Both horizontal axis `h` and vertical axis `v` found.
+    steps:
+      - Initialize output grid with zeros, same dimensions as input.
+      - Define input quadrants slices: TL_in (rows<h, cols<v), BL_in (rows>h, cols<v).
+      - Define output quadrants slices: TL_out (rows<h, cols<v), TR_out (rows<h, cols>v), BL_out (rows>h, cols<v), BR_out (rows>h, cols>v).
+      - Perform: copy_block(input, TL_in, TL_out, output)
+      - Perform: copy_block(input, BL_in, TR_out, output)
+      - Perform: copy_block(input, BL_in, BL_out, output)
+      - Perform: fill_block_with_zeros(BR_out, output) # Implicitly done by starting with zeros, but good to be explicit if needed.
+      - Perform: copy_axis(input, h, 'horizontal', output)
+      - Perform: copy_axis(input, v, 'vertical', output)

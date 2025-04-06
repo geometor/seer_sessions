@@ -1,0 +1,71 @@
+task_name: map_content_onto_mask
+description: >
+  Splits the input grid horizontally into a left 'mask' grid and a right 'content key' grid.
+  Determines a value mapping rule for the unique non-zero values found in the content key grid.
+  The rule depends on the indices of these keys within the sorted list of all unique non-zero values
+  from the entire input grid. If index 0 is present, a 'Reverse' mapping is used; otherwise,
+  a 'Cyclic Shift' mapping is used. The output grid is the left mask grid, with its zero-value
+  cells replaced by the mapped values corresponding to the keys found at the same position in the
+  right content key grid.
+
+grid_properties:
+  input_width_relation: twice the output width
+  input_height_relation: same as output height
+  cell_values: non-negative integers
+  zero_meaning: background/fillable area in left grid; background/ignore in right grid
+
+components:
+  - id: input_grid
+    type: Grid
+  - id: output_grid
+    type: Grid
+  - id: left_mask_grid
+    type: Grid
+    derivation: Left half of input_grid (columns 0 to width/2 - 1)
+    properties:
+      - contains a frame defined by a primary non-zero value (frame_value)
+      - contains areas to be filled defined by zero (fill_target_value: 0)
+  - id: right_content_grid
+    type: Grid
+    derivation: Right half of input_grid (columns width/2 to width - 1)
+    properties:
+      - contains content keys defined by non-zero values (content_keys)
+      - contains background areas defined by zero (ignore_value: 0)
+  - id: all_non_zeros_sorted
+    type: List[int]
+    derivation: Sorted list of unique non-zero values from input_grid.
+  - id: content_keys_sorted
+    type: List[int]
+    derivation: Sorted list of unique non-zero values from right_content_grid.
+  - id: value_map
+    type: Dict[int, int]
+    derivation: Mapping from content_keys to output values, determined by mapping_rule.
+
+parameters:
+  - id: mapping_rule
+    type: String ('Reverse' or 'Cyclic Shift')
+    derivation: >
+      Check indices of content_keys_sorted within all_non_zeros_sorted.
+      If 0 is present in indices, rule is 'Reverse'. Otherwise, rule is 'Cyclic Shift'.
+
+actions:
+  - Split: Divide input_grid vertically into left_mask_grid and right_content_grid.
+  - Analyze: Identify all_non_zeros_sorted and content_keys_sorted.
+  - Determine Rule: Establish mapping_rule based on indices.
+  - Build Map: Construct value_map based on mapping_rule and content_keys_sorted.
+    - Reverse: Map key[i] to key[n-1-i].
+    - Cyclic Shift: Map key[i] to key[(i+1) % n].
+  - Initialize: Create output_grid as a deep copy of left_mask_grid.
+  - Iterate & Replace: For each cell (r, c) in output_grid:
+      - If output_grid[r][c] is 0:
+          - Get content_key = right_content_grid[r][c].
+          - If content_key is not 0:
+              - Replace output_grid[r][c] with value_map[content_key].
+          - (If content_key is 0, output_grid[r][c] remains 0).
+      - Else (output_grid[r][c] is non-zero frame value):
+          - Keep the value.
+
+relationships:
+  - output_grid dimensions match left_mask_grid dimensions.
+  - output_grid combines the structure of left_mask_grid with transformed content from right_content_grid.
+  - The transformation depends on the global set of non-zero values across the entire input.

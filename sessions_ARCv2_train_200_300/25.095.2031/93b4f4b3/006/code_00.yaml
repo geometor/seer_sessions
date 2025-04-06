@@ -1,0 +1,70 @@
+task_name: map_content_onto_mask_conditional
+description: Overlays content from the right half of an input grid onto the zero-valued cells of the left half (mask), applying a conditional mapping to the content values.
+grid_properties:
+  input_width_relation: twice the output width
+  input_height_relation: same as output height
+  cell_values: non-negative integers (0 is background/fill target, others are frame or content)
+
+components:
+  - id: input_grid
+    type: Grid
+    properties:
+      - even number of columns
+  - id: left_mask_grid
+    type: Grid
+    derivation: Left half of input_grid (columns 0 to width/2 - 1)
+    properties:
+      - contains a frame defined by a non-zero value (frame_value)
+      - contains target areas defined by zero (fill_target_value: 0)
+  - id: right_content_grid
+    type: Grid
+    derivation: Right half of input_grid (columns width/2 to width - 1)
+    properties:
+      - contains content keys defined by non-zero values (content_keys)
+      - contains empty areas defined by zero (background_value: 0)
+  - id: output_grid
+    type: Grid
+    derivation: Combination of left_mask_grid and mapped right_content_grid.
+  - id: all_non_zeros
+    type: List[int]
+    derivation: Sorted unique non-zero values from the entire input_grid.
+  - id: content_keys_sorted
+    type: List[int]
+    derivation: Sorted unique non-zero values from the right_content_grid.
+  - id: value_map
+    type: Dict[int, int]
+    derivation: Mapping from content_keys to output values based on a conditional rule.
+
+actions:
+  - Split: Divide input_grid vertically into left_mask_grid and right_content_grid.
+  - Analyze:
+      - Identify fill_target_value (0) in left_mask_grid.
+      - Extract frame_value from left_mask_grid (typically the most frequent non-zero value).
+      - Extract content_keys from right_content_grid.
+      - Generate content_keys_sorted list.
+      - Generate all_non_zeros list from input_grid.
+  - Determine Map Rule:
+      - Condition: Check if content_keys_sorted is not empty AND if content_keys_sorted[0] is equal to all_non_zeros[0].
+      - If True: Set mapping type to "Reverse".
+      - If False (or content_keys_sorted is empty): Set mapping type to "Cyclic Shift".
+  - Build Map:
+      - If mapping type is "Reverse": Create value_map where content_keys_sorted[i] maps to content_keys_sorted[n-1-i].
+      - If mapping type is "Cyclic Shift": Create value_map where content_keys_sorted[i] maps to content_keys_sorted[(i+1) % n].
+      - If content_keys_sorted is empty: value_map is empty.
+  - Construct Output:
+      - Initialize output_grid as a deep copy of left_mask_grid.
+      - Iterate through each cell (r, c) of output_grid.
+      - Condition: Check if output_grid[r][c] equals fill_target_value (0).
+      - If True:
+          - Get the content_key = right_content_grid[r][c].
+          - If content_key is non-zero:
+              - mapped_value = value_map[content_key].
+              - Set output_grid[r][c] = mapped_value.
+          - (If content_key is 0, output_grid[r][c] remains 0).
+      - If False (cell is part of the frame): Keep the original frame_value.
+
+relationships:
+  - output_grid dimensions match left_mask_grid dimensions.
+  - The choice between Reverse and Cyclic Shift mapping depends on whether the smallest content key is also the smallest non-zero value in the entire input grid.
+  - Only cells that are 0 in the left_mask_grid are potentially modified in the output_grid.
+  - The modification value depends on the corresponding cell in the right_content_grid and the derived value_map.

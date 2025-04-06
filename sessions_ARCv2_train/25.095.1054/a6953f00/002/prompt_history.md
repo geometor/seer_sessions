@@ -1,0 +1,176 @@
+
+## train_1
+
+**input:**
+```
+7 5 8 2
+8 0 4 7
+1 6 4 7
+8 9 6 9
+```
+
+
+**output:**
+```
+8 2
+4 7
+```
+
+
+## train_2
+
+**input:**
+```
+0 7 9
+5 6 5
+3 7 9
+```
+
+
+**output:**
+```
+0 7
+5 6
+```
+
+
+## train_3
+
+**input:**
+```
+5 8 8 9 2
+8 0 5 6 5
+7 7 2 2 9
+5 5 1 7 4
+3 3 8 7 7
+```
+
+
+**output:**
+```
+5 8
+8 0
+```
+
+Okay, let's analyze the transformation.
+
+**Perception of Task Elements:**
+
+1.  **Input:** The input is a grid (matrix) of single-digit integers, represented as space-separated values on multiple lines. The dimensions (rows and columns) of the input grid vary across examples.
+2.  **Output:** The output is always a 2x2 grid of single-digit integers, also represented as space-separated values on two lines.
+3.  **Transformation:** The core task is to extract a specific 2x2 subgrid from the input grid.
+4.  **Selection Logic:** The key challenge is determining *which* 2x2 subgrid to extract. Comparing the examples reveals a pattern based on the input grid's dimensions:
+    *   In `train_1` (4x4 input), the top-right 2x2 subgrid (`[[8, 2], [4, 7]]`) is selected. The number of columns (4) is even.
+    *   In `train_2` (3x3 input), the top-left 2x2 subgrid (`[[0, 7], [5, 6]]`) is selected. The number of columns (3) is odd.
+    *   In `train_3` (5x5 input), the top-left 2x2 subgrid (`[[5, 8], [8, 0]]`) is selected. The number of columns (5) is odd.
+5.  **Conclusion:** The selection rule appears to depend on the parity (even or odd) of the number of columns in the input grid. If the number of columns is even, the top-right 2x2 subgrid is extracted. If the number of columns is odd, the top-left 2x2 subgrid is extracted.
+
+**YAML Facts:**
+
+
+```yaml
+objects:
+  - name: input_grid
+    type: grid
+    properties:
+      - elements: integers
+      - rows: variable number (R)
+      - columns: variable number (C)
+  - name: output_grid
+    type: grid
+    properties:
+      - elements: integers
+      - rows: fixed number (2)
+      - columns: fixed number (2)
+
+relationships:
+  - type: derivation
+    from: input_grid
+    to: output_grid
+    details: output_grid is a 2x2 subgrid extracted from the top two rows of input_grid.
+
+actions:
+  - name: determine_input_columns
+    input: input_grid
+    output: number_of_columns (C)
+  - name: check_column_parity
+    input: number_of_columns (C)
+    output: parity (even or odd)
+  - name: extract_subgrid
+    input: input_grid, parity
+    output: output_grid
+    logic: |
+      If parity is 'odd', extract the top-left 2x2 subgrid:
+      [[input[0][0], input[0][1]],
+       [input[1][0], input[1][1]]]
+      If parity is 'even', extract the top-right 2x2 subgrid:
+      [[input[0][C-2], input[0][C-1]],
+       [input[1][C-2], input[1][C-1]]]
+```
+
+
+**Natural Language Program:**
+
+1.  Parse the input into a grid of integers.
+2.  Count the number of columns (`C`) in the input grid.
+3.  Determine if `C` is even or odd.
+4.  If `C` is odd:
+    *   Identify the elements at row 0, column 0 and row 0, column 1.
+    *   Identify the elements at row 1, column 0 and row 1, column 1.
+    *   Construct the output grid using these four elements, maintaining their relative positions (top-left 2x2).
+5.  If `C` is even:
+    *   Identify the elements at row 0, column `C-2` and row 0, column `C-1`.
+    *   Identify the elements at row 1, column `C-2` and row 1, column `C-1`.
+    *   Construct the output grid using these four elements, maintaining their relative positions (top-right 2x2).
+6.  Format the resulting 2x2 grid as the output, with space-separated numbers on two lines.
+```python
+import math
+
+def transform(input_grid: list[list[int]]) -> list[list[int]]:
+    """
+    Transforms an input grid of integers into a 2x2 output grid.
+    The transformation rule depends on the parity of the number of columns (C)
+    in the input grid:
+    - If C is odd, the output is the top-left 2x2 subgrid.
+    - If C is even, the output is the top-right 2x2 subgrid.
+    """
+
+    # Determine the number of columns in the input grid
+    if not input_grid or not input_grid[0]:
+        # Handle empty or invalid input if necessary
+        return [] 
+    num_columns = len(input_grid[0])
+
+    # Initialize the output grid (will be 2x2)
+    output_grid = [[0, 0], [0, 0]]
+
+    # Check the parity of the number of columns
+    if num_columns % 2 != 0:  # Odd number of columns
+        # Extract the top-left 2x2 subgrid
+        # Ensure the grid is at least 2x2
+        if len(input_grid) >= 2 and num_columns >= 2:
+            output_grid[0][0] = input_grid[0][0]
+            output_grid[0][1] = input_grid[0][1]
+            output_grid[1][0] = input_grid[1][0]
+            output_grid[1][1] = input_grid[1][1]
+        else:
+             # Handle cases where the grid is too small for the required extraction
+             # Depending on requirements, might return empty, raise error, or partial grid
+             # For now, returning the initialized (potentially incorrect) grid or an empty one
+             return [] # Or raise ValueError("Input grid too small")
+            
+    else:  # Even number of columns
+        # Extract the top-right 2x2 subgrid
+        # Ensure the grid is at least 2x2
+        if len(input_grid) >= 2 and num_columns >= 2:
+            start_col_index = num_columns - 2
+            output_grid[0][0] = input_grid[0][start_col_index]
+            output_grid[0][1] = input_grid[0][start_col_index + 1]
+            output_grid[1][0] = input_grid[1][start_col_index]
+            output_grid[1][1] = input_grid[1][start_col_index + 1]
+        else:
+             # Handle cases where the grid is too small
+             return [] # Or raise ValueError("Input grid too small")
+
+    return output_grid
+```

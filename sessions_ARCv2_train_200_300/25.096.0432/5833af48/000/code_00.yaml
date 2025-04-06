@@ -1,0 +1,46 @@
+task_description: "Extract a pattern from the upper part of the input grid, determine a fill color from the lower part, and redraw the pattern using the fill color, preserving the locations of '8's."
+
+elements:
+  - object: input_grid
+    properties:
+      - type: 2D array of integers
+      - contains_background: digit 0
+      - contains_pattern_region: upper area with mixed non-zero digits (including 8)
+      - contains_fill_region: lower area with a large block of a single non-zero digit
+  - object: output_grid
+    properties:
+      - type: 2D array of integers
+      - dimensions: corresponds to the bounding box of the input pattern region
+      - contains_transformed_pattern: uses fill color and preserves 8s
+
+relations:
+  - type: defines
+    subject: input_grid.fill_region
+    object: output_grid.fill_color
+    details: "The single dominant non-zero digit in the lower region determines the primary color used in the output, replacing non-8 pattern digits."
+  - type: extracts_and_transforms
+    subject: input_grid.pattern_region
+    object: output_grid
+    details: "The shape defined by non-zero elements in the upper region is extracted. Cells with '8' retain their value. Other non-zero cells are replaced by the fill_color."
+  - type: determines_size
+    subject: input_grid.pattern_region.bounding_box
+    object: output_grid.dimensions
+    details: "The min/max rows and columns containing non-zero elements in the pattern region define the output grid size."
+
+actions:
+  - name: identify_fill_digit
+    inputs: [input_grid]
+    outputs: [fill_digit]
+    description: "Find the single non-zero digit that forms a large rectangular block in the lower part of the input grid."
+  - name: identify_pattern_bounding_box
+    inputs: [input_grid]
+    outputs: [min_row, max_row, min_col, max_col]
+    description: "Find the smallest rectangle enclosing all non-zero digits in the upper part of the input grid."
+  - name: extract_pattern
+    inputs: [input_grid, min_row, max_row, min_col, max_col]
+    outputs: [pattern_subgrid]
+    description: "Create a subgrid containing only the elements within the pattern bounding box."
+  - name: generate_output
+    inputs: [pattern_subgrid, fill_digit]
+    outputs: [output_grid]
+    description: "Create the output grid by iterating through the pattern subgrid. If a cell is 8, copy 8. If a cell is non-zero and not 8, copy the fill_digit."

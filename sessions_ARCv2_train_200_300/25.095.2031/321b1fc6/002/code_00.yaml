@@ -1,0 +1,45 @@
+Grid_Properties:
+  - Type: 2D Array
+  - Dimensions: Variable (e.g., 10x10 in examples)
+  - Cell_Values: Integers (0-9)
+  - Background_Value: 0
+  - Target_Value: 8
+
+Object_Identification:
+  - Target_Object:
+      - Definition: A connected component where all cells have the value specified by `Target_Value` (8).
+      - Identification: Apply connected components algorithm (e.g., `scipy.ndimage.label`) to a mask of the input grid where only cells equal to `Target_Value` are considered foreground.
+      - Connectivity: 8-way (cells touching orthogonally or diagonally are connected).
+  - Pattern_Object:
+      - Definition: A connected component where all cells have values that are non-zero and not equal to `Target_Value`. Can contain multiple different non-target digits.
+      - Identification: Apply connected components algorithm to a mask of the input grid where only cells not equal to 0 AND not equal to `Target_Value` are considered foreground.
+      - Connectivity: 8-way.
+
+Object_Properties:
+  - Each object (Target or Pattern) requires:
+      - `cells`: A list of tuples `(row, column, value)` for each cell belonging to the object, using values from the original input grid.
+      - `top_left`: The `(minimum_row, minimum_column)` coordinate among all cells in the object. This serves as the object's reference point for sorting and placement.
+
+Relationships_and_Actions:
+  - Sorting:
+      - Sort identified `Pattern_Objects` based on their `top_left` coordinates (row first, then column).
+      - Sort identified `Target_Objects` based on their `top_left` coordinates (row first, then column).
+  - Transformation:
+      - Create an empty output grid (all zeros) of the same dimensions as the input.
+      - If no `Pattern_Objects` are identified, return the empty grid.
+      - Let `N` be the number of `Pattern_Objects`.
+      - Iterate through the sorted `Target_Objects` using index `i` (from 0).
+      - For each `Target_Object`:
+          - Select the `Pattern_Object` at index `j = i % N` from the sorted list.
+          - Get the `top_left` coordinate `(Tr, Tc)` of the `Target_Object`.
+          - Get the `top_left` coordinate `(Pr, Pc)` of the selected `Pattern_Object`.
+          - For each cell `(r, c, v)` within the selected `Pattern_Object`:
+              - Calculate its relative position within the pattern: `rel_row = r - Pr`, `rel_col = c - Pc`.
+              - Calculate the destination position in the output grid: `dest_row = Tr + rel_row`, `dest_col = Tc + rel_col`.
+              - Check if `(dest_row, dest_col)` is within the grid boundaries.
+              - If within bounds, set the output grid cell `(dest_row, dest_col)` to the value `v`.
+  - Exclusion: Original `Pattern_Objects` are implicitly excluded from the output unless copied during the replacement process. Original `Target_Objects` are replaced.
+
+Assumptions:
+  - The two identification processes (for Targets and Patterns) correctly partition all relevant non-zero shapes.
+  - `Target_Value` (8) is consistent across all examples for this specific task.

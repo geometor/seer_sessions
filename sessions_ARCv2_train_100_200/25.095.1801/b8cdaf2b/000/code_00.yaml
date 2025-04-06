@@ -1,0 +1,42 @@
+task: grid_transformation
+input_type: 2D grid of digits
+output_type: 2D grid of digits (same dimensions as input)
+background_color: 0
+objects:
+  - id: pattern
+    description: A horizontal structure found near the bottom of the input grid.
+    properties:
+      - central_color (C): The color of the central segment (non-zero, different from boundary_color).
+      - boundary_color (B): The color flanking the central segment (non-zero, different from central_color).
+      - central_segment_length (N): The number of contiguous pixels of the central_color.
+      - row_index (r_orig): The row where the pattern is located.
+      - boundary_left_col (c_left): The column index of the leftmost boundary pixel B relevant to the pattern.
+      - boundary_right_col (c_right): The column index of the rightmost boundary pixel B relevant to the pattern.
+      - central_mid_col (c_mid): The column index of the middle pixel of the central segment C (relevant if N is odd).
+actions:
+  - id: identify_pattern
+    description: Scan the input grid from bottom to top to find the first occurrence of the 'pattern' object.
+    input: input grid
+    output: pattern object properties (C, B, N, r_orig, c_left, c_right, c_mid)
+  - id: calculate_shifts
+    description: Determine the vertical shifts for propagation based on pattern properties.
+    input: pattern object properties (B, N)
+    output:
+      - diagonal_vertical_shift (V_diag)
+      - perform_central_propagation (boolean flag)
+    logic:
+      - V_diag = 3 if (B == 8) or (B == 2 and N > 1) else 2
+      - perform_central_propagation = true if (N == 1 and B == 8) or (N > 1 and B == 2) else false
+  - id: apply_propagation
+    description: Add new pixels to the output grid based on calculated shifts and pattern properties.
+    input: input grid, pattern object properties, shifts
+    output: modified output grid
+    steps:
+      - Copy input grid to output grid.
+      - Place C at (r_orig - V_diag, c_left) if within bounds.
+      - Place C at (r_orig - V_diag, c_right) if within bounds.
+      - If perform_central_propagation is true, place C at (r_orig - 2, c_mid) if within bounds.
+relationships:
+  - The output grid is derived from the input grid by adding pixels.
+  - The added pixels' color matches the central_color (C) of the identified pattern.
+  - The locations of added pixels depend on the row (r_orig), boundary columns (c_left, c_right), middle column (c_mid), boundary color (B), and central segment length (N) of the identified pattern.

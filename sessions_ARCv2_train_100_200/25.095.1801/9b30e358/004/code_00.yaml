@@ -1,0 +1,57 @@
+Inputs:
+  - name: RawInputString
+    type: multiline string
+    description: Contains two grids represented by space-separated integers, separated by at least one blank line.
+
+DerivedObjects:
+  - name: InputGrid1 # Derived from first part of RawInputString
+    type: list[list[int]]
+    properties:
+      height: H1
+      width: W
+    status: Discarded during transformation.
+  - name: InputGrid2 # Derived from second part of RawInputString
+    type: list[list[int]]
+    properties:
+      height: H2
+      width: W
+      height_parity: one of ['odd', 'even']
+    status: Source for the OutputGrid.
+  - name: TopHalf # Conditional object, exists only if InputGrid2.height_parity is 'even'
+    type: list[list[int]]
+    description: First H2 / 2 rows of InputGrid2.
+    properties:
+      height: H2 / 2
+      width: W
+  - name: BottomHalf # Conditional object, exists only if InputGrid2.height_parity is 'even'
+    type: list[list[int]]
+    description: Last H2 / 2 rows of InputGrid2.
+    properties:
+      height: H2 / 2
+      width: W
+  - name: OutputGrid
+    type: list[list[int]]
+    properties:
+      height: H_out
+      width: W
+
+Relationships:
+  - InputGrid1.width == InputGrid2.width
+  - OutputGrid.width == InputGrid2.width
+  - If InputGrid2.height_parity == 'odd':
+      OutputGrid.height == 2 * InputGrid2.height
+  - If InputGrid2.height_parity == 'even':
+      OutputGrid.height == 5 * (InputGrid2.height / 2) # or 2.5 * H2
+
+Actions:
+  - ParseRawInput:
+      - Split RawInputString into two text blocks based on the first occurrence of one or more blank lines.
+      - Parse first text block into InputGrid1 (converting numbers). Handle potential empty lines within the block.
+      - Parse second text block into InputGrid2 (converting numbers). Handle potential empty lines within the block.
+      - Determine InputGrid2.height (H2) and InputGrid2.height_parity.
+  - ConstructOutput:
+      - If InputGrid2.height_parity is 'odd':
+          - OutputGrid = vertically stack InputGrid2 and InputGrid2.
+      - If InputGrid2.height_parity is 'even':
+          - Derive TopHalf and BottomHalf from InputGrid2.
+          - OutputGrid = vertically stack BottomHalf, TopHalf, BottomHalf, TopHalf, BottomHalf.

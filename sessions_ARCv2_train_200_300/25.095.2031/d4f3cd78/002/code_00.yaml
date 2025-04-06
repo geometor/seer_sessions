@@ -1,0 +1,62 @@
+task_description: Fill the interior of a shape defined by color 5 with color 8, and draw a vertical line (color 8) in column 5 extending from the shape's horizontal bar away from the filled interior towards the nearest grid edge.
+
+elements:
+  - object: Grid
+    properties:
+      - size: 10x10
+      - type: 2D array of integers
+  - object: Background
+    properties:
+      - color_value: 0
+  - object: ShapeBoundary
+    properties:
+      - color_value: 5
+      - role: Defines the boundary of a region to be filled. Remains unchanged in the output.
+      - structure: Forms a single connected, closed component containing a horizontal bar with a single pixel gap (value 0) in column 5.
+  - object: InteriorRegion
+    properties:
+      - initial_color_value: 0
+      - final_color_value: 8
+      - role: The area enclosed by the ShapeBoundary.
+  - object: FillColor
+    properties:
+      - color_value: 8
+  - object: VerticalLine
+    properties:
+      - color_value: 8
+      - column_index: 5
+      - role: Extends vertically from the ShapeBoundary's horizontal bar gap location.
+      - constraint: Overwrites only Background (0) or previously filled InteriorRegion (8) pixels, not ShapeBoundary (5) pixels.
+
+actions:
+  - action: IdentifyGapLocation
+    input: Grid, ShapeBoundaryColor (5), BackgroundColor (0), TargetColumn (5)
+    output: RowIndexOfGap
+    description: Find the row index (`gap_row`) where the pattern `5, 0, 5` occurs horizontally, centered at TargetColumn.
+  - action: IdentifyInteriorSeedPoint
+    input: Grid, GapRow, GapColumn, BackgroundColor (0)
+    output: SeedPointCoordinates (row, col)
+    description: Find a Background (0) pixel adjacent (typically vertically) to the gap location that is guaranteed to be inside the ShapeBoundary.
+  - action: FloodFillInterior
+    input: Grid, SeedPoint, FillColor (8), TargetColor (0), BoundaryColor (5)
+    output: Modified Grid with InteriorRegion filled
+    description: Starting from SeedPoint, change the color of all reachable TargetColor pixels to FillColor, without crossing BoundaryColor pixels. This modifies the grid in place.
+  - action: DetermineFilledRegionBounds
+    input: ModifiedGrid, FillColor (8)
+    output: MinFilledRow, MaxFilledRow
+    description: Find the minimum and maximum row indices containing the FillColor after the FloodFillInterior step.
+  - action: DrawVerticalLine
+    input: ModifiedGrid, ColumnIndex (5), GapRow, MinFilledRow, MaxFilledRow, LineColor (8), BoundaryColor (5)
+    output: Modified Grid with vertical line added
+    description: Draw a vertical line segment with LineColor in ColumnIndex. If GapRow < MinFilledRow, draw from row 0 to GapRow. If GapRow > MaxFilledRow, draw from GapRow to the last grid row. Overwrite existing pixels unless they are the BoundaryColor.
+
+relationships:
+  - type: Enclosure
+    subject: ShapeBoundary (5)
+    object: InteriorRegion (0 changing to 8)
+    description: The ShapeBoundary pixels surround the InteriorRegion pixels. FloodFillInterior operates within this boundary.
+  - type: ExtensionDirection
+    subject: VerticalLine (8)
+    object: Filled InteriorRegion
+    reference: GapRow
+    description: The VerticalLine extends away from the main body of the Filled InteriorRegion (defined by MinFilledRow and MaxFilledRow) relative to the GapRow.

@@ -1,0 +1,68 @@
+task_name: quadrant_value_mapping
+description: Maps values from a 2x2 input region onto a 6x6 output grid based on a 6x6 pattern region from the input, using dividing lines of '8's to locate the regions.
+
+elements:
+  - object: input_grid
+    properties:
+      - type: grid
+      - dimensions: 9x9
+      - cell_values: integers (0-8)
+      - contains: divider_row, divider_column, value_map_source, pattern_grid_source
+
+  - object: output_grid
+    properties:
+      - type: grid
+      - dimensions: 6x6
+      - cell_values: integers (derived from value_map)
+
+  - object: divider_row
+    properties:
+      - type: row
+      - identifier: contains only the value 8
+      - role: partitions input_grid vertically
+
+  - object: divider_column
+    properties:
+      - type: column
+      - identifier: contains only the value 8
+      - role: partitions input_grid horizontally
+
+  - object: value_map
+    properties:
+      - type: grid
+      - dimensions: 2x2
+      - source: extracted from a 2x2 region of input_grid, excluding dividers
+      - role: provides the values to fill into the output grid
+      - values: [[v00, v01], [v10, v11]]
+
+  - object: pattern_grid
+    properties:
+      - type: grid
+      - dimensions: 6x6
+      - source: extracted from a 6x6 region of input_grid, excluding dividers
+      - role: defines the structure of the output_grid
+      - cell_values: 0 or 3 (3 indicates a position to be filled)
+
+relationships:
+  - type: partitioning
+    subject: input_grid
+    objects: [divider_row, divider_column]
+    details: Dividers split the input grid into four conceptual regions.
+
+  - type: extraction
+    subject: input_grid
+    objects: [value_map, pattern_grid]
+    details: The value_map (2x2) and pattern_grid (6x6) are extracted from specific regions of the input_grid determined by the dividers.
+
+  - type: mapping
+    subject: pattern_grid
+    object: output_grid
+    using: value_map
+    details: |
+      The output_grid is generated based on the pattern_grid.
+      If pattern_grid[r][c] == 0, then output_grid[r][c] = 0.
+      If pattern_grid[r][c] == 3, then output_grid[r][c] is determined by the corresponding value in value_map based on the 3x3 quadrant of (r, c) within the 6x6 pattern_grid:
+      - Top-Left quadrant (rows 0-2, cols 0-2) uses value_map[0][0].
+      - Top-Right quadrant (rows 0-2, cols 3-5) uses value_map[0][1].
+      - Bottom-Left quadrant (rows 3-5, cols 0-2) uses value_map[1][0].
+      - Bottom-Right quadrant (rows 3-5, cols 3-5) uses value_map[1][1].

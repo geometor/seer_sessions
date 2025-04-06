@@ -1,0 +1,91 @@
+task_description: Projects a symmetrical pattern upwards from a source element identified in the bottom row, coloring background cells.
+
+elements:
+  - object: grid
+    properties:
+      - type: 2D array of integers (colors)
+      - size: variable height (H) and width (W)
+      - background_color: 0
+  - object: cell
+    properties:
+      - coordinates: (row, column) where 0 <= row < H, 0 <= column < W
+      - color: integer
+  - object: bottom_row
+    properties:
+      - index: R = H - 1
+      - content: a row of cells from the input grid
+  - object: source_block
+    properties:
+      - type: contiguous horizontal sequence of non-zero cells within the bottom_row
+      - selection_criteria: the block whose geometric center is closest to the grid's horizontal center ((W-1)/2.0)
+      - length: L (number of cells in the selected block)
+  - object: source_cell
+    properties:
+      - location: the centermost cell within the selected source_block
+      - coordinates: (R, C)
+      - color: X (the color value of the source cell)
+  - object: projected_points
+    properties:
+      - color: X (same as source_cell color)
+      - condition: added only if the target cell (r, c) is currently background_color (0)
+      - pattern_origin_row: R (bottom row index)
+      - pattern_origin_col: C (source cell column index)
+      - symmetry: symmetrical around column C
+      - vertical_distance: k = R - r (where r is the target row index, k >= 2)
+      - horizontal_distance: d = abs(C - c) (where c is the target column index)
+      - distance_relationship:
+          - if L == 1: d = k - 1
+          - if L > 1: d = k
+
+relationships:
+  - type: derivation
+    from: source_block
+    to: bottom_row
+    details: source_block is identified within the bottom_row based on contiguity and proximity to the grid center.
+  - type: derivation
+    from: source_cell
+    to: source_block
+    details: source_cell is the central element of the source_block.
+  - type: derivation
+    from: projected_points.pattern (specifically distance_relationship)
+    to: source_block.length (L)
+    details: The formula relating horizontal distance (d) to vertical distance (k) depends on L.
+  - type: dependency
+    from: projected_points.color
+    to: source_cell.color (X)
+    details: Projected points adopt the color of the source cell.
+  - type: constraint
+    on: projected_points
+    details: |
+      Projection starts two rows above the source row (minimum k=2).
+      Projection stops if target coordinates (r, c) go outside grid boundaries (0 <= r < H, 0 <= c < W).
+      Projection only modifies cells with the background color (0).
+
+actions:
+  - action: initialize_output
+    steps:
+      - create output_grid as a deep copy of input_grid
+  - action: identify_source
+    steps:
+      - determine grid dimensions H, W
+      - get bottom row R = H - 1
+      - find all contiguous non-zero blocks in input_grid[R]
+      - calculate geometric center for each block
+      - select the block closest to the grid's horizontal center ((W-1)/2.0)
+      - if no block found, terminate transformation
+      - determine source_block length L
+      - determine source_cell coordinates (R, C) and color X
+  - action: project_pattern
+    steps:
+      - determine projection rule: if L == 1 use d = k - 1, else use d = k
+      - iterate vertical distance k from 2 up to R (inclusive, covering rows R-2 down to 0)
+      - calculate target row r = R - k
+      - calculate horizontal distance d using the determined rule
+      - calculate target columns: c_left = C - d, c_right = C + d
+      - for c in [c_left, c_right]:
+        - check if target coordinates (r, c) are within grid bounds (0 <= r < H, 0 <= c < W)
+        - check if output_grid[r][c] is background_color (0)
+        - if both conditions met, set output_grid[r][c] = X
+  - action: finalize
+    steps:
+      - return output_grid

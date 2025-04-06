@@ -1,0 +1,53 @@
+objects:
+  - input_grid:
+      type: grid (8x8 matrix)
+      properties:
+        cells: contain integer digits (0-9)
+        unique_digits: the set of distinct digits present in the grid
+  - output_grid:
+      type: grid (8x8 matrix)
+      properties:
+        cells: contain integer digits (0-9)
+        dimensions: same as input_grid
+  - invariant_digits:
+      type: set of integers
+      value: {4, 7} (observed across all examples)
+      description: Digits that always map to themselves.
+  - active_digits:
+      type: set of integers
+      derivation: unique_digits from input_grid MINUS invariant_digits
+      description: Digits that participate in the substitution/permutation.
+  - substitution_map:
+      type: mapping (dictionary-like)
+      properties:
+        keys: digits from unique_digits of input_grid
+        values: corresponding output digits
+        constraints:
+          - maps invariant digits to themselves (e.g., {4: 4, 7: 7})
+          - maps active digits according to an example-specific permutation rule
+          - the specific permutation rule (e.g., swaps, cycles) for active_digits varies between examples
+          - covers all unique digits present in the input_grid
+actions:
+  - identify_digits:
+      actor: system
+      input: input_grid
+      output: unique_digits, active_digits, invariant_digits
+      description: Determines the unique set of digits in the input, identifies the known invariant digits (4, 7), and derives the set of active digits.
+  - determine_permutation:
+      actor: system
+      input: active_digits (from a specific example's input/output pair)
+      output: permutation_rule (specific to that example)
+      description: Analyzes the transformation of active_digits from input to output within a single example to determine the exact permutation rule (e.g., (1 3)(2 6), (1 9 6), (5 6)). NOTE - How to determine this for a *new* input without its corresponding output is not defined by the examples.
+  - build_substitution_map:
+      actor: system
+      input: invariant_digits, active_digits, permutation_rule
+      output: substitution_map
+      description: Creates the complete mapping by combining the identity mappings for invariant digits and the mappings derived from the permutation rule for active digits.
+  - apply_substitution:
+      actor: system
+      input: input_grid, substitution_map
+      output: output_grid
+      description: Iterates through each cell of the input_grid, finds the corresponding output value using the substitution_map, and places it in the output_grid at the same position.
+relationships:
+  - cell_wise_transformation: The value of each cell in the output_grid is determined exclusively by the value of the corresponding cell in the input_grid and the example-specific substitution_map.
+  - example_specific_permutation: The permutation rule applied to the active_digits is constant within a single input/output example pair but differs between pairs.

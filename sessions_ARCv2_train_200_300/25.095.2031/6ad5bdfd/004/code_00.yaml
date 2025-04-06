@@ -1,0 +1,77 @@
+task_name: conditional_grid_transformation
+data_type: grid_of_integers
+dimensionality: mixed # Can be 1D (row-wise) or 2D (column-wise) depending on type
+input_properties:
+  - name: grid_dimensions
+    properties:
+      - num_rows: integer
+      - num_cols: integer
+  - name: first_column_properties
+    properties:
+      - is_constant: boolean
+      - constant_value: integer (if is_constant is True)
+      - is_non_zero: boolean (if is_constant is True)
+  - name: last_column_properties
+    properties:
+      - is_constant: boolean
+      - constant_value: integer (if is_constant is True)
+      - is_non_zero: boolean (if is_constant is True)
+objects:
+  - name: grid
+    properties:
+      - elements: list_of_lists_of_integers
+  - name: grid_row
+    properties:
+      - elements: list_of_integers
+      - length: integer
+  - name: grid_column
+    properties:
+      - elements: list_of_integers
+      - length: integer
+  - name: element
+    properties:
+      - value: integer
+      - position: row_index (integer), col_index (integer)
+      - is_zero: boolean
+      - is_first_element_in_row: boolean
+      - is_last_element_in_row: boolean
+transformation_types:
+  - name: left_shift # Type 1
+    trigger: first_column_is_constant_and_non_zero
+    action:
+      target: each_row
+      steps:
+        - identify_fixed_element: first element of the row
+        - filter_non_zeros: elements from second position to end
+        - construct_output_row:
+            - place fixed_element at start
+            - append filtered_non_zeros (compacted, preserving relative order)
+            - pad_with_zeros: fill remaining positions to match original length
+  - name: right_shift # Type 3
+    trigger: last_column_is_constant_and_non_zero
+    action:
+      target: each_row
+      steps:
+        - identify_fixed_element: last element of the row
+        - filter_non_zeros: elements from start up to (but not including) last
+        - construct_output_row:
+            - calculate needed padding_zeros at start
+            - place padding_zeros
+            - append filtered_non_zeros (compacted, preserving relative order)
+            - append fixed_element at end
+  - name: gravity # Type 2
+    trigger: neither first nor last column is constant_and_non_zero
+    action:
+      target: each_column
+      steps:
+        - filter_non_zeros: elements within the column
+        - construct_output_column:
+            - calculate needed padding_zeros at top
+            - place padding_zeros
+            - append filtered_non_zeros (preserving relative order)
+output_properties:
+  - Output grid has the same dimensions as the input grid.
+  - Relative order of non-zero elements is preserved within the scope of the transformation (row or column).
+constraints:
+  - Zeros act as empty space and are used for padding.
+  - Only one transformation type is applied to the entire grid per execution.

@@ -1,0 +1,52 @@
+objects:
+  - name: grid
+    type: 2D array of integers # Confirmed type likely NumPy array based on error and metrics
+    properties:
+      - dimensions: (rows, columns) - Consistently 3x3 in examples.
+      - dtype: integer - Confirmed int64 in examples.
+  - name: cell
+    type: element within the grid
+    properties:
+      - position: (row, column)
+      - value: integer (0 represents background, non-zero represents color)
+  - name: column
+    type: vertical sequence of cells in the grid
+    properties:
+      - index: integer (0 to columns-1)
+  - name: color
+    type: non-zero integer value in a cell
+  - name: background
+    type: zero integer value in a cell
+
+relationships:
+  - type: spatial
+    description: Cells are organized in rows and columns. Cells in the same column share a column index. Cells in the same row share a row index.
+  - type: vertical_adjacency
+    description: For a cell at (row, col), the cell above is at (row-1, col) (if row > 0), and the cell below is at (row+1, col) (if row < rows-1).
+  - type: state_inheritance (downward)
+    description: A background cell's value in the output grid can be determined by the value of the nearest non-background cell above it in the same column in the input grid.
+
+actions:
+  - name: process_grid
+    actor: system
+    input: input_grid
+    output: output_grid
+    steps:
+      - Initialize output_grid as a copy of input_grid.
+      - For each column:
+          - Perform downward_color_propagation.
+  - name: downward_color_propagation
+    actor: system (within a specific column)
+    target: background cells in the column
+    condition: A background cell exists below a color cell within the same column.
+    effect: Updates the value of background cells in the output_grid column based on the last encountered color cell above them in the input_grid column.
+    details:
+      - Maintain a 'current_propagating_color' variable for the column, initialized to 0.
+      - Iterate through rows from top to bottom.
+      - If the input cell at (row, col) is non-zero, update 'current_propagating_color'.
+      - If the input cell is zero and 'current_propagating_color' is non-zero, set the output cell at (row, col) to 'current_propagating_color'.
+
+grid_properties:
+  - Input and output grids have identical dimensions and data types.
+  - Transformation is column-independent; operations in one column do not affect others.
+  - Only '0' values are potentially modified; original non-zero values are preserved in their initial positions.

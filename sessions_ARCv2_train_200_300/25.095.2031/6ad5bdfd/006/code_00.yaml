@@ -1,0 +1,61 @@
+task_name: conditional_grid_transformation
+data_type: grid_of_integers
+dimensionality: mixed # Row-wise (Type 1, 3) or Column-wise (Type 2) depending on condition
+input_properties:
+  - name: grid_dimensions
+    values: [rows, columns]
+  - name: first_column
+    properties:
+      - values: list_of_integers
+      - is_constant_non_zero: boolean
+  - name: last_column
+    properties:
+      - values: list_of_integers
+      - is_constant_non_zero: boolean
+conditions:
+  - name: rule_selection
+    based_on: [first_column.is_constant_non_zero, last_column.is_constant_non_zero]
+    outputs: rule_type (Type 1, Type 2, or Type 3)
+rules:
+  - name: Left Shift (Type 1)
+    condition: first_column.is_constant_non_zero is True
+    scope: row-wise
+    action:
+      - For each row:
+        - Identify the first element (fixed_element).
+        - Filter remaining elements to get non_zero_elements, preserving relative order.
+        - Construct output row: [fixed_element] + non_zero_elements + padding_zeros.
+        - Ensure output row length matches input row length.
+  - name: Right Shift (Type 3)
+    condition: first_column.is_constant_non_zero is False AND last_column.is_constant_non_zero is True
+    scope: row-wise
+    action:
+      - For each row:
+        - Identify the last element (fixed_element).
+        - Filter preceding elements to get non_zero_elements, preserving relative order.
+        - Calculate required padding_zeros count.
+        - Construct output row: padding_zeros + non_zero_elements + [fixed_element].
+        - Ensure output row length matches input row length.
+  - name: Gravity (Type 2)
+    condition: first_column.is_constant_non_zero is False AND last_column.is_constant_non_zero is False
+    scope: column-wise
+    action:
+      - Create an output grid of the same dimensions, initialized with zeros.
+      - For each column:
+        - Extract non_zero_elements from the input column, preserving relative order.
+        - Place non_zero_elements at the bottom of the corresponding output column.
+objects:
+  - name: grid
+    properties: [elements (nested list), rows, columns]
+  - name: grid_row
+    properties: [elements (list), length]
+  - name: grid_column
+    properties: [elements (list), length]
+  - name: element
+    properties: [value (integer), position (row, col), is_zero (boolean)]
+  - name: fixed_element
+    properties: [value, position] # First or last element in row-wise rules
+  - name: non_zero_elements
+    properties: [list_of_integers, relative_order_preserved]
+  - name: padding_zeros
+    properties: [count]

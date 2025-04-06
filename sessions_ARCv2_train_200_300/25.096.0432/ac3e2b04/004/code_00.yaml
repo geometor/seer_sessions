@@ -1,0 +1,60 @@
+task_type: grid_transformation
+input_elements:
+  - type: grid
+    dtype: integer
+    colors: [0, 2, 3]
+output_elements:
+  - type: grid
+    dtype: integer
+    colors: [0, 1, 2, 3] # Note: Some outputs might not contain all these, but 1 is always introduced. 2 might disappear if all 2s border enclosed regions.
+objects:
+  - id: background
+    value: 0
+    role: potentially_fillable_space, propagation_medium, border_connected_space
+  - id: barrier
+    value: 2
+    role: blocks_propagation, potentially_fillable_boundary
+  - id: pattern
+    value: 3
+    role: immutable_structure, propagation_medium
+  - id: filled_space
+    value: 1
+    role: output_only, indicates_enclosed_region_or_boundary
+relationships:
+  - type: spatial_connectivity
+    from: [background(0), pattern(3)]
+    to: [background(0), pattern(3)]
+    description: Fill propagates between adjacent 0s and 3s.
+  - type: blocking
+    blocker: barrier (2)
+    blocked: spatial_connectivity
+  - type: adjacency
+    element1: barrier (2)
+    element2: background (0)
+    condition: background(0) is not connected to the border via 0s or 3s.
+    relevance: Triggers the transformation of barrier(2) to filled_space(1).
+actions:
+  - action: identify_border_connected_cells
+    description: Perform flood fill (BFS/DFS) starting from all border 0s. Mark all reachable cells (0s and 3s) that can be accessed without crossing a 2.
+    inputs: input_grid
+    outputs: visited_mask (boolean grid)
+  - action: identify_fill_target_zeros
+    description: Find all background (0) cells in the input that are False in the visited_mask.
+    inputs: input_grid, visited_mask
+    outputs: target_zero_coordinates
+  - action: identify_fill_target_twos
+    description: Find all barrier (2) cells in the input that are adjacent (N,S,E,W) to at least one cell identified in target_zero_coordinates.
+    inputs: input_grid, target_zero_coordinates
+    outputs: target_two_coordinates
+  - action: create_output_grid
+    description: Initialize output grid as a copy of input grid.
+    inputs: input_grid
+    outputs: output_grid
+  - action: fill_zeros
+    description: Change the value to filled_space (1) in the output_grid for all coordinates in target_zero_coordinates.
+    inputs: output_grid, target_zero_coordinates
+    outputs: modified_output_grid
+  - action: fill_twos
+    description: Change the value to filled_space (1) in the output_grid for all coordinates in target_two_coordinates.
+    inputs: output_grid, target_two_coordinates
+    outputs: final_output_grid

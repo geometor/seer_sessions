@@ -1,0 +1,62 @@
+objects:
+  - name: input_grid
+    type: grid
+    properties:
+      - cells: containing integer values (colors)
+      - dimensions: H x W
+      - divider_color: an integer color value forming full dividing lines
+      - dividing_lines: horizontal and vertical lines composed of the divider_color
+      - regions: square subgrids defined by the dividing_lines
+      - region_size: N x N dimension of the regions
+      - pattern_cells: cells within input regions containing non-zero, non-divider colors
+  - name: output_grid
+    type: grid
+    properties:
+      - cells: containing integer values (colors)
+      - dimensions: H x W (same as input)
+      - divider_color: same as input
+      - dividing_lines: preserved from input
+      - regions: same partitioning as input
+      - region_fill_color: the single non-zero color used within an output region
+      - base_pattern: a fixed N x N template used to fill output regions, consisting of 0s and a placeholder for the region_fill_color
+
+relationships:
+  - type: partitioning
+    subject: dividing_lines
+    object: input_grid
+    details: Dividing lines partition the input_grid into regions.
+  - type: preservation
+    subject: dividing_lines
+    source: input_grid
+    target: output_grid
+    details: Dividing lines are copied directly from input to output.
+  - type: determination (fill color)
+    subject: pattern_cells in the leftmost region of a row of regions (input_grid)
+    object: region_fill_color for all regions in that same row (output_grid)
+    details: The first non-zero, non-divider color found in the input's leftmost region dictates the fill color for the entire corresponding row of regions in the output.
+  - type: determination (base pattern shape)
+    subject: output pattern of the top-left region (output_grid, rows 0..N-1, cols 0..N-1)
+    object: base_pattern used for all non-divider regions
+    details: The specific spatial arrangement of 0s and the fill color in the top-left output region defines the template (base_pattern) used everywhere else.
+  - type: application (filling)
+    subject: base_pattern
+    object: non-divider regions in output_grid
+    details: Each non-divider region in the output is filled by applying the base_pattern, substituting the placeholder with the determined region_fill_color for its row.
+
+actions:
+  - name: identify_dividers
+    actor: system
+    input: input_grid
+    output: divider_color, dividing_lines, region_size (N)
+  - name: determine_base_pattern
+    actor: system
+    input: output_grid (specifically the top-left N x N region)
+    output: base_pattern template
+  - name: determine_row_fill_colors
+    actor: system
+    input: input_grid, divider_color, region_size (N)
+    output: mapping from row_of_regions_index to fill_color
+  - name: construct_output
+    actor: system
+    input: input_grid, dividing_lines, base_pattern, row_fill_colors mapping
+    output: output_grid

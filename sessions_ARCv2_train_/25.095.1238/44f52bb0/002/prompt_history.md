@@ -1,0 +1,214 @@
+
+## train_1
+
+**input:**
+```
+0 0 0
+2 0 2
+0 0 0
+```
+
+
+**output:**
+```
+1
+```
+
+
+## train_2
+
+**input:**
+```
+2 2 0
+0 2 2
+0 0 0
+```
+
+
+**output:**
+```
+7
+```
+
+
+## train_3
+
+**input:**
+```
+2 2 0
+0 2 0
+0 0 0
+```
+
+
+**output:**
+```
+7
+```
+
+
+## train_4
+
+**input:**
+```
+2 0 0
+2 0 0
+0 2 0
+```
+
+
+**output:**
+```
+7
+```
+
+
+## train_5
+
+**input:**
+```
+2 0 2
+2 0 2
+2 0 2
+```
+
+
+**output:**
+```
+1
+```
+
+
+## train_6
+
+**input:**
+```
+2 0 2
+0 2 0
+2 0 2
+```
+
+
+**output:**
+```
+1
+```
+
+*   **Perception of Elements:**
+    *   The input is consistently a 3x3 grid containing the integers 0 and 2.
+    *   The output is always a single integer, either 1 or 7.
+    *   The arrangement of the '2's within the grid appears to form a visual pattern.
+    *   The output seems related to a property of this pattern formed by the '2's.
+
+*   **YAML Facts:**
+    
+```yaml
+    task_elements:
+      - object: input_grid
+        properties:
+          - type: 2D array (list of lists)
+          - dimensions: 3x3
+          - cell_values: [0, 2]
+      - object: output_value
+        properties:
+          - type: integer
+          - possible_values: [1, 7]
+      - object: pattern
+        properties:
+          - formed_by: cells with value 2 in the input_grid
+          - potential_property: symmetry (horizontal, vertical, diagonal, point)
+    relationships:
+      - determines: The pattern in the input_grid determines the output_value.
+    actions:
+      - identify: Locate the cells with value 2 in the input_grid.
+      - analyze: Assess the symmetry of the pattern formed by the '2' cells.
+      - assign_output: 
+          - If the pattern has symmetry (horizontal, vertical, or potentially others), output 1.
+          - If the pattern lacks these symmetries, output 7. 
+    ```
+
+
+*   **Natural Language Program:**
+    1.  Examine the input 3x3 grid.
+    2.  Consider the cells containing the value '2' as forming a distinct pattern against a background of '0's.
+    3.  Check if this pattern exhibits symmetry across its horizontal axis (i.e., the top row mirrors the bottom row).
+    4.  Check if this pattern exhibits symmetry across its vertical axis (i.e., the left column mirrors the right column).
+    5.  Check if this pattern exhibits point symmetry (i.e., rotating the grid 180 degrees leaves the pattern unchanged) or symmetry across either main diagonal.
+    6.  If the pattern possesses *any* of these forms of symmetry (horizontal, vertical, point, or diagonal), the output is 1.
+    7.  If the pattern does not possess *any* of these symmetries, the output is 7.
+```python
+import numpy as np
+
+"""
+Checks a 3x3 grid containing 0s and 2s for various types of symmetry based on the pattern formed by the '2's.
+If the pattern exhibits horizontal, vertical, point (180-degree rotational), main diagonal, or anti-diagonal symmetry, the output is 1.
+Otherwise, the output is 7.
+"""
+
+# Helper function to check for horizontal symmetry
+def has_horizontal_symmetry(grid: list[list[int]]) -> bool:
+    """Checks if the top row mirrors the bottom row."""
+    return grid[0] == grid[2]
+
+# Helper function to check for vertical symmetry
+def has_vertical_symmetry(grid: list[list[int]]) -> bool:
+    """Checks if the left column mirrors the right column."""
+    return all(grid[i][0] == grid[i][2] for i in range(3))
+
+# Helper function to check for point symmetry (180-degree rotation)
+def has_point_symmetry(grid: list[list[int]]) -> bool:
+    """Checks if the grid remains the same after 180-degree rotation."""
+    # Equivalent to checking grid[i][j] == grid[2-i][2-j] for all i, j
+    rotated_grid = [row[::-1] for row in grid[::-1]]
+    return grid == rotated_grid
+
+# Helper function to check for main diagonal symmetry (transpose)
+def has_main_diagonal_symmetry(grid: list[list[int]]) -> bool:
+    """Checks if the grid is symmetric across the main diagonal (top-left to bottom-right)."""
+    # Equivalent to checking grid[i][j] == grid[j][i]
+    return all(grid[i][j] == grid[j][i] for i in range(3) for j in range(i + 1, 3))
+
+# Helper function to check for anti-diagonal symmetry
+def has_anti_diagonal_symmetry(grid: list[list[int]]) -> bool:
+    """Checks if the grid is symmetric across the anti-diagonal (top-right to bottom-left)."""
+    # Equivalent to checking grid[i][j] == grid[2-j][2-i]
+    return all(grid[i][j] == grid[2-j][2-i] for i in range(3) for j in range(3))
+
+
+def transform(input_grid: list[list[int]]) -> int:
+    """
+    Analyzes the symmetry of the pattern formed by '2's in a 3x3 input grid.
+
+    Args:
+        input_grid: A 3x3 list of lists containing integers 0 and 2.
+
+    Returns:
+        1 if any specified symmetry (horizontal, vertical, point, diagonal) is found,
+        7 otherwise.
+    """
+
+    # Check for horizontal symmetry
+    if has_horizontal_symmetry(input_grid):
+        return 1
+
+    # Check for vertical symmetry
+    if has_vertical_symmetry(input_grid):
+        return 1
+
+    # Check for point symmetry
+    if has_point_symmetry(input_grid):
+        return 1
+
+    # Check for main diagonal symmetry
+    # Note: Based on examples, horizontal/vertical/point seem sufficient,
+    # but including diagonals as per the detailed NL program.
+    if has_main_diagonal_symmetry(input_grid):
+        return 1
+        
+    # Check for anti-diagonal symmetry
+    if has_anti_diagonal_symmetry(input_grid):
+         return 1
+
+    # If no symmetry is found
+    return 7
+```

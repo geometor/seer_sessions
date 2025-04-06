@@ -1,0 +1,74 @@
+task_description: "Scale a 3x3 input grid to a 9x9 output grid by replacing each input cell with a 3x3 pattern, where the pattern depends on the input cell's value and the values of its immediate South and East neighbors."
+elements:
+  - element: input_grid
+    type: 2D array (3x3)
+    properties:
+      - cells: contain integer values (observed: 0, 2, 3)
+  - element: output_grid
+    type: 2D array (9x9)
+    properties:
+      - cells: contain integer values (observed: 0, 3)
+      - structure: composed of 3x3 blocks
+  - element: base_pattern_map
+    type: mapping
+    properties:
+      - maps input cell values to initial 3x3 output patterns
+      - maps:
+          - input_value: 0
+            base_pattern: "[[0, 0, 0], [0, 0, 0], [0, 0, 0]]"
+          - input_value: 2
+            base_pattern: "[[3, 3, 0], [3, 3, 0], [3, 3, 0]]"
+          - input_value: 3
+            base_pattern: "[[3, 3, 3], [3, 3, 3], [3, 3, 3]]"
+          - default: "[[0, 0, 0], [0, 0, 0], [0, 0, 0]]" # Assumption for unobserved values
+  - element: neighbor_values
+    type: dictionary or similar
+    properties:
+      - stores value of neighbor to the South (if exists)
+      - stores value of neighbor to the East (if exists)
+relationships:
+  - type: scaling
+    source: input_grid
+    target: output_grid
+    details: "Output grid dimensions are 3 times the input grid dimensions."
+  - type: cell_to_block_mapping
+    source: input_grid cell at (r, c)
+    target: output_grid block at (3*r:3*r+3, 3*c:3*c+3)
+    details: "Each input cell corresponds to a unique 3x3 block in the output grid."
+  - type: pattern_determination
+    source: value of input_grid cell at (r, c)
+    target: initial 3x3 pattern for output block
+    details: "The value of the input cell determines the base 3x3 pattern via base_pattern_map."
+  - type: pattern_modification (South)
+    source: value of South neighbor input cell at (r+1, c)
+    target: final pattern for output block at (3*r:3*r+3, 3*c:3*c+3)
+    condition: "If South neighbor exists AND its value is 3."
+    effect: "Sets the bottom row (index 2) of the target block's pattern to [3, 3, 3]."
+  - type: pattern_modification (East)
+    source: value of East neighbor input cell at (r, c+1)
+    target: final pattern for output block at (3*r:3*r+3, 3*c:3*c+3)
+    condition: "If East neighbor exists AND its value is 3."
+    effect: "Sets the rightmost column (index 2) of the target block's pattern to [3, 3, 3] (transposed)."
+actions:
+  - action: initialize_output_grid
+    details: "Create a 9x9 grid, typically filled with 0s."
+  - action: iterate_input_cells
+    details: "Loop through each cell (r, c) of the 3x3 input grid."
+  - action: get_base_pattern
+    details: "Retrieve the initial 3x3 pattern based on input_grid[r][c] value using base_pattern_map."
+  - action: check_south_neighbor
+    details: "Check if r+1 is within input grid bounds."
+    sub_action: get_south_neighbor_value
+    details: "Retrieve value from input_grid[r+1][c]."
+  - action: check_east_neighbor
+    details: "Check if c+1 is within input grid bounds."
+    sub_action: get_east_neighbor_value
+    details: "Retrieve value from input_grid[r][c+1]."
+  - action: modify_pattern_south
+    condition: "South neighbor exists and its value is 3."
+    details: "Update the base pattern's bottom row (index 2) to [3, 3, 3]."
+  - action: modify_pattern_east
+    condition: "East neighbor exists and its value is 3."
+    details: "Update the base pattern's rightmost column (index 2) elements to 3."
+  - action: place_final_pattern
+    details: "Copy the (potentially modified) 3x3 pattern into the corresponding block location (3*r, 3*c) in the output grid."

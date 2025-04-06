@@ -1,0 +1,88 @@
+task_description: Projects a symmetrical pattern upwards from a source element found in the bottom row, modifying only background (0) cells.
+
+elements:
+  - object: grid
+    properties:
+      - type: 2D array of integers (colors)
+      - size: variable height (H) and width (W)
+      - background_color: 0
+  - object: cell
+    properties:
+      - coordinates: (row, column) indexed from top-left (0,0)
+      - color: integer
+  - object: bottom_row
+    properties:
+      - location: row index R = H - 1
+      - contains: sequences of zero and non-zero colored cells
+  - object: source_block
+    properties:
+      - type: contiguous horizontal sequence of non-zero cells within the bottom_row
+      - selection_criteria: the block whose geometric center is closest to the grid's horizontal center (W-1)/2.0
+      - length: L (number of cells in the block)
+  - object: source_cell
+    properties:
+      - derivation: the central cell within the selected source_block
+      - coordinates: (R, C), where R = H-1 and C is the column index of the central cell
+      - color: X (the color value of the source_cell)
+  - object: projected_points
+    properties:
+      - location: cells (r, c) where r < R
+      - color: X (same as source_color)
+      - placement_condition: only placed if the target cell (r, c) is within grid bounds (0 <= r < H, 0 <= c < W) AND the cell's current color is background (0)
+      - pattern_definition: defined by vertical distance (k) and horizontal distance (d)
+        - vertical_distance: k = R - r (distance upwards from the source row)
+        - horizontal_distance: d = abs(c - C) (distance left/right from the source column)
+      - pattern_rule_dependency: relationship between d and k depends on source_block.length (L)
+        - if L == 1: d = k - 1
+        - if L > 1: d = k
+      - pattern_start: projection applies for k starting from 2 upwards (k = 2, 3, ..., H-1)
+
+relationships:
+  - type: dependency
+    from: projected_points
+    to: source_cell
+    details: Location (column C), color (X) define the origin and color of the projection.
+  - type: dependency
+    from: projected_points.pattern_rule_dependency
+    to: source_block.length
+    details: The length L determines which formula (d=k-1 or d=k) relates horizontal and vertical distance.
+  - type: constraint
+    on: projected_points.placement_condition
+    details: Projection does not overwrite existing non-background colors.
+  - type: constraint
+    on: projected_points.pattern_start
+    details: Projection begins from k=2 (two rows above the source row), not k=1.
+
+actions:
+  - action: initialize_output
+    steps:
+      - Create output_grid as a copy of input_grid.
+  - action: find_source
+    steps:
+      - Identify bottom row index R = H - 1.
+      - Find all contiguous non-zero blocks in the bottom row.
+      - Calculate the geometric center of each block.
+      - Determine the grid's horizontal center coordinate.
+      - Select the block whose geometric center is closest to the grid's center.
+      - If no block found, stop.
+      - Extract source_block length L, source_cell column C, and source_cell color X from the selected block.
+  - action: determine_projection_rule
+    steps:
+      - If L == 1, set rule d = k - 1.
+      - If L > 1, set rule d = k.
+  - action: apply_projection
+    steps:
+      - Iterate vertical distance k from 2 up to H-1 (inclusive).
+      - Calculate target row r = R - k.
+      - Calculate horizontal distance d using the determined rule for the current k.
+      - If d < 0, continue to the next k.
+      - Calculate target columns: c_left = C - d, c_right = C + d.
+      - Check left target (r, c_left):
+        - If within grid bounds AND output_grid[r][c_left] == 0:
+          - Set output_grid[r][c_left] = X.
+      - Check right target (r, c_right):
+        - If d != 0 AND within grid bounds AND output_grid[r][c_right] == 0:
+          - Set output_grid[r][c_right] = X.
+  - action: finalize
+    steps:
+      - Return the modified output_grid.

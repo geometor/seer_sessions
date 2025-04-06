@@ -1,0 +1,63 @@
+task_description: Extract a 2x2 subgrid from the first two rows of an input grid and format it as a specific string. The starting columns for extraction depend on the parity of the input grid's width.
+constraints:
+  - Input grid must have at least 2 rows.
+  - Input grid must have at least 2 columns.
+elements:
+  - object: input_grid_string
+    properties:
+      - type: string
+      - format: Multi-line, space-separated integers representing a 2D grid.
+      - rows: variable (R >= 2)
+      - columns: variable (N >= 2)
+  - object: intermediate_grid
+    properties:
+      - type: 2D array of integers (e.g., list of lists or NumPy array)
+      - derived_from: input_grid_string
+  - object: output_string
+    properties:
+      - type: string
+      - format: Two lines; each line contains two space-separated integers. Lines are separated by a newline character.
+      - content: Represents a 2x2 subgrid extracted from intermediate_grid.
+actions:
+  - action: parse_input
+    input: input_grid_string
+    output: intermediate_grid, number_of_columns (N)
+  - action: determine_start_column
+    input: number_of_columns (N)
+    logic: |
+      If N is even, start_column = N - 2.
+      If N is odd, start_column = 0.
+    output: start_column_index
+  - action: extract_subgrid_values
+    input:
+      - intermediate_grid
+      - start_column_index
+    logic: |
+      Select four integer values from intermediate_grid:
+      val_00 = grid[0, start_column_index]
+      val_01 = grid[0, start_column_index + 1]
+      val_10 = grid[1, start_column_index]
+      val_11 = grid[1, start_column_index + 1]
+    output: val_00, val_01, val_10, val_11
+  - action: format_output_string
+    input: val_00, val_01, val_10, val_11
+    logic: |
+      Construct a string:
+      Line 1: "{val_00} {val_01}"
+      Line 2: "{val_10} {val_11}"
+      Combine lines with a newline character in between.
+    output: output_string
+relationships:
+  - relationship: dependency
+    subject: output_string
+    verb: is derived from
+    object: input_grid_string
+  - relationship: conditional_logic
+    subject: start_column_index
+    verb: depends on
+    object: parity of the number of columns (N) in intermediate_grid
+  - relationship: positional_extraction
+    subject: extracted_subgrid_values
+    description: Always uses the first two rows (index 0 and 1) of the intermediate_grid.
+validation_issue:
+  - description: Previous execution errors indicate the validation framework might misinterpret the formatted string output, attempting to parse it as a single integer instead of comparing strings. The transformation logic itself correctly produces the expected output strings based on the examples.

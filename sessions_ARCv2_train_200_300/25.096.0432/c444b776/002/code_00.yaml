@@ -1,0 +1,59 @@
+task_elements:
+  - element: grid
+    description: A 2D array of integers.
+    properties:
+      - dimensions: [rows, columns]
+      - values: integers (0 represents background, 4 represents axis lines, others are foreground elements).
+  - element: axis
+    description: A line within the grid composed entirely of the integer 4. Acts as a reference for transformation.
+    properties:
+      - type: 'horizontal' (row) or 'vertical' (column).
+      - index: The row or column index where the axis is located.
+      - identifier_value: 4
+    relationships:
+      - defines: regions or quadrants by dividing the grid.
+  - element: region
+    description: A section of the grid adjacent to a single axis.
+    properties:
+      - location: 'upper', 'lower' (relative to horizontal axis) or 'left', 'right' (relative to vertical axis).
+      - bounds: Defined by grid edges and the axis index.
+    relationships:
+      - defined_by: a single axis.
+  - element: quadrant
+    description: A section of the grid defined by the intersection of one horizontal and one vertical axis.
+    properties:
+      - location: 'top_left', 'top_right', 'bottom_left', 'bottom_right'.
+      - bounds: Defined by grid edges and the axis indices (h, v).
+        - top_left: rows < h, cols < v
+        - top_right: rows < h, cols > v
+        - bottom_left: rows > h, cols < v
+        - bottom_right: rows > h, cols > v
+    relationships:
+      - defined_by: one horizontal_axis, one vertical_axis.
+
+actions:
+  - action: identify_axes
+    description: Scan the input grid to find the row index `h` of any horizontal axis and the column index `v` of any vertical axis.
+    inputs: input_grid
+    outputs: h (Optional[int]), v (Optional[int])
+  - action: construct_output_grid
+    description: Create a new grid with the same dimensions as the input grid, initially empty or filled with background (0).
+    inputs: input_grid_dimensions
+    outputs: output_grid
+  - action: copy_axes_to_output
+    description: Copy the identified axis/axes from the input grid to the same location(s) in the output grid.
+    inputs: input_grid, output_grid, h, v
+    outputs: modified_output_grid
+  - action: perform_transformation
+    description: Based on the identified axes, copy sections (regions or quadrants) from the input grid to swapped locations in the output grid.
+    inputs: input_grid, output_grid, h, v
+    outputs: final_output_grid
+    sub_actions:
+      - if: only h is found
+        description: Copy input upper region (rows < h) to output lower region (rows > h). Copy input lower region (rows > h) to output upper region (rows < h).
+      - if: only v is found
+        description: Copy input left region (cols < v) to output right region (cols > v). Copy input right region (cols > v) to output left region (cols < v).
+      - if: both h and v are found
+        description: Copy input top-left to output bottom-right. Copy input top-right to output bottom-left. Copy input bottom-left to output top-right. Copy input bottom-right to output top-left.
+      - else: (no axes found)
+        description: Copy the entire input grid to the output grid.

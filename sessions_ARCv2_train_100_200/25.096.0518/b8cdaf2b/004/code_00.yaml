@@ -1,0 +1,78 @@
+task_description: Project a symmetrical pattern upwards from a source element in the bottom row, coloring only background cells.
+
+elements:
+  - object: grid
+    properties:
+      - type: 2D array of integers (colors)
+      - size: variable rows (height) and columns (width)
+      - background_color: 0
+  - object: bottom_row
+    properties:
+      - location: last row of the grid (index R = height - 1)
+      - content: sequence of integer colors
+  - object: source_block
+    properties:
+      - location: within the bottom row
+      - definition: a contiguous horizontal sequence of non-zero cells
+      - selection_criteria: the block whose geometric center is closest to the grid's horizontal center ((width - 1) / 2.0)
+      - length: L (number of cells in the selected block)
+  - object: source_cell
+    properties:
+      - location: the central cell within the selected source_block
+      - coordinates: (R, C) where R is the last row index, C is the center column index of the block
+      - color: X (the color value of the cell at (R, C))
+  - object: projected_points
+    properties:
+      - location: cells (r, c) in rows above the source_cell (r < R)
+      - color: same as source_color X
+      - condition: only added if the target cell (r, c) is initially background_color (0)
+      - pattern: symmetrical around the source_cell's column C
+      - vertical_distance: k = R - r (number of rows above source row)
+      - horizontal_distance: d = abs(c - C)
+
+relationships:
+  - type: dependency
+    from: projected_points.pattern
+    to: source_block.length (L)
+    details: |
+      The relationship between vertical distance (k) and horizontal distance (d) depends on L.
+      Projection starts at k=2.
+      If L == 1, then d = k - 1.
+      If L > 1, then d = k.
+  - type: constraint
+    on: projected_points
+    details: |
+      Projection starts from k=2 (row R-2).
+      Points are only placed within grid boundaries (0 <= r < R, 0 <= c < width).
+      Points only modify cells with the background_color (0).
+
+actions:
+  - action: initialize_output
+    steps:
+      - create a copy of the input grid.
+  - action: identify_source
+    steps:
+      - get grid dimensions (height, width).
+      - identify bottom row index R = height - 1.
+      - find all contiguous non-zero blocks in the bottom row.
+      - calculate the geometric center for each block.
+      - calculate the grid's horizontal center.
+      - select the block closest to the grid's center.
+      - determine the length L, center column C, and center color X of the selected block.
+      - handle cases where no source block is found (return the initial copy).
+  - action: project_pattern
+    steps:
+      - determine the projection rule (d = k-1 if L==1, d=k if L>1).
+      - iterate vertical distance k from 2 up to height - 1.
+      - calculate target row r = R - k.
+      - calculate horizontal distance d based on k and the rule.
+      - if d < 0, continue to next k.
+      - calculate target columns c_left = C - d, c_right = C + d.
+      - for target_col in [c_left, c_right]:
+        - check if target (r, target_col) is within grid bounds (0 <= r < height, 0 <= target_col < width).
+        - check if output_grid[r][target_col] is background_color (0).
+        - if both conditions are true, set output_grid[r][target_col] = X.
+        - (Ensure the center column is not painted twice if d=0).
+  - action: finalize
+    steps:
+      - return the modified output grid.

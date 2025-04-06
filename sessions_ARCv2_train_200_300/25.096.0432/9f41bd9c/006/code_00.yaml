@@ -1,0 +1,42 @@
+Grid:
+  Input: 2D array of integers.
+  Output: 2D array of integers with same dimensions as input.
+  Background_Color: 1
+Objects:
+  - Type: Pattern
+    Color: 5
+    Location: A connected block of cells, varies (left/right half).
+    Properties:
+      original_bounds: Bounding box {min_row, max_row, min_col, max_col, width}.
+      original_coordinates: Set of (row, col) tuples for each '5'.
+    Actions:
+      - Move: Horizontally to the opposite side of the grid.
+        target_side: If original_bounds.min_col < grid_cols / 2, move to right edge; else move to left edge.
+        moved_coordinates: Set of (row, col) tuples corresponding to original coordinates shifted horizontally.
+        moved_bounds: Bounding box {min_row, max_row, min_col, max_col} of the target location.
+          min_row/max_row: Same as original_bounds.
+          min_col/max_col: If moving right -> [grid_cols - width, grid_cols - 1]. If moving left -> [0, width - 1].
+      - Generate_Trace: From each original coordinate (r_orig, c_orig).
+        direction: Down-right (dr=1, dc=1) if moved right; Down-left (dr=1, dc=-1) if moved left.
+        path: Sequence of coordinates (r_orig+k, c_orig+k*dc) for k=1, 2, ...
+        termination: Stop path generation for a point if it goes out of grid bounds OR reaches/exceeds the barrier_row_idx.
+        placement_order: Trace '5's are placed on the output grid *before* the moved pattern.
+  - Type: Barrier
+    Color: 6
+    Location: Solid block of rows at the bottom of the input grid.
+    Properties:
+      barrier_row_idx: Index of the first row containing '6's.
+    Actions:
+      - Copy: Rows >= barrier_row_idx are copied from input to output initially.
+      - Mark: Cells in the output grid at barrier_row_idx are replaced with '9's based on pattern movement.
+        marker_color: 9
+        marker_range (inclusive cols):
+          If moved left: [moved_bounds.max_col + 1, original_bounds.max_col]
+          If moved right: [original_bounds.min_col, moved_bounds.min_col + 1]
+        placement_order: Markers overwrite the copied '6's in the barrier row *after* trace and pattern placement.
+Transformation_Order:
+  1. Initialize output grid with background color (1).
+  2. Copy barrier rows (6) from input to output.
+  3. Generate and place trace (5) onto output grid.
+  4. Copy moved pattern (5) onto output grid, potentially overwriting trace cells.
+  5. Place markers (9) onto the first barrier row in the output grid, overwriting existing values (6 or potentially trace 5s if barrier is immediately below pattern).

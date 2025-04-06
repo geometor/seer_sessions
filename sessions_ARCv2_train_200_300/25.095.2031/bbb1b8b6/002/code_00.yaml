@@ -1,0 +1,44 @@
+task_description: Transform a 4x9 input grid into a 4x4 output grid based on conditional overlay.
+input_structure:
+  - name: FullGrid
+    type: grid (list of lists of integers)
+    rows: 4
+    columns: 9
+    subcomponents:
+      - name: LeftGrid
+        type: grid
+        rows: 4
+        columns: 4
+        source_columns: 0-3
+      - name: Separator
+        type: column vector
+        rows: 4
+        columns: 1
+        source_columns: 4
+        value: constant 5 (ignored in transformation)
+      - name: RightGrid
+        type: grid
+        rows: 4
+        columns: 4
+        source_columns: 5-8
+        role: conditional overlay mask
+output_structure:
+  - name: OutputGrid
+    type: grid
+    rows: 4
+    columns: 4
+transformation_logic:
+  - action: analyze_right_grid
+    inputs: [RightGrid]
+    outputs: [unique_non_zero_value_M, count_C]
+    description: Find the unique non-zero digit (M) and its count (C) in the RightGrid. Assume only one unique non-zero digit exists per RightGrid based on examples.
+  - action: determine_behavior
+    inputs: [unique_non_zero_value_M, count_C]
+    outputs: [behavior_mode] # Either 'Overlay' or 'UseLeftGrid'
+    condition: If (M == 2 AND (C == 4 OR C == 8)) OR (M == 3 AND C == 5), set behavior_mode to 'UseLeftGrid'. Otherwise, set behavior_mode to 'Overlay'.
+  - action: generate_output
+    inputs: [LeftGrid, RightGrid, behavior_mode]
+    outputs: [OutputGrid]
+    logic:
+      - If behavior_mode is 'UseLeftGrid': OutputGrid is a copy of LeftGrid.
+      - If behavior_mode is 'Overlay': Create OutputGrid by starting with a copy of LeftGrid. Then, for each cell (r, c), if RightGrid[r][c] is non-zero, set OutputGrid[r][c] = RightGrid[r][c].

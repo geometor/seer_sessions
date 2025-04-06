@@ -1,0 +1,42 @@
+task_type: grid_transformation
+input_features:
+  grid_dimensions: [height, width]
+  cell_values: digits 0-9
+  background_value: 0
+  objects:
+    - type: contiguous_block
+      properties:
+        color: non-zero digit (constant within block)
+        shape: rectangular (observed height is always 2)
+        position: [top_row, left_col, height, width]
+relationships:
+  - type: spatial
+    between: blocks
+    attributes: [relative_position_horizontal, relative_position_vertical]
+output_features:
+  grid_dimensions: same as input
+  cell_values: digits 0-9
+  background_value: 0
+  objects:
+    - type: composite_block
+      properties:
+        constituent_blocks: ordered sequence of input blocks
+        arrangement: horizontal adjacency
+        position: [target_top_row, target_left_col]
+        height: 2 (constant)
+        width: sum of widths of constituent blocks
+actions:
+  - identify_blocks: find all distinct contiguous non-zero blocks in the input.
+  - calculate_properties: determine color, position (top_row, left_col), width for each block.
+  - determine_target_row:
+      condition: grid_height >= 10
+      action: target_top_row = floor(grid_height / 2)
+      condition: grid_height < 10
+      action:
+        - find median starting row among all blocks
+        - identify block corresponding to median starting row
+        - target_top_row = starting row of the median block
+  - determine_target_col: target_left_col = minimum left_col among all input blocks.
+  - sort_blocks: order input blocks based on their left_col (ascending).
+  - create_output_grid: initialize grid of same dimensions as input with background value.
+  - place_blocks: copy sorted blocks sequentially into the output grid at the target row/column, updating the horizontal placement position after each block.

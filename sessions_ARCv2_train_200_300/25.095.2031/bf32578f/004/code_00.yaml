@@ -1,0 +1,63 @@
+task_elements:
+  - object: grid
+    description: A 2D array of integer values representing the state.
+    properties:
+      - dimensions: [height, width]
+      - cells: A list/array of cell values.
+      - type: Either 'input' or 'output'.
+  - object: cell
+    description: An individual element within a grid.
+    properties:
+      - coordinates: [row, column]
+      - value: The integer number (0 for background, non-zero for color).
+      - color: The non-zero value if present.
+  - object: input_bounding_box
+    description: The smallest rectangle enclosing all non-zero cells in the input grid.
+    properties:
+      - min_row: The minimum row index (min_r_in).
+      - max_row: The maximum row index (max_r_in).
+      - min_col: The minimum column index (min_c_in).
+      - max_col: The maximum column index (max_c_in).
+      - derived_from: Non-zero cells in the input grid.
+  - object: output_rectangle
+    description: The rectangular area filled with color in the output grid.
+    properties:
+      - top_row: Row index for the top edge (out_min_r).
+      - bottom_row: Row index for the bottom edge (out_max_r).
+      - left_col: Column index for the left edge (out_min_c).
+      - right_col: Column index for the right edge (out_max_c).
+      - fill_color: The non-zero color identified from the input grid.
+      - derived_from: Coordinates of the input_bounding_box.
+
+relationships:
+  - type: defines
+    subject: Non-zero cells in input_grid
+    object: input_bounding_box properties (min/max row/col) and fill_color for output_rectangle.
+  - type: calculates
+    subject: input_bounding_box coordinates (min_r_in, max_r_in, min_c_in, max_c_in)
+    object: output_rectangle coordinates (out_min_r, out_max_r, out_min_c, out_max_c)
+    rule: out_min_r=min_r_in+1, out_max_r=max_r_in-1, out_min_c=min_c_in+1, out_max_c=max_c_in+2
+  - type: contains
+    subject: output_grid
+    object: output_rectangle (filled with fill_color) and background cells (value 0).
+
+actions:
+  - name: initialize_output_grid
+    input: input_grid_dimensions
+    output: output_grid (filled with 0s)
+  - name: find_input_features
+    input: input_grid
+    output: non_zero_coordinates, fill_color
+    description: Locates all non-zero cells and identifies the single non-zero color. Returns empty list and None color if input is all zeros.
+  - name: calculate_input_bounding_box
+    input: non_zero_coordinates
+    output: input_bounding_box object (min_r_in, max_r_in, min_c_in, max_c_in)
+    description: Computes the minimum bounding box containing the specified coordinates. Returns None if no coordinates provided.
+  - name: calculate_output_rectangle_coords
+    input: input_bounding_box object
+    output: output_rectangle_coordinates [out_min_r, out_max_r, out_min_c, out_max_c]
+    logic: Apply the coordinate transformation rules (min_r_in+1, max_r_in-1, min_c_in+1, max_c_in+2).
+  - name: fill_output_rectangle
+    input: output_grid, output_rectangle_coordinates, fill_color
+    output: modified_output_grid
+    description: Sets the value of cells within the calculated output rectangle coordinates to the fill_color, respecting grid boundaries.

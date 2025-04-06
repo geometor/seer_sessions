@@ -1,0 +1,46 @@
+Grid:
+  Properties:
+    - dimensions: (rows, cols) - variable based on input
+    - background_color: 1
+Objects:
+  - Pattern:
+      Properties:
+        - color: 5
+        - shape: Irregular, defined by connected '5' cells in input.
+        - location: Variable, defined by its bounding box (`original_bounds`).
+        - width: Horizontal extent (`original_bounds['max_col'] - original_bounds['min_col'] + 1`).
+      Actions:
+        - identify_bounds: Calculate `original_bounds` (min/max row/col containing '5').
+        - determine_move_direction: Based on whether `original_bounds['min_col']` is in the left (< cols/2) or right (>= cols/2) half of the grid.
+        - calculate_moved_bounds: Determine the target bounding box (`moved_bounds`) on the opposite side of the grid, preserving vertical position and width.
+        - copy_to_output: Transfer only the '5' cells from `original_bounds` in the input to the corresponding relative positions within `moved_bounds` in the output grid.
+  - Barrier:
+      Properties:
+        - color: 6
+        - location: Solid block of rows at the bottom of the grid.
+        - start_row: Index of the first row found containing '6' (`barrier_row_idx`).
+      Actions:
+        - identify_start_row: Find the minimum row index containing '6'.
+        - copy_to_output: Initially copy all barrier rows (from `barrier_row_idx` downwards) from input to output.
+        - modify_first_row: Overwrite a segment of the first barrier row (`barrier_row_idx`) in the output with '9's.
+  - Trace:
+      Properties:
+        - color: 5
+        - origin: Each individual cell `(r, c)` containing '5' within `original_bounds` in the input.
+        - path: Diagonal, starting one step down and sideways from the origin. Direction depends on pattern movement (down-right if pattern moved right, down-left if pattern moved left).
+      Actions:
+        - generate: For each origin '5', iteratively step diagonally.
+        - place_on_output: Set the color of the cell at the current step to '5' in the output grid.
+        - terminate (per origin): Stop the path generation if the *next* step `(nr, nc)` meets any of these conditions:
+            - `nr` is out of row bounds OR `nc` is out of column bounds.
+            - `nr >= barrier_row_idx`.
+            - `(nr, nc)` falls within the `moved_bounds` rectangle: (`moved_bounds['min_row'] <= nr <= moved_bounds['max_row']` AND `moved_bounds['min_col'] <= nc <= moved_bounds['max_col']`).
+  - Marker:
+      Properties:
+        - color: 9
+        - location: A horizontal segment within the first barrier row (`barrier_row_idx`) in the output grid.
+      Actions:
+        - calculate_range: Determine the inclusive column range `[start_col, end_col]` based on movement direction and bounds:
+            - If moved right: `start_col = original_bounds['min_col']`, `end_col = moved_bounds['min_col'] + 1`.
+            - If moved left: `start_col = moved_bounds['max_col'] + 1`, `end_col = original_bounds['max_col']`.
+        - place_on_output: Clip the calculated range to grid boundaries. If the range is valid (`start_col <= end_col`) and the barrier exists (`barrier_row_idx < rows`), set the corresponding cells in `output_grid[barrier_row_idx]` to '9'.

@@ -1,0 +1,62 @@
+task_description: Classify a 6x6 input grid pattern based on the bounding box width of its '8' elements and map it to one of two predefined 5x5 output grids.
+
+input_elements:
+  - object: grid
+    properties:
+      - dimensions: 6x6
+      - cell_values: [0, 8]
+      - contains: digit_pattern
+  - object: digit_pattern
+    properties:
+      - formed_by: value 8
+      - background: value 0
+      - has: bounding_box
+
+output_elements:
+  - object: grid
+    properties:
+      - dimensions: 5x5
+      - cell_values: [0, 8]
+      - structure:
+          - middle_row: all zeros
+          - rows_0_1_identical_to_rows_3_4: true
+      - pattern_type: Fixed (one of two predefined patterns, A or B)
+
+transformation:
+  - action: identify_pixels
+    actor: system
+    input: input_grid
+    condition: value == 8
+    output: list_of_8_coordinates
+  - action: calculate_bounding_box
+    actor: system
+    input: list_of_8_coordinates
+    output: bounding_box_properties (min_row, max_row, min_col, max_col)
+  - action: calculate_width
+    actor: system
+    input: bounding_box_properties
+    formula: max_col - min_col + 1
+    output: bbox_width
+  - action: select_output_pattern
+    actor: system
+    input: bbox_width
+    rules: # Revised rule based on analysis
+      - if: bbox_width == 6
+        output: pattern_A_base [[8, 8, 0, 8, 8], [8, 8, 0, 8, 8]]
+      - if: bbox_width == 5
+        output: pattern_B_base [[0, 8, 0, 0, 8], [8, 8, 0, 8, 8]]
+      # Note: Widths other than 5 or 6 are not covered by examples.
+  - action: construct_output_grid
+    actor: system
+    input: selected_pattern_base
+    steps:
+      - create 5x5 grid
+      - set rows 0, 1 to pattern_base
+      - set row 2 to [0, 0, 0, 0, 0]
+      - set rows 3, 4 to pattern_base
+    output: final_output_grid
+
+relationships:
+  - type: determination
+    from: bbox_width (of input digit_pattern)
+    to: output_grid (specific pattern selection, A or B)

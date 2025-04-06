@@ -1,0 +1,47 @@
+objects:
+  - name: input_grid
+    properties:
+      - type: 2D list or array of integers
+      - dimensions: height (H), width (W)
+      - sparsity: contains zero and non-zero elements
+  - name: output_grid
+    properties:
+      - type: 2D list or array of integers
+      - dimensions: height (H), width (W) (same as input)
+      - density: fully populated with non-zero integers from input
+      - pattern: repeating, based on coordinates and a sequence
+  - name: non_zero_sequence
+    properties:
+      - type: list of unique integers (S)
+      - source: derived from non-zero elements of input_grid
+      - order: determined by the first appearance (row-major scan)
+      - length: L
+  - name: first_non_zero_coordinate
+    properties:
+      - type: tuple (r0, c0)
+      - source: coordinates of the first non-zero element in input_grid (row-major scan)
+  - name: offset
+    properties:
+      - type: integer (k)
+      - calculation: derived from first_non_zero_coordinate and sequence length L
+
+actions:
+  - name: scan_input
+    inputs: [input_grid]
+    outputs: [non_zero_sequence, first_non_zero_coordinate]
+    description: Iterate through input_grid (row-major), identify first non-zero element coordinates (r0, c0), and collect unique non-zero elements in order of first appearance to form sequence S.
+  - name: calculate_offset
+    inputs: [first_non_zero_coordinate, non_zero_sequence]
+    outputs: [offset]
+    description: Calculate k = (-(r0 + c0)) % L, where L is the length of S.
+  - name: populate_output
+    inputs: [input_grid dimensions, non_zero_sequence, offset]
+    outputs: [output_grid]
+    description: For each cell (r, c) in the output grid, calculate the value using S[(r + c + k) % L].
+
+relationships:
+  - input_grid and output_grid have identical dimensions.
+  - non_zero_sequence contains only unique, non-zero values from input_grid.
+  - The order of non_zero_sequence depends on the row-major scan order of input_grid.
+  - offset (k) calculation depends on first_non_zero_coordinate (r0, c0) and length (L) of non_zero_sequence.
+  - Each element in output_grid is determined by its coordinates (r, c), the non_zero_sequence (S), its length (L), and the calculated offset (k).

@@ -1,0 +1,45 @@
+task_type: grid_transformation
+input_features:
+  grid_dimensions: [height, width]
+  cell_values: digits 0-9
+  background_value: 0
+  objects:
+    - type: contiguous_block
+      properties:
+        color: non-zero digit (constant within block)
+        shape: rectangular
+        height: 2 (constant for all relevant blocks)
+        position: [top_row, left_col, width] # height is implicitly 2
+relationships:
+  - type: spatial
+    between: blocks
+    attributes: [relative_position_horizontal, relative_position_vertical]
+output_features:
+  grid_dimensions: same as input
+  cell_values: digits 0-9
+  background_value: 0
+  objects:
+    - description: Rearranged blocks from input placed according to rules.
+actions:
+  - identify_blocks: Find all distinct contiguous non-zero blocks of height 2 in the input. Record color, top_row (r), left_col (c), width (w).
+  - get_grid_height: Determine the height (H) of the input grid.
+  - conditional_placement:
+      condition: H >= 10
+      action: adjacent_placement
+        - calculate_target_row: r_target = floor(H / 2)
+        - sort_blocks: order identified blocks based on left_col (c) ascending.
+        - calculate_start_col: c_start = minimum left_col (c) among all blocks.
+        - create_output_grid: initialize grid of same dimensions as input with background value (0).
+        - place_adjacent_blocks:
+            - initialize current_col = c_start
+            - for each block in sorted order:
+                - copy block to output grid at [r_target : r_target+2, current_col : current_col + block_width]
+                - update current_col = current_col + block_width
+      condition: H < 10
+      action: original_position_placement
+        - get_start_rows: collect list of top_row (r) for all identified blocks.
+        - calculate_target_row: r_target = median_low of the sorted list of start_rows.
+        - create_output_grid: initialize grid of same dimensions as input with background value (0).
+        - place_individual_blocks:
+            - for each identified block:
+                - copy block to output grid at [r_target : r_target+2, block_left_col : block_left_col + block_width]

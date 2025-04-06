@@ -1,0 +1,45 @@
+task_description: Transform a grid based on the location of a '5' and adjacent '2's.
+grid_dimensions: Variable (examples show different sizes).
+elements:
+  - object: background
+    value: 0
+    role: Neutral space
+  - object: anchor
+    value: 5
+    role: Reference point for the transformation
+  - object: target
+    value: 2
+    role: Cells to be modified and used for projection source
+  - object: transformed_target
+    value: 3
+    role: The state of the target cells after transformation
+actions:
+  - name: locate_anchor
+    input: input_grid
+    output: coordinates_of_5
+  - name: find_adjacent_targets
+    input: input_grid, coordinates_of_5
+    condition: Find cells with value 2 directly adjacent (not diagonal) to the anchor '5'.
+    output: list_of_adjacent_2_coords, relative_direction (e.g., left, right, up, down), count_N
+  - name: transform_targets
+    input: list_of_adjacent_2_coords
+    action: Change the value of cells at these coordinates from 2 to 3 in the output grid.
+  - name: determine_projection
+    input: relative_direction, list_of_adjacent_2_coords, coordinates_of_5, count_N
+    output: projection_anchor_coord, projection_direction_vector, projection_length (N)
+    logic:
+      - If adjacent '2's are LEFT of '5', anchor is the rightmost '2', direction is UP.
+      - If adjacent '2's are RIGHT of '5', anchor is the leftmost '2', direction is DOWN.
+      - If adjacent '2's are ABOVE '5', anchor is '5', direction is RIGHT.
+      - If adjacent '2's are BELOW '5', anchor is the topmost '2', direction is LEFT.
+  - name: execute_projection
+    input: projection_anchor_coord, projection_direction_vector, projection_length (N), output_grid
+    action: Starting one step from the anchor in the projection direction, place 'N' cells with value 2 along the direction vector, stopping if the grid boundary is reached. Ensure projection doesn't overwrite existing non-zero cells (implicitly handled by examples, as projection areas are always 0).
+relationships:
+  - type: adjacency
+    between: anchor (5), target (2)
+    cardinality: one (5) to many (2s, forming a line/group)
+    significance: Triggers transformation and projection.
+  - type: orthogonality
+    between: adjacency_direction, projection_direction
+    significance: Determines the axis of projection relative to the axis of adjacency.

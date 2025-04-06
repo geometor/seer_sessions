@@ -1,0 +1,81 @@
+objects:
+  - name: input_grid
+    properties:
+      - type: 2D array of integers
+      - dimensions: variable (rows x columns)
+      - contains: separator_row (at index R), separator_column (at index C)
+      - segments: Can be divided into four quadrants by the separator lines.
+  - name: output_grid
+    properties:
+      - type: 2D array of integers
+      - dimensions: dependent on the location of separator lines (R, C) and the separator digit (S).
+      - relationship: derived from one or more quadrants of input_grid.
+  - name: separator_row
+    properties:
+      - type: row within input_grid
+      - composition: consists of a single repeated integer (separator_digit)
+      - index: R
+  - name: separator_column
+    properties:
+      - type: column within input_grid
+      - composition: consists of a single repeated integer (separator_digit)
+      - index: C
+  - name: separator_digit
+    properties:
+      - type: integer
+      - value: S (derived from separator_row and separator_column)
+      - relationship: determines which quadrant(s) are used and how they are processed.
+  - name: quadrant_TL # Top-Left
+    properties:
+      - type: subgrid of input_grid
+      - location: rows 0 to R-1, cols 0 to C-1
+  - name: quadrant_TR # Top-Right
+    properties:
+      - type: subgrid of input_grid
+      - location: rows 0 to R-1, cols C+1 to end
+  - name: quadrant_BL # Bottom-Left
+    properties:
+      - type: subgrid of input_grid
+      - location: rows R+1 to end, cols 0 to C-1
+  - name: quadrant_BR # Bottom-Right
+    properties:
+      - type: subgrid of input_grid
+      - location: rows R+1 to end, cols C+1 to end
+
+actions:
+  - name: identify_separators
+    input: input_grid
+    output: separator_row_index (R), separator_column_index (C), separator_digit (S)
+    steps:
+      - Find the unique row where all elements are identical. Record its index (R) and the repeated digit (S_row).
+      - Find the unique column where all elements are identical. Record its index (C) and the repeated digit (S_col).
+      - Verify S_row equals S_col. Set separator_digit (S) to this value.
+  - name: determine_output_logic
+    input: separator_digit (S)
+    output: processing_rule (e.g., 'extract_TL', 'extract_BL', 'merge_TL_TR')
+    logic:
+      - If S is 1, rule is 'extract_TL'.
+      - If S is 3, rule is 'extract_BL'.
+      - If S is 2, rule is 'merge_TL_TR'.
+  - name: generate_output
+    input: input_grid, R, C, S, processing_rule
+    output: output_grid
+    steps:
+      - If rule is 'extract_TL':
+        - Extract quadrant_TL from input_grid. Set as output_grid.
+      - If rule is 'extract_BL':
+        - Extract quadrant_BL from input_grid. Set as output_grid.
+      - If rule is 'merge_TL_TR':
+        - Extract quadrant_TL.
+        - Extract quadrant_TR.
+        - Create an empty output_grid with the same dimensions as quadrant_TL.
+        - For each cell (r, c) in output_grid:
+          - Get value_tl from quadrant_TL[r][c].
+          - Get value_tr from quadrant_TR[r][c].
+          - If value_tr is not equal to S (which is 2), set output_grid[r][c] = value_tr.
+          - Else (if value_tr is equal to S), set output_grid[r][c] = value_tl.
+
+relationships:
+  - The output_grid's content and dimensions depend on the separator digit (S) and the location of the separator lines (R, C).
+  - For S=1 and S=3, the output is a direct extraction of a single quadrant (TL or BL, respectively).
+  - For S=2, the output is a merge of two quadrants (TL and TR), prioritizing non-separator values from TR.

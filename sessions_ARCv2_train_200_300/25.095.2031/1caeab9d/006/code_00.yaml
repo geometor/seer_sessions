@@ -1,0 +1,42 @@
+task_type: grid_transformation
+input_features:
+  grid_dimensions: [height, width] denoted as [H, W]
+  cell_values: digits 0-9
+  background_value: 0
+  objects:
+    - type: contiguous_block
+      properties:
+        color: non-zero digit (constant within block)
+        shape: rectangular
+        height: exactly 2 rows
+        position: [top_row, left_col, width] denoted as [r, c, w]
+output_features:
+  grid_dimensions: same as input [H, W]
+  cell_values: digits 0-9
+  background_value: 0
+  objects: placed_blocks (derived from input blocks)
+    properties:
+      height: 2 rows
+      target_top_row: calculated based on H and input block positions
+      horizontal_arrangement: conditional (adjacent or original position)
+conditional_logic:
+  condition: H >= 10
+    action: adjacent_placement
+    target_top_row_calc: r_target = H // 2
+    horizontal_arrangement:
+      - sort_blocks: order input blocks by original 'c' ascending.
+      - determine_start_col: c_start = minimum 'c' among all blocks.
+      - place_adjacently: place sorted blocks horizontally next to each other, starting at [r_target, c_start].
+  condition: H < 10
+    action: original_position_placement
+    target_top_row_calc:
+      - collect_start_rows: get list of 'r' for all blocks.
+      - calculate_median: r_target = median_low of sorted start_rows.
+    horizontal_arrangement:
+      - place_individually: place each block at rows [r_target, r_target+1], maintaining its original column 'c' and width 'w'.
+actions:
+  - initialize_output: create HxW grid filled with 0.
+  - find_blocks: identify all 2-row high non-zero contiguous blocks, storing color, r, c, w.
+  - check_height_condition: evaluate if H >= 10.
+  - apply_placement_rule: execute either adjacent_placement or original_position_placement logic based on the condition.
+  - populate_output: write block colors into the output grid according to the chosen placement rule.

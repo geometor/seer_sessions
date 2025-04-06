@@ -1,0 +1,76 @@
+task_description: Fill the interior of a shape defined by color 5 with color 8, and draw a vertical line (color 8) in column 5 extending from a specific gap in the shape's horizontal bar away from the filled interior towards the nearest grid edge, without overwriting the original shape.
+
+elements:
+  - object: Grid
+    properties:
+      - size: 10x10
+      - type: 2D array of integers
+  - object: Background
+    properties:
+      - color_value: 0
+      - role: Default pixel value, exists both inside and outside the shape.
+  - object: ShapeBoundary
+    properties:
+      - color_value: 5
+      - role: Defines the boundary of a region. Acts as a barrier for filling.
+      - structure: Forms a single connected component, potentially touching grid edges. Contains a horizontal segment with a single pixel gap [5, 0, 5] in column 5.
+  - object: InteriorRegion
+    properties:
+      - initial_color_value: 0
+      - final_color_value: 8
+      - definition: Background pixels enclosed by ShapeBoundary and *not* connected to the grid edges via other Background pixels.
+  - object: ExteriorRegion
+    properties:
+      - color_value: 0
+      - definition: Background pixels connected to the grid edges. Remains unchanged.
+  - object: Fill
+    properties:
+      - color_value: 8
+      - role: Replaces the color of pixels within the InteriorRegion.
+  - object: VerticalLine
+    properties:
+      - color_value: 8
+      - column_index: 5
+      - role: Extends vertically from the ShapeBoundary's gap row.
+      - placement: Directed away from the InteriorRegion towards the nearest vertical edge (top or bottom).
+      - constraint: Does not overwrite original ShapeBoundary (5) pixels.
+
+actions:
+  - action: IdentifyExteriorBackground
+    input: Grid, BackgroundColor (0)
+    output: Set of coordinates for exterior background pixels
+    description: Find all Background pixels connected to the grid edges using flood fill starting from edges.
+  - action: IdentifyInteriorBackground
+    input: Grid, BackgroundColor (0), ExteriorCoordinates
+    output: Set of coordinates for interior background pixels
+    description: Identify all Background pixels that are not in the ExteriorCoordinates set.
+  - action: FillInterior
+    input: Grid, InteriorCoordinates, FillColor (8)
+    output: Modified Grid
+    description: Change the color value of pixels at InteriorCoordinates to FillColor.
+  - action: IdentifyGapRow
+    input: Grid, ShapeColor (5), BackgroundColor (0), GapColumn (5)
+    output: RowIndexOfGap or None
+    description: Find the row index containing the horizontal [Shape, Background, Shape] pattern in the specified GapColumn.
+  - action: CalculateFillBounds
+    input: Grid, FillColor (8), ShapeColor (5), DefaultRow
+    output: MinRow, MaxRow
+    description: Determine the minimum and maximum row indices containing FillColor, falling back to ShapeColor bounds if no FillColor exists, or DefaultRow if neither exists.
+  - action: DrawVerticalLine
+    input: Grid (original), OutputGrid, ColumnIndex (5), GapRow, MinBoundRow, MaxBoundRow, LineColor (8), ShapeColor (5)
+    output: Modified OutputGrid
+    description: Determine direction based on GapRow vs bounds. Iterate from edge to GapRow (or vice-versa) in the target column. For each pixel, if its value in the *original* Grid is not ShapeColor, set its value in the OutputGrid to LineColor.
+
+relationships:
+  - type: Enclosure
+    subject: ShapeBoundary (5)
+    object: InteriorRegion (0 changing to 8)
+    description: The ShapeBoundary separates the InteriorRegion from the ExteriorRegion.
+  - type: Connectivity
+    subject: ExteriorRegion (0)
+    object: GridEdges
+    description: All pixels in the ExteriorRegion are connected to at least one grid edge pixel via a path of background pixels.
+  - type: Extension
+    subject: VerticalLine (8)
+    object: ShapeBoundary (5) at GapRow
+    description: The VerticalLine originates at the GapRow in column 5 and extends towards the nearest grid edge (0 or 9), away from the main body defined by [MinBoundRow, MaxBoundRow].

@@ -1,0 +1,48 @@
+task_type: grid_transformation
+input_features:
+  grid_dimensions: [height, width]
+  cell_values: digits 0-9
+  background_value: 0
+  objects:
+    - type: contiguous_block
+      properties:
+        color: non-zero digit (constant within block)
+        shape: rectangular
+        height: 2 (constant observed value)
+        position: [top_row, left_col] # r, c
+        width: variable # w
+relationships:
+  - type: spatial
+    between: blocks
+    attributes: [relative_position_horizontal, relative_position_vertical] # In the input
+output_features:
+  grid_dimensions: same as input
+  cell_values: digits 0-9
+  background_value: 0
+  objects:
+    - type: collection_of_blocks # No longer a single composite block
+      properties:
+        constituent_blocks: input blocks identified
+        arrangement: Placed individually, preserving original horizontal position
+        target_top_row: Determined by specific rule (see actions)
+        position_of_each_block: [target_top_row, original_left_col]
+        height: 2 (constant)
+actions:
+  - identify_blocks: Find all distinct contiguous non-zero blocks in the input with height=2. Record color, top_row (r), left_col (c), width (w) for each.
+  - store_block_properties: Keep a list of identified blocks with their properties (color, r, c, w).
+  - determine_target_row:
+      input: grid_height (H), list of block starting rows (all_r)
+      condition: H >= 10
+      action: target_top_row = floor(H / 2)
+      condition: H < 10
+      action:
+        - calculate median_low of all_r
+        - target_top_row = calculated median_low value
+  - create_output_grid: Initialize grid of same dimensions as input with background value (0).
+  - place_blocks_individually:
+      iterate: through each identified block in the stored list
+      action:
+        - get block's color, original left_col (c), width (w)
+        - copy the block's color values into the output grid
+        - target_location: rows target_top_row and target_top_row + 1
+        - target_columns: from original_left_col to original_left_col + width - 1

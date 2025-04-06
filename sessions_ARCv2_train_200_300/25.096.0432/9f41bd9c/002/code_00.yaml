@@ -1,0 +1,58 @@
+Grid:
+  Properties:
+    - dimensions: (rows, cols) - variable
+    - background_color: 1
+  Objects:
+    - Pattern:
+        - color: 5
+        - shape: variable connected group
+        - location: variable (left or right half, above barrier)
+        - properties:
+            - original_bounds: {min_row, max_row, min_col, max_col, width, height}
+            - moved_bounds: {min_row, max_row, min_col, max_col} (in output)
+    - Barrier:
+        - color: 6
+        - shape: horizontal block of rows
+        - location: bottom of the grid
+        - properties:
+            - start_row: index of the first row containing only 6s
+    - Trace:
+        - color: 5
+        - shape: diagonal lines/smear originating from original pattern cells
+        - location: between original pattern location and barrier
+        - properties:
+            - direction: down-left (if pattern moved left) or down-right (if pattern moved right)
+            - extent: stops at barrier start row or if colliding with moved pattern cell
+    - Marker:
+        - color: 9
+        - shape: horizontal segment
+        - location: within the barrier's start row
+        - properties:
+            - row_index: same as barrier start_row
+            - start_col: calculated based on movement
+            - end_col: calculated based on movement
+
+Actions:
+  1. Initialize: Create an output grid of the same dimensions as the input, filled with the background color (1).
+  2. Copy Barrier: Copy all rows containing only the barrier color (6) from the input grid to the output grid.
+  3. Move Pattern:
+     - Determine direction: If original pattern's `min_col` < `cols / 2`, move right; else move left.
+     - Calculate target position: Keep `min_row`, `max_row`. Set `min_col`, `max_col` to the opposite edge (0 or `cols - width`).
+     - Copy pattern: Place the pattern (only '5' cells) into the calculated `moved_bounds` in the output grid, overwriting existing values.
+  4. Draw Trace:
+     - For each cell `(r, c)` in the original pattern's bounds that contains the pattern color (5):
+       - Determine trace step: `dr=1`, `dc = -1` (if moving left) or `dc = +1` (if moving right).
+       - Start trace at `cr = r + dr`, `cc = c + dc`.
+       - While trace is valid:
+         - Check bounds: `0 <= cr < grid_rows` and `0 <= cc < grid_cols`.
+         - Check barrier: `cr < barrier_start_row`.
+         - Check collision: `output_grid[cr, cc]` is not the pattern color (5).
+         - If all checks pass: Set `output_grid[cr, cc]` to the pattern color (5).
+         - Update trace position: `cr += dr`, `cc += dc`.
+  5. Place Markers:
+     - Identify the barrier start row (`barrier_row_idx`) in the output grid.
+     - Calculate marker columns:
+       - If pattern moved right: `start_col = original_bounds['min_col']`, `end_col = moved_bounds['min_col']` (inclusive, seems Example 2 needs `moved_bounds['min_col'] + 1`?). Let's re-evaluate based on metrics: Ex2 moved right, orig_min=0, moved_min=9(incorrectly detected, should be 11), marker end=12. `moved_min_col` should be 11. `end_col` is `12`. So `end_col = moved_min_col + 1`.
+       - If pattern moved left: `start_col = moved_bounds['max_col'] + 1`, `end_col = original_bounds['max_col']`. (Metrics Ex1: moved_max=4, orig_max=16. Marker range [5, 16]. `start=4+1=5`, `end=16`. Correct.)
+     - Clip columns: Ensure `start_col >= 0` and `end_col < grid_cols`.
+     - Overwrite: Set `output_grid[barrier_row_idx, start_col : end_col + 1]` to the marker color (9).

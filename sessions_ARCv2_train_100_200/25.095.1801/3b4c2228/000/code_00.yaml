@@ -1,0 +1,48 @@
+task_type: pattern_detection_and_mapping
+input_domain:
+  data_type: 2D_grid
+  element_type: integer
+  possible_values: [0, 2, 3]
+  value_semantics:
+    0: background
+    2: irrelevant_object_color
+    3: target_object_color
+output_domain:
+  data_type: 2D_grid
+  element_type: integer
+  possible_values: [0, 1]
+  grid_size: [3, 3]
+  value_semantics:
+    0: pattern_absent_at_position
+    1: pattern_present_at_position
+identified_objects:
+  - name: target_pattern
+    shape: square
+    size: [2, 2]
+    composition: uniform_color
+    color_value: 3
+relationships:
+  - type: spatial_scan_order
+    description: Input grid is scanned top-to-bottom, then left-to-right to find instances of the target pattern.
+  - type: mapping_order
+    description: The detected target patterns are mapped to specific locations in the output grid based on their discovery order.
+    mapping_rules:
+      - order: 1st_found -> output_coord: [0, 0]
+      - order: 2nd_found -> output_coord: [1, 1]
+      - order: 3rd_found -> output_coord: [2, 2]
+actions:
+  - action: find_pattern
+    target: target_pattern
+    input: input_grid
+    result: list_of_top_left_coordinates
+  - action: sort_coordinates
+    input: list_of_top_left_coordinates
+    criteria: row_index_ascending, then_column_index_ascending
+    result: sorted_list_of_coordinates
+  - action: map_to_output
+    input: sorted_list_of_coordinates
+    output: 3x3_output_grid
+    logic: Place '1' at diagonal positions corresponding to the order of the first three found patterns.
+constraints:
+  - Only the first three detected patterns (in scan order) influence the output.
+  - The output grid size is fixed at 3x3.

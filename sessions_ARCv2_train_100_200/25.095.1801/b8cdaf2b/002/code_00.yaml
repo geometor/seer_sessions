@@ -1,0 +1,38 @@
+task: grid_transformation
+input_type: 2D grid of digits
+output_type: 2D grid of digits (same dimensions as input)
+background_color: 0
+objects:
+  - id: pattern
+    description: A horizontal structure identified by scanning rows from bottom to top. It's the first row found containing a central segment flanked by boundary pixels.
+    properties:
+      - central_color (C): The non-zero color of the central contiguous segment.
+      - boundary_color (B): The non-zero color flanking the central segment on both sides (must be different from C).
+      - central_segment_length (N): The number of contiguous pixels of color C.
+      - row_index (r_orig): The row where the pattern is located.
+      - boundary_left_col (c_left): The column index of the left boundary pixel B.
+      - boundary_right_col (c_right): The column index of the right boundary pixel B.
+actions:
+  - id: identify_pattern
+    description: Scan the input grid rows from bottom to top. Find the first row containing a horizontal sequence B C...C B, where B and C are different non-zero colors, C...C is a contiguous segment of length N >= 1, and the B pixels are immediately adjacent to the C segment.
+    input: input grid
+    output: pattern object properties (C, B, N, r_orig, c_left, c_right) or null if not found.
+  - id: apply_propagation
+    description: Add new pixels of color C to the grid based on the identified pattern's properties (B, N, r_orig, c_left, c_right).
+    input: input grid, pattern object properties
+    output: modified output grid
+    logic:
+      - Initialize output grid as a copy of the input grid.
+      - If no pattern found, return the copied grid.
+      - **Case 1:** If B is 8 OR (B is 2 AND N > 1):
+          - Add C at (r_orig - 3, c_left - 1) if within bounds.
+          - Add C at (r_orig - 3, c_right + 1) if within bounds.
+          - Add C at (r_orig - 2, c_left) if within bounds.
+          - Add C at (r_orig - 2, c_right) if within bounds.
+      - **Case 2 (Default):** Otherwise:
+          - Add C at (r_orig - 2, c_left) if within bounds.
+          - Add C at (r_orig - 2, c_right) if within bounds.
+relationships:
+  - The output grid is derived from the input grid by adding pixels based on a specific pattern.
+  - The added pixels' color is the central_color (C) of the pattern.
+  - The locations of the added pixels depend on the pattern's row (r_orig), boundary columns (c_left, c_right), boundary color (B), and central segment length (N). Three distinct propagation rules cover all observed cases.
