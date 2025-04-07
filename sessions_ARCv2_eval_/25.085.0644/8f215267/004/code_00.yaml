@@ -1,0 +1,49 @@
+task_description: Transforms a grid by identifying specific hollow rectangular shapes, modifying their interior based on background color parity, and removing all other non-background shapes.
+
+definitions:
+  - &background_color
+    name: background_color
+    description: The color that appears most frequently in the input grid.
+  - &background_parity
+    name: background_parity
+    description: The parity (0 for even, 1 for odd) of the background_color value.
+  - &hollow_rectangle
+    name: hollow_rectangle
+    description: A shape composed of a single non-background color forming a 1-pixel thick border of a rectangle, where the bounding box height and width are both strictly greater than 2, and the area strictly inside the border contains only the background_color in the input grid.
+    properties:
+      - color: The color of the rectangle's border pixels.
+      - border_pixels: The list of coordinates forming the rectangle border.
+      - bounding_box: The minimum and maximum row and column indices (min_r, min_c, max_r, max_c).
+      - internal_area: The rectangular region strictly inside the border (rows from min_r+1 to max_r-1, cols from min_c+1 to max_c-1).
+      - internal_midline_row: The row index `min_r + 1 + ((max_r - 1) - (min_r + 1) + 1) // 2`. Simplifies to `min_r + 1 + (internal_height // 2)`.
+  - &other_shape
+    name: other_shape
+    description: Any contiguous group of pixels of the same non-background color that does not meet the definition of a hollow_rectangle (e.g., lines, filled rectangles, L-shapes, single pixels, etc.).
+
+transformation_steps:
+  - action: determine_background
+    input: input_grid
+    output: [*background_color, *background_parity]
+    description: Find the most frequent color in the grid and determine its parity.
+  - action: initialize_output
+    input: [input_grid_dimensions, *background_color]
+    output: output_grid
+    description: Create a new grid of the same dimensions as the input, filled entirely with the background_color.
+  - action: find_shapes
+    input: [input_grid, *background_color]
+    output: identified_shapes
+    description: Identify all connected components of non-background pixels.
+  - action: filter_hollow_rectangles
+    input: [identified_shapes, input_grid, *background_color]
+    output: valid_hollow_rectangles
+    description: Filter the identified shapes, keeping only those that match the definition of a *hollow_rectangle*.
+  - action: draw_borders
+    input: [output_grid, valid_hollow_rectangles]
+    output: modified_output_grid
+    description: For each valid *hollow_rectangle*, draw its border_pixels onto the output_grid using its specific color.
+  - action: apply_midline_pattern
+    input: [modified_output_grid, valid_hollow_rectangles, *background_parity]
+    output: final_output_grid
+    description: For each valid *hollow_rectangle*, iterate through the columns of its *internal_area*. If a column index's parity matches the *background_parity*, color the pixel at that column on the *internal_midline_row* with the rectangle's color.
+
+final_state: The final_output_grid contains only the background color, the borders of the identified hollow rectangles, and the midline patterns within those rectangles. All *other_shapes* are removed.

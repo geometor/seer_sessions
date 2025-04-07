@@ -1,0 +1,64 @@
+elements:
+  - type: grid
+    role: input
+    properties:
+      size: large (e.g., 30x30)
+      content: contains background noise and distinct objects
+  - type: grid
+    role: output
+    properties:
+      size: small (e.g., 5x5 or 4x4)
+      content: abstract representation based on input objects/colors
+  - type: object
+    name: solid_block
+    properties:
+      definition: largest contiguous rectangle of a single color (excluding white/gray)
+      attributes:
+        - color (container_color)
+        - location
+        - size
+  - type: object
+    name: framed_object
+    properties:
+      definition: object with a colored border, white interior, and a single inner shape of a third color
+      attributes:
+        - border_color
+        - interior_color (always white=0)
+        - inner_color
+        - inner_shape_pattern (e.g., cross, H, L)
+        - location
+        - contained_within_solid_block (boolean)
+
+relationships:
+  - type: spatial
+    description: A framed_object can be located entirely inside a solid_block.
+
+actions:
+  - name: identify_candidates
+    input: input_grid
+    output: list of framed_objects matching the definition
+  - name: identify_container
+    input: input_grid
+    output: the single largest solid_block (if one exists)
+  - name: select_target_object
+    input: list of candidate framed_objects, container_object (or null)
+    output: the single framed_object relevant for output generation
+    logic: |
+      1. Prioritize candidates contained within the container_object.
+      2. If containment exists, select the top-leftmost contained candidate.
+      3. If no containment exists, select the candidate with the lowest inner_color value (breaking ties with top-leftmost position).
+  - name: extract_colors
+    input: target_object, container_object (or null)
+    output: inner_color, interior_color (0), primary_color
+    logic: |
+      inner_color = target_object.inner_color
+      interior_color = 0
+      primary_color = container_object.color if target_object is contained, else target_object.inner_color
+  - name: generate_output_grid
+    input: inner_color, interior_color, primary_color, is_contained
+    output: output_grid
+    logic: |
+      If is_contained:
+        Construct a 5x5 grid using a fixed pattern with inner_color, primary_color, and interior_color.
+      Else:
+        Construct a 4x4 grid using a fixed pattern with primary_color (which equals inner_color) and interior_color.

@@ -1,0 +1,39 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom collections import deque\n\n\"\"\"\nIdentifies all distinct contiguous groups of non-white pixels (objects) in the \ninput grid using 4-way adjacency. Calculates the bounding box for each object \nand determines its area (height * width). Selects the object whose bounding \nbox has the largest area. Returns a new grid corresponding to the portion of \nthe input grid defined by this largest bounding box. If multiple objects share \nthe largest bounding box area, the first one encountered during the grid scan \nis selected. If no non-white pixels exist, returns a 1x1 white grid.\n\"\"\"\n\ndef _find_connected_component(grid, start_row, start_col, visited):\n    \"\"\"\n    Helper function: Finds a single connected component of non-white pixels \n    starting from a given point using Breadth-First Search (BFS).\n\n    Args:\n        grid (np.array): The input grid.\n        start_row (int): The starting row for the search.\n        start_col (int): The starting column for the search.\n        visited (np.array): A boolean grid tracking visited pixels.\n\n    Returns:\n        list: A list of (row, col) tuples representing the coordinates of the\n              pixels in the found component, or None if the start pixel is\n              invalid (white or already visited).\n    \"\"\"\n    rows, cols = grid.shape\n    # Check if the starting point is valid (within bounds, not visited, not background)\n    if not (0 <= start_row < rows and 0 <= start_col < cols) or \\\n       visited[start_row, start_col] or \\\n       grid[start_row, start_col] == 0: # 0 represents the background color (white)\n        return None\n\n    component_coords = []\n    q = deque([(start_row, start_col)])\n    visited[start_row, start_col] = True # Mark starting pixel as visited\n\n    while q:\n        r, c = q.popleft()\n        component_coords.append((r, c))\n\n        # Check neighbors (up, down, left, right) for 4-way adjacency\n        for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n            nr, nc = r + dr, c + dc\n            \n            # Check if neighbor is within grid bounds\n            if 0 <= nr < rows and 0 <= nc < cols:\n                 # Check if neighbor is non-white and hasn't been visited yet\n                if not visited[nr, nc] and grid[nr, nc] != 0:\n                    visited[nr, nc] = True # Mark neighbor as visited\n                    q.append((nr, nc)) # Add neighbor to the queue for exploration\n\n    return component_coords\n\ndef _find_all_objects(grid):\n    \"\"\"\n    Helper function: Finds all distinct contiguous non-white objects in the grid.\n\n    Args:\n        grid (np.array): The input grid.\n\n    Returns:\n        list: A list where each element is itself a list of (row, col) tuples\n              representing the coordinates of pixels belonging to an object. \n              Returns an empty list if no non-white pixels are found.\n    \"\"\"\n    rows, cols = grid.shape\n    visited = np.zeros((rows, cols), dtype=bool) # Keep track of visited pixels\n    all_objects = []\n\n    # Iterate through each pixel of the input grid\n    for r in range(rows):\n        for c in range(cols):\n            # If a pixel is non-white and hasn't been visited, start a search\n            # for the connected component (object) it belongs to.\n            if grid[r, c] != 0 and not visited[r, c]:\n                component = _find_connected_component(grid, r, c, visited)\n                # If a valid component is found, add its coordinates to the list\n                if component: \n                    all_objects.append(component)\n                    \n    return all_objects\n\ndef _get_bounding_box_properties(coords):\n    \"\"\"\n    Helper function: Calculates the minimum bounding box coordinates and its\n    properties (area, height, width) for a set of pixel coordinates.\n\n    Args:\n        coords (list): A list of (row, col) tuples representing an object's pixels.\n\n    Returns:\n        dict: A dictionary containing 'min_r', 'max_r', 'min_c', 'max_c', \n              'height', 'width', and 'area'. Returns None if coords is empty.\n    \"\"\"\n    if not coords:\n        return None\n        \n    # Determine the minimum and maximum row and column indices from the coordinates\n    min_r = min(r for r, c in coords)\n    max_r = max(r for r, c in coords)\n    min_c = min(c for r, c in coords)\n    max_c = max(c for r, c in coords)\n    \n    height = max_r - min_r + 1\n    width = max_c - min_c + 1\n    area = height * width\n    \n    return {\n        'min_r': min_r, \n        'max_r': max_r, \n        'min_c': min_c, \n        'max_c': max_c,\n        'height': height,\n        'width': width,\n        'area': area,\n        'coords': coords # Keep track of original coords if needed later\n    }\n\ndef transform(input_grid):\n    \"\"\"\n    Extracts the subgrid defined by the bounding box of the contiguous \n    non-white object with the largest bounding box area.\n    \"\"\"\n    # Convert the input list of lists to a NumPy array for efficient processing\n    grid_np = np.array(input_grid, dtype=int)\n    \n    # Step 1: Find all distinct contiguous non-white objects in the grid.\n    all_object_coords = _find_all_objects(grid_np)\n\n    # Handle the edge case where the input grid contains no non-white pixels.\n    if not all_object_coords:\n        return [[0]] # Return a 1x1 grid containing only the background color.\n\n    # Step 2 & 3: Calculate bounding box properties for each object.\n    object_properties = []\n    for coords in all_object_coords:\n        props = _get_bounding_box_properties(coords)\n        if props: # Should always be true here as empty objects aren't returned\n            object_properties.append(props)\n\n    # Step 4: Select the object with the largest bounding box area.\n    # If there's a tie, max() returns the first one encountered.\n    largest_bbox_object = max(object_properties, key=lambda obj: obj['area'])\n\n    # Step 5: Retrieve the bounding box coordinates of the selected object.\n    min_r = largest_bbox_object['min_r']\n    max_r = largest_bbox_object['max_r']\n    min_c = largest_bbox_object['min_c']\n    max_c = largest_bbox_object['max_c']\n\n    # Step 6: Extract the subgrid defined by the bounding box using NumPy slicing.\n    # Note: NumPy slice upper bounds are exclusive, so add 1 to max indices.\n    output_grid_np = grid_np[min_r : max_r + 1, min_c : max_c + 1]\n    \n    # Convert the resulting NumPy array back to the required list of lists format.\n    output_grid = output_grid_np.tolist()\n\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "citation_metadata": {
+        "citation_sources": [
+          {
+            "start_index": 5869,
+            "end_index": 6026,
+            "uri": "https://github.com/Rijgersberg/advent-of-code-2020",
+            "license_": ""
+          }
+        ]
+      },
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 25944,
+    "candidates_token_count": 1767,
+    "total_token_count": 27711,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 19.80708,
+  "retries": 1
+}

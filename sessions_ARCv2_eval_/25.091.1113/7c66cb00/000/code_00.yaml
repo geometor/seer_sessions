@@ -1,0 +1,54 @@
+InputGrid:
+  Properties:
+    - segmentation: Contains distinct upper and lower regions.
+    - upper_region:
+        - contains: pattern_objects
+        - background_color: dominant color in the upper area (e.g., blue, azure, yellow)
+    - lower_region:
+        - contains: horizontal_bands
+        - contains: separator_lines (optional, single color rows)
+  Elements:
+    - pattern_object:
+        - description: Connected component of non-background pixels in the upper_region.
+        - properties:
+            - shape: Relative coordinates of its non-background pixels.
+            - colors: Set of colors present within the object.
+            - color_counts: Count of pixels for each color within the object.
+            - location: Bounding box or coordinates in the upper_region.
+    - horizontal_band:
+        - description: Rectangular area in the lower_region.
+        - properties:
+            - fill_color: Color of the main central part of the band.
+            - border_color: Color of the pixels typically flanking the fill area on the left/right.
+            - fill_area: Coordinates corresponding to the fill_color pixels.
+            - location: Row indices defining the band.
+    - background_pixel: Pixel belonging to the dominant background color of the upper_region.
+
+OutputGrid:
+  Properties:
+    - derivation: Derived from InputGrid by applying transformations.
+    - structure: Retains separator_lines and band structure from InputGrid.
+    - upper_region: Contains only the background_color from the input's upper_region.
+    - lower_region: Horizontal bands are potentially modified.
+
+Transformation:
+  Actions:
+    - identify_elements:
+        - Find background_color of the upper_region.
+        - Find all pattern_objects in the upper_region. Extract shape, colors, and color_counts for each.
+        - Find all horizontal_bands in the lower_region. Extract fill_color, border_color, and fill_area for each.
+    - match_patterns_to_bands:
+        - Establish a one-to-one mapping between pattern_objects and horizontal_bands.
+        - rule: For a band B with fill_color C_fill:
+            - Find all available patterns P containing C_fill.
+            - If one pattern P is found, match P to B.
+            - If multiple patterns P1, P2... are found, match the pattern P_max (which has the highest count of C_fill pixels) to B.
+        - dependencies: Matches might need to be resolved iteratively if choices depend on prior matches.
+    - stamp_shapes:
+        - For each matched pair (pattern P, band B):
+            - Get the shape S of pattern P.
+            - Get the border_color C_border of band B.
+            - Get the fill_area A of band B.
+            - Modify the output grid: For each pixel location within shape S (relative to its origin), find the corresponding absolute coordinate within the fill_area A and set its color to C_border.
+    - cleanup_upper_region:
+        - Replace all pixels in the output grid corresponding to the original pattern_objects' locations with the upper_region's background_color.

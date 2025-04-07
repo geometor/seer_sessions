@@ -1,0 +1,66 @@
+task_context:
+  description: Transformation involves pathfinding from an agent to targets.
+  colors:
+    background: 3 (green)
+    agent: 2 (red)
+    path: 1 (blue)
+    target: 0 (white)
+    target_result: 1 (blue)
+    agent_result_single_target: 0 (white)
+    agent_result_multi_target: 2 (red) # Agent remains unchanged
+
+input_features:
+  - name: grid
+    type: 2D array of integers (colors)
+  - name: agent_object
+    description: A single, contiguous object of 'agent' color (red). Assumed to be unique.
+    properties: [color, coordinates]
+  - name: target_objects
+    description: One or more distinct, contiguous objects of 'target' color (white).
+    properties: [color, coordinates, count]
+  - name: path_pixels
+    description: All pixels of 'path' color (blue). Define potential movement space.
+    properties: [color, coordinates]
+
+transformation_steps:
+  - action: find_objects
+    target: agent_object
+    color: red (2)
+    connectivity: 8-way (includes diagonals)
+  - action: find_objects
+    target: target_objects
+    color: white (0)
+    connectivity: 8-way (includes diagonals)
+  - action: count_objects
+    source: target_objects
+    result: total_target_count
+  - action: find_path_start_nodes
+    description: Identify 'path' pixels (blue) adjacent (8-way) to the 'agent_object'.
+    source: agent_object, path_pixels
+    result: bfs_start_nodes
+  - action: perform_bfs
+    description: Explore reachable 'path' pixels starting from 'bfs_start_nodes'.
+    constraints: Move only between adjacent (8-way) 'path' pixels.
+    search_goal: Find the first 'path' pixel adjacent (8-way) to any 'target_object' pixel.
+    result: reachable_target_object (if found), path_traversed
+  - condition: check if reachable_target_object was found
+    if_true:
+      - action: change_color
+        target: reachable_target_object
+        new_color: blue (1)
+      - condition: check total_target_count
+        if_equal: 1
+          - action: change_color
+            target: agent_object
+            new_color: white (0)
+        else: # total_target_count > 1
+          - action: no_change
+            target: agent_object # Remains red (2)
+    if_false:
+      - action: no_change
+        target: grid # Output is identical to input
+
+output_features:
+  - name: output_grid
+    type: 2D array of integers (colors)
+    derivation: Input grid modified based on transformation steps.

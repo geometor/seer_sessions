@@ -1,0 +1,49 @@
+objects:
+  - type: grid
+    properties:
+      height: variable
+      width: variable
+      pixels: represented by integers 0-9 (white to maroon)
+  - type: pixel
+    properties:
+      color: integer 0-9
+      location: (row, column) coordinates
+  - type: seed_pixel
+    description: A non-white (color 1-9) pixel in the input grid.
+    properties:
+      color: integer 1-9
+      location: (row, column)
+  - type: expansion_area
+    description: The region potentially filled by the expansion process originating from one or more seed pixels of the same effective fill color.
+    properties:
+      fill_color: integer 1-9 (determined by seed color; 6->7, others unchanged)
+
+relationships:
+  - type: adjacency
+    description: Pixels are cardinally adjacent if they share an edge. This is used for expansion.
+  - type: boundary
+    description: Formed at grid edges, original non-white pixels, or where expansions from different fill colors meet. Pixels where different expansions meet remain white (0).
+
+actions:
+  - name: initialize_grids
+    description: Create an output grid (copy of input) and a 'fill_color_grid' (same shape, initialized to 0).
+  - name: identify_seeds_and_populate_grids
+    description: Iterate through the input grid. If a pixel (r, c) has color 'C' (1-9), set output_grid[r, c] = C. Determine its fill_color 'F' (7 if C=6, else C). Set fill_color_grid[r, c] = F.
+  - name: iterative_simultaneous_expansion
+    description: Repeat the following steps until no changes occur in an iteration:
+    details:
+      - Initialize an empty dictionary `updates_this_step` to store `{ (r, c): fill_color }`.
+      - Iterate through every white pixel `(r, c)` in the current `output_grid`.
+      - For each white pixel `(r, c)`, find its cardinally adjacent non-white neighbors `(nr, nc)`.
+      - Collect the *fill colors* of these neighbors using the `fill_color_grid`: `neighbor_fill_colors = {fill_color_grid[nr, nc] for (nr, nc) in non_white_neighbors if output_grid[nr, nc] != 0}`.
+      - If `neighbor_fill_colors` is not empty AND contains exactly one unique fill color `single_fill_color`:
+          - Add `(r, c): single_fill_color` to `updates_this_step`.
+      - After checking all white pixels, if `updates_this_step` is empty, break the loop (expansion complete).
+      - Otherwise, apply the updates: For each `(r, c), fill_c` in `updates_this_step`:
+          - Set `output_grid[r, c] = fill_c`.
+          - Set `fill_color_grid[r, c] = fill_c`.
+
+state_changes:
+  - description: White (0) pixels in the output grid are changed iteratively to non-zero fill colors based on the simultaneous expansion rules.
+  - description: Pixels adjacent to areas expanding with different fill colors remain white (0).
+  - description: Original non-white pixels from the input grid retain their original color in the output grid, but their associated fill color (potentially different, e.g., 6->7) is used for propagation in the fill_color_grid.

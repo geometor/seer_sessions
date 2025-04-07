@@ -1,0 +1,118 @@
+import numpy as np
+from typing import List
+
+"""
+The transformation rule identifies two distinct patterns (objects) of non-zero integers in the input grid, which are separated vertically by one or more rows containing only zeros (value 0). 
+The rule then focuses on the bottom-most pattern (the one appearing entirely below the separating zero rows). 
+It determines the vertical extent (min_row, max_row) of all non-zero elements in this bottom section.
+Then, it finds the horizontal extent (min_col, max_col) of the *left-most contiguous block* of the pattern within those rows. A contiguous block is defined as a set of columns where each column, between min_col and max_col, contains at least one non-zero value within the determined row range (min_row to max_row).
+Finally, it extracts the rectangular subgrid from the original input grid defined by these calculated min_row, max_row, min_col, and max_col bounds.
+"""
+
+
+def find_separator_end_row(grid: np.ndarray) -> int:
+    """
+    Finds the row index of the last row in the separator block 
+    (contiguous all-zero rows) that lies above the bottom-most object.
+    Returns -1 if no separator is found above the bottom object or if the grid is empty/all zeros.
+    """
+    rows, _ = grid.shape
+    if rows == 0:
+        return -1
+
+    # Find the last row containing any non-zero value
+    last_non_zero_row = -1
+    for r in range(rows - 1, -1, -1):
+        if np.any(grid[r, :] != 0):
+            last_non_zero_row = r
+            break
+            
+    # If the grid is all zeros or empty
+    if last_non_zero_row == -1:
+        return -1 
+        
+    # Scan upwards from the last non-zero row to find the first all-zero row
+    # This all-zero row marks the end of the separator block just above the bottom object
+    for r in range(last_non_zero_row, -1, -1):
+         if np.all(grid[r, :] == 0):
+             return r # Found the last row of the separator
+             
+    # If no all-zero row is found above the last non-zero content,
+    # it implies the bottom object starts at or near row 0 without a preceding separator.
+    # In this case, the "separator" effectively ends before the grid starts.
+    return -1
+
+
+def find_bottom_object_bounding_box_revised(grid: np.ndarray, bottom_section_start_row: int) -> tuple[int, int, int, int] | None:
+    """
+    Finds the bounding box (min_row, max_row, min_col, max_col) for the non-zero elements 
+    of the left-most part of the pattern located at or below the specified start row.
+    Returns None if no non-zero elements are found in the bottom section.
+    """
+    rows, cols = grid.shape
+    
+    # Get indices (row, col) of all non-zero elements in the grid
+    all_non_zero_indices = np.argwhere(grid != 0)
+
+    # Filter these indices to keep only those in the bottom section
+    bottom_non_zero_indices = all_non_zero_indices[all_non_zero_indices[:, 0] >= bottom_section_start_row]
+
+    # If no non-zero elements exist in the bottom section
+    if bottom_non_zero_indices.size == 0:
+        return None 
+
+    # Calculate the min/max row and the min column from the filtered indices
+    min_row = np.min(bottom_non_zero_indices[:, 0])
+    max_row = np.max(bottom_non_zero_indices[:, 0])
+    min_col = np.min(bottom_non_zero_indices[:, 1])
+    
+    # Determine the max_col for the left-most contiguous block
+    max_col = min_col
+    for c in range(min_col, cols):
+        # Check if the current column 'c' has any non-zero elements within the relevant row range
+        if np.any(grid[min_row : max_row + 1, c] != 0):
+            # If yes, this column is part of the block, update max_col
+            max_col = c
+        else:
+            # If no, the contiguous block has ended just before this column
+            break # Stop searching further right
+
+    return min_row, max_row, min_col, max_col
+
+
+def transform(input_grid: List[List[int]]) -> List[List[int]]:
+    """
+    Extracts the bounding box of the left-most part of the bottom-most object in the grid.
+    """
+    
+    # Convert input to a NumPy array for efficient processing
+    grid_np = np.array(input_grid, dtype=int)
+
+    # Handle empty input grid
+    if grid_np.size == 0:
+        return []
+        
+    # --- Workflow ---
+    
+    # 1. Identify the end row of the zero-separator block above the bottom object.
+    separator_end_row = find_separator_end_row(grid_np)
+    
+    # 2. Determine the starting row of the bottom section (the row after the separator).
+    bottom_section_start_row = separator_end_row + 1
+    
+    # 3. Find the bounding box (min_row, max_row, min_col, max_col) of the 
+    #    left-most non-zero block within the bottom section.
+    bbox = find_bottom_object_bounding_box_revised(grid_np, bottom_section_start_row)
+
+    # 4. Extract the subgrid if a bounding box was found.
+    if bbox:
+        min_row, max_row, min_col, max_col = bbox
+        # Slice the original grid using the calculated bounding box coordinates
+        output_grid_np = grid_np[min_row : max_row + 1, min_col : max_col + 1]
+        # Convert the resulting NumPy array back to a list of lists
+        output_grid = output_grid_np.tolist()
+    else:
+        # Handle case where no bottom object is found 
+        output_grid = [] 
+
+    return output_grid

@@ -1,0 +1,82 @@
+elements:
+  - type: grid
+    properties:
+      - colors_present: [list of colors 0-9 found in the input grid]
+      - dimensions: [height, width]
+      - features: [vertical_red_line, contains_azure]
+  - type: color
+    properties:
+      - value: integer 0-9
+      - name: [white, blue, red, green, yellow, gray, magenta, orange, azure, maroon]
+  - type: object
+    properties:
+      - color: integer 0-9
+      - pixels: set of (row, col) tuples
+      - size: number of pixels
+      - adjacency: 8-way (for blue object in MFC=1 case)
+  - type: structure
+    properties:
+      - type: vertical_line
+      - color: red (2)
+      - location: column index
+      - condition: spans full height
+
+actions:
+  - name: conditional_rule_check
+    order: [check_vertical_red_line, check_azure_presence]
+  - name: find_most_frequent_color
+    parameters:
+      - excluded_colors: [white(0), azure(8)]
+      - tie_breaker: lowest_color_value
+  - name: find_largest_object
+    parameters:
+      - color
+      - adjacency: 8-way
+  - name: replace_color
+    parameters:
+      - input_color
+      - output_color
+      - scope: [specific_pixels, entire_grid]
+  - name: fill_region
+    parameters:
+      - region: [left_of_column(c), right_of_column(c), column(c)]
+      - fill_color
+  - name: clear_pixels
+    parameters:
+      - color_to_clear
+      - replacement_color: white(0)
+  - name: generate_pattern_at_location
+    parameters:
+      - input_location: (r, c)
+      - trigger_color: [yellow(4), blue(1)]
+      - output_pattern: [2x2_red_block, orange_L_shape/pair]
+      - output_grid
+  - name: apply_swaps_and_row_effect # Specific to MFC=6 case
+    parameters:
+      - input_grid
+      - output_grid
+      - swaps: [{red: yellow}, {yellow: red}] # Applied only to specific pixels
+      - row_effect_triggers: [{color: magenta(6), below: white(0), output_below: orange(7)}, {color: orange(7), below: white(0), output_below: magenta(6)}]
+
+relationships:
+  - type: primary_condition
+    condition: vertical_red_line(color=2)
+    action: apply_vertical_line_rule
+  - type: secondary_condition
+    condition: contains_azure(8)
+    action: determine_mfc_and_apply_azure_rule
+  - type: azure_sub_condition
+    condition: mfc == blue(1)
+    action: apply_largest_blue_object_rule
+  - type: azure_sub_condition
+    condition: mfc == magenta(6)
+    action: apply_magenta_swap_and_row_effect_rule
+  - type: azure_sub_condition
+    condition: mfc == yellow(4)
+    action: apply_yellow_blue_pattern_generation_rule
+  - type: azure_sub_condition
+    condition: mfc == other_or_none
+    action: clear_azure_pixels
+  - type: default_condition
+    condition: no_vertical_red_line AND not contains_azure(8)
+    action: return_input_unchanged

@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom scipy.ndimage import label, find_objects\nfrom collections import Counter\n\n\"\"\"\nTransformation Rule Natural Language Description:\n\n1.  Identify the background color (most frequent color in the grid).\n2.  Create an output grid initialized as a copy of the input grid.\n3.  Find all distinct contiguous objects in the input grid that are not the background color.\n4.  For each object:\n    a.  Determine its shape, size (bounding box), location, and color.\n    b.  **Rule 1 (Bottom Line Removal):** If the object is a 1x5 horizontal line located entirely within the bottom-most row of the grid, change all pixels belonging to this object in the output grid to the background color.\n    c.  **Rule 2 (Plus Sign Color Change):** If the object forms a 3x3 \"plus\" shape (5 pixels: center and 4 orthogonal neighbors), check its color:\n        i.  If the color is Maroon (9), Magenta (6), or Green (3), change the 5 pixels forming the plus sign in the output grid to Gray (5).\n        ii. If the color is any other color (White 0, Blue 1, Red 2, Yellow 4, Orange 7, Azure 8), leave the object pixels unchanged in the output grid.\n    d.  Objects that do not match Rule 1 or Rule 2 are left unchanged.\n5.  Return the modified output grid.\n\"\"\"\n\ndef find_background_color(grid):\n    \"\"\"Finds the most frequent color in the grid.\"\"\"\n    colors, counts = np.unique(grid, return_counts=True)\n    return colors[np.argmax(counts)]\n\ndef transform(input_grid):\n    \"\"\"\n    Applies the transformation rules to the input grid.\n    Removes 1x5 horizontal lines from the bottom row.\n    Changes the color of specific 3x3 plus-shaped objects (Maroon, Magenta, Green -> Gray).\n    \"\"\"\n    # Convert input list of lists to a numpy array for easier processing\n    input_array = np.array(input_grid, dtype=int)\n    output_array = np.copy(input_array)\n    height, width = input_array.shape\n\n    # 1. Identify the background color\n    background_color = find_background_color(input_array)\n\n    # 2. Create a mask for non-background pixels\n    object_mask = input_array != background_color\n\n    # 3. Find connected components (objects) using the mask\n    # structure=np.array([[0,1,0],[1,1,1],[0,1,0]]) ensures 4-connectivity (orthogonal)\n    labeled_array, num_objects = label(object_mask, structure=np.array([[0,1,0],[1,1,1],[0,1,0]]))\n\n    # 4. Iterate through each found object\n    object_slices = find_objects(labeled_array)\n    for i in range(num_objects):\n        obj_label = i + 1\n        slices = object_slices[i]\n        # Get coordinates of the current object within the original array\n        obj_coords = np.argwhere(labeled_array[slices] == obj_label) + np.array([slices[0].start, slices[1].start])\n        \n        # Check if coordinates are valid before accessing color\n        if obj_coords.size == 0:\n            continue\n            \n        # Get the color of the object (all pixels in a component have the same color)\n        obj_color = input_array[obj_coords[0, 0], obj_coords[0, 1]]\n\n        # Calculate bounding box properties\n        min_row, min_col = obj_coords.min(axis=0)\n        max_row, max_col = obj_coords.max(axis=0)\n        obj_height = max_row - min_row + 1\n        obj_width = max_col - min_col + 1\n        num_pixels = obj_coords.shape[0]\n\n        # a. Rule 1: Check for 1x5 horizontal line at the bottom row\n        is_bottom_row = (min_row == height - 1) and (max_row == height - 1)\n        if obj_height == 1 and obj_width == 5 and num_pixels == 5 and is_bottom_row:\n            # Replace object pixels with background color in the output\n            for r, c in obj_coords:\n                output_array[r, c] = background_color\n            continue # Move to the next object\n\n        # b. Rule 2: Check for 3x3 plus sign shape\n        # A 3x3 plus sign has 5 pixels and a 3x3 bounding box.\n        if obj_height == 3 and obj_width == 3 and num_pixels == 5:\n            # More specific check: Ensure center pixel exists and matches object\n            center_r, center_c = min_row + 1, min_col + 1\n            # Check if the center pixel belongs to this object (basic check)\n            if labeled_array[center_r, center_c] == obj_label:\n                 # Check if this specific object color needs changing\n                if obj_color in [9, 6, 3]: # Maroon, Magenta, Green\n                    # Change the 5 pixels to Gray (5)\n                    for r, c in obj_coords:\n                         output_array[r, c] = 5\n                # Otherwise (color is 0, 1, 2, 4, 7, 8), do nothing, color remains as copied initially.\n\n    # Convert the final numpy array back to a list of lists\n    output_grid = output_array.tolist()\n    return output_grid\n\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 12961,
+    "candidates_token_count": 1330,
+    "total_token_count": 14291,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 21.386476
+}

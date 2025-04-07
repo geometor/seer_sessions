@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport copy\nimport collections\n\n\"\"\"\nThis module transforms a 2D grid based on marker values (1, 2, 3, 6).\n\nTransformation Rules:\n1. Find all non-zero markers in the input grid.\n2. For each marker, draw a line segment based on its value:\n    - 1: Horizontal line [1, 5, 5] starting at the marker and extending right.\n    - 2: Horizontal line [2, 5, 5, 5, 2] ending at the marker and extending left.\n    - 3: Vertical line [3, 5, 5, 3] starting at the marker and extending down.\n    - 6: Vertical line [6, 5, ..., 5, 6] ending at the marker and extending up (length 7).\n3. Lines are composed of endpoint colors (matching the marker) and path color 5.\n4. If paths (color 5) from different line segments overlap at a cell, that cell becomes color 4 (intersection).\n5. From each intersection cell (color 4), draw a diagonal line of color 4 extending down and left until the grid boundary.\n6. The final output grid reflects these drawn lines and intersections, overwriting initial values where necessary (endpoints overwrite 0s/5s, intersections overwrite 5s, diagonals overwrite existing values).\n\"\"\"\n\ndef transform(input_grid: list[list[int]]) -> list[list[int]]:\n    \"\"\"\n    Applies the transformation rules to the input grid.\n\n    Args:\n        input_grid: A list of lists representing the 2D input grid.\n\n    Returns:\n        A list of lists representing the transformed 2D output grid.\n    \"\"\"\n    if not input_grid or not input_grid[0]:\n        return []\n\n    rows = len(input_grid)\n    cols = len(input_grid[0])\n    # Initialize output grid - start with 0s might be cleaner\n    output_grid = [[0 for _ in range(cols)] for _ in range(rows)]\n    # Use a dictionary to track which cells are painted with '5' and by which marker(s)\n    # Structure: {(r, c): [marker_value_1, marker_value_2, ...]}\n    path_painters = collections.defaultdict(list)\n    # Store endpoint placements separately to ensure they take precedence\n    # Structure: {(r, c): endpoint_value}\n    endpoint_placements = {}\n\n    # --- 1. Find markers and determine line segments ---\n    markers = []\n    for r in range(rows):\n        for c in range(cols):\n            if input_grid[r][c] != 0:\n                markers.append(((r, c), input_grid[r][c]))\n\n    # --- 2. Generate potential changes for each marker ---\n    for (r, c), marker_value in markers:\n        line_segment = [] # List of ((row, col), value_to_place)\n\n        if marker_value == 1: # Horizontal right: [1, 5, 5]\n            line_segment = [((r, c), 1), ((r, c + 1), 5), ((r, c + 2), 5)]\n        elif marker_value == 2: # Horizontal left: [2, 5, 5, 5, 2]\n            line_segment = [((r, c - 4), 2), ((r, c - 3), 5), ((r, c - 2), 5), ((r, c - 1), 5), ((r, c), 2)]\n        elif marker_value == 3: # Vertical down: [3, 5, 5, 3]\n            line_segment = [((r, c), 3), ((r + 1, c), 5), ((r + 2, c), 5), ((r + 3, c), 3)]\n        elif marker_value == 6: # Vertical up: [6, 5, ..., 5, 6] (length 7)\n            line_segment = [((r - 6, c), 6)] + [((r - i, c), 5) for i in range(5, 0, -1)] + [((r, c), 6)]\n\n        # Process the generated segment\n        for (nr, nc), val in line_segment:\n            # Check boundaries\n            if 0 <= nr < rows and 0 <= nc < cols:\n                if val == 5:\n                    # Record path painter\n                    path_painters[(nr, nc)].append(marker_value)\n                else:\n                    # Record endpoint placement\n                    endpoint_placements[(nr, nc)] = val\n\n\n    # --- 3. Populate the grid with endpoints first ---\n    for (r, c), val in endpoint_placements.items():\n         output_grid[r][c] = val\n\n    # --- 4. Identify intersections and place intersection/path colors ---\n    intersection_coords = set()\n    for (r, c), painters in path_painters.items():\n        if len(painters) > 1:\n            # Intersection: Overwrite whatever is there (could be 0 or an endpoint if lines cross endpoints)\n            output_grid[r][c] = 4\n            intersection_coords.add((r, c))\n        elif len(painters) == 1:\n            # Single path: Only place '5' if the cell is currently 0 (don't overwrite endpoints)\n             if output_grid[r][c] == 0:\n                 output_grid[r][c] = 5\n\n    # --- 5. Draw diagonal lines from intersections ---\n    for (ir, ic) in intersection_coords:\n        # Start diagonal one step down-left\n        dr, dc = ir + 1, ic - 1\n        while 0 <= dr < rows and 0 <= dc < cols:\n            # Diagonal overwrites everything\n            output_grid[dr][dc] = 4\n            dr += 1\n            dc -= 1\n\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 4673,
+    "candidates_token_count": 2711,
+    "total_token_count": 7384,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 25.291246,
+  "retries": 1
+}

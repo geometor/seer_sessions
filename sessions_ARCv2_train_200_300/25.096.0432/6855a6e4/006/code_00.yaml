@@ -1,0 +1,70 @@
+objects:
+  - name: grid
+    properties:
+      - type: 2D array
+      - size: 15x15
+      - contains: integers (0, 2, 5)
+  - name: blue_pattern
+    properties:
+      - value: 2
+      - role: static boundary/container
+      - location: fixed between input and output
+  - name: red_pattern_group
+    properties:
+      - value: 5
+      - role: mobile object group
+      - location: changes from input to output
+      - shape: preserved during movement (relative coordinates)
+      - representation: treated as a single unit via its combined bounding box
+  - name: background
+    properties:
+      - value: 0
+      - role: empty space
+  - name: internal_empty_space
+    properties:
+      - value: 0
+      - location: defined by cells with value 0 within the bounding box of the blue_pattern in the input grid
+      - role: target zone for red_pattern_group placement
+
+actions:
+  - name: identify_elements
+    operands: [input_grid]
+    outputs: [blue_pattern, red_pattern_group, background]
+  - name: calculate_bounding_box
+    operands: [pattern_coordinates]
+    outputs: [bounding_box_coordinates]
+  - name: identify_internal_empty_space
+    operands: [input_grid, blue_pattern_bounding_box]
+    outputs: [internal_empty_space_coordinates]
+  - name: calculate_center
+    operands: [bounding_box]
+    outputs: [center_coordinates]
+  - name: determine_placement_offset
+    operands: [red_pattern_group_center, internal_empty_space_center]
+    outputs: [row_offset, column_offset]
+  - name: construct_output_grid
+    operands: [grid_size]
+    outputs: [empty_output_grid]
+  - name: copy_pattern
+    operands: [source_pattern, target_grid, target_location]
+    effect: Places source_pattern onto target_grid at target_location
+  - name: clear_original_red_location
+    operands: [output_grid, input_red_pattern_group_coordinates]
+    effect: (Implicitly done by starting with empty grid and not copying original red)
+
+relationships:
+  - type: containment
+    subject: internal_empty_space
+    object: blue_pattern_bounding_box (input)
+    description: The internal_empty_space consists of all background cells within the blue_pattern's bounding box.
+  - type: alignment
+    subject: red_pattern_group_center (output)
+    object: internal_empty_space_center (input)
+    description: The center of the red_pattern_group's bounding box in the output aligns with the center of the internal_empty_space's bounding box from the input.
+  - type: invariance
+    subject: blue_pattern
+    description: The blue_pattern's location and shape are identical in the input and output.
+  - type: transformation
+    subject: red_pattern_group (input)
+    object: red_pattern_group (output)
+    description: The input red_pattern_group is moved to a new location, preserving its shape, such that its center aligns with the center of the available internal empty space defined by the blue pattern. Original locations become background.

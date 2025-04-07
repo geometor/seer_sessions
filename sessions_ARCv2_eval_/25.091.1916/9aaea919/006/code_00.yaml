@@ -1,0 +1,47 @@
+task_description: "Modify colors of 3x5 cross-shaped objects to Gray(5) if their horizontal column range aligns with that of a 1x5 Red(2) line on the bottom row. Remove all 1x5 Red(2) and Green(3) lines from the bottom row."
+
+grid_properties:
+  - background_color: Determined by the color of the pixel at (0,0). Remains constant in output except where lines are removed.
+  - dimensions: Input and output grids have the same dimensions (e.g., 30x30).
+
+objects:
+  - type: cross_shape
+    description: "A 3-row high, 5-column wide cross shape made of a single non-background color, where the central row is 5 pixels wide and the central column is 3 pixels high."
+    properties:
+      - color: Various non-background colors.
+      - size: Spans 3 rows and 5 columns.
+      - location: Can appear anywhere in the grid, not necessarily adjacent to trigger lines.
+      - column_range: The minimum and maximum column index occupied by the shape.
+    actions:
+      - color_change: Changes color to Gray (5) if its column_range overlaps with a red_trigger_line.
+      - remain_unchanged: If its column_range overlaps only with a green_trigger_line or no trigger_line.
+  - type: trigger_line
+    description: "A 1x5 horizontal rectangle located on the bottom row (row H-1)."
+    properties:
+      - color: Exclusively Red (2) or Green (3).
+      - size: 1 row high, 5 columns wide.
+      - location: Always on the bottom row (H-1).
+      - column_range: The minimum and maximum column index occupied by the line.
+    actions:
+      - cause_effect: A Red (2) trigger_line causes overlapping cross_shapes (by column) to change color. A Green (3) line does not.
+      - removed: Always removed from the output grid (pixels replaced by background_color).
+
+relationships:
+  - relationship: "column_overlap"
+    object1: cross_shape
+    object2: trigger_line
+    condition: "The interval [object1.min_col, object1.max_col] intersects with the interval [object2.min_col, object2.max_col]."
+
+transformation_rules:
+  - rule: "Red Trigger Overlap"
+    condition: "A cross_shape has column_overlap with a Red (2) trigger_line."
+    action: "Change the color of all pixels of the cross_shape to Gray (5)."
+  - rule: "Green Trigger Overlap / No Overlap"
+    condition: "A cross_shape has column_overlap only with Green (3) trigger_lines, or no column_overlap with any trigger_line."
+    action: "The color of the cross_shape remains unchanged."
+  - rule: "Line Removal"
+    condition: "An object is a trigger_line (Red or Green, 1x5, on the bottom row)."
+    action: "Remove the trigger_line by replacing its pixels with the background_color."
+  - rule: "Default Preservation"
+    condition: "Any pixel not part of a removed trigger_line or a cross_shape modified by a Red trigger overlap."
+    action: "Keep the pixel's original color."

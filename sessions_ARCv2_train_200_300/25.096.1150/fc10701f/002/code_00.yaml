@@ -1,0 +1,71 @@
+task_elements:
+  - object: grid
+    description: A 2D array of single digits representing the state.
+    properties:
+      - dimensions: (rows, columns)
+      - cells: Individual elements containing digits.
+  - object: cell
+    description: An individual element within the grid.
+    properties:
+      - value: The digit (0, 2, 6, 7, 9).
+      - position: (row, column) coordinates.
+  - object: digit_group
+    description: Set of cells containing a specific digit ('7' or '9') in the input grid.
+    properties:
+      - digit_value: The digit identifying the group (7 or 9).
+      - locations: List of (row, column) coordinates for cells in the group.
+      - bounding_box: The minimum rectangle (min_row, min_col, max_row, max_col) enclosing all locations. Can be None if no cells with this digit exist.
+  - object: combined_bounding_box
+    description: The minimum rectangle enclosing the bounding boxes of both the '7' digit_group and the '9' digit_group from the input grid. Calculated once at the start.
+    properties:
+      - min_row: Minimum row index (inclusive).
+      - min_col: Minimum column index (inclusive).
+      - max_row: Maximum row index (inclusive).
+      - max_col: Maximum column index (inclusive).
+      - exists: Boolean indicating if any '7's or '9's were found to define the box.
+
+transformation_rules:
+  - rule: precompute_combined_bbox
+    description: Before processing cells, identify all '7' and '9' locations in the input grid and compute the combined_bounding_box that encloses them. Mark if such a box exists.
+  - rule: direct_replacement_9_to_7
+    description: Any cell containing '9' in the input grid is replaced with '7' in the output grid.
+    input_value: 9
+    output_value: 7
+  - rule: direct_replacement_7_to_6
+    description: Any cell containing '7' in the input grid is replaced with '6' in the output grid.
+    input_value: 7
+    output_value: 6
+  - rule: conditional_replacement_6_to_2
+    description: A cell containing '6' in the input grid is replaced with '2' in the output grid only if it meets both global and local conditions.
+    input_value: 6
+    output_value: 2
+    conditions:
+      - condition_type: global_positional_check
+        description: >
+          The cell's position (r, c) must be within the pre-calculated combined_bounding_box.
+          If no combined_bounding_box exists (no '7's or '9's in input), this condition is automatically met.
+      - condition_type: local_context_check
+        description: The cell must satisfy EITHER horizontal_betweenness OR vertical_betweenness with respect to '0's in the input grid.
+        sub_conditions:
+          - type: horizontal_betweenness
+            description: >
+              Exists c_left < c with input_grid[r, c_left] == 0 AND
+              Exists c_right > c with input_grid[r, c_right] == 0 AND
+              All input_grid[r, k] == 6 for c_left < k < c_right.
+          - type: vertical_betweenness
+            description: >
+              Exists r_up < r with input_grid[r_up, c] == 0 AND
+              Exists r_down > r with input_grid[r_down, c] == 0 AND
+              All input_grid[k, c] == 6 for r_up < k < r_down.
+    condition_logic: global_positional_check AND local_context_check (where local_context_check is horizontal_betweenness OR vertical_betweenness).
+  - rule: default_copy
+    description: If none of the above replacement rules apply to a cell based on its input value and context, its value in the output grid remains the same as its value in the input grid.
+
+processing_order:
+  - Execute `precompute_combined_bbox` on the input grid.
+  - Initialize the output grid as a deep copy of the input grid.
+  - Iterate through each cell (r, c) of the grid.
+  - Evaluate the rules `direct_replacement_9_to_7`, `direct_replacement_7_to_6`, and `conditional_replacement_6_to_2` based *only* on the input grid state and the pre-calculated bounding box information.
+  - If a rule dictates a change, update the corresponding cell `(r, c)` in the output grid.
+  - If no rule dictates a change for cell `(r, c)`, its value remains as copied from the input.
+  - Return the completed output grid.

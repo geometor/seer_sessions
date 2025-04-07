@@ -1,0 +1,50 @@
+Grid:
+  type: 2D array
+  elements: integers (0-9)
+  background_color: 0
+
+Transformation:
+  description: Adds colored cells based on a pattern found in the lowest non-zero row. Original cells are preserved.
+  trigger: A specific pattern ('PatternInstance') found in the lowest non-zero row 'r'. Only the first valid pattern found (scanning left-to-right for c_left, then c_right) triggers the addition.
+
+Objects:
+  - Cell:
+      properties: [row, column, color]
+  - HorizontalSegment:
+      properties: [row, start_column, end_column, color]
+  - PatternInstance:
+      properties:
+        - lowest_row_index: r (must be > 0)
+        - flanker_color: F (non-zero)
+        - flanker_left_col: c_left
+        - flanker_right_col: c_right (must be > c_left + 1)
+        - contained_color: C (non-zero, C != F)
+        - contained_segment: The first contiguous horizontal segment of color C found between c_left and c_right in row r.
+          - contained_start_col: c_start
+          - contained_end_col: c_end
+        - structure_valid: boolean Checks sub-conditions:
+            - All cells grid[r, c_left+1 : c_start] must have color F (if c_start > c_left+1)
+            - All cells grid[r, c_end+1 : c_right] must have color F (if c_end < c_right-1)
+            - All cells grid[r-1, c_start : c_end+1] must have color F
+        - contained_touches_flankers: boolean (true if c_start == c_left + 1 AND c_end == c_right - 1)
+
+Actions:
+  - FindLowestNonZeroRow: Identify index 'r'. Return -1 if none or only row 0.
+  - FindPattern:
+      - Iterate through 'r' for potential 'c_left' (color F != 0).
+      - For each 'c_left', iterate for potential 'c_right' (color F, c_right > c_left + 1).
+      - Between 'c_left' and 'c_right', find the first contiguous segment of color C (C != 0, C != F).
+      - Verify 'structure_valid' conditions.
+      - If valid pattern found, stop search and return pattern details.
+  - CopyGrid: Duplicate input to create initial output.
+  - ApplyPlacementRule: Modify output grid based on 'contained_touches_flankers' property of the found pattern.
+
+Placement Rules (applied to output_grid, checking boundaries):
+  - Rule_Type_1 (if contained_touches_flankers is true):
+      - Set color C at (r-2, c_left)
+      - Set color C at (r-2, c_right)
+  - Rule_Type_2 (if contained_touches_flankers is false):
+      - Set color C at (r-3, c_left)
+      - Set color C at (r-3, c_right)
+      - Set color C at (r-2, c_left + 1)
+      - Set color C at (r-2, c_right - 1)

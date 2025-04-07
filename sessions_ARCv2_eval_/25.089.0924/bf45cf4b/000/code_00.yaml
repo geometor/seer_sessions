@@ -1,0 +1,44 @@
+task_description: Identify two objects in the input grid against a uniform background. One object, the 'pattern', is multi-colored (always containing azure/8) and forms the tile for the output. The other object, the 'shape', is monochromatic and determines the tiling dimensions (rows x columns) for the output grid based on its bounding box height and width.
+background_color:
+  train_1: yellow (4)
+  train_2: green (3)
+  train_3: blue (1)
+objects:
+  - role: pattern_tile
+    identification: Contains multiple colors, including azure (8).
+    properties:
+      - colors: Set of colors composing the object (excluding background).
+      - bounding_box: Smallest rectangle enclosing the object.
+      - dimensions: Height and width of the bounding_box.
+    examples:
+      train_1: Colors {azure(8), green(3)}, BBox 3x3.
+      train_2: Colors {azure(8), red(2)}, BBox 3x3.
+      train_3: Colors {azure(8), maroon(9), yellow(4)}, BBox 4x4.
+  - role: tiling_determinant
+    identification: Monochromatic (single color distinct from background and pattern colors).
+    properties:
+      - color: The single color composing the object.
+      - bounding_box: Smallest rectangle enclosing the object.
+      - dimensions: Height and width of the bounding_box. These dimensions determine the tiling factors.
+    examples:
+      train_1: Color red(2), BBox 3x4 (height=3, width=4). Tiling factors (rows=3, cols=4).
+      train_2: Color blue(1), BBox 4x3 (height=4, width=3). Tiling factors (rows=4, cols=3).
+      train_3: Color magenta(6), BBox 3x3 (height=3, width=3). Tiling factors (rows=3, cols=3).
+transformation:
+  - action: identify_background_color
+    details: Find the most frequent color in the input grid.
+  - action: identify_objects
+    details: Find all contiguous groups of pixels with non-background colors.
+  - action: identify_pattern_tile_object
+    details: Select the object that contains the color azure (8). Extract its pattern within its bounding box.
+  - action: identify_tiling_determinant_object
+    details: Select the object that is monochromatic (has only one color different from the background) and does not contain azure(8).
+  - action: calculate_tiling_factors
+    details: Determine the height (number of rows) and width (number of columns) of the bounding box of the tiling_determinant_object. These are the tiling factors (tile_rows, tile_cols).
+  - action: construct_output_grid
+    details: Create a new grid with dimensions (tile_rows * pattern_height) x (tile_cols * pattern_width).
+  - action: tile_pattern
+    details: Fill the output grid by repeating the pattern_tile_object `tile_rows` times vertically and `tile_cols` times horizontally.
+output_grid_properties:
+  size: Determined by (tiling_determinant_height * pattern_tile_height) x (tiling_determinant_width * pattern_tile_width).
+  content: Composed solely of repetitions of the pattern_tile_object.

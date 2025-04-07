@@ -1,0 +1,53 @@
+task_context:
+  grid_properties:
+    - size_variable: True
+    - colors_present: 2 (a background color, a foreground color)
+  object_abstraction:
+    - type: background_pixel
+      properties: [color, position]
+      derivation: Most frequent color in the grid.
+    - type: foreground_pixel
+      properties: [color, position]
+      derivation: The color that is not the background color.
+    - type: horizontal_foreground_segment
+      properties: [row_index, start_column, end_column, length, color]
+      derivation: A contiguous horizontal run of one or more foreground pixels within a single row.
+  relationships:
+    - type: spatial_adjacency
+      description: Between segments in the same row, specifically considering the horizontal gap between the end of one segment and the start of the next.
+    - type: gap_between_segments
+      properties: [row_index, start_column, end_column, size, content]
+      derivation: Measured horizontally between the end column of a segment and the start column of the next segment in the same row. Size = next_start - prev_end - 1. Content is the list of pixel colors in the gap.
+    - type: longest_segment_in_row
+      properties: [segment_object]
+      derivation: The segment with the maximum length within a given row. If multiple segments share the maximum length, the one with the smallest start_column is chosen.
+    - type: right_neighbor_segment
+      properties: [segment_object]
+      derivation: Given a 'target' segment, the right neighbor is the segment in the same row whose start_column is the minimum value greater than the target segment's end_column.
+  actions:
+    - name: identify_colors
+      inputs: [input_grid]
+      outputs: [background_color, foreground_color]
+      description: Determine background (most frequent) and foreground colors.
+    - name: find_segments_per_row
+      inputs: [grid_row, foreground_color]
+      outputs: [list_of_segments]
+      description: Identify all horizontal foreground segments in a row.
+    - name: find_target_segment
+      inputs: [list_of_segments]
+      outputs: [target_segment (or None)]
+      description: Find the (leftmost) longest segment in the row's segment list. Returns None if no segments.
+    - name: find_right_neighbor
+      inputs: [target_segment, list_of_segments]
+      outputs: [right_neighbor_segment (or None)]
+      description: Find the segment immediately following the target segment in the same row.
+    - name: check_and_fill_gap
+      inputs: [grid_copy, target_segment, right_neighbor_segment, background_color, foreground_color]
+      conditions: [gap_size == 3, all_gap_pixels == background_color]
+      effect: If conditions are met, modifies grid_copy by changing the 3 gap pixels to foreground_color.
+transformation_goal:
+  - For each row containing at least two foreground segments:
+  - Identify the (leftmost, in case of ties) longest foreground segment.
+  - Identify the segment immediately to its right (if one exists).
+  - If the horizontal gap between these two segments is exactly 3 pixels wide and consists only of background pixels, fill this gap with the foreground color.
+  - Preserve all other pixels from the input grid.

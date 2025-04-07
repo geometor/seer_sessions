@@ -1,0 +1,63 @@
+task_type: grid_transformation
+elements:
+  - object: grid
+    properties:
+      - type: 2D array of integers
+      - content: digits 0-9 observed
+      - features:
+          - separator_lines:
+              - value: 4 (fixed)
+              - orientation: horizontal (full row) or vertical (full column) or both
+              - function: divides grid into source and target regions
+
+  - object: source_pattern
+    properties:
+      - location: depends on separator presence
+          - if horizontal (hr) only: rows 0 to hr-1
+          - if vertical (vc) only: columns 0 to vc-1
+          - if both (hr, vc): rows 0 to hr-1 AND columns 0 to vc-1 (top-left)
+          - if none: not applicable
+      - content: subgrid extracted from input grid based on location
+
+  - object: target_regions
+    properties:
+      - location: depends on separator presence
+          - if horizontal (hr) only: rows hr+1 to end
+          - if vertical (vc) only: columns vc+1 to end
+          - if both (hr, vc):
+              - top-right: rows 0 to hr-1, columns vc+1 to end
+              - bottom-left: rows hr+1 to end, columns 0 to vc-1
+              - bottom-right: rows hr+1 to end, columns vc+1 to end
+          - if none: not applicable
+      - content: overwritten in output grid by source_pattern
+
+actions:
+  - action: find_separators
+    inputs: input_grid, separator_value (4)
+    outputs: row_index (hr) of horizontal separator (or None), column_index (vc) of vertical separator (or None)
+    description: Locates the first full row and column composed entirely of the separator value.
+
+  - action: determine_source_and_targets
+    inputs: grid_dimensions, hr, vc
+    outputs: source_region_slice, list_of_target_region_slices
+    description: Based on the presence and indices of separators (hr, vc), defines the slicing parameters for the source pattern and the target region(s).
+
+  - action: replicate_pattern
+    inputs: input_grid, output_grid (initially copy of input), source_slice, target_slices
+    outputs: modified_output_grid
+    description: >
+      Extracts the source_pattern from input_grid using source_slice.
+      Copies the source_pattern into the output_grid at each location defined by target_slices.
+      Handles potential size mismatches by truncating the copied pattern to fit the target region.
+      Separator lines in the output_grid remain unchanged from the input.
+
+relationships:
+  - type: definition
+    subject: source_pattern location
+    object: defined by the region(s) "before" the separator lines (top, left, or top-left)
+  - type: transformation
+    subject: target_regions content in output_grid
+    object: overwritten by replication of source_pattern
+  - type: boundary
+    subject: separator_lines
+    object: divides grid; remain unchanged in the transformation

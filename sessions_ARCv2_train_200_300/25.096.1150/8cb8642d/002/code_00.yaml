@@ -1,0 +1,43 @@
+Grid:
+  Type: 2D array of integers
+  BackgroundValue: 0
+
+Region:
+  Definition: Connected component of non-zero cells (using 8-way connectivity).
+  Identification: Use `scipy.ndimage.label` on cells > 0.
+  Properties:
+    - Cells: Coordinates `(r, c)` belonging to the region.
+    - Values: List of integer values at the cell coordinates.
+    - ValueCounts: Frequency of each value in the region.
+    - ComponentColor (C): The most frequent non-zero value. Assumed to exist if `len(ValueCounts) >= 2`.
+    - SeedColor (S): The unique non-zero value that is not C. Assumed to exist if `len(ValueCounts) >= 2`.
+    - SeedCell: The cell `(r_s, c_s)` within the region having the SeedColor S.
+    - BoundaryCells: Set of cells `(r, c)` in the region where at least one 8-way neighbor has the BackgroundValue (0).
+    - InteriorCells: Set of cells `(r, c)` in the region that are neither the SeedCell nor BoundaryCells.
+
+TransformationRule:
+  Scope: Applied independently to each identified Region where both C and S exist (i.e., `len(ValueCounts) >= 2`).
+  Input: Input Grid
+  Output: Output Grid (initialized as a copy of Input Grid)
+  Steps:
+    1. Identify all Regions.
+    2. For each Region:
+       a. Calculate ValueCounts.
+       b. If `len(ValueCounts) < 2`:
+          - Skip transformation for this region (output remains as copied from input).
+       c. If `len(ValueCounts) >= 2`:
+          - Determine ComponentColor (C) (most frequent).
+          - Determine SeedColor (S) (the other color).
+          - Find SeedCell `(r_s, c_s)`.
+          - Identify BoundaryCells.
+          - For each cell `(r, c)` in the Region:
+             i. If `(r, c)` is the SeedCell: Set `Output[r, c] = 0`.
+             ii. Else if `(r, c)` is in BoundaryCells: Keep `Output[r, c]` as C (no change from initial copy).
+             iii. Else (`(r, c)` is an InteriorCell):
+                 - Calculate Manhattan distance `d = |r - r_s| + |c - c_s|`.
+                 - If `d` is odd: Set `Output[r, c] = 0`.
+                 - If `d` is even (`d > 0`): Set `Output[r, c] = SeedColor (S)`.
+  UnaffectedCells:
+    - Cells with BackgroundValue (0).
+    - Cells in Regions where `len(ValueCounts) < 2`.
+    - BoundaryCells within transformed regions.

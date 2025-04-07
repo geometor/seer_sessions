@@ -1,0 +1,69 @@
+task_description: Segment the input grid based on a specific value and replace segments with new values based on segment properties.
+
+grid_properties:
+  - type: 2D array of integers
+  - dimensions: 9x9 (based on examples)
+  - background_value: 7
+  - target_value: 6
+
+objects:
+  - object: cell
+    properties:
+      - value: integer (0-9)
+      - position: (row, column)
+  - object: component
+    properties:
+      - constituent_value: 6 (in input)
+      - cells: list of cell positions
+      - size: integer (count of cells)
+      - shape_descriptor:
+          type: derived (e.g., bounding_box_area)
+          relevance: distinguishes components of the same size (e.g., size 3)
+
+relationships:
+  - type: adjacency
+    between: cells
+    definition: sharing an edge (up, down, left, or right), also known as 4-way connectivity.
+  - type: membership
+    between: cell, component
+    definition: a cell belongs to a specific connected component.
+
+actions:
+  - action: identify_components
+    input: input_grid, target_value (6)
+    output: list of components (each containing member cell positions)
+    method: Use 4-way adjacency to find connected regions of the target_value.
+  - action: determine_replacement_value
+    input: component
+    output: integer (replacement value for the output grid)
+    logic:
+      - Calculate component size.
+      - If size is 3, calculate bounding box area (height * width).
+      - Apply mapping rule:
+          - Size 2 -> 9
+          - Size 3, BBox Area 3 (Line) -> 2
+          - Size 3, BBox Area 4 (L-shape) -> 4
+          - Size 4 -> 8
+          - Size 5 -> 3
+          - Size 6 -> 5
+  - action: construct_output_grid
+    input: input_grid, list of components, replacement values map
+    output: output_grid
+    method:
+      - Initialize output grid as a copy of the input grid.
+      - For each identified component:
+          - Get its calculated replacement value.
+          - For each cell position within that component:
+              - Update the cell's value in the output grid to the replacement value.
+      - Keep background value (7) cells unchanged (unless they were part of a component, which shouldn't happen based on the target value '6').
+
+constants:
+  - background_value: 7
+  - target_value: 6
+  - replacement_map:
+      - condition: size=2 -> value: 9
+      - condition: size=3, bbox_area=3 -> value: 2
+      - condition: size=3, bbox_area=4 -> value: 4
+      - condition: size=4 -> value: 8
+      - condition: size=5 -> value: 3
+      - condition: size=6 -> value: 5

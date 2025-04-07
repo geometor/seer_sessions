@@ -1,0 +1,58 @@
+elements:
+  - object: input_grid
+    properties:
+      - type: 2D array of integers
+      - dimensions: H x W
+      - contains: cells with values (0 or non-zero integers like 2, 4, 5)
+  - object: intermediate_grid
+    properties:
+      - type: 2D array of integers
+      - dimensions: H x W (same as input_grid)
+      - derived_from: input_grid
+      - contains: cells with values (0, 8, or original non-zero integers)
+  - object: output_grid
+    properties:
+      - type: 2D array of integers
+      - dimensions: (2*H) x (2*W)
+      - derived_from: intermediate_grid
+      - structure: 2x2 tiling of intermediate_grid
+  - object: column
+    properties:
+      - part_of: input_grid, intermediate_grid
+      - contains: sequence of cell values
+      - state: contains_non_zero (boolean)
+  - object: cell
+    properties:
+      - value: integer (0, 2, 4, 5, 8)
+      - position: (row, column)
+
+actions:
+  - name: create_intermediate_grid
+    actor: system
+    input: input_grid
+    output: intermediate_grid
+    steps:
+      - Iterate through each column index `j` from 0 to W-1.
+      - Check if any cell `input_grid[i][j]` (for any `i`) is non-zero.
+      - If non-zero exists in the column:
+        - For each row `i` from 0 to H-1:
+          - If `input_grid[i][j]` is non-zero, set `intermediate_grid[i][j] = input_grid[i][j]`.
+          - If `input_grid[i][j]` is 0, set `intermediate_grid[i][j] = 8`.
+      - If only zeros exist in the column:
+        - For each row `i` from 0 to H-1:
+          - Set `intermediate_grid[i][j] = 0`.
+  - name: tile_grid
+    actor: system
+    input: intermediate_grid
+    output: output_grid
+    steps:
+      - Create an output grid with dimensions (2*H) x (2*W).
+      - Copy the `intermediate_grid` into the top-left quadrant (rows 0 to H-1, cols 0 to W-1).
+      - Copy the `intermediate_grid` into the top-right quadrant (rows 0 to H-1, cols W to 2*W-1).
+      - Copy the `intermediate_grid` into the bottom-left quadrant (rows H to 2*H-1, cols 0 to W-1).
+      - Copy the `intermediate_grid` into the bottom-right quadrant (rows H to 2*H-1, cols W to 2*W-1).
+
+relationships:
+  - output_grid is a 2x2 tiling of intermediate_grid.
+  - intermediate_grid is derived from input_grid based on column content.
+  - A cell's value in intermediate_grid depends on the values in the corresponding column of input_grid.

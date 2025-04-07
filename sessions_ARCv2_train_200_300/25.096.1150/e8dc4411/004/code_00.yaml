@@ -1,0 +1,60 @@
+task_description: Fill a region originating from a source cell with the source color. The fill propagates using two specific directions (one diagonal, one axis-aligned) determined by the relative position of the source cell and a zero cell. Only cells originally containing the background color are modified.
+
+elements:
+  - object: grid
+    properties:
+      - type: 2D array of integers
+      - dimensions: variable
+  - object: cell
+    properties:
+      - location: (row, column)
+      - color: integer
+  - object: background_color
+    properties:
+      - identified_by: most frequent color in the input grid
+  - object: source_cell
+    properties:
+      - identified_by: the single cell in the input whose color is not the background color and not zero
+      - color: source_color (e.g., 3, 2, 8)
+      - location: (source_row, source_col)
+  - object: zero_cell
+    properties:
+      - identified_by: any cell with color 0 in the input grid
+      - location: (zero_row, zero_col)
+
+relationships:
+  - type: relative_position
+    between: source_cell, zero_cell
+    determines: primary_direction_D1 (diagonal step vector (ddr, ddc))
+    details: ddr = sign(source_row - zero_row), ddc = sign(source_col - zero_col).
+  - type: derivation
+    from: primary_direction_D1
+    determines: secondary_direction_D2 (axis-aligned step vector)
+    rules:
+      - if D1 is (1, -1) or (1, 1), then D2 is (1, 0)  # Down-Left/Down-Right -> Down
+      - if D1 is (-1, 1), then D2 is (0, 1)           # Up-Right -> Right
+      # (Hypothesized: if D1 is (-1, -1), then D2 might be (0, -1) # Up-Left -> Left)
+  - type: adjacency_constraint
+    on: fill_process
+    details: Fill expands only via steps D1 and D2 from already filled/source cells.
+  - type: boundary_constraint
+    on: fill_process
+    details: Fill stops at grid boundaries.
+  - type: color_constraint
+    on: fill_process
+    details: Only cells that contained the background_color in the *input* grid can be changed to the source_color.
+
+actions:
+  - action: identify_elements
+    inputs: input_grid
+    outputs: background_color, source_cell (location, color), zero_cell_location
+  - action: determine_propagation_directions
+    inputs: source_cell_location, zero_cell_location
+    outputs: direction_D1, direction_D2
+  - action: perform_fill
+    inputs: grid, source_cell, background_color, direction_D1, direction_D2
+    outputs: modified_grid
+    process: Use a fill algorithm (like BFS) starting from neighbors of the source cell reachable via D1/D2. Explore using only steps D1 and D2. Change a cell's color to source_color *only* if it's within bounds and its color in the *original* input grid was the background_color. Keep track of visited cells to avoid cycles and re-processing. The original source cell is not re-colored.
+
+output_generation:
+  - process: Start with a copy of the input grid. Identify background, source, and zero elements. Determine propagation directions D1 and D2. Execute the perform_fill action. The resulting grid is the output.

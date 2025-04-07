@@ -1,0 +1,44 @@
+task_type: conditional_grid_fill
+elements:
+  - role: background
+    property: most_frequent_color
+    value: color_code
+  - role: frame
+    property: objects_sharing_color_with_largest_object
+    value: color_code (frame_color)
+    identification: find_largest_object_by_size; get_its_color; find_all_objects_of_that_color
+  - role: other_objects
+    property: all_non_background_non_frame_objects
+    value: list_of_objects_with_color_size_coords
+  - role: signal_object
+    property: smallest_among_other_objects
+    identification: find_min_size_among_other_objects; tie-break_with_min_color_value
+    value: object_properties (signal_color, signal_size)
+    condition: exists_if_other_objects_is_not_empty
+  - role: fill_color_source
+    value:
+      if_signal_object_exists: signal_color
+      else: frame_color
+  - role: fill_region_base
+    property: background_pixels_reachable_from_edge
+    identification: 4-way_flood_fill_from_edge_pixels; must_be_background; must_not_cross_any_non_background_pixel
+    value: set_of_coordinates (outside_pixels)
+  - role: fill_region_target
+    property: specific_connected_component_of_fill_region_base
+    identification: find_first_pixel_in_scanline_order_belonging_to_fill_region_base; perform_4-way_flood_fill_starting_from_that_pixel_limited_to_pixels_in_fill_region_base
+    value: set_of_coordinates (target_component_pixels)
+actions:
+  - identify_background_color
+  - find_all_non_background_objects (4-way_connectivity)
+  - identify_largest_object_and_frame_color
+  - collect_all_frame_objects_and_their_coordinates
+  - identify_other_objects
+  - determine_fill_color (from_smallest_other_object_or_frame_color)
+  - determine_base_fill_region (background_reachable_from_edge_without_crossing_any_non_bg)
+  - determine_target_fill_region (specific_component_of_base_region)
+  - apply_fill_color_to_target_fill_region
+outputs:
+  - grid_with_target_region_filled
+notes:
+  - This model correctly solves Example 1 and Example 2.
+  - Example 3 is not solved; it appears to follow a different rule where the fill color comes from the largest 'other' object (color 3) and the fill area is related to adjacency to that object, rather than the smallest 'other' object and edge connectivity.

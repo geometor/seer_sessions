@@ -1,0 +1,46 @@
+task_elements:
+  - item: grid
+    properties:
+      - background_color: 'azure' (8) - confirmed as most frequent color.
+      - contains: 'boundary' pixels.
+      - shape: Consistent within each example pair (16x16 shown).
+  - item: boundary_pixels
+    properties:
+      - color: Varies per example ('yellow' (4) in ex1, 'green' (3) in ex2), but is consistent within one input example.
+      - distribution: Scattered single pixels.
+      - role: Define the limits of regions to be filled; act as barriers to flood fill.
+      - persistence: Remain unchanged in the output grid.
+  - item: output_grid
+    properties:
+      - size: Same as input grid.
+      - background_color: 'azure' (8) - present in areas outside the filled regions.
+      - boundary_pixels: Unchanged from input.
+      - filled_pixels:
+          - color: 'red' (2) - Confirmed as the color appearing only in output.
+          - location: Occupy the positions of original 'azure' background pixels that were enclosed by 'boundary' pixels and not reachable from the grid border without crossing a boundary pixel.
+actions:
+  - action: identify_colors
+    inputs: input_grid
+    outputs: background_color, boundary_color(s)
+  - action: identify_exterior_regions
+    inputs: input_grid, background_color, boundary_color(s)
+    description: Determine which background pixels are reachable from the grid borders without crossing any boundary pixels.
+    method: Flood fill (e.g., BFS) starting from all background pixels on the grid border. The fill should only propagate to adjacent pixels that are also the background color. Track visited pixels.
+  - action: fill_interior_regions
+    inputs: input_grid, visited_exterior_pixels_mask, background_color
+    output: output_grid
+    description: Create the output grid. Iterate through the input grid. If a pixel is the background color AND it was *not* visited during the exterior flood fill, change its color to 'red' (2) in the output grid. Otherwise, keep the pixel's original color from the input grid.
+relationships:
+  - type: enclosure
+    subject: boundary_pixels
+    object: background_pixels ('azure')
+    description: The boundary pixels collectively enclose certain regions of background pixels, preventing them from being reached by a flood fill originating from the grid borders that respects the boundary pixels as barriers.
+  - type: reachability
+    subject: grid_border_background_pixels
+    object: background_pixels ('azure')
+    condition: Path exists consisting only of adjacent background pixels.
+    description: Background pixels reachable from the border under this condition constitute the 'exterior'.
+  - type: transformation
+    subject: enclosed_background_pixels (background pixels not reachable from the border)
+    target: filled_pixels ('red')
+    description: Enclosed (non-reachable) background pixels are transformed into 'red' (2) filled pixels.

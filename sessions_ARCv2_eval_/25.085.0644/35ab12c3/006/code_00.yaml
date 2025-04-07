@@ -1,0 +1,79 @@
+task_description: The task involves transforming an input grid by first connecting pairs of same-colored pixels horizontally and then performing a simultaneous color expansion (BFS) from original non-white pixels, with specific color transformation rules and conflict resolution.
+
+grid_properties:
+  dimensionality: 2D
+  cell_values: Integers 0-9 representing colors.
+  size_constraints: 1x1 to 30x30.
+
+objects:
+  - object: Pixel
+    properties:
+      - color: Integer 0-9
+      - location: (row, column)
+  - object: BackgroundPixel
+    description: Pixels with color White (0). These are the areas where expansion can occur.
+  - object: SourcePixel
+    description: Pixels in the *original* input grid that are not White (0). They are the starting points for the expansion process.
+    properties:
+      - original_color: The color of the pixel in the input grid.
+      - expansion_color: The color used when this source expands, determined by mapping rules.
+      - location: (row, column)
+  - object: ConnectionLinePixel
+    description: Pixels that were originally White (0) but are filled with a specific color (C) during the connection phase because they lie horizontally between two pixels of color C on the same row.
+    properties:
+      - color: The color C of the pixels that formed the connection.
+      - location: (row, column)
+  - object: ObstaclePixel
+    description: Pixels that block the expansion process.
+    includes:
+      - SourcePixels (in their original locations)
+      - ConnectionLinePixels
+      - Pixels resulting from expansion conflicts ("ContestedPixels")
+      - Grid boundaries
+  - object: ExpandedPixel
+    description: Pixels that were originally White (0) and were filled by the expansion of a SourcePixel during the BFS.
+    properties:
+      - color: The expansion_color of the SourcePixel that claimed it.
+      - location: (row, column)
+      - source_origin: The location of the SourcePixel that claimed this pixel.
+  - object: ContestedPixel
+    description: Pixels that were originally White (0) and were targeted by multiple different SourcePixels in the same step of the BFS. They remain White (0) and act as obstacles.
+    properties:
+      - color: White (0)
+      - location: (row, column)
+
+actions:
+  - action: ConnectSameColorPixels
+    description: Iteratively find pairs of pixels of the same non-white color (C) on the same row with only White (0) pixels strictly between them. Fill the path between them with color C. Repeat until no more connections can be made.
+    input: Current grid state
+    output: Grid state after connections (`grid_with_connections`)
+  - action: IdentifySources
+    description: Find all pixels in the *original* input grid that are not White (0).
+    input: Original input grid
+    output: List of SourcePixel locations and their original_color.
+  - action: DetermineGlobalConditions
+    description: Check the original input grid for the presence of any Magenta (6) source pixels and any Orange (7) pixels anywhere.
+    input: Original input grid, List of SourcePixels
+    output: Boolean flags `has_magenta_source`, `has_orange_anywhere`.
+  - action: MapExpansionColors
+    description: Determine the expansion_color for each source based on its original_color and the global conditions.
+    rules:
+      - IF original_color is Azure (8) AND `has_magenta_source` is true THEN expansion_color is Blue (1).
+      - IF original_color is Magenta (6) AND `has_orange_anywhere` is true THEN expansion_color is Orange (7).
+      - ELSE expansion_color is the original_color.
+    input: SourcePixel original_color, `has_magenta_source`, `has_orange_anywhere`
+    output: SourcePixel expansion_color.
+  - action: SimultaneousExpandBFS
+    description: Perform a simultaneous Breadth-First Search starting from all SourcePixel locations on the `grid_with_connections`.
+    parameters:
+      - expansion_medium: `grid_with_connections`
+      - valid_expansion_target: White (0) pixels in `grid_with_connections`.
+      - obstacles: Non-White (0) pixels in `grid_with_connections`, ContestedPixels, grid boundaries.
+      - step: Expansion proceeds in discrete steps (Manhattan distance).
+      - conflict_resolution: If multiple sources (identified by unique start locations) reach the same White (0) pixel in the same step, mark that pixel as ContestedPixel (remains White(0)) and it cannot be expanded into further.
+    input: `grid_with_connections`, SourcePixel locations and their expansion_colors.
+    output: A mapping indicating which SourcePixel (by location) claimed which grid cell, or if a cell is Contested.
+  - action: ConstructOutputGrid
+    description: Create the final grid by starting with `grid_with_connections` and coloring the cells claimed during the BFS according to their respective source's expansion_color. Contested cells remain White (0). Unclaimed cells retain their color from `grid_with_connections`.
+    input: `grid_with_connections`, BFS ownership/contested mapping.
+    output: Final output grid.

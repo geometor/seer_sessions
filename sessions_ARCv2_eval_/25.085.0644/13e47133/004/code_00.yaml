@@ -1,0 +1,49 @@
+facts:
+  - grid_dimensions: Variable height and width (up to 30x30).
+  - components:
+      - type: background_pixels
+        properties:
+          - color: Most frequent color in the grid, excluding the divider color.
+      - type: divider
+        properties:
+          - color: 2 (Red).
+          - structure: Forms a cross shape, dividing the grid into four quadrants. Consists of a full vertical column and a partial or full horizontal row intersecting it.
+      - type: intersection_point
+        properties:
+          - coordinates: (h, v)
+          - definition_v: Index of the first column fully composed of the divider color.
+          - definition_h: Index of the first row where the horizontal divider segment starts at column 'v' (i.e., grid[h, v] == divider_color and grid[h, v+1] == divider_color).
+      - type: initiator_pixels
+        properties:
+          - color: Any color that is not the background color and not the divider color.
+          - location: Can appear in any quadrant.
+      - type: quadrants
+        properties:
+          - count: 4 (Top-Left, Top-Right, Bottom-Left, Bottom-Right)
+          - boundaries: Defined by the intersection point (h, v).
+            - TL: rows < h, cols < v
+            - TR: rows < h, cols > v
+            - BL: rows >= h, cols < v  # Note: includes horizontal divider row h
+            - BR: rows >= h, cols > v  # Note: includes horizontal divider row h
+  - actions:
+      - action: identify_elements
+        description: Determine the background color, divider color (fixed as Red), and the intersection point (h, v).
+      - action: identify_initiators
+        description: Locate all initiator pixels and their colors.
+      - action: fill_quadrants
+        description: For each background pixel within a quadrant, determine the 'closest' initiator pixel *also located within the same quadrant*. Assign the background pixel the color of that closest initiator.
+        details:
+          - Proximity is measured by Manhattan distance.
+          - Boundaries: The fill operates independently within each quadrant, effectively stopped by the divider lines.
+          - Tie-breaking: If a background pixel is equidistant from multiple initiators in its quadrant, assign the color of the initiator with the lowest color index. If color indices are tied, use the initiator with the lowest row index. If rows are tied, use the initiator with the lowest column index.
+      - action: conditional_reflection
+        description: Check if the Bottom-Left (BL) quadrant of the *original input grid* contains any initiator pixels.
+        condition: If the input BL quadrant contains *no* initiator pixels.
+        effect:
+          - Modify the Bottom-Left (BL) quadrant of the *output grid* (after the fill_quadrants action).
+          - The content for the output BL quadrant is derived from the filled Top-Left (TL) quadrant of the output grid.
+          - Specifically, take a sub-region from the bottom of the filled TL quadrant, flip it vertically, and place it into the BL quadrant.
+          - Height Handling:
+              - The height of the sub-region taken from TL is `min(height(TL), height(BL))`.
+              - This flipped sub-region is placed starting at the top of the BL quadrant.
+              - If BL is taller than TL (`height(BL) > height(TL)`), the remaining rows at the bottom of the BL quadrant are filled by repeating the *top row* of the flipped content that was just pasted.

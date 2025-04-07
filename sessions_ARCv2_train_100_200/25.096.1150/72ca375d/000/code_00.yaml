@@ -1,0 +1,50 @@
+task_description: Extract the bounding box of a specific object from an input grid based on density.
+
+input_elements:
+  - type: grid
+    rows: 10
+    columns: 10
+    cell_type: digit (0-9)
+    properties:
+      - background_value: 0
+      - objects:
+          description: Connected components of identical non-zero digits.
+          connectivity: orthogonal (up, down, left, right)
+          count_per_example: 3 (observed)
+
+output_elements:
+  - type: grid
+    properties:
+      - content: Subgrid extracted from the input grid.
+      - source: Corresponds to the bounding box of a selected object from the input.
+
+transformation:
+  - action: identify_objects
+    description: Find all distinct connected components of non-zero cells in the input grid.
+    inputs: input_grid
+    outputs: list_of_objects
+      - object_properties:
+          - color (digit)
+          - cell_coordinates
+  - action: calculate_object_properties
+    description: For each identified object, calculate its properties.
+    inputs: list_of_objects
+    outputs: list_of_objects_with_properties
+      - object_properties:
+          - color
+          - cell_coordinates
+          - bounding_box: (min_row, max_row, min_col, max_col)
+          - area: bounding_box_height * bounding_box_width
+          - mass: count of cells in the object
+          - density: mass / area
+  - action: select_target_object
+    description: Choose the object with the maximum calculated density.
+    inputs: list_of_objects_with_properties
+    outputs: target_object
+    selection_criterion: maximum_density
+  - action: extract_output
+    description: Extract the subgrid from the input grid defined by the bounding box of the target_object.
+    inputs:
+      - input_grid
+      - target_object.bounding_box
+    outputs: output_grid

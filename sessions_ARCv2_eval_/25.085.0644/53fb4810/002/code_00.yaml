@@ -1,0 +1,66 @@
+task_description: Fill columns based on marker locations and blue boundaries.
+
+grid_properties:
+  - background_color: 8 (azure) # Dominant color, treated as passive.
+  - width: variable
+  - height: variable
+
+objects:
+  - object: marker_yellow
+    color: 4 (yellow)
+    properties:
+      - unique: True # Exactly one yellow pixel exists in the input grid.
+      - role: primary_marker
+  - object: marker_red
+    color: 2 (red)
+    properties:
+      - unique: False # Can be one or more red pixels.
+      - role: secondary_marker
+      - selection_rule: Select the red pixel with the minimum L1 distance to the unique yellow marker. If multiple red pixels have the same minimum distance, select the one with the minimum row index; if there's still a tie, select the one with the minimum column index.
+  - object: boundary_marker
+    color: 1 (blue)
+    properties:
+      - role: defines_upper_limit_of_modification
+      - location_rule: The boundary for a specific column is the row index of the highest blue pixel (minimum row index) within that column. If no blue pixels exist in the column, the boundary is effectively the bottom of the grid (modification applies to all rows).
+  - object: override_marker
+    color: 3 (green)
+    properties:
+      - role: conditionally_modifies_output
+      - condition: Only active if selected red and yellow markers are in the same column.
+      - action: If an input pixel within the modification range (column and rows) is green, the corresponding output pixel is set to yellow, overwriting any pattern fill.
+
+actions:
+  - action: identify_markers
+    inputs: [input_grid]
+    outputs: [selected_red_marker_coord, unique_yellow_marker_coord]
+    description: Find the unique yellow pixel. Find all red pixels. Calculate L1 distances between yellow and all reds. Select the red pixel corresponding to the minimum distance using the specified tie-breaking rule.
+  - action: determine_case
+    inputs: [selected_red_marker_coord, unique_yellow_marker_coord]
+    outputs: [case_type] # 'same_column' or 'different_columns'
+    description: Compare the column indices of the selected red and yellow markers.
+  - action: process_same_column
+    condition: case_type == 'same_column'
+    inputs: [input_grid, selected_red_marker_coord] # yellow coord not needed here as col is same
+    outputs: [output_grid_column]
+    steps:
+      - Get target_column from marker coordinates.
+      - Find boundary_row using the highest blue pixel in target_column.
+      - Initialize output column segment (rows 0 to boundary_row - 1) by copying from input.
+      - Fill the segment with an alternating pattern of Red(2)/Yellow(4), starting with Red(2) at row 0.
+      - Iterate through the segment rows (0 to boundary_row - 1): if input_grid[row, target_column] is Green(3), set output_grid[row, target_column] = Yellow(4).
+  - action: process_different_columns
+    condition: case_type == 'different_columns'
+    inputs: [input_grid, selected_red_marker_coord, unique_yellow_marker_coord]
+    outputs: [output_grid_red_column, output_grid_yellow_column]
+    steps:
+      - Get red_column and yellow_column from marker coordinates.
+      - Find boundary_row_red using the highest blue pixel in red_column.
+      - Find boundary_row_yellow using the highest blue pixel in yellow_column.
+      - Initialize output red column segment (rows 0 to boundary_row_red - 1) by copying from input.
+      - Fill the red segment with solid Red(2).
+      - Initialize output yellow column segment (rows 0 to boundary_row_yellow - 1) by copying from input.
+      - Fill the yellow segment with solid Yellow(4).
+  - action: construct_output
+    inputs: [input_grid, output_grid_column(s)] # Modified column(s) from previous actions
+    outputs: [final_output_grid]
+    description: Create a copy of the input grid. Overwrite the relevant column(s) from row 0 up to (but not including) their respective boundary rows with the results from process_same_column or process_different_columns.

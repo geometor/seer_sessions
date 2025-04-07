@@ -1,0 +1,69 @@
+task_description: >
+  Extracts a subgrid defined by the bounding box of the single largest monochromatic
+  connected component from the input grid. Within this subgrid, original non-zero
+  colors are preserved, and background cells (0) are filled with the color of the
+  largest monochromatic component.
+
+definitions:
+  grid: A 2D array of integers representing pixels or cells.
+  color: An integer value in a grid cell. 0 represents the background.
+  monochromatic_component: >
+    A set of connected cells in the grid that all share the same non-zero color.
+    Connectivity is 4-directional (up, down, left, right).
+  component_size: The number of cells belonging to a monochromatic component.
+  largest_monochromatic_component: >
+    The monochromatic component with the maximum number of cells among all
+    monochromatic components in the input grid. If there's a tie in size,
+    the specific component chosen doesn't strictly matter based on examples,
+    but a consistent rule (e.g., first encountered) would be needed.
+  component_color: The single color value shared by all cells in a monochromatic component.
+  target_color: The color of the largest_monochromatic_component.
+  bounding_box: >
+    The smallest rectangular subgrid that completely encloses all cells
+    of the largest_monochromatic_component. Defined by min/max row and column indices.
+
+input_elements:
+  - name: input_grid
+    type: grid
+    description: Contains background (0) and multiple potentially multi-colored regions.
+
+output_elements:
+  - name: output_grid
+    type: grid
+    description: >
+      Represents the extracted subgrid based on the bounding box of the
+      largest monochromatic component, with background cells filled.
+
+relationships_and_actions:
+  - action: find_monochromatic_components
+    input: input_grid
+    output: list_of_monochromatic_components_with_details
+    description: >
+      Identify all distinct monochromatic components (groups of connected cells
+      with the same non-zero color). Record each component's cells, color, and size.
+  - action: identify_largest_monochromatic_component
+    input: list_of_monochromatic_components_with_details
+    output: largest_component_details (cells, color, size)
+    description: >
+      Select the monochromatic component with the maximum size. Store its set of
+      cell coordinates and its color (target_color).
+  - action: calculate_bounding_box
+    input: largest_component_details.cells
+    output: bounding_box_coordinates (min_r, max_r, min_c, max_c)
+    description: >
+      Find the minimum and maximum row and column indices enclosing the cells of
+      the largest monochromatic component.
+  - action: create_output_grid_dimensions
+    input: bounding_box_coordinates
+    output: output_grid_shape (rows, cols)
+    description: Determine the dimensions for the output grid based on the bounding box.
+  - action: populate_output_grid
+    input: input_grid, bounding_box_coordinates, target_color, output_grid_shape
+    output: final_output_grid
+    description: >
+      Create an output grid of the determined shape. Iterate through the cell
+      locations within the bounding box relative to the input grid.
+      For each corresponding location (r_out, c_out) in the output grid:
+      - Get the color (input_color) from the input grid at (r_in, c_in).
+      - If input_color is 0, set output_grid[r_out][c_out] = target_color.
+      - If input_color is non-zero, set output_grid[r_out][c_out] = input_color.

@@ -1,0 +1,49 @@
+task_context:
+  problem_description: "Simulate gravity acting on distinct objects within a grid."
+  grid_properties:
+    background_color: 8 # Azure
+    object_colors: Any color other than 8
+    dimensions: Variable (up to 30x30)
+objects:
+  definition: "A contiguous group of pixels of the same non-background color. Connectivity is 8-way (includes diagonals)."
+  properties:
+    - color: The integer value (0-9, excluding 8) of the pixels forming the object.
+    - shape: The relative arrangement of pixels within the object.
+    - position: The location of the object within the grid, typically represented by its bounding box or the coordinates of its constituent pixels.
+  state_in_input: Objects are located at various positions within the input grid.
+  state_in_output: Objects are located at their final resting positions after falling.
+actions:
+  - name: identify_objects
+    description: "Find all distinct connected components (objects) of non-background color in the input grid."
+    inputs: input_grid, background_color
+    outputs: list_of_objects (each with color, shape, initial position)
+  - name: simulate_fall
+    description: "Determine the final vertical position for each object by simulating its fall until it stops."
+    inputs: object, current_state_of_output_grid, grid_height
+    outputs: final_vertical_position_offset
+    details: |
+      An object falls straight down (column remains constant).
+      It stops falling if any of its pixels would land:
+      1. On or beyond the bottom edge of the grid (row index >= grid_height).
+      2. On a cell in the output grid already occupied by a previously settled object.
+  - name: place_object
+    description: "Draw the object onto the output grid at its final calculated position."
+    inputs: output_grid, object, final_position
+    outputs: updated_output_grid
+order_of_operations:
+  - Initialize the output grid with the background color.
+  - Identify all objects in the input grid.
+  - Process objects one by one (order might matter if objects could potentially interact horizontally, though not observed here; processing lower objects first seems reasonable for gravity).
+  - For each object:
+    - Simulate its fall to find the maximum distance it can drop vertically without collision (with grid bottom or already placed objects).
+    - Calculate its final position (initial_row + fall_distance, initial_column).
+    - Place the object's pixels onto the output grid at the final position.
+  - Return the completed output grid.
+invariants:
+  - Grid dimensions remain the same.
+  - Background color remains the same.
+  - The number, shape, and color of each object remain the same.
+  - The relative horizontal order of objects is maintained (no horizontal movement).
+constraints_and_dependencies:
+  - Objects fall as rigid bodies.
+  - The order of simulation matters: an object's final position depends on the positions of objects that have already settled below it. Sorting objects by initial bottom/top position might be a robust strategy.

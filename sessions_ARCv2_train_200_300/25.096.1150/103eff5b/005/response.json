@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\n\n\"\"\"\nTransforms an input grid by mapping a \"pattern\" region onto a \"template\" region based on relative pixel positions within their respective bounding boxes.\n\n1.  Identifies two regions:\n    - Pattern Region: Cells with values other than 0 and 8.\n    - Template Region: Cells with the value 8.\n2.  Calculates the minimum bounding box for both regions.\n3.  Iterates through each cell (r, c) marked as template (value 8).\n4.  Calculates the normalized position of (r, c) within the template's bounding box.\n5.  Maps this normalized position to a corresponding coordinate (src_r, src_c) within the pattern's bounding box.\n6.  Determines the nearest integer coordinates to (src_r, src_c) within the pattern bounding box bounds.\n7.  Copies the color from the input grid at these nearest source coordinates to the output grid at position (r, c), effectively replacing the original 8.\n8.  Cells outside the template region remain unchanged.\n\"\"\"\n\ndef get_bounding_box(coords: np.ndarray) -> tuple | None:\n    \"\"\"\n    Calculates the bounding box (min_r, min_c, max_r, max_c) for a set of coordinates.\n\n    Args:\n        coords: A NumPy array of shape (N, 2) where N is the number of points,\n                and each row is [row, col].\n\n    Returns:\n        A tuple (min_r, min_c, max_r, max_c) or None if coords is empty.\n    \"\"\"\n    if coords.shape[0] == 0:\n        return None\n    min_r, min_c = coords.min(axis=0)\n    max_r, max_c = coords.max(axis=0)\n    return int(min_r), int(min_c), int(max_r), int(max_c)\n\ndef transform(input_grid: list[list[int]]) -> list[list[int]]:\n    \"\"\"\n    Applies the pattern-to-template pixel mapping transformation.\n\n    Args:\n        input_grid: The input grid as a list of lists of integers.\n\n    Returns:\n        The transformed grid as a list of lists of integers.\n    \"\"\"\n    # Convert to numpy array for easier manipulation\n    grid = np.array(input_grid, dtype=int)\n    output_grid = np.copy(grid)\n    rows, cols = grid.shape\n\n    # --- 1. Identify Pattern and Template Cells ---\n    pattern_mask = (grid != 0) & (grid != 8)\n    template_mask = (grid == 8)\n\n    pattern_coords = np.argwhere(pattern_mask)\n    template_coords = np.argwhere(template_mask)\n\n    # --- 2. Handle Empty Regions ---\n    if pattern_coords.shape[0] == 0 or template_coords.shape[0] == 0:\n        # If either region is missing, no transformation can be applied\n        return output_grid.tolist()\n\n    # --- 3. Calculate Bounding Boxes ---\n    p_bbox = get_bounding_box(pattern_coords)\n    t_bbox = get_bounding_box(template_coords)\n\n    # This check should be redundant due to the check above, but included for safety\n    if p_bbox is None or t_bbox is None:\n         return output_grid.tolist()\n\n    p_min_r, p_min_c, p_max_r, p_max_c = p_bbox\n    t_min_r, t_min_c, t_max_r, t_max_c = t_bbox\n\n    # --- 4. Calculate Bounding Box Dimensions (adding 1 because bounds are inclusive) ---\n    # Note: We use max-min directly for scaling factor. Add 1 if thinking about number of pixels.\n    # For normalization/scaling, height/width = (max_coord - min_coord) is correct.\n    p_height = p_max_r - p_min_r\n    p_width = p_max_c - p_min_c\n    t_height = t_max_r - t_min_r\n    t_width = t_max_c - t_min_c\n\n    # --- 5. Iterate and Map Template Pixels ---\n    # Loop only through the template coordinates identified earlier\n    for r, c in template_coords:\n        # The check 'if grid[r, c] == 8' is implicitly true for these coords\n\n        # --- 6. Calculate Normalized Position within Template BBox ---\n        # Avoid division by zero for single-pixel-wide/high boxes\n        norm_r = 0.5 if t_height == 0 else (r - t_min_r) / t_height\n        norm_c = 0.5 if t_width == 0 else (c - t_min_c) / t_width\n\n        # --- 7. Map to Source Coordinates within Pattern BBox ---\n        src_r_float = p_min_r + norm_r * p_height\n        src_c_float = p_min_c + norm_c * p_width\n\n        # --- 8. Find Nearest Integer Source Coordinates and Clamp ---\n        # Use np.round for nearest integer, then clamp to pattern bbox bounds\n        nearest_src_r = int(np.round(src_r_float))\n        nearest_src_c = int(np.round(src_c_float))\n\n        # Clamp coordinates to be within the source pattern bounding box\n        nearest_src_r = np.clip(nearest_src_r, p_min_r, p_max_r)\n        nearest_src_c = np.clip(nearest_src_c, p_min_c, p_max_c)\n        \n        # --- 9. Get Source Color and Update Output ---\n        source_color = grid[nearest_src_r, nearest_src_c]\n        \n        # Ensure we don't accidentally sample a 0 or 8 if the nearest pixel wasn't part of the original pattern\n        # This could happen if the pattern is sparse within its bounding box.\n        # A better approach might be needed if sampling background/template is forbidden.\n        # Option 1: Use original pattern_mask to ensure sampled pixel is valid pattern\n        # Option 2: If sampled pixel is not valid pattern, find nearest *valid* pattern pixel (more complex)\n        # Let's stick to simple nearest neighbor for now as per the NL program.\n        \n        output_grid[r, c] = source_color\n\n    # --- 10. Finalize ---\n    return output_grid.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 25281,
+    "candidates_token_count": 1889,
+    "total_token_count": 27170,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 18.597415,
+  "retries": 1
+}

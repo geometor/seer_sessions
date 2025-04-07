@@ -1,0 +1,39 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\nIdentify all distinct objects (connected components of the same non-zero digit) in the input grid using orthogonal connectivity.\nFor each object, calculate its mass (cell count), bounding box (min/max row/col), bounding box area, and density (mass/area).\nFilter out objects with density 1.0 AND mass 1, unless this would remove all objects.\nFrom the filtered list, find the object(s) with the maximum density.\nIf there's a tie in density, select the object(s) among the tied ones with the largest bounding box area.\nIf there's still a tie (same max density and same max area), select the object(s) among the tied ones with the largest mass.\nIf a tie still persists, select the first object found among the final tied set.\nReturn the subgrid from the input corresponding to the bounding box of the selected object.\n\"\"\"\n\nimport collections\nimport numpy as np # Use numpy for easier slicing\n\ndef get_bounding_box(coords):\n    \"\"\"Calculates the bounding box and its area for a set of coordinates.\"\"\"\n    if not coords:\n        return None, 0\n    min_r = min(r for r, c in coords)\n    max_r = max(r for r, c in coords)\n    min_c = min(c for r, c in coords)\n    max_c = max(c for r, c in coords)\n    height = max_r - min_r + 1\n    width = max_c - min_c + 1\n    area = height * width\n    # Returns (min_row, max_row, min_col, max_col), area\n    return (min_r, max_r, min_c, max_c), area\n\ndef find_objects(grid: list[list[int]]) -> list[dict]:\n    \"\"\"Finds all connected components of non-zero cells in the grid.\"\"\"\n    grid_np = np.array(grid)\n    rows, cols = grid_np.shape\n    if rows == 0 or cols == 0:\n        return []\n        \n    visited = set()\n    objects = [] # List to store dicts: {'id': id, 'color': color, 'coords': set_of_coords}\n    object_id_counter = 0\n\n    for r in range(rows):\n        for c in range(cols):\n            if grid_np[r, c] != 0 and (r, c) not in visited:\n                color = grid_np[r, c]\n                current_object_coords = set()\n                queue = collections.deque([(r, c)])\n                visited.add((r, c))\n                \n                while queue:\n                    row, col = queue.popleft()\n                    current_object_coords.add((row, col))\n                    \n                    # Check orthogonal neighbors\n                    for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n                        nr, nc = row + dr, col + dc\n                        if 0 <= nr < rows and 0 <= nc < cols and \\\n                           (nr, nc) not in visited and \\\n                           grid_np[nr, nc] == color:\n                            visited.add((nr, nc))\n                            queue.append((nr, nc))\n                \n                if current_object_coords:\n                     objects.append({\n                         'id': object_id_counter,\n                         'color': int(color), # Ensure color is int\n                         'coords': current_object_coords\n                     })\n                     object_id_counter += 1\n    return objects\n\ndef transform(input_grid: list[list[int]]) -> list[list[int]]:\n    \"\"\"\n    Applies the transformation rule based on density, area, and mass tie-breaking.\n    \"\"\"\n    input_np = np.array(input_grid) # Convert to numpy array for easier slicing\n\n    # 1. Find all distinct objects\n    found_objects = find_objects(input_grid)\n\n    # Handle case where no objects are found\n    if not found_objects:\n        return []\n\n    # 2. Calculate properties for each object\n    object_details = []\n    for obj in found_objects:\n        coords = obj['coords']\n        bbox, area = get_bounding_box(coords)\n        if bbox is None: # Should not happen if found_objects is not empty\n            continue\n\n        mass = len(coords)\n        density = mass / area if area > 0 else 0\n        \n        object_details.append({\n            'id': obj['id'],\n            'color': obj['color'],\n            'coords': coords,\n            'mass': mass,\n            'bbox': bbox,\n            'area': area,\n            'density': density\n        })\n\n    # Handle case where no valid object details were generated\n    if not object_details:\n         return []\n\n    # 3. Filter out single-cell objects with density 1.0\n    filtered_objects = [\n        obj for obj in object_details\n        if not (obj['density'] == 1.0 and obj['mass'] == 1)\n    ]\n    # Use the filtered list unless it's empty, otherwise revert to original\n    candidate_objects = filtered_objects if filtered_objects else object_details\n\n    # 4. Find max density among candidates\n    if not candidate_objects: # Should not happen based on previous checks, but safety first\n        return []\n    max_density = -1.0\n    for obj in candidate_objects:\n        if obj['density'] > max_density:\n            max_density = obj['density']\n\n    # 5. Select objects with max density\n    primary_candidates = [obj for obj in candidate_objects if obj['density'] == max_density]\n\n    # 6. Tie-break by max area (if necessary)\n    if len(primary_candidates) > 1:\n        max_area = -1\n        for obj in primary_candidates:\n            if obj['area'] > max_area:\n                max_area = obj['area']\n        secondary_candidates = [obj for obj in primary_candidates if obj['area'] == max_area]\n    else:\n        secondary_candidates = primary_candidates\n\n    # 7. Tie-break by max mass (if necessary)\n    if len(secondary_candidates) > 1:\n        max_mass = -1\n        for obj in secondary_candidates:\n            if obj['mass'] > max_mass:\n                max_mass = obj['mass']\n        tertiary_candidates = [obj for obj in secondary_candidates if obj['mass'] == max_mass]\n    else:\n        tertiary_candidates = secondary_candidates\n\n    # 8. Select the final object (first if still tied)\n    if not tertiary_candidates:\n        # This case should ideally not be reached if input processing is correct\n        # But as a fallback, maybe return the first object overall? Or empty? Let's return empty.\n        return []\n        \n    target_object = tertiary_candidates[0]\n\n    # 9. Extract the bounding box subgrid\n    min_r, max_r, min_c, max_c = target_object['bbox']\n    # Use numpy slicing: [row_start:row_end+1, col_start:col_end+1]\n    output_np = input_np[min_r : max_r + 1, min_c : max_c + 1]\n\n    # Convert back to list of lists for the expected output format\n    output_grid = output_np.tolist()\n\n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "citation_metadata": {
+        "citation_sources": [
+          {
+            "start_index": 3120,
+            "end_index": 3272,
+            "uri": "https://github.com/Rijgersberg/advent-of-code-2020",
+            "license_": ""
+          }
+        ]
+      },
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 12228,
+    "candidates_token_count": 2269,
+    "total_token_count": 14497,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 20.762145,
+  "retries": 1
+}

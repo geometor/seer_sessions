@@ -1,0 +1,75 @@
+task_context:
+  description: Overwrite parts of a main grid with 2x2 azure blocks, protecting specific colors.
+  input_structure:
+    - type: border
+      color: gray (5)
+      orientation: horizontal
+      location: top row (row 0)
+    - type: key_panel
+      location: section between top border (row 0) and separator line.
+      content: multiple gray-bordered patterns containing one non-white color adjacent to three white pixels.
+      purpose: defines a set of explicitly 'protected' colors.
+    - type: separator
+      color: gray (5)
+      orientation: horizontal
+      location: the last row consisting entirely of gray pixels.
+      purpose: divides key_panel from main_grid.
+    - type: main_grid
+      location: section below the separator line.
+      content: dominant background color, various colored shapes, may include a 2x2 azure (8) square.
+      purpose: the area to be transformed.
+  output_structure:
+    - type: grid
+      size: matches the input's main_grid size.
+      content: modified version of the input's main_grid.
+
+objects:
+  - id: explicit_key_colors
+    source: non-white (0), non-gray (5) pixels adjacent (4-connectivity) to white (0) pixels in the key_panel.
+    property: protected
+  - id: background_color
+    source: the most frequent color in the main_grid, excluding azure (8) unless it's the only color.
+    property: protected
+  - id: protected_colors_set
+    derivation: union of explicit_key_colors and background_color.
+  - id: main_grid_pixels
+    source: all pixels in the main_grid section of the input.
+  - id: stamp_color
+    value: azure (8)
+  - id: stamp_unit
+    shape: 2x2 square
+
+actions:
+  - action: identify_separator
+    input: input_grid
+    output: row index of the last fully gray (5) row.
+  - action: split_grid
+    input: input_grid, separator_row_index
+    output: key_panel, main_grid
+  - action: extract_explicit_keys
+    input: key_panel
+    output: set of explicit_key_colors
+  - action: determine_background_color
+    input: main_grid
+    output: background_color value
+  - action: define_protection
+    input: explicit_key_colors, background_color
+    output: protected_colors_set
+  - action: copy_grid
+    input: main_grid
+    output: initial output_grid
+  - action: iterate_and_stamp
+    target: output_grid
+    unit: 2x2 blocks (sliding window over input main_grid)
+    condition: check if *any* pixel within the 2x2 block in the *input* main_grid belongs to the protected_colors_set.
+    effect:
+      - if condition is FALSE: overwrite the corresponding 2x2 block in the output_grid with the stamp_color (azure).
+      - if condition is TRUE: leave the corresponding 2x2 block in the output_grid unchanged (preserving original colors).
+
+relationships:
+  - type: protection
+    subject: pixels in the main_grid matching any color in protected_colors_set
+    effect: prevent the containing 2x2 block from being overwritten by the azure stamp.
+  - type: spatial_grouping
+    granularity: 2x2 blocks
+    purpose: defines the unit for checking protection and applying the stamp.

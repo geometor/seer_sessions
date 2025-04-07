@@ -1,0 +1,53 @@
+elements:
+  - object: Grid
+    properties:
+      - type: 2D array of integers
+      - dimensions: variable (height x width), preserved in transformation
+  - object: Cell
+    properties:
+      - coordinates: (row, column)
+      - value: integer
+      - neighbors: adjacent cells (up, down, left, right)
+  - object: Number (Value)
+    properties:
+      - role: specific roles based on value
+        - 7: Background/Default (mostly stable)
+        - 6: Mutable (changes based on context)
+        - Others (1, 3, 4,...): Potential Sources/Influencers
+  - object: Component
+    properties:
+      - type: Connected group of cells
+      - criteria: cells have value '6', connected via 4-way adjacency
+      - border_cells: cells adjacent to the component but not part of it
+      - border_values: values of border_cells, filtered (non-6, non-7)
+
+actions:
+  - name: Identify_6_Components
+    input: Input Grid
+    output: Set of Components (each a set of cell coordinates)
+  - name: Determine_Component_Fate
+    input: Input Grid, Component
+    process:
+      - Find border_cells for the Component.
+      - Get border_values (non-6, non-7) from border_cells in Input Grid.
+      - If exactly one unique value 'v' exists in border_values:
+        - Mark Component cells to become 'v'.
+        - Identify source cells (border cells with value 'v').
+    output: Updated values for component cells, Set of source cell coordinates
+  - name: Update_Sources_And_Isolated
+    input: Input Grid, Output Grid (partially updated), Set of source_cells
+    process:
+      - Iterate through Input Grid cells (r, c).
+      - If input[r, c] is non-6, non-7:
+        - If (r, c) is in source_cells, set output[r, c] = 7.
+        - Else if all neighbors of input[r, c] are 7, set output[r, c] = 7.
+    output: Final Output Grid
+
+relationships:
+  - type: Adjacency
+    between: Cells (4-way: up, down, left, right)
+  - type: Membership
+    between: Cell, Component
+  - type: Influence
+    from: Source Cell (non-6, non-7)
+    to: Adjacent Component of 6s

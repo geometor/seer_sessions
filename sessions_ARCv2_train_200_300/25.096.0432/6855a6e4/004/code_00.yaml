@@ -1,0 +1,66 @@
+objects:
+  - name: grid
+    properties:
+      - type: 2D array
+      - size: variable (observed 15x15)
+      - contains: integers (0, 2, 5)
+  - name: boundary_pattern
+    properties:
+      - value: 2
+      - role: static container/frame
+      - location: fixed between input and output
+  - name: object_pattern_group
+    properties:
+      - value: 5
+      - role: mobile elements
+      - shape: preserved during movement (relative positions of '5' cells maintained)
+      - location: changes from input to output
+      - grouping: all '5' cells move together as one unit based on their combined bounding box
+  - name: background
+    properties:
+      - value: 0
+      - role: empty space
+  - name: source_location
+    properties:
+      - role: initial position of the object_pattern_group in the input grid
+      - value: 5 (in input)
+      - becomes: 0 (in output)
+  - name: target_zone
+    properties:
+      - role: destination area for the object_pattern_group
+      - location: specific region of connected background (0) cells within the area defined/enclosed by the boundary_pattern in the input grid. Often appears rectangular in the examples.
+      - value: 0 (in input)
+      - becomes: 5 (in output)
+
+actions:
+  - name: identify_patterns
+    operands: [input_grid]
+    outputs: [boundary_pattern, object_pattern_group, background]
+  - name: determine_target_zone
+    operands: [input_grid, boundary_pattern]
+    outputs: [target_zone_coords, target_zone_bbox]
+    description: Identifies the specific contiguous block of background(0) cells within the boundary(2) structure intended as the destination. (This step needs refinement - how is this specific zone identified algorithmically? Is it the largest rectangle of zeros? The one closest to the center of the blue bbox?)
+  - name: calculate_placement
+    operands: [object_pattern_group, target_zone_bbox]
+    outputs: [target_top_left_corner]
+    description: Calculates the top-left coordinate in the output grid where the object_pattern_group should be placed, typically by aligning the center of the object_pattern_group's bounding box with the center of the target_zone's bounding box.
+  - name: construct_output
+    operands: [input_grid_dimensions, boundary_pattern, object_pattern_group, target_top_left_corner]
+    outputs: [output_grid]
+    description: Creates the output grid by placing the boundary_pattern in its original location and the object_pattern_group at the calculated target_top_left_corner. All other cells are background(0).
+
+relationships:
+  - type: containment
+    subject: target_zone
+    object: boundary_pattern
+    description: The target_zone is spatially located within the area framed or enclosed by the boundary_pattern.
+  - type: invariance
+    subject: boundary_pattern
+    description: The boundary_pattern's location and shape are identical in the input and output.
+  - type: transformation
+    subject: object_pattern_group
+    description: The object_pattern_group is moved from its source_location to the target_zone, preserving its internal shape. The source_location becomes background(0).
+  - type: spatial_alignment
+    subject: object_pattern_group (in output)
+    object: target_zone
+    description: The center of the object_pattern_group's bounding box is aligned with the center of the target_zone's bounding box.

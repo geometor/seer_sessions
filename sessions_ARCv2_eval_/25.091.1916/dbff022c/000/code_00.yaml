@@ -1,0 +1,46 @@
+task_description: Fill enclosed white regions within single-colored shapes based on adjacent colors.
+
+elements:
+  - element: grid
+    description: A 2D array of pixels with integer values 0-9 representing colors.
+  - element: pixel
+    description: A single cell in the grid with a color value. White (0) is the background. Non-zero values represent colors.
+  - element: shape
+    description: A contiguous region of pixels of the same non-white color.
+    properties:
+      - color: The single color of the shape's pixels.
+      - boundary: Pixels of the shape adjacent to white pixels or pixels of a different color.
+      - interior: Pixels of the shape not on the boundary.
+  - element: enclosed_region
+    description: A contiguous region of white (0) pixels that cannot reach the grid boundary by moving only through white pixels.
+    properties:
+      - size: Number of pixels in the region.
+      - location: Coordinates of the pixels.
+      - adjacent_shape_color: The color of the shape immediately surrounding the region.
+      - adjacent_foreign_colors: List of colors (and their counts) from pixels of *other* shapes that are orthogonally adjacent to any pixel in the enclosed region.
+
+actions:
+  - action: identify_enclosed_regions
+    description: Find all connected components of white pixels that are not reachable from the grid boundary via other white pixels.
+    using: Flood fill from boundary white pixels.
+  - action: determine_fill_color
+    description: For each enclosed region, determine the color to fill it with.
+    logic: >
+      1. Identify the primary color (C_primary) of the surrounding shape.
+      2. Find all orthogonal neighboring pixels to the region that are non-white AND not C_primary.
+      3. If no such neighbors exist, the fill color is C_primary.
+      4. If such neighbors exist, count the frequency of each color among them.
+      5. The fill color is the color with the highest frequency. If there's a tie for the highest frequency, choose the color with the lowest index among the tied colors.
+  - action: fill_region
+    description: Change the color of all pixels within an enclosed region to the determined fill color.
+
+relationships:
+  - relationship: adjacency
+    description: Pixels are adjacent if they share an edge (orthogonal adjacency). Used for defining shapes, regions, and determining fill colors.
+  - relationship: enclosure
+    description: A white region is enclosed by a shape if all paths from the region to the grid boundary must pass through non-white pixels.
+  - relationship: influence
+    description: The colors of shapes adjacent to an enclosed white region can influence the color used to fill that region.
+
+input_output_relationship:
+  - The output grid is identical to the input grid, except that identified enclosed white regions within single-colored shapes are filled with a color determined by the adjacency rules. Multi-colored shapes and shapes without enclosed regions remain unchanged.

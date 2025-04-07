@@ -1,0 +1,56 @@
+task_elements:
+  - object: grid
+    description: A 2D array of single digits.
+    properties:
+      - rows: integer
+      - columns: integer
+      - cells: list of lists of integers (0-9)
+
+  - object: pattern_region
+    description: >
+      The area within the input grid containing all non-zero digits, excluding the digit 8.
+      This region defines the color source.
+    properties:
+      - colors: set of integers (1-7, 9) present in the region.
+      - location: coordinates of the cells belonging to this region.
+      - bounding_box: (min_row, min_col, max_row, max_col) enclosing the pattern cells.
+
+  - object: template_region
+    description: >
+       The area within the input grid containing the digit 8.
+       This region defines the area to be filled. Note: May form a single connected component using 8-connectivity.
+    properties:
+      - color: 8 (constant)
+      - location: coordinates of the cells belonging to this region.
+      - bounding_box: (min_row, min_col, max_row, max_col) enclosing the template cells.
+
+  - object: background
+    description: Cells in the grid with the value 0.
+
+relationships:
+  - type: contains
+    source: grid
+    target: pattern_region
+  - type: contains
+    source: grid
+    target: template_region
+  - type: contains
+    source: grid
+    target: background
+  - type: spatial_transformation
+    description: >
+      The color pattern found within the pattern_region's bounding box is scaled and mapped onto the template_region's bounding box.
+
+actions:
+  - action: identify_regions
+    description: Locate the pattern_region (non-zero, non-8 cells) and template_region (cells with 8) within the input grid.
+  - action: calculate_bounding_boxes
+    description: Determine the minimum bounding box for both the pattern_region and the template_region.
+  - action: map_and_replace_pixels
+    description: >
+      Create the output grid by copying the input. Iterate through each cell (r, c) within the template_region's bounding box.
+      If input_grid[r][c] is 8:
+        1. Calculate the relative position of (r, c) within the template bounding box (normalized coordinates).
+        2. Scale these normalized coordinates relative to the pattern bounding box dimensions to find a corresponding source coordinate (src_r, src_c) within the pattern bounding box.
+        3. Find the color from the input grid at the nearest integer coordinates to (src_r, src_c).
+        4. Update the output_grid[r][c] with this source color.

@@ -1,0 +1,65 @@
+elements:
+  - object: grid
+    attributes:
+      - height: integer
+      - width: integer
+      - pixels: 2D array of color values
+
+  - object: background
+    attributes:
+      - color: integer (most frequent color in the input grid)
+      - parity: derived from color value (odd or even)
+
+  - object: hollow_rectangle
+    attributes:
+      - color: integer (color of the border pixels)
+      - border_pixels: list of coordinates [(row, col), ...]
+      - bounding_box: (min_row, min_col, max_row, max_col)
+      - internal_area: region inside the border, initially filled with background color
+      - internal_midline_row: integer (row index of the horizontal middle of the internal_area)
+      - internal_columns: range of column indices for the internal_area
+
+  - object: noise_pixel
+    attributes:
+      - color: integer
+      - position: (row, col)
+    notes: Any pixel that is not part of the background or a hollow_rectangle border.
+
+relationships:
+  - type: spatial
+    description: hollow_rectangles enclose an internal_area filled with the background color.
+  - type: identification
+    description: noise_pixels are identified by not belonging to the background or a hollow_rectangle.
+
+actions:
+  - action: identify_background
+    inputs: input_grid
+    outputs: background_color, background_parity
+    description: Determine the most frequent color and its parity.
+
+  - action: find_hollow_rectangles
+    inputs: input_grid, background_color
+    outputs: list of hollow_rectangle objects
+    description: Locate connected components of non-background colors that form a single-pixel thick rectangular border around an area filled only with background_color.
+
+  - action: filter_noise
+    inputs: input_grid, background_color, list of hollow_rectangles
+    outputs: None (implicitly removes noise during output construction)
+    description: Identify pixels that are neither background nor part of a hollow_rectangle border.
+
+  - action: apply_midline_pattern
+    inputs: hollow_rectangle, background_parity
+    outputs: list of coordinates and colors for new pixels
+    description: >
+      Calculate the internal_midline_row and internal_columns for the rectangle.
+      Iterate through the absolute column indices corresponding to the internal_columns.
+      For each pixel position (internal_midline_row, col_index), check if the parity of col_index matches the background_parity.
+      If it matches, mark this position to be colored with the hollow_rectangle's color.
+
+  - action: construct_output
+    inputs: input_grid_dimensions, background_color, list of hollow_rectangles, list of new pattern pixels
+    outputs: output_grid
+    description: >
+      Create a new grid filled with background_color.
+      Draw the border_pixels of each hollow_rectangle onto the grid.
+      Draw the new pattern pixels (from apply_midline_pattern) onto the grid.

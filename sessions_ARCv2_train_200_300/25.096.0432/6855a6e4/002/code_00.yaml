@@ -1,0 +1,60 @@
+objects:
+  - name: grid
+    properties:
+      - type: 2D array
+      - size: 15x15
+      - contains: integers (0, 2, 5)
+  - name: blue_pattern
+    properties:
+      - value: 2
+      - role: static boundary
+      - location: fixed between input and output
+  - name: red_pattern_group
+    properties:
+      - value: 5
+      - role: mobile element group (can be multiple disconnected shapes)
+      - location: changes from input to output
+      - relative_shape: preserved during movement (all red cells move together maintaining relative positions)
+  - name: background
+    properties:
+      - value: 0
+      - role: empty space
+  - name: internal_empty_space
+    properties:
+      - value: 0
+      - location: region of 0s bounded by the blue_pattern in the input grid
+      - role: target destination area for red_pattern_group
+
+actions:
+  - name: identify_elements
+    operands: [input_grid]
+    outputs: [blue_pattern, red_pattern_group, background]
+  - name: identify_internal_empty_space
+    operands: [input_grid, blue_pattern]
+    outputs: [internal_empty_space]
+    # Detail: Find 0s within the bounding box of blue_pattern. (Refinement might require flood fill if bbox isn't enough).
+  - name: calculate_target_origin
+    operands: [red_pattern_group, internal_empty_space]
+    outputs: [target_top_left_coordinate]
+    # Detail: Center the bounding box of red_pattern_group within the bounding box of internal_empty_space.
+  - name: construct_output_grid
+    operands: [input_grid_size, blue_pattern, red_pattern_group, target_top_left_coordinate]
+    outputs: [output_grid]
+    # Detail: Initialize empty grid. Place blue_pattern. Place red_pattern_group at target_top_left_coordinate.
+
+relationships:
+  - type: containment
+    subject: red_pattern_group (output)
+    object: internal_empty_space
+    description: The final position of the red_pattern_group is within the area defined by internal_empty_space.
+  - type: invariance
+    subject: blue_pattern
+    description: The blue_pattern's location and shape are identical in the input and output.
+  - type: transformation
+    subject: red_pattern_group (input)
+    object: red_pattern_group (output)
+    description: The input red_pattern_group is treated as a single entity and moved to a new location, preserving its internal relative structure. Original locations become background(0).
+  - type: centering
+    subject: red_pattern_group (output) bounding box
+    object: internal_empty_space bounding box
+    description: The bounding box of the moved red_pattern_group is centered within the bounding box of the internal_empty_space.

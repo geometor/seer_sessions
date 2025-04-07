@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\n\"\"\"\nIdentify all distinct connected objects (groups of cells with the same non-zero color, connected 8-directionally) in the input grid.\nFor each object, determine its color, size (number of cells), and bounding box (minimum row, maximum row, minimum column, maximum column).\n\nApply the following selection criteria:\n1. Find the object whose bounding box starts at the highest row (minimum row index). If there's a tie, choose the one starting at the leftmost column (minimum column index). Call this the 'highest-leftmost' object.\n2. Find the minimum color value (`min_c`) present among all objects and the maximum size (`max_s`) among all objects.\n3. Check if there is exactly one object that has *both* the color `min_c` AND the size `max_s`. Call this the 'special' object.\n4. If such a unique 'special' object exists AND it is *different* from the 'highest-leftmost' object, then select the 'special' object.\n5. Otherwise (either no unique 'special' object exists, or it's the same as the 'highest-leftmost' object), select the 'highest-leftmost' object.\n\nCreate the output grid by cropping the input grid to the bounding box of the selected object, containing only the cells of that selected object (maintaining their original color), with all other cells as 0.\n\"\"\"\n\nimport numpy as np\nfrom scipy.ndimage import label, find_objects\n\ndef transform(input_grid: list[list[int]]) -> list[list[int]]:\n    \"\"\"\n    Selects and extracts a specific object from the input grid based on position, color, and size criteria.\n\n    Args:\n        input_grid: A 2D list of integers representing the input grid.\n\n    Returns:\n        A 2D list of integers representing the extracted object within its minimal bounding box.\n    \"\"\"\n    input_array = np.array(input_grid, dtype=int)\n    if input_array.size == 0 or np.all(input_array == 0):\n        return [] # Handle empty or all-zero input\n\n    objects = []\n    unique_colors = np.unique(input_array[input_array > 0])\n\n    # 1. Find all objects and their properties\n    for color in unique_colors:\n        # Create a binary mask for the current color\n        mask = (input_array == color)\n        # Label connected components (8-connectivity)\n        labeled_array, num_features = label(mask, structure=np.ones((3,3), dtype=bool))\n\n        # Get slices representing bounding boxes\n        object_slices = find_objects(labeled_array)\n\n        for i in range(num_features):\n            obj_label = i + 1\n            # Extract coordinates and bounding box slice\n            slices = object_slices[i]\n            coords = np.argwhere(labeled_array[slices] == obj_label)\n            # Adjust coordinates relative to the full grid\n            coords[:, 0] += slices[0].start\n            coords[:, 1] += slices[1].start\n\n            min_row = slices[0].start\n            max_row = slices[0].stop - 1\n            min_col = slices[1].start\n            max_col = slices[1].stop - 1\n            size = coords.shape[0]\n\n            objects.append({\n                'color': color,\n                'coords': coords,\n                'bbox': (min_row, max_row, min_col, max_col),\n                'size': size,\n                'id': (color, min_row, min_col) # Simple ID for comparison\n            })\n\n    if not objects:\n        return [] # No non-zero objects found\n\n    # 2. Find the 'highest-leftmost' object\n    highest_leftmost_object = min(objects, key=lambda obj: (obj['bbox'][0], obj['bbox'][2]))\n\n    # 3. Find min_color and max_size\n    min_c = min(obj['color'] for obj in objects)\n    max_s = max(obj['size'] for obj in objects)\n\n    # 4. Find 'special' objects (min color AND max size)\n    special_candidates = [obj for obj in objects if obj['color'] == min_c and obj['size'] == max_s]\n\n    # 5. Apply selection logic\n    selected_object = highest_leftmost_object # Default selection\n    if len(special_candidates) == 1:\n        special_object = special_candidates[0]\n        # Check if the unique special object is different from the highest-leftmost\n        if special_object['id'] != highest_leftmost_object['id']:\n             selected_object = special_object # Select the special object due to exception rule\n\n    # 6. Create output grid\n    min_row, max_row, min_col, max_col = selected_object['bbox']\n    height = max_row - min_row + 1\n    width = max_col - min_col + 1\n    output_array = np.zeros((height, width), dtype=int)\n\n    # Populate the output grid with the selected object's pixels\n    for r, c in selected_object['coords']:\n        output_array[r - min_row, c - min_col] = selected_object['color']\n\n    return output_array.tolist()\n\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 3214,
+    "candidates_token_count": 2153,
+    "total_token_count": 5367,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 19.761473,
+  "retries": 1
+}

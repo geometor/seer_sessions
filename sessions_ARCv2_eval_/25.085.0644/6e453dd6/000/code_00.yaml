@@ -1,0 +1,64 @@
+task_elements:
+  - type: grid
+    properties:
+      - background_color: magenta (6)
+      - contains: patterns, separator line
+  - type: separator
+    properties:
+      - color: gray (5)
+      - orientation: vertical
+      - width: 1 pixel
+      - function: divides grid into left and right sections
+  - type: pattern
+    location: left section
+    properties:
+      - composed_of: [white (0), magenta (6)]
+      - element: white pixels (0)
+      - undergoes: horizontal rightward shift
+  - type: pattern
+    location: right section
+    properties:
+      - input_color: magenta (6)
+      - output_color: magenta (6) or red (2)
+      - change_condition: presence of specific sub-patterns in the input's left section
+  - type: sub-pattern
+    name: trigger_pattern_1
+    value: [0, 6, 0] # white, magenta, white
+    location: input grid, left section
+    function: triggers color change in right section
+  - type: sub-pattern
+    name: trigger_pattern_2
+    value: [6, 6, 0] # magenta, magenta, white
+    location: input grid, left section
+    function: triggers color change in right section
+
+actions:
+  - name: identify_separator
+    input: input_grid
+    output: column_index_of_gray_line
+  - name: process_row
+    input: input_row, gray_line_index
+    output: output_row
+    sub_actions:
+      - name: transform_left_section
+        input: input_row_left_part, gray_line_index
+        output: output_row_left_part
+        logic:
+          - find rightmost white (0) pixel index (`max_white_col`)
+          - calculate shift distance (`shift = gray_line_index - 1 - max_white_col`)
+          - apply shift to white pixels, fill remainder with magenta (6)
+      - name: transform_right_section
+        input: input_row_left_part, input_row_right_part, gray_line_index
+        output: output_row_right_part
+        logic:
+          - check for `[0, 6, 0]` or `[6, 6, 0]` in input_row_left_part
+          - if found, change all pixels in output_row_right_part to red (2)
+          - else, keep output_row_right_part as magenta (6)
+
+relationships:
+  - type: spatial
+    description: Left and right sections are defined relative to the gray separator line.
+  - type: conditional
+    description: The transformation of the right section depends on patterns found in the input's left section.
+  - type: positional
+    description: The shift amount for the left section depends on the rightmost white pixel's position relative to the gray line.

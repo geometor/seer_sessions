@@ -1,0 +1,76 @@
+task_description: Draws two rays of a specific color ('source_color') starting from a 'source_cell' onto a grid. The original content of the grid, including 'zero_cells', remains otherwise unchanged.
+
+elements:
+  - object: grid
+    properties:
+      - type: 2D array of integers
+      - state: input_grid (initial state)
+      - state: output_grid (final state)
+  - object: cell
+    properties:
+      - location: (row, column)
+      - color: integer (value)
+  - object: background_color
+    properties:
+      - identified_by: most frequent color in the input_grid
+  - object: source_cell
+    properties:
+      - identified_by: the unique cell in the input_grid whose color is not the background_color and not 0
+      - color: source_color
+      - location: (source_row, source_col)
+  - object: zero_cell
+    properties:
+      - identified_by: any cell with color 0 in the input_grid
+      - location: (zero_row, zero_col) (used as a reference point)
+
+derived_elements:
+  - object: direction_vector_D1
+    properties:
+      - type: (dr, dc) tuple
+      - calculation: sign(source_row - zero_row, source_col - zero_col)
+  - object: direction_vector_D2_prime
+    properties:
+      - type: (dr, dc) tuple
+      - calculation:
+          - if D1.dr == 1: D2' = (1, 0)
+          - if D1.dr == -1: D2' = (0, D1.dc)
+          - else: undefined/error (requires D1.dr != 0 based on examples)
+
+actions:
+  - action: identify_elements
+    inputs: input_grid
+    outputs:
+      - background_color
+      - source_cell (location and color)
+      - zero_cell (location of one)
+  - action: calculate_directions
+    inputs: source_cell_location, zero_cell_location
+    outputs:
+      - direction_vector_D1
+      - direction_vector_D2_prime
+  - action: draw_ray
+    inputs:
+      - start_cell_location: (start_row, start_col)
+      - direction_vector: (dr, dc)
+      - color_to_draw: source_color
+      - reference_grid: input_grid
+      - target_grid: output_grid
+      - condition_color: background_color
+    process: |
+      Initialize current_row, current_col = start_row, start_col.
+      Loop:
+        Move: next_row = current_row + dr, next_col = current_col + dc.
+        Check bounds: If (next_row, next_col) is outside target_grid, STOP.
+        Check condition: If reference_grid[next_row, next_col] is not condition_color, STOP.
+        Draw: Set target_grid[next_row, next_col] = color_to_draw.
+        Update: current_row, current_col = next_row, next_col.
+      Repeat loop.
+
+output_generation:
+  - process:
+    1. Initialize output_grid as a copy of input_grid.
+    2. Perform 'identify_elements'.
+    3. Perform 'calculate_directions' to get D1 and D2'.
+    4. Perform 'draw_ray' using source_cell location, D1, source_color, input_grid, output_grid, background_color.
+    5. Perform 'draw_ray' using source_cell location, D2', source_color, input_grid, output_grid, background_color.
+    6. Return output_grid.

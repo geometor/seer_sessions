@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\n\n\"\"\"\nTransformation Rule:\n1.  Identify the set of background digits (heuristically {0, 1, 2, 3} if present in the input).\n2.  Locate all cells in the input grid containing non-background digits.\n3.  Determine the global bounding box (minimum and maximum row and column indices) that encloses *all* these non-background cells. If no non-background cells exist, return an empty grid.\n4.  Identify the \"framing cells\" which are the non-background cells located exactly on the perimeter (min/max row or min/max col) of this global bounding box.\n5.  Create the output grid with dimensions matching the global bounding box size.\n6.  Iterate through each cell within the global bounding box area of the input grid, mapping input coordinates (r_in, c_in) to output coordinates (r_out, c_out).\n7.  For each corresponding cell in the output grid:\n    *   Get the original value `v` from `input_grid[r_in][c_in]`.\n    *   Check if `v` is a background digit.\n    *   Check if the input coordinate `(r_in, c_in)` corresponds to one of the identified framing cells.\n    *   If `v` is a background digit AND `(r_in, c_in)` is *not* a framing cell, set the output cell value to 0.\n    *   Otherwise (if `v` is non-background OR `(r_in, c_in)` is a framing cell), copy the original value `v` to the output cell.\n8.  Return the resulting output grid.\n\"\"\"\n\ndef find_bounding_box(points):\n    \"\"\"Calculates the bounding box for a set of points (tuples of row, col).\"\"\"\n    if not points:\n        return None\n    min_row = min(r for r, c in points)\n    max_row = max(r for r, c in points)\n    min_col = min(c for r, c in points)\n    max_col = max(c for r, c in points)\n    return min_row, min_col, max_row, max_col\n\ndef transform(input_grid: list[list[int]]) -> list[list[int]]:\n    \"\"\"\n    Extracts a subgrid defined by the bounding box of all non-background elements,\n    identifies the frame as non-background elements on the box perimeter,\n    and replaces internal background elements with 0.\n    \"\"\"\n    input_array = np.array(input_grid, dtype=int)\n    rows, cols = input_array.shape\n\n    # --- 1. Identify potential background digits ---\n    potential_bg = {0, 1, 2, 3}\n    present_digits = set(input_array.flatten())\n    background_digits = potential_bg.intersection(present_digits)\n    # If no digits from {0,1,2,3} are present, treat this set as empty,\n    # meaning no digit will be considered background by default.\n    \n    # --- 2. Locate non-background cells ---\n    non_background_coords = []\n    for r in range(rows):\n        for c in range(cols):\n            if input_array[r, c] not in background_digits:\n                non_background_coords.append((r, c))\n\n    # Handle case where no non-background elements are found\n    if not non_background_coords:\n        return [] \n\n    # --- 3. Determine global bounding box ---\n    bbox = find_bounding_box(non_background_coords)\n    # We already checked non_background_coords is not empty, so bbox will be valid\n    min_row, min_col, max_row, max_col = bbox\n\n    # --- 4. Identify framing cells ---\n    # Framing cells are non-background cells on the perimeter of the global bounding box\n    framing_cells = set()\n    for r, c in non_background_coords:\n        if r == min_row or r == max_row or c == min_col or c == max_col:\n            framing_cells.add((r, c))\n\n    # --- 5. Create output grid ---\n    output_rows = max_row - min_row + 1\n    output_cols = max_col - min_col + 1\n    # Initialize with a placeholder, perhaps -1, to distinguish from intended 0s\n    output_array = np.full((output_rows, output_cols), -1, dtype=int) \n\n    # --- 6 & 7. Populate output grid ---\n    for r_out in range(output_rows):\n        for c_out in range(output_cols):\n            # Corresponding coordinates in the input grid\n            r_in = min_row + r_out\n            c_in = min_col + c_out\n            \n            # Ensure coords are within input bounds (should be guaranteed by bbox from existing points)\n            if 0 <= r_in < rows and 0 <= c_in < cols:\n                original_value = input_array[r_in, c_in]\n                original_coord = (r_in, c_in)\n\n                # Check if the cell contains a background digit\n                is_background = original_value in background_digits\n                # Check if the cell is part of the identified frame\n                is_framing_cell = original_coord in framing_cells\n                \n                # Apply transformation rule\n                if is_background and not is_framing_cell:\n                    output_array[r_out, c_out] = 0\n                else:\n                    # Keep original value if it's non-background OR if it's part of the frame\n                    output_array[r_out, c_out] = original_value\n            # else: # This case should ideally not be reached if bbox logic is sound\n            #     print(f\"Warning: Input coordinates ({r_in}, {c_in}) out of bounds.\")\n            #     pass # Keep placeholder or handle error\n\n    # Convert back to list of lists for the final output\n    output_grid = output_array.tolist()\n    \n    return output_grid\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 12741,
+    "candidates_token_count": 1869,
+    "total_token_count": 14610,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-exp-03-25",
+  "response_time": 16.377476,
+  "retries": 1
+}

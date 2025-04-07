@@ -1,0 +1,634 @@
+
+## train_1
+
+**input:**
+```
+0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0
+```
+
+
+**output:**
+```
+3 3 3 3 3 3 3 3 3 3 3 3 3
+0 0 0 0 0 0 0 0 0 0 0 0 3
+3 3 3 3 3 3 3 3 3 3 3 0 3
+3 0 0 0 0 0 0 0 0 0 3 0 3
+3 0 3 3 3 3 3 3 3 0 3 0 3
+3 0 3 0 0 0 0 0 3 0 3 0 3
+3 0 3 0 3 3 3 0 3 0 3 0 3
+3 0 3 0 3 0 0 0 3 0 3 0 3
+3 0 3 0 3 3 3 3 3 0 3 0 3
+3 0 3 0 0 0 0 0 0 0 3 0 3
+3 0 3 3 3 3 3 3 3 3 3 0 3
+3 0 0 0 0 0 0 0 0 0 0 0 3
+3 3 3 3 3 3 3 3 3 3 3 3 3
+```
+
+
+## train_2
+
+**input:**
+```
+0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+```
+
+
+**output:**
+```
+3 3 3 3 3 3 3 3
+0 0 0 0 0 0 0 3
+3 3 3 3 3 3 0 3
+3 0 0 0 0 3 0 3
+3 0 3 3 0 3 0 3
+3 0 3 3 3 3 0 3
+3 0 0 0 0 0 0 3
+3 3 3 3 3 3 3 3
+```
+
+
+## train_3
+
+**input:**
+```
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+```
+
+
+**output:**
+```
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 3
+3 3 3 3 3 3 3 3 3 3 3 3 3 0 3
+3 0 0 0 0 0 0 0 0 0 0 0 3 0 3
+3 0 3 3 3 3 3 3 3 3 3 0 3 0 3
+3 0 3 0 0 0 0 0 0 0 3 0 3 0 3
+3 0 3 0 3 3 3 3 3 0 3 0 3 0 3
+3 0 3 0 3 0 0 0 3 0 3 0 3 0 3
+3 0 3 0 3 0 3 3 3 0 3 0 3 0 3
+3 0 3 0 3 0 0 0 0 0 3 0 3 0 3
+3 0 3 0 3 3 3 3 3 3 3 0 3 0 3
+3 0 3 0 0 0 0 0 0 0 0 0 3 0 3
+3 0 3 3 3 3 3 3 3 3 3 3 3 0 3
+3 0 0 0 0 0 0 0 0 0 0 0 0 0 3
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+```
+
+
+## train_4
+
+**input:**
+```
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+```
+
+
+**output:**
+```
+3 3 3 3 3 3 3 3 3 3
+0 0 0 0 0 0 0 0 0 3
+3 3 3 3 3 3 3 3 0 3
+3 0 0 0 0 0 0 3 0 3
+3 0 3 3 3 3 0 3 0 3
+3 0 3 0 3 3 0 3 0 3
+3 0 3 0 0 0 0 3 0 3
+3 0 3 3 3 3 3 3 0 3
+3 0 0 0 0 0 0 0 0 3
+3 3 3 3 3 3 3 3 3 3
+```
+
+
+## train_5
+
+**input:**
+```
+0 0 0 0 0 0
+0 0 0 0 0 0
+0 0 0 0 0 0
+0 0 0 0 0 0
+0 0 0 0 0 0
+0 0 0 0 0 0
+```
+
+
+**output:**
+```
+3 3 3 3 3 3
+0 0 0 0 0 3
+3 3 3 3 0 3
+3 0 3 3 0 3
+3 0 0 0 0 3
+3 3 3 3 3 3
+```
+
+Okay, let's break down the task based on the provided examples.
+
+**Perception of Task Elements:**
+
+1.  **Input:** The input is always a square grid (N x N) filled entirely with the digit '0'.
+2.  **Output:** The output is a grid of the same N x N dimensions, containing a pattern of '0's and '3's.
+3.  **Transformation:** The transformation generates a maze structure within the grid. The '0's in the output represent the paths of the maze, while the '3's represent the walls.
+4.  **Key Features:**
+    *   The outermost border (top row, bottom row, rightmost column) of the output grid consists entirely of '3's (walls).
+    *   The leftmost column consists mostly of '3's but has exactly two '0's: one at row index 1 (the entrance) and one at row index N-2 (the exit).
+    *   The inner part of the grid (rows 1 to N-2, columns 1 to N-2) contains the maze pathways ('0') and walls ('3') generated algorithmically.
+    *   The specific maze pattern varies but seems consistent with standard maze generation algorithms like Randomized Depth-First Search (DFS).
+
+**YAML Facts:**
+
+
+```yaml
+task_name: maze_generation
+description: Generates a perfect maze within a grid, represented by '0' for paths and '3' for walls.
+
+input_features:
+  - object: grid
+    properties:
+      - type: 2D array
+      - dimensions: N x N (square)
+      - cell_value: always 0
+      - data_type: integer
+
+output_features:
+  - object: grid
+    properties:
+      - type: 2D array
+      - dimensions: N x N (same as input)
+      - cell_values: 0 or 3
+      - data_type: integer
+    structure:
+      - element: maze
+        properties:
+          - path_char: 0
+          - wall_char: 3
+          - algorithm: likely Randomized Depth-First Search (DFS)
+      - element: boundary_walls
+        location: top row (row 0), bottom row (N-1), right column (N-1)
+        value: 3
+      - element: left_boundary
+        location: left column (column 0)
+        value: 3, except for entrance and exit
+      - element: entrance
+        location: (row 1, column 0)
+        value: 0
+      - element: exit
+        location: (row N-2, column 0)
+        value: 0
+      - element: inner_maze
+        location: rows 1 to N-2, columns 1 to N-2
+        content: maze path (0) and wall (3) structure generated by the algorithm
+
+transformation:
+  - action: initialize_output
+    description: Create an N x N grid filled with the wall character '3'.
+  - action: generate_maze
+    description: Apply a maze generation algorithm (e.g., Randomized DFS) to the inner grid area (rows 1 to N-2, columns 1 to N-2).
+    details:
+      - Start carving paths (changing '3' to '0') from an initial cell (e.g., (1,1)).
+      - Ensure all cells within the inner maze area are potentially reachable via the path ('0').
+      - The algorithm carves paths by removing 'wall' cells ('3') between adjacent path cells ('0').
+  - action: create_openings
+    description: Set the entrance and exit cells on the left boundary to the path character '0'.
+    locations:
+      - entrance: (1, 0)
+      - exit: (N-2, 0)
+
+examples_dimensionality:
+  - train_1: 13x13
+  - train_2: 8x8
+  - train_3: 15x15
+  - train_4: 10x10
+  - train_5: 6x6
+```
+
+
+**Natural Language Program:**
+
+1.  **Initialization:** Given an input grid of size N x N filled with zeros, create an output grid of the same size N x N and initialize all its cells with the value '3' (representing walls).
+2.  **Maze Carving (Inner Grid):**
+    a.  Define the inner grid region as rows 1 to N-2 and columns 1 to N-2.
+    b.  Select a starting cell within this inner region, for instance, cell (1, 1). Mark this cell as a path by setting its value to '0' in the output grid.
+    c.  Use a Randomized Depth-First Search (DFS) approach:
+        i.  Maintain a stack of visited cells, initially containing the starting cell.
+        ii. Keep track of visited cells within the inner grid to avoid cycles during exploration. Mark the starting cell as visited.
+        iii. While the stack is not empty:
+            1.  Look at the current cell (r, c) on top of the stack.
+            2.  Find all valid neighboring cells (r', c') that are two steps away (horizontally or vertically) from (r, c), are within the inner grid boundaries [1..N-2, 1..N-2], and whose corresponding cell in the output grid is currently '3' (a wall).
+            3.  If such unvisited neighbors exist:
+                A. Randomly choose one neighbor `(r_next, c_next)`.
+                B. Calculate the coordinates of the wall cell `(r_wall, c_wall)` situated between the current cell (r, c) and the chosen neighbor `(r_next, c_next)`.
+                C. Change the value of the wall cell `(r_wall, c_wall)` in the output grid to '0' (carve path).
+                D. Change the value of the neighbor cell `(r_next, c_next)` in the output grid to '0' (extend path).
+                E. Mark the neighbor cell `(r_next, c_next)` as visited.
+                F. Push the neighbor cell `(r_next, c_next)` onto the stack.
+            4.  If no such unvisited neighbors exist (dead end), pop the current cell (r, c) from the stack (backtrack).
+3.  **Create Entrance and Exit:**
+    a.  Set the value of the cell at coordinates (1, 0) in the output grid to '0'.
+    b.  Set the value of the cell at coordinates (N-2, 0) in the output grid to '0'.
+4.  **Final Output:** The resulting output grid now contains the complete maze pattern with walls ('3') and paths ('0').
+```python
+import random
+
+"""
+Transforms an N x N grid of zeros into a maze represented by 0s (paths) and 3s (walls).
+
+The transformation follows these steps:
+1.  Initialize an N x N output grid filled entirely with 3s (walls).
+2.  Use a Randomized Depth-First Search (DFS) algorithm to carve paths (0s) within the inner part of the grid (rows 1 to N-2, columns 1 to N-2).
+    a. Start at cell (1, 1).
+    b. Maintain a stack for the DFS traversal.
+    c. While the stack is not empty:
+        i.   Get the current cell (r, c).
+        ii.  Find unvisited neighbors (cells 2 steps away horizontally or vertically, still marked as 3) within the inner grid bounds [1..N-2, 1..N-2].
+        iii. If unvisited neighbors exist:
+             - Randomly choose one neighbor (nr, nc).
+             - Push the current cell back onto the stack.
+             - Calculate the wall cell ((r+nr)//2, (c+nc)//2) between the current cell and the neighbor.
+             - Mark the wall cell and the neighbor cell as paths (0) in the output grid.
+             - Push the neighbor cell onto the stack.
+        iv.  If no unvisited neighbors exist, pop the current cell (backtrack).
+3.  Create an entrance at (1, 0) and an exit at (N-2, 0) by setting these cells to 0.
+4.  The final grid contains the maze structure. The outer border (top, bottom, right) remains mostly walls (3), the left border has the entrance/exit, and the interior contains the carved maze.
+"""
+
+def transform(input_grid: list[list[int]]) -> list[list[int]]:
+    """
+    Generates a maze within the grid using Randomized DFS.
+
+    Args:
+        input_grid: An N x N list of lists containing only 0s.
+
+    Returns:
+        An N x N list of lists representing the maze, with 0s for paths
+        and 3s for walls.
+    """
+    n = len(input_grid)
+    if n == 0:
+        return []
+    m = len(input_grid[0])
+    if n != m:
+         raise ValueError("Input grid must be square") # Although examples are square, let's keep N for rows, M for cols if needed. Sticking to N for square.
+
+    # 1. Initialize output_grid with walls (3)
+    output_grid = [[3 for _ in range(n)] for _ in range(n)]
+
+    # Ensure grid is large enough for the standard algorithm structure
+    if n < 5: 
+        # Handle very small grids - maybe just return the wall grid?
+        # The examples start at 6x6. A 5x5 would have entrance/exit adjacent.
+        # For simplicity based on examples, assume n >= 5 or return simple boundary.
+        # Let's implement the entrance/exit creation anyway.
+        if n >= 3: # Need at least 3 rows for distinct entrance/exit
+             if 1 < n: output_grid[1][0] = 0
+             if n-2 >= 1 and n-2 != 1 : output_grid[n-2][0] = 0 # Ensure exit is valid and different from entrance
+        return output_grid # Return basic boundary for tiny grids where maze carving is tricky/ill-defined by the pattern
+
+
+    # 2. Maze Carving (Randomized DFS) in the inner grid [1..n-2, 1..n-2]
+    
+    # Define inner grid boundaries (inclusive)
+    inner_r_min, inner_r_max = 1, n - 2
+    inner_c_min, inner_c_max = 1, n - 2
+
+    # Stack for DFS: stores (row, col) tuples
+    stack = []
+    
+    # Start DFS from (1, 1)
+    start_r, start_c = 1, 1
+    output_grid[start_r][start_c] = 0  # Mark starting cell as path
+    stack.append((start_r, start_c))
+
+    while stack:
+        current_r, current_c = stack[-1] # Peek at the top cell
+
+        # Find potential neighbors (2 steps away)
+        neighbors = []
+        for dr, dc in [(0, 2), (0, -2), (2, 0), (-2, 0)]:
+            nr, nc = current_r + dr, current_c + dc
+
+            # Check if neighbor is within the inner grid and is still a wall (unvisited)
+            if (inner_r_min <= nr <= inner_r_max and
+                inner_c_min <= nc <= inner_c_max and
+                output_grid[nr][nc] == 3):
+                neighbors.append((nr, nc))
+
+        if neighbors:
+            # Randomly choose one neighbor
+            next_r, next_c = random.choice(neighbors)
+
+            # Calculate wall cell coordinates between current and next cell
+            wall_r, wall_c = (current_r + next_r) // 2, (current_c + next_c) // 2
+
+            # Carve path: Mark wall and neighbor as path (0)
+            output_grid[wall_r][wall_c] = 0
+            output_grid[next_r][next_c] = 0
+
+            # Move to the neighbor
+            stack.append((next_r, next_c))
+        else:
+            # Backtrack if no unvisited neighbors
+            stack.pop()
+
+    # 3. Create Entrance and Exit on the left boundary
+    if n > 1: # Ensure grid has at least 2 rows
+        output_grid[1][0] = 0  # Entrance at (1, 0)
+    if n > 2: # Ensure grid has at least 3 rows for a distinct exit row
+         output_grid[n - 2][0] = 0 # Exit at (n-2, 0)
+
+    return output_grid
+```
+```python
+import random
+import numpy as np # Using numpy for easier grid manipulation if needed, though list-of-lists is fine too.
+
+"""
+Transforms an N x N grid of zeros into a specific, deterministic maze pattern 
+for that size N, represented by '0' for paths and '3' for walls.
+
+The transformation follows these general steps, although the specific internal 
+maze pattern generated by this code will differ from the examples due to the 
+use of randomness (the examples imply a deterministic rule or fixed seed):
+
+1.  **Initialization:** Create an N x N output grid filled entirely with the 
+    wall character '3'.
+2.  **Maze Carving (Inner Grid):** Apply a maze generation algorithm 
+    (Randomized Depth-First Search - DFS) to the inner grid area 
+    (rows 1 to N-2, columns 1 to N-2).
+    a. Start carving paths (changing '3' to '0') from cell (1, 1).
+    b. Use a stack to manage the DFS traversal.
+    c. Iteratively move to unvisited neighboring cells (2 steps away), carving 
+       the wall between the current cell and the neighbor.
+    d. Backtrack when a dead end is reached.
+3.  **Create Entrance and Exit:** Set the cells at coordinates (1, 0) and 
+    (N-2, 0) in the output grid to the path character '0'.
+4.  **Final Output:** Return the grid containing the maze pattern.
+"""
+
+
+def transform(input_grid: list[list[int]]) -> list[list[int]]:
+    """
+    Generates a maze within the grid using Randomized DFS.
+
+    Args:
+        input_grid: An N x N list of lists containing only 0s.
+
+    Returns:
+        An N x N list of lists representing the maze, with 0s for paths
+        and 3s for walls. Note: Due to randomness, the specific maze
+        pattern will likely differ from the training examples.
+    """
+    # Get grid dimensions
+    n = len(input_grid)
+    if n == 0:
+        return []
+    # Assuming square grid based on examples
+    m = len(input_grid[0]) 
+    if n != m:
+         raise ValueError("Input grid must be square") 
+
+    # --- Step 1: Initialize output_grid with walls (3) ---
+    output_grid = [[3 for _ in range(n)] for _ in range(n)]
+
+    # Handle edge cases: grids too small for the standard maze structure
+    if n < 5: 
+        # Based on examples, smallest is 6x6. For N<5, the inner maze carving 
+        # area is too small or non-existent.
+        # We'll still create openings if possible.
+        if n >= 3: # Need at least 3 rows for distinct entrance/exit
+             if 1 < n: output_grid[1][0] = 0 # Check row index exists
+             # Check row index exists and is different from entrance row
+             if (n-2) >= 1 and (n-2) != 1 : output_grid[n-2][0] = 0 
+        return output_grid # Return basic boundary for tiny grids
+
+    # --- Step 2: Maze Carving (Randomized DFS) in the inner grid ---
+    
+    # Define inner grid boundaries (inclusive) for carving
+    inner_r_min, inner_r_max = 1, n - 2
+    inner_c_min, inner_c_max = 1, n - 2
+
+    # Stack for DFS: stores (row, col) tuples
+    stack = []
+    
+    # Start DFS from a fixed point within the inner grid, e.g., (1, 1)
+    start_r, start_c = 1, 1
+    output_grid[start_r][start_c] = 0  # Mark starting cell as path
+    stack.append((start_r, start_c))
+    
+    # Keep track of visited cells for the carving process (within the inner grid)
+    # We mark cells as path (0) when visited. Checking output_grid[nr][nc] == 3 suffices.
+
+    while stack:
+        # Get the current cell from the top of the stack (don't pop yet)
+        current_r, current_c = stack[-1] 
+
+        # Find potential valid neighbors (2 steps away, within inner grid, still a wall)
+        neighbors = []
+        # Define possible moves (2 steps horizontally or vertically)
+        for dr, dc in [(0, 2), (0, -2), (2, 0), (-2, 0)]:
+            nr, nc = current_r + dr, current_c + dc
+
+            # Check if the potential neighbor (nr, nc) is:
+            # 1. Within the inner grid bounds
+            # 2. Still a wall (output_grid[nr][nc] == 3), meaning unvisited by DFS path
+            if (inner_r_min <= nr <= inner_r_max and
+                inner_c_min <= nc <= inner_c_max and
+                output_grid[nr][nc] == 3):
+                neighbors.append((nr, nc))
+
+        if neighbors:
+            # If there are valid unvisited neighbors, choose one randomly
+            next_r, next_c = random.choice(neighbors)
+
+            # Calculate the coordinates of the wall cell between the current cell and the chosen neighbor
+            wall_r, wall_c = (current_r + next_r) // 2, (current_c + next_c) // 2
+
+            # Carve the path: set the wall cell and the neighbor cell to 0
+            output_grid[wall_r][wall_c] = 0
+            output_grid[next_r][next_c] = 0
+
+            # Add the chosen neighbor to the stack to continue DFS from there
+            stack.append((next_r, next_c))
+        else:
+            # If there are no unvisited neighbors (dead end), backtrack by popping the current cell from the stack
+            stack.pop()
+
+    # --- Step 3: Create Entrance and Exit on the left boundary ---
+    # Ensure grid is large enough (already checked by n < 5 condition earlier)
+    output_grid[1][0] = 0  # Set entrance at (1, 0)
+    output_grid[n - 2][0] = 0 # Set exit at (n-2, 0)
+
+    # --- Step 4: Final Output ---
+    return output_grid
+```
+```python
+import random
+
+"""
+Transforms an N x N grid of zeros into a maze represented by 0s (paths) 
+and 3s (walls).
+
+The transformation follows these steps:
+1.  Initialize an N x N output grid filled entirely with 3s (walls).
+2.  Use a maze generation algorithm, likely Randomized Depth-First Search (DFS),
+    to carve paths (0s) within the inner part of the grid 
+    (rows 1 to N-2, columns 1 to N-2). 
+    NOTE: The specific examples provided seem to follow a deterministic pattern
+    for maze generation which is not fully captured by standard Randomized DFS.
+    This implementation uses standard Randomized DFS, so the generated maze
+    layout will likely differ from the examples while maintaining the overall
+    structure (boundaries, entrance, exit, connectivity).
+    a. Start carving from cell (1, 1).
+    b. Maintain a stack for the DFS traversal.
+    c. While the stack is not empty:
+        i.   Get the current cell (r, c).
+        ii.  Find unvisited neighbors (cells 2 steps away horizontally or 
+             vertically, still marked as 3) within the inner grid bounds 
+             [1..N-2, 1..N-2].
+        iii. If unvisited neighbors exist:
+             - Randomly choose one neighbor (nr, nc).
+             - Calculate the wall cell ((r+nr)//2, (c+nc)//2) between the 
+               current cell and the neighbor.
+             - Mark the wall cell and the neighbor cell as paths (0).
+             - Push the neighbor cell onto the stack.
+        iv.  If no unvisited neighbors exist, pop the current cell (backtrack).
+3.  Create an entrance at (1, 0) and an exit at (N-2, 0) by setting 
+    these cells to 0.
+4.  The final grid contains the maze structure with outer walls, 
+    an entrance/exit on the left, and an inner carved maze.
+"""
+
+def transform(input_grid: list[list[int]]) -> list[list[int]]:
+    """
+    Generates a maze structure within the input grid dimensions.
+
+    Args:
+        input_grid: An N x N list of lists containing only 0s.
+
+    Returns:
+        An N x N list of lists representing the maze, with 0s for paths
+        and 3s for walls. The specific maze path is generated randomly
+        and may not match the examples exactly.
+    """
+    # --- Get grid dimensions ---
+    n = len(input_grid)
+    if n == 0:
+        return []
+    m = len(input_grid[0]) 
+    if n != m:
+         # Task description implies square grids based on examples
+         raise ValueError("Input grid must be square") 
+
+    # --- Step 1: Initialize output_grid with walls (3) ---
+    output_grid = [[3 for _ in range(n)] for _ in range(n)]
+
+    # --- Handle edge cases: grids too small for standard maze structure ---
+    # Examples start at N=6. Need N>=5 for a 1x1 inner carving area.
+    if n < 5: 
+        # Still create openings if possible based on the pattern N>=3
+        if n >= 3: 
+             if 1 < n: output_grid[1][0] = 0 # Entrance at (1,0)
+             # Exit at (N-2,0), ensuring it's a valid index and different from entrance row
+             if (n-2) >= 1 and (n-2) != 1 : output_grid[n-2][0] = 0 
+        # Return the grid with just boundary walls and potential openings
+        return output_grid 
+
+    # --- Step 2: Maze Carving (Randomized DFS) in the inner grid ---
+    
+    # Define inner grid boundaries (inclusive) for carving
+    inner_r_min, inner_r_max = 1, n - 2
+    inner_c_min, inner_c_max = 1, n - 2
+
+    # Stack for DFS: stores (row, col) tuples
+    stack = []
+    
+    # Start DFS from a fixed point within the inner grid, e.g., (1, 1)
+    start_r, start_c = 1, 1
+    output_grid[start_r][start_c] = 0  # Mark starting cell as path
+    stack.append((start_r, start_c))
+    
+    # visited set is implicitly tracked by checking if output_grid[nr][nc] is 0 or 3
+
+    while stack:
+        # Get the current cell from the top of the stack
+        current_r, current_c = stack[-1] 
+
+        # Find potential valid neighbors (2 steps away, within inner grid, still a wall)
+        neighbors = []
+        # Define possible moves (2 steps horizontally or vertically)
+        for dr, dc in [(0, 2), (0, -2), (2, 0), (-2, 0)]:
+            nr, nc = current_r + dr, current_c + dc
+
+            # Check if the potential neighbor (nr, nc) is:
+            # 1. Within the inner grid bounds
+            # 2. Still a wall (output_grid[nr][nc] == 3)
+            if (inner_r_min <= nr <= inner_r_max and
+                inner_c_min <= nc <= inner_c_max and
+                output_grid[nr][nc] == 3):
+                neighbors.append((nr, nc))
+
+        if neighbors:
+            # If there are valid unvisited neighbors, choose one randomly
+            next_r, next_c = random.choice(neighbors)
+
+            # Calculate the coordinates of the wall cell between current and neighbor
+            wall_r, wall_c = (current_r + next_r) // 2, (current_c + next_c) // 2
+
+            # Carve the path: set the wall cell and the neighbor cell to 0
+            output_grid[wall_r][wall_c] = 0
+            output_grid[next_r][next_c] = 0
+
+            # Add the chosen neighbor to the stack to continue DFS from there
+            stack.append((next_r, next_c))
+        else:
+            # If no unvisited neighbors (dead end), backtrack
+            stack.pop()
+
+    # --- Step 3: Create Entrance and Exit on the left boundary ---
+    # Indices are valid because we checked n >= 5 earlier
+    output_grid[1][0] = 0      # Set entrance at (1, 0)
+    output_grid[n - 2][0] = 0  # Set exit at (n-2, 0)
+
+    # --- Step 4: Final Output ---
+    return output_grid
+```

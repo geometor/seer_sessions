@@ -1,0 +1,50 @@
+Input:
+  Grid: 2D array of integers (colors).
+  Background: white (0).
+  Target_Color: gray (5).
+
+Objects:
+  - Type: Reference_Pattern
+    Properties:
+      - Color: Non-white (0), non-gray (5), non-blue (1) line/separator colors. (Specific colors like Yellow (4), Green (3), Blue (1), Red (2) are examples).
+      - Location: Typically found grouped together (e.g., upper region).
+      - Form: A specific relative pixel pattern within its bounding box.
+      - Size: Height and Width.
+      - Exclusions: Large structures like the blue separator line are NOT reference patterns. Reference patterns are typically small, self-contained shapes.
+  - Type: Target_Pixel
+    Properties:
+      - Color: gray (5)
+      - Location: Any pixel (r, c) in the grid.
+  - Type: Separator_Line (or other non-reference structures)
+    Properties:
+      - Color: e.g., blue (1)
+      - Form: e.g., Horizontal line.
+      - Role: Structural, not used for matching. Copied directly to output.
+  - Type: Background
+    Properties:
+      - Color: white (0)
+
+Relationships:
+  - Template_Matching: A sub-grid region in the input, centered or anchored at a Target_Pixel (gray), can match the Form and Size of a Reference_Pattern. The match ignores the color of the pixels within the sub-grid, only comparing the pattern of non-background vs background relative positions.
+
+Actions:
+  1. Initialize_Output: Create the output grid as a copy of the input grid.
+  2. Identify_References:
+     a. Find all distinct, contiguous, non-white, non-gray objects.
+     b. Filter these objects to exclude large structures (like the blue line) or potentially other criteria defining non-references. The remaining are Reference_Patterns.
+     c. Store each Reference_Pattern's color, form (relative non-background pixel coordinates), height, and width.
+  3. Iterate_Grid_For_Targets: Iterate through each pixel (r, c) of the input grid.
+  4. Check_Pixel_Is_Target: If the pixel input_grid[r, c] is gray (5):
+     a. Iterate through each identified Reference_Pattern.
+     b. Check_Pattern_Match: Extract a sub-grid from the input grid of the same height and width as the Reference_Pattern, anchored at or around (r, c). (The exact anchoring needs confirmation - top-left corner at (r,c)? Center at (r,c)?).
+     c. Compare the *pattern* of gray/non-gray pixels within the extracted sub-grid against the *form* of the Reference_Pattern. A match occurs if the relative positions of gray pixels in the sub-grid exactly match the relative positions of colored pixels in the Reference_Pattern's form.
+     d. If a match is found:
+        i. Retrieve the color of the matching Reference_Pattern.
+        ii. Determine the absolute coordinates in the output grid that correspond to the matched pattern.
+        iii. Update *only these specific pixels* in the output grid to the matched color. Use a mechanism (like a separate 'painted' mask) to ensure pixels belonging to one match aren't overwritten by another overlapping check, and that already-colored pixels aren't turned white later. Mark these output pixels as 'processed'.
+        iv. Potentially break the inner loop (stop checking other reference patterns for this gray pixel) if a match is found.
+  5. Final_Cleanup: Iterate through the output grid. Any pixel that is still gray (5) and wasn't marked as 'processed' (i.e., didn't belong to any matched pattern) should be changed to white (0).
+  6. Preserve_Others: Ensure all non-gray pixels from the input that were not part of a successful match remain unchanged in the output grid (this is handled by the initial copy and targeted updates).
+
+Output:
+  Grid: A modified version of the input grid where gray pixels are either recolored based on matching local patterns found at their location or erased if they don't participate in a match.

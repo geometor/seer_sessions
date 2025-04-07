@@ -1,0 +1,59 @@
+task_description: "Fill regions of a grid defined by separator lines. For each horizontal strip between horizontal separators, find the first non-background, non-separator color in the leftmost region (quadrant) of that strip. Use this color to fill all non-separator cells across the entire horizontal strip."
+elements:
+  - object: grid
+    properties:
+      - type: 2D array of integers
+      - represents: colored cells
+  - object: separator_lines
+    properties:
+      - type: horizontal and vertical lines
+      - composition: composed of a single, non-zero 'separator_color' that forms complete rows and columns.
+      - function: divide the grid into rectangular 'quadrants'
+  - object: background
+    properties:
+      - color_value: 0
+      - role: empty space within quadrants, ignored when searching for source color.
+  - object: content_pixels
+    properties:
+      - type: non-zero, non-separator colored cells
+      - location: within quadrants
+      - role: potential source colors for filling
+  - object: horizontal_strips
+    properties:
+      - type: horizontal rectangular regions of the grid located *between* consecutive horizontal separator lines (or between a grid edge and the nearest horizontal separator).
+      - excludes: the separator lines themselves.
+  - object: leftmost_quadrant
+    properties:
+      - type: rectangular subgrid within a horizontal_strip
+      - location: occupies the full height of its strip and extends horizontally from the left grid edge (column 0) to the first vertical separator line (or the right grid edge if no vertical separators exist).
+      - function: scanned to find the 'source_color' for its strip.
+actions:
+  - action: identify_separator_color
+    inputs: [input_grid]
+    outputs: [separator_color]
+    description: "Find the unique non-zero color that forms complete horizontal rows AND complete vertical columns."
+  - action: identify_separator_indices
+    inputs: [input_grid, separator_color]
+    outputs: [horizontal_line_indices, vertical_line_indices]
+    description: "Find the row indices of horizontal separator lines and column indices of vertical separator lines."
+  - action: define_strip_boundaries
+    inputs: [grid_height, horizontal_line_indices]
+    outputs: [list_of_strip_row_ranges]
+    description: "Define the start and end row indices for each horizontal strip based on grid edges and horizontal separator indices."
+  - action: find_source_color_for_strip
+    inputs: [input_grid, strip_row_range, vertical_line_indices, separator_color, background_color]
+    outputs: [source_color]
+    description: "Define the leftmost quadrant for the strip (from column 0 to first vertical separator/edge). Scan this quadrant row-by-row, column-by-column, to find the first cell whose color is not the background_color and not the separator_color. Return this color."
+  - action: fill_strip_in_output
+    inputs: [output_grid, strip_row_range, source_color, separator_color]
+    outputs: [modified_output_grid]
+    description: "Iterate through all cells (r, c) within the strip's row range in the output grid. If the corresponding input cell `input_grid[r, c]` is NOT the separator_color, set `output_grid[r, c]` to the source_color."
+relationships:
+  - relationship: separator_lines_define_regions
+    entities: [separator_lines, horizontal_strips, leftmost_quadrant]
+  - relationship: leftmost_quadrant_determines_strip_fill_color
+    entities: [leftmost_quadrant, horizontal_strips, content_pixels]
+    details: "The source_color for filling a horizontal_strip is the first valid content_pixel found within its leftmost_quadrant."
+  - relationship: fill_preserves_separators
+    entities: [output_grid, separator_color]
+    details: "Cells containing the separator_color in the input grid remain unchanged in the output grid."

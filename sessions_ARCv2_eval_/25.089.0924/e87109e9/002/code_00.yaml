@@ -1,0 +1,79 @@
+task_context:
+  description: |-
+    Transform a main grid area by stamping 2x2 azure blocks,
+    preserving blocks containing specific 'protected' colors.
+    Protected colors are defined in a key panel separated from the
+    main grid by a gray line.
+  input_structure:
+    - type: border
+      color: gray (5)
+      location: often row 0 and potentially column 0/last.
+    - type: key_panel
+      location: Section between the top border (row 0) and the main separator line.
+      content: Contains multiple small patterns (a non-white/non-gray color next to white) usually bordered by gray (5).
+      purpose: Defines the set of protected colors.
+    - type: separator
+      color: gray (5)
+      orientation: horizontal
+      location: A solid line of gray pixels separating the key_panel from the main_grid. Crucially, this is *not* necessarily the first row of gray pixels (row 0). It's the one dividing the functional areas.
+      identification: Find the last row index containing only gray (5) pixels.
+    - type: main_grid
+      location: Bottom section (below the identified separator row).
+      content: Background color, various colored shapes/objects.
+      purpose: The area to be transformed.
+  output_structure:
+    - type: grid
+      size: Matches the input's main_grid size.
+      content: Modified version of the input's main_grid.
+
+objects:
+  - id: protected_colors
+    source: >
+      Unique set of colors extracted from the key_panel.
+      A color is included if it is not white (0) and not gray (5),
+      and it is adjacent (4-connectivity) to at least one white (0) pixel
+      within the key_panel boundaries.
+    property: 'protected'
+  - id: main_grid_pixels
+    source: all pixels in the main_grid section of the input.
+  - id: background_pixels
+    source: pixels in the main_grid not part of defined shapes or protected colors.
+    property: 'unprotected' (typically)
+  - id: stamp_color
+    value: azure (8)
+  - id: stamp_unit
+    shape: 2x2 square
+
+actions:
+  - action: find_separator
+    input: input_grid
+    output: row_index of the functional separator line (last all-gray row).
+  - action: split_grid
+    input: input_grid, separator_row_index
+    output: key_panel (rows above separator, excluding row 0 if it's gray border), main_grid (rows below separator)
+  - action: extract_keys
+    input: key_panel
+    output: set of protected_colors
+  - action: copy_grid
+    input: main_grid
+    output: initial output_grid (same dimensions as main_grid)
+  - action: iterate_and_stamp
+    target: output_grid
+    unit: 2x2 blocks (defined by top-left corner r, c from 0 to height-2, 0 to width-2)
+    condition_input: Corresponding 2x2 block from the input main_grid.
+    condition_logic: >
+      Check if *any* pixel within the 2x2 input block has a color
+      that exists in the set of protected_colors.
+    effect:
+      - if condition is FALSE (no protected colors in the 2x2 block):
+          Overwrite the corresponding 2x2 block in the output_grid with the stamp_color (azure 8).
+      - if condition is TRUE (at least one protected color found):
+          Leave the corresponding 2x2 block in the output_grid unchanged (preserving original colors).
+
+relationships:
+  - type: protection
+    subject: Any 2x2 block in the main_grid containing at least one protected_color pixel.
+    effect: Prevents the corresponding 2x2 block in the output_grid from being overwritten by the azure stamp.
+  - type: spatial_grouping
+    granularity: 2x2 blocks (non-overlapping iteration grid for checking/stamping)
+    purpose: Defines the unit of checking and potential stamping.

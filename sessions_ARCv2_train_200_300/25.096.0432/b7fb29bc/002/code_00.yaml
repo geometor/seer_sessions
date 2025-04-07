@@ -1,0 +1,58 @@
+objects:
+  - name: grid
+    type: 2D array of integers
+    properties:
+      - dimensions: 15x15
+      - cell_values: [0, 2, 3, 4] (0, 3 in input; 0, 2, 3, 4 in output)
+  - name: frame_and_obstacles
+    type: structure within the grid
+    properties:
+      - composed_of: cells with value 3 in the input grid
+      - function: acts as barriers defining distinct regions
+  - name: external_area
+    type: region within the grid
+    properties:
+      - initial_content: cells with value 0 in the input grid
+      - characteristic: reachable from the grid border via a path of only '0' cells
+      - final_content: cells remain value 0 in the output grid
+  - name: internal_area
+    type: region within the grid
+    properties:
+      - location: enclosed by the frame_and_obstacles
+      - initial_content: cells with value 0 in the input grid
+      - characteristic: not reachable from the grid border via a path of only '0' cells
+      - final_content: cells become value 2 or 4 in the output grid
+  - name: internal_fill_cells
+    type: cells within the internal_area
+    properties:
+      - initial_value: 0
+      - final_value:
+          - 4 if adjacent (up, down, left, right) to any cell with value 3 in the input grid.
+          - 2 otherwise.
+
+relationships:
+  - type: adjacency
+    between: grid cells
+    definition: Cells sharing a horizontal or vertical edge.
+  - type: reachability
+    between: '0' cells and grid border
+    definition: Existence of a path consisting only of '0' cells connecting a cell to any cell on the first/last row or first/last column.
+
+actions:
+  - name: identify_external_zeros
+    input: input_grid
+    output: set of coordinates for '0' cells reachable from the border
+    method: Flood fill or BFS/DFS starting from border '0's, moving only through '0's.
+  - name: conditional_fill_internal_zeros
+    input: input_grid, set of external_zero_coordinates
+    output: output_grid
+    logic:
+      - Initialize output_grid as a copy of input_grid.
+      - Iterate through each cell (r, c) in the input_grid.
+      - If input_grid[r][c] is 0 AND (r, c) is NOT in external_zero_coordinates:
+        - Check neighbors (up, down, left, right) in the input_grid.
+        - If any neighbor has value 3:
+          - Set output_grid[r][c] to 4.
+        - Else:
+          - Set output_grid[r][c] to 2.
+      - Leave all other cells (value 3 and external '0's) unchanged from the initial copy.
