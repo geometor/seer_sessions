@@ -1,0 +1,63 @@
+task_description: Replace blue pixels in 'target' regions with the color found in a corresponding 'source' region, based on adjacency across yellow separators.
+
+grid_properties:
+  - dimensions_preserved: Yes
+  - background_color: white (0)
+
+elements:
+  - type: separator
+    color: yellow (4)
+    description: Horizontal and/or vertical lines or line segments that partition the grid.
+    persistence: Unchanged between input and output.
+
+  - type: source_region
+    description: A contiguous region of non-yellow pixels containing exactly one pixel of a unique color (not white(0), yellow(4), or blue(1)).
+    properties:
+      - source_color: The unique non-white/yellow/blue color within the region.
+      - location: Bounded by separators or grid edges.
+    persistence: Unchanged between input and output.
+    role: Provides the replacement color.
+
+  - type: target_region
+    description: A contiguous region of non-yellow pixels containing one or more blue (1) pixels. Does not contain any other non-white/yellow colors.
+    properties:
+      - target_pixels: The coordinates of all blue (1) pixels within the region.
+      - location: Bounded by separators or grid edges.
+    persistence: Blue pixels are replaced in the output.
+    role: Defines areas where replacement occurs.
+
+relationships:
+  - type: partitioning
+    element1: separator (yellow pixels)
+    element2: grid
+    description: Yellow pixels divide the grid into distinct non-yellow regions.
+
+  - type: correspondence
+    element1: target_region
+    element2: source_region
+    description: |
+      Each target region is linked to exactly one source region based on direct adjacency across a yellow separator segment:
+      1. Vertical Adjacency: The source region is immediately above the target region, separated by a horizontal yellow line segment spanning their shared boundary.
+      OR
+      2. Horizontal Adjacency: The source region is immediately to the left of the target region, separated by a vertical yellow line segment spanning their shared boundary.
+
+actions:
+  - action: identify_regions
+    inputs: [grid, separators]
+    outputs: [list_of_regions]
+    description: Find contiguous areas of non-yellow pixels.
+
+  - action: classify_regions
+    inputs: [list_of_regions, grid]
+    outputs: [list_of_source_regions, list_of_target_regions]
+    description: Analyze each region to identify its type (source or target) based on its pixel content (unique color vs. blue pixels).
+
+  - action: map_regions
+    inputs: [list_of_source_regions, list_of_target_regions, grid]
+    outputs: [dictionary_mapping_target_to_source_color]
+    description: Determine the source color for each target region based on the vertical or horizontal adjacency rule across a yellow separator.
+
+  - action: replace_pixels
+    inputs: [target_region_pixels, source_color, output_grid]
+    outputs: [modified_output_grid]
+    description: Change the color of blue pixels in the target region to the corresponding source color in the output grid.

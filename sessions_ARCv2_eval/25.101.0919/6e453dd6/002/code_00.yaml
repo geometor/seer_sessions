@@ -1,0 +1,52 @@
+Grid:
+  type: 2D array of integers (pixels)
+  colors: [0=white, 2=red, 5=gray, 6=magenta]
+  size: variable
+
+Objects:
+  - type: Gray_Line
+    color: 5
+    shape: vertical line (usually solid, 1 pixel wide)
+    location: specific column index `gray_col`
+    role: barrier
+  - type: White_Object
+    color: 0
+    shape: contiguous region of pixels (4-connectivity)
+    location: initially left of Gray_Line (column index < `gray_col`)
+    properties:
+      - pixels: list of (row, col) tuples
+      - max_c: maximum column index of any pixel in the object
+      - shift: calculated horizontal shift distance `max(0, (gray_col - 1) - max_c)`
+      - final_touch_rows: set of rows `r` where a pixel exists at `(r, gray_col - 1)` in the output grid belonging to this object.
+  - type: Background
+    color: 6 (magenta)
+  - type: Red_Region
+    color: 2
+    shape: horizontal rectangle segment(s)
+    location: right of Gray_Line (columns >= `gray_col + 1`)
+    status: appears only in output
+    properties:
+      - width: `w_red = min(4, count of contiguous all-magenta columns in input starting at gray_col + 1)`
+      - rows: A specific subset `R_red` of all `final_touch_rows` from all objects touching the boundary. The exact selection rule for `R_red` is the primary unsolved part of the transformation. Documented target sets for `R_red`:
+          - Ex1: {4, 5, 6, 12, 13, 14}
+          - Ex2: {3, 8, 14}
+          - Ex3: {1, 5, 6, 13, 17}
+
+Actions:
+  - Find `gray_col`.
+  - Calculate `w_red` based on magenta columns right of `gray_col` in the input.
+  - Find all `White_Objects` left of `gray_col`.
+  - Create `output_grid` (copy of input).
+  - Create list `objects_touching_boundary` containing tuples `(object_id, final_touch_rows_for_object)`.
+  - For each `White_Object`:
+    - Calculate its `shift`.
+    - Collect original coordinates `(r, c)` for erasure if `shift > 0`.
+    - Collect target coordinates `(r, c + shift)` for drawing.
+    - Determine `final_touch_rows_for_object`. If not empty, add `(object_id, final_touch_rows_for_object)` to `objects_touching_boundary`.
+  - Perform modifications:
+    - Erase original positions for shifted objects (set to magenta).
+    - Draw objects at target positions (set to white).
+  - Determine the final set of rows `R_red` based on a **currently unknown filtering rule** applied to the data in `objects_touching_boundary`.
+  - If `w_red > 0`:
+    - For each row `r` in `R_red`:
+        - Paint red segment: Set `output_grid[r, gray_col + 1 : gray_col + 1 + w_red] = RED`.

@@ -1,0 +1,43 @@
+task_type: pattern_manipulation_conditional
+
+grid_properties:
+  size: constant across input/output for each example
+  background_color: white (0)
+  separators: vertical columns of background_color divide the grid into blocks
+
+block_properties:
+  definition: contiguous columns between separator columns (or grid edges)
+  count: N = number of blocks
+  colors: assumed consistent majority (M) and minority (m) non-background colors across relevant blocks
+  minority_pattern: P[i] = set of relative coordinates (row, col_within_block) of minority_color pixels within block i (1-indexed)
+
+transformation_rule:
+  condition: depends on the parity of N (number of blocks)
+  scope: modifies minority/majority colors within blocks; background and separators unchanged
+  base_action: transfer relative minority patterns between blocks according to parity rule
+  color_changes:
+    - within each modified block:
+        - pixels at original minority locations change m -> M
+        - pixels at locations defined by the incoming pattern change M -> m (or stay m if already m)
+  column_shift:
+    - applies ONLY when a pattern moves into Block 1 (B1)
+    - rule: for an incoming pattern coordinate (r, c_rel), the coordinate placed in B1 is (r, max(0, c_rel - 1))
+
+parity_rules:
+  # Case 1: N < 2
+  - condition: N < 2
+    action: return input grid unchanged
+
+  # Case 2: N is Odd (and N >= 3)
+  - condition: N % 2 != 0
+    actions:
+      - Block B1 (output): receives pattern P[N] from input, applying column_shift
+      - Blocks B2 to B(N-1) (output): receive their corresponding input patterns P[2] to P[N-1] (i.e., are unchanged)
+      - Block BN (output): receives pattern P[1] from input (no shift)
+
+  # Case 3: N is Even (and N >= 2)
+  - condition: N % 2 == 0
+    actions:
+      - Block B1 (output): receives pattern P[N-1] from input, applying column_shift
+      - Blocks B2 to B(N-1) (output): receive pattern P[i-1] from input (i.e., B(i) gets pattern from B(i-1))
+      - Block BN (output): receives pattern P[N] from input (i.e., is unchanged)

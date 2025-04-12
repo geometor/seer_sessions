@@ -1,0 +1,71 @@
+task_description: Fill background pixels based on adjacent source colors using iterative propagation with priority.
+
+elements:
+  - type: grid
+    properties: contains pixels with color values 0-9.
+  - type: background_pixel
+    properties:
+      - color: the most frequent color in the input grid.
+      - role: gets replaced during the transformation.
+  - type: object_pixel
+    properties:
+      - color: any non-background color in the input grid.
+      - role: can act as a barrier or a source for filling.
+  - type: source_pixel
+    subtype_of: object_pixel
+    properties:
+      - location: adjacent (orthogonally) to at least one background_pixel in the input.
+      - role: initiates the fill process.
+      - associated_fill_color: a specific color determined by the source_pixel's color (mapping specific to task instance).
+  - type: fill_pixel
+    properties:
+      - color: determined by the associated_fill_color of the adjacent source_pixel(s).
+      - location: initially replaces background_pixels adjacent to source_pixels.
+      - role: propagates its color to adjacent background_pixels or lower-priority fill_pixels in subsequent steps.
+      - priority: determined by the fill color's index (lower index = higher priority).
+
+relationships:
+  - type: adjacency
+    between: [pixel, pixel]
+    properties: orthogonal neighbors (up, down, left, right).
+  - type: determines_fill
+    from: source_pixel_color
+    to: fill_pixel_color
+    properties: task-specific mapping (e.g., 1->3, 4->5 in train_2).
+  - type: overwrites
+    from: higher_priority_fill_pixel (lower color index)
+    to: lower_priority_fill_pixel (higher color index) or background_pixel
+    properties: occurs when multiple fills compete for the same pixel location during propagation.
+
+actions:
+  - name: identify_background_color
+    target: input_grid
+    output: background_color_value
+  - name: identify_source_fill_pairs
+    target: input_grid, output_grid, background_color_value
+    output: set of (source_color, fill_color) tuples.
+    steps:
+      - Find non-background colors adjacent to background in input (potential sources).
+      - Find colors replacing background in output (potential fills).
+      - Correlate adjacent sources with resulting fills to establish pairs.
+  - name: determine_fill_priority
+    target: set of fill_colors
+    output: ordered list of fill_colors (lowest index first for highest priority).
+  - name: iterative_flood_fill
+    target: input_grid
+    using: background_color, source_fill_pairs, fill_priority
+    output: output_grid
+    steps:
+      - Initialize working_grid = input_grid.
+      - Repeat until no changes occur in an iteration:
+        - Create next_grid = working_grid.
+        - For each pixel (r, c):
+          - Get current color `curr = working_grid[r, c]`.
+          - Find orthogonal neighbors and their non-background colors `N` in working_grid.
+          - Determine potential fill colors `P` for (r,c) based on mappings from `N`.
+          - If `P` is not empty:
+            - Find highest priority (lowest index) fill `f_p` in `P`.
+            - If `curr` is background OR `f_p` has higher priority than `curr`:
+              - If `next_grid[r, c] != f_p`:
+                 - Set `next_grid[r, c] = f_p`. Mark change occurred.
+        - Update `working_grid = next_grid`.

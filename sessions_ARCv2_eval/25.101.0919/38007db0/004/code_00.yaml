@@ -1,0 +1,64 @@
+task_elements:
+  - item: input_grid
+    properties:
+      - composed_of: grid of blocks separated by lines
+      - dimensions: variable height (R blocks) and width (C blocks)
+  - item: output_grid
+    properties:
+      - composed_of: grid of blocks separated by lines
+      - dimensions: height matches input (R blocks), width fixed (1 block)
+      - content: repetitions of a single selected pattern
+  - item: blocks
+    properties:
+      - arrangement: RxC grid in input, Rx1 grid in output
+      - size: constant H x W within a task
+      - structure: contains an internal_pattern
+      - identification: separated by separator_lines
+  - item: separator_lines
+    properties:
+      - thickness: 1 pixel
+      - color: consistent within a task (input_grid[0][0])
+      - role: define block boundaries
+  - item: internal_pattern
+    properties:
+      - size: H x W
+      - location: within block boundaries
+      - frequency: count of occurrences of each distinct pattern in the input grid
+      - uniqueness: count == 1
+
+actions:
+  - action: analyze_grid_structure
+    inputs: input_grid
+    outputs: separator_color, block_height (H), block_width (W), block_rows (R), block_columns (C)
+  - action: extract_patterns_with_positions
+    inputs: input_grid, H, W, R, C
+    outputs: list_of_patterns_data [{'pattern': tuple, 'pos': (r, c)}]
+  - action: calculate_pattern_frequencies
+    inputs: list_of_patterns_data
+    outputs: pattern_counts (dict[pattern_tuple, count]), patterns_with_full_data (list[{'pattern', 'pos', 'count', 'first_pos'}])
+  - action: select_target_pattern
+    inputs: patterns_with_full_data, pattern_counts
+    outputs: target_pattern (tuple)
+    logic:
+      - Identify patterns with count == 1 (unique_patterns).
+      - If unique_patterns list is not empty:
+        - Sort unique_patterns by position (row, then column).
+        - Select the pattern from the first element in the sorted list (top-leftmost unique).
+      - If unique_patterns list is empty:
+        - Find the maximum count value among all patterns.
+        - Filter patterns to find those with the maximum count (most_common_patterns).
+        - Sort most_common_patterns by their first position (row, then column).
+        - Select the pattern from the first element in the sorted list (top-leftmost most common).
+  - action: construct_output_grid
+    inputs: target_pattern, R, H, W, separator_color
+    outputs: output_grid (list of lists)
+    steps:
+      - Create Rx1 block grid structure with separators.
+      - Place target_pattern into each block location.
+
+relationships:
+  - Output structure (R, H, W, separator) mirrors input.
+  - Output content is determined by a single pattern selected from input.
+  - Selection prioritizes unique patterns (count=1).
+  - If unique patterns exist, the one at the top-leftmost position is chosen.
+  - If no unique patterns exist, the most common pattern is chosen (using top-leftmost position as tie-breaker).

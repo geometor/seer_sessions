@@ -1,0 +1,59 @@
+InputGrid:
+  Properties:
+    - SeparatorDistance (S): 4 # Determined by index of first gray line + 1.
+    - CellSize: 3 # S-1.
+    - CellRows (M): Integer # Number of cell rows based on content bounds and S. (3, 3, 4 for T1-T3)
+    - CellCols (N): Integer # Number of cell columns based on content bounds and S. (3, 3, 5 for T1-T3)
+  Objects:
+    - InputCell: Defined by cell coordinate (r, c), 0 <= r < M, 0 <= c < N.
+    - InputShape: 2D array (CellSize x CellSize) representing non-background(0), non-gray(5) pixels within an InputCell. Can be empty.
+    - PixelCount: Integer, count of non-zero pixels in InputShape.
+    - InputKey: Located in the last row containing any non-zero pixel.
+      - Properties: Color (K), GridColumnIndex (I).
+      - Association: Activates InputCell column `c = I // S`. First key found for `c` determines its KeyColor K[c].
+
+DerivedInfo:
+  - ActiveCols: Ordered list of unique input cell column indices `c` that have an associated InputKey. # ([0,1,2], [0,1,2], [0,2,3] for T1-T3)
+  - KeyColorMap: Dictionary mapping active `c` to its associated KeyColor K[c]. # ({0:6,1:7,2:1}, {0:7,1:9,2:3}, {0:3,2:8,3:6} for T1-T3)
+  - UniqueKeyColors (UKC): Set of unique KeyColors K from KeyColorMap. # ({1,6,7}, {3,7,9}, {3,6,8} for T1-T3)
+  - ColorMapRule: A specific dictionary mapping original KeyColor K to a DominantOutputColor K'. Determined solely by UKC:
+      - Rule1 (UKC={1,6,7}): {6:7, 7:1, 1:1}
+      - Rule2 (UKC={3,7,9}): {3:7, 7:3, 9:9}
+      - Rule3 (UKC={3,6,8}): {3:6, 8:8, 6:6}
+  - OutputCellSize: Integer. Defaults to InputCellSize (3). Exception: 5 for Example 3 (Input 14x17, S=4).
+  - OutputCellRows (M'): M.
+  - OutputCellCols (N'): Number of columns in ActiveCols. (3, 3, 3 for T1-T3)
+
+OutputGrid:
+  Properties:
+    - Rows: M' * OutputCellSize.
+    - Cols: N' * OutputCellSize.
+    - Background: 0.
+  Objects:
+    - OutputCell: Defined by cell coordinate (R, C), 0 <= R < M', 0 <= C < N'. R corresponds to input `r`. C corresponds to the C-th element in ActiveCols.
+    - OutputShape: Placed within OutputCell (R, C). Derived from InputShape(r, c).
+    - OutputColor: Assigned to OutputShape.
+
+Actions:
+  - Analyze: Determine S, CellSize, M, N from InputGrid. Extract InputShapes and PixelCounts for each InputCell(r,c).
+  - IdentifyKeys: Find InputKeys in the last content row. Build ActiveCols list and KeyColorMap. Determine UKC.
+  - SelectColorRule: Choose ColorMapRule based on UKC. If no rule matches, fail.
+  - DetermineOutputParams: Set M', N', OutputCellSize (applying exception for Ex3). Calculate output grid dimensions.
+  - CreateOutputGrid: Initialize OutputGrid with background color.
+  - For each `c` in `ActiveCols` (maps to output column `C`):
+    - Get KeyColor `K = KeyColorMap[c]`.
+    - Get DominantOutputColor `K' = ColorMapRule[K]`.
+    - For each `r` from 0 to M-1 (maps to output row `R=r`):
+      - If InputShape[r, c] exists:
+        - Determine ShapeType: 'Square' if PixelCount <= 4, 'Preserved' otherwise.
+        - Generate OutputShapeBase:
+          - If ShapeType is 'Square': Create a 1-filled square of OutputCellSize.
+          - If ShapeType is 'Preserved':
+            - If scaling needed (OutputCellSize != CellSize): Scale InputShape[r,c] geometrically to OutputCellSize, fill with 1s.
+            - Else: Use InputShape[r,c] directly (structure only).
+        - Determine OutputColor:
+          - If ShapeType is 'Square': OutputColor = K (original key color).
+          - If ShapeType is 'Preserved': OutputColor = K' (dominant color).
+        - Recolor OutputShapeBase: Replace 1s in OutputShapeBase with OutputColor.
+        - Place: Copy the final colored OutputShape into OutputGrid at OutputCell(R, C).
+  - Return OutputGrid.

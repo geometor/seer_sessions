@@ -1,0 +1,90 @@
+Grid:
+  type: object
+  properties:
+    dimensionality: 2D
+    cells:
+      type: list of lists
+      items: Cell
+
+Cell:
+  type: object
+  properties:
+    value:
+      type: integer
+      description: Represents a color (0, 5, 6, 7, 9)
+    position:
+      type: tuple (row, column)
+    neighbors:
+      type: list of Cells
+      description: 8 adjacent cells (orthogonal and diagonal)
+    input_value: # Keep track of original value
+      type: integer
+
+Colors:
+  - id: 0
+    role: Boundary / Frame component (mutable, potential revert trigger)
+  - id: 5
+    role: Fill color (mutable to 7)
+  - id: 6
+    role: Background / Boundary component (mutable)
+  - id: 7
+    role: Active/Seed color, Target fill color (potentially mutable back to 5)
+  - id: 9
+    role: Boundary / Frame component (mutable)
+
+Region: # Connected components in the INPUT grid
+  type: object
+  properties:
+    cells: list of (row, col) tuples
+    is_pure_5: boolean # True if all cells in the component have input_value 5
+
+Transformation:
+  type: action
+  description: Modifies the input grid through sequential steps.
+  steps:
+    - Initialize output grid = input grid.
+    - Identify_Pure_5_Regions: Find connected components of only 5s in the input.
+    - Convert_Pure_5_Regions: Change all cells in identified pure 5 regions to 7 in the output grid.
+    - Propagate_7s_Iterative:
+        description: Iteratively expand 7s until stable.
+        mechanism:
+          - Create working_grid = current output grid.
+          - Loop:
+            - Set changed_in_iteration = false.
+            - Create next_working_grid = current working_grid.
+            - For each cell (r, c):
+              - If working_grid[r][c] == 5 and has any neighbor == 7 in working_grid:
+                - Set next_working_grid[r][c] = 7.
+                - Set changed_in_iteration = true.
+            - Update working_grid = next_working_grid.
+            - If not changed_in_iteration, break loop.
+          - Update output_grid = final working_grid.
+    - Boundary_Reversion_0:
+        description: Revert certain 7s back to 5s if adjacent to an input 0.
+        mechanism:
+          - Create final_output = current output grid.
+          - For each cell (r, c):
+            - If output_grid[r][c] == 7 AND input_grid[r][c] == 5:
+              - Check 8 neighbors (nr, nc):
+                - If any neighbor exists and input_grid[nr][nc] == 0:
+                  - Set final_output[r][c] = 5.
+                  - Break neighbor check for this cell.
+          - Update output_grid = final_output.
+    - Apply_Boundary_Pattern_Replacements:
+        description: Apply specific pattern transformations (potentially column-based) to the output grid based on input patterns.
+        rules:
+          - Rule Ex1-Copy: If 8x8 and input[0] all 6s, output_grid[7] = output_grid[0].
+          - Rule Ex1-9to0: If 8x8 and input[2] starts 99996, output_grid[2][0:4] = [0,0,0,0].
+          - Rule Ex3-ColRepl: If 12x12, for r in 2..6: output_grid[r][0]=6, output_grid[r][5]=0.
+          - (Other boundary rules TBD).
+    - Apply_Anomaly_Fixes:
+        description: Apply specific fixes for known exceptions.
+        rules:
+          - Rule Ex1-Anom1: If 8x8, output_grid[3][1]=7.
+          - Rule Ex1-Anom2: If 8x8 and input[3][2]==0, output_grid[3][2]=5.
+
+Relationships:
+  - Adjacency: Cells are neighbors (8-directional).
+  - Containment: Cells belong to connected Regions (components).
+  - Propagation: The state change of one cell (to 7) can trigger changes in adjacent cells.
+  - Inhibition/Reversion: Adjacency to specific input colors (e.g., 0) can revert a change (7 back to 5).

@@ -1,0 +1,44 @@
+task_type: object_transformation_interaction
+components:
+  - role: grid
+    elements:
+      - role: background
+        color: white (0)
+      - role: object
+        count: 2 # Exactly two distinct non-white objects per grid
+        properties:
+          - color: non-white (1-9)
+          - shape: variable
+          - connectivity: contiguous pixels of the same color
+
+relationships:
+  - type: color_index_determinism
+    description: The transformation depends on which of the two colors has the lower index.
+    properties:
+      - C_low: color with min(index(color1), index(color2))
+      - C_high: color with max(index(color1), index(color2))
+  - type: spatial
+    description: Objects can be adjacent, separate, or one can enclose another. Adjacency influences the outcome of vacated space.
+
+actions:
+  - name: identify_colors_and_objects
+    inputs: input_grid
+    outputs: C_low, C_high, object_low_pixels, object_high_pixels
+  - name: execute_dual_shift_left
+    inputs: input_grid, C_low, C_high, object_low_pixels, object_high_pixels
+    outputs: output_grid
+    description: |
+      Performs a conditional shift-left operation on both objects based on C_low and C_high.
+    logic: |
+      1. Initialize output_grid by copying input_grid.
+      2. Store the set of original coordinates for object_low (low_orig_coords).
+      3. **Shift C_low:**
+         a. Iterate through each pixel (r, c) in low_orig_coords.
+         b. Clear the original location in output_grid: output_grid[r][c] = 0.
+         c. Calculate the new location (nr, nc) = (r, c - 1).
+         d. If (nr, nc) is within grid bounds, paint the new location: output_grid[nr][nc] = C_low.
+      4. **Conditionally Shift/Fill C_high:**
+         a. Iterate through each pixel (r, c) of object_high in the *input* grid.
+         b. Calculate its potential 'shifted left' location (nr, nc) = (r, c - 1).
+         c. If (nr, nc) is within grid bounds AND (nr, nc) exists in low_orig_coords:
+            - Set output_grid[nr][nc] = C_high. This effectively fills the vacated spot with C_high.

@@ -1,0 +1,54 @@
+Input_Grid:
+  Properties:
+    Size: Variable (e.g., 20x20)
+    Background_Digit: 0
+    Foreground_Digits: Variable sets of 4 distinct digits, sometimes including 5.
+  Objects:
+    - Type: Cluster
+      Quantity: 4
+      Properties:
+        - Digits: Mostly uniform, can contain other digits (e.g., 7s cluster containing a 5).
+        - Bounding_Box: Minimal box containing non-zero digits (Coords, Height H, Width W).
+        - Center: Calculated from Bounding_Box (Y, X).
+        - Role: TL_Cluster, TR_Cluster, BL_Cluster, or BR_Cluster based on relative center coordinates (Top two clusters sorted by X; Bottom two clusters sorted by X).
+        - Dominant_Digit: The most frequent non-zero digit in the cluster.
+        - Contains_5: Boolean flag indicating if digit 5 is present in the cluster's bounding box.
+Output_Grid:
+  Properties:
+    Size: Variable (2N x 2N).
+    Digits: Combination of digits from input clusters.
+    Structure: 2x2 composition of NxN subgrids.
+  Subgrids:
+    - Size: NxN
+    - Source: Determined by Assembly Rule (A or B) applied to Input Cluster Roles.
+    - Transformation: Potential 270-degree clockwise rotation applied to the subgrid placed in the TL Output quadrant, conditional on Assembly Rule B being used.
+Transformation:
+  Parameters:
+    - N: Determined as min(max(H, W)) across the 4 input cluster bounding boxes.
+  Actions:
+    - Identification: Find 4 non-zero digit clusters and their bounding boxes, dominant digits, and check for presence of digit 5.
+    - Role_Assignment:
+        - Identify Top (lowest Y centers) and Bottom (highest Y centers) pairs.
+        - Within Top pair, assign TL_Cluster (lower X), TR_Cluster (higher X).
+        - Within Bottom pair, assign BL_Cluster (lower X), BR_Cluster (higher X).
+    - Assembly_Rule_Selection:
+        - Get minY (top edge) for TL_Cluster and TR_Cluster bounding boxes.
+        - If minY(TL_Cluster) == minY(TR_Cluster), select Assembly B (TL->TR, TR->TL(rot270), BL->BL, BR->BR). Set Rotation=True.
+        - Else, select Assembly A (TL->TL, TR->TR, BL->BL, BR->BR). Set Rotation=False.
+    - Subgrid_Extraction: Extract top-left NxN content from each cluster's bounding box (`Subgrid_TL`, `Subgrid_TR`, `Subgrid_BL`, `Subgrid_BR` corresponding to the *role*).
+    - Rotation: If Rotation=True, rotate `Subgrid_TR` 270 degrees clockwise. Let this be `Rotated_Subgrid_TR`.
+    - Assembly:
+        - Create 2N x 2N grid.
+        - Determine source subgrid for each quadrant based on Assembly Rule (e.g., TL output gets `Rotated_Subgrid_TR` if Rule B, `Subgrid_TL` if Rule A).
+        - Place the corresponding subgrids into the output grid.
+    - Filling:
+        - Iterate through the assembled 2N x 2N grid.
+        - For any cell `(r, c)` containing the background digit (0) from the source subgrid:
+            - Determine the output quadrant (TL, TR, BL, BR).
+            - Determine the *original input cluster* that was the source for this quadrant based on the Assembly Rule.
+            - Replace the 0 with the Dominant_Digit of that source cluster.
+    - Boundary_Interaction/Modification:
+        - Apply modifications to the filled grid, primarily affecting cells near the internal boundaries (row N-1, row N, col N-1, col N).
+        - Specific Rule 1: If *any* input cluster Contains_5, set OutputGrid[0, 0] = 5.
+        - Specific Rule 2 (Hypothesized): The values of cells along the boundary rows/columns (N-1, N) are potentially overwritten based on the dominant digits of adjacent quadrants. (The exact mechanism needs refinement, as simple point overrides or direct neighbor copies failed for N=2).
+        - The final state observed in examples suggests significant interaction between adjacent quadrants' properties in this step.

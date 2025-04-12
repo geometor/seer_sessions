@@ -1,0 +1,39 @@
+task_type: object_completion_within_bounds
+grid_properties:
+  size: variable
+  background_color: 0 (white)
+input_features:
+  num_objects: 2 (excluding background)
+  object_properties:
+    - color: two distinct non-white colors (color_A, color_B)
+    - shape: contiguous blocks
+    - overlap: the two objects always overlap
+relationship:
+  - type: spatial_interruption
+    determining_factor: connectivity check
+    definitions:
+      - interrupted_object: The object (e.g., Object A) whose pixels become disconnected when the other object's (Object B) pixels are temporarily replaced with the background color. Identified by its color (interrupted_color) and coordinates (coords_interrupted).
+      - interrupting_object: The object (e.g., Object B) whose pixels remain connected when the other object's (Object A) pixels are temporarily replaced with the background color. Identified by its color (interrupting_color) and coordinates (coords_interrupting).
+transformation:
+  - action: identify_objects_and_colors
+    input: input_grid
+    output: color_A, color_B, coords_A, coords_B
+  - action: determine_interrupted_object
+    input: input_grid, color_A, color_B, coords_A, coords_B
+    logic: Perform connectivity checks by temporarily removing each object to see which one disconnects the other.
+    output: interrupted_color, coords_interrupted, interrupting_color, coords_interrupting
+  - action: calculate_interrupted_bounding_box
+    input: coords_interrupted
+    output: bbox (min_row, min_col, max_row, max_col)
+  - action: determine_output_shape
+    input: coords_A, coords_B, bbox
+    logic: Find the union of coords_A and coords_B. Filter this union to include only coordinates within the calculated bbox.
+    output: output_coords
+  - action: generate_output_grid
+    input: grid_dimensions, background_color, output_coords, interrupted_color
+    logic: Create a new grid filled with background_color, then set pixels at output_coords to interrupted_color.
+output_features:
+  num_objects: 1 (excluding background)
+  object_properties:
+    - color: the color of the 'interrupted' object from the input (interrupted_color)
+    - shape: All pixels corresponding to either original object within the bounding box of the 'interrupted' object.

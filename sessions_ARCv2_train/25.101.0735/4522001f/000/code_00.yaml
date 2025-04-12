@@ -1,0 +1,74 @@
+task_description: Generate a 9x9 output grid based on patterns indicated in a 3x3 input grid.
+
+elements:
+  - object: InputGrid
+    properties:
+      - dimensions: 3x3
+      - cells: contain values 0, 2, or 3
+  - object: OutputGrid
+    properties:
+      - dimensions: 9x9
+      - cells: contain values 0 or 3
+  - object: MarkerCell
+    properties:
+      - represents: reference point in InputGrid
+      - value: 2
+      - coordinates: (r2, c2)
+  - object: ContextCell
+    properties:
+      - represents: trigger elements in InputGrid
+      - value: 3
+      - coordinates: (r, c)
+      - relative_coordinates: (dr, dc) = (r - r2, c - c2) ; calculated relative to MarkerCell
+  - object: BackgroundCell
+    properties:
+      - value: 0
+      - represents: empty space in InputGrid and OutputGrid
+  - object: PatternBlock
+    properties:
+      - value: 3
+      - dimensions: 4x4
+      - location: placed in OutputGrid based on ContextCell's relative_coordinates
+
+actions:
+  - name: InitializeOutput
+    actor: System
+    input: None
+    output: 9x9 OutputGrid filled with 0s
+  - name: LocateMarker
+    actor: System
+    input: InputGrid
+    output: coordinates (r2, c2) of the cell with value 2
+  - name: IdentifyContext
+    actor: System
+    input: InputGrid
+    output: list of coordinates (r, c) for cells with value 3
+  - name: CalculateRelativePosition
+    actor: System
+    input: ContextCell coordinates (r, c), MarkerCell coordinates (r2, c2)
+    output: relative coordinates (dr, dc)
+  - name: MapPositionToOutputBlock
+    actor: System
+    input: relative coordinates (dr, dc)
+    output: top-left starting coordinates (start_row, start_col) for a PatternBlock in OutputGrid
+    details: |
+      Specific mapping rules:
+      (-1, -1) or (-1, 0) -> (0, 0)
+      (0, 1) or (1, 0) -> (1, 1)
+      (0, -1) -> (4, 4)
+      (1, 1) -> (5, 5)
+  - name: DrawPatternBlock
+    actor: System
+    input: OutputGrid, starting coordinates (start_row, start_col)
+    output: Modified OutputGrid with a 4x4 block of 3s placed
+
+relationships:
+  - type: determines
+    subject: InputGrid configuration (positions of 2 and 3s)
+    object: OutputGrid pattern (placement of 4x4 blocks of 3s)
+  - type: relative_to
+    subject: ContextCell position
+    object: MarkerCell position
+  - type: maps_to
+    subject: Relative position of ContextCell
+    object: Starting position of PatternBlock in OutputGrid

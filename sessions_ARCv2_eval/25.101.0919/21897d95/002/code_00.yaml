@@ -1,0 +1,73 @@
+task_description: Rotate grid 90 deg clockwise and recolor based on original region structure and contents.
+
+definitions:
+  - definition: background_pixel
+    criteria: Pixel belongs to a connected component of a color found on the input grid's bottom edge, and the component touches the bottom edge.
+  - definition: foreground_pixel
+    criteria: Any pixel that is not a background_pixel.
+  - definition: foreground_region
+    criteria: A maximal connected component of foreground_pixels having the same color.
+  - definition: region_bounding_box
+    criteria: The smallest rectangle containing all pixels of a foreground_region.
+  - definition: bbox_fg_colorset (S)
+    criteria: The set of colors of all foreground_pixels located within a specific region_bounding_box.
+
+elements:
+  - element: grid
+    attributes:
+      - type: 2D array of integers 0-9 (colors)
+      - size: H x W (input), W x H (output)
+
+  - element: background_area
+    description: The area in the output grid corresponding to all background_pixels in the input grid.
+    attributes:
+      - output_color: A single color determined by a rule based on input background colors.
+
+  - element: foreground_area
+    description: An area in the output grid corresponding to an input foreground_region.
+    attributes:
+      - output_color: A single color determined by applying map 'f' to the bbox_fg_colorset (S) of the corresponding input foreground_region.
+
+actions:
+  - action: determine_output_background_color
+    input: Set of colors of all input background_pixels (InputBGSet).
+    output: color (OutputBG)
+    rule: OutputBG = Min(InputBGSet) - 1 (Potential Exception for Ex2, clamp >= 0)
+
+  - action: determine_output_foreground_color_map (f)
+    input: Set of foreground colors within an input region's bounding box (S = bbox_fg_colorset).
+    output: color (OutputFG)
+    rule: Apply a fixed mapping function f(S) derived from examples.
+      map_entries:
+        f({1}) = 3
+        f({5}) = 9
+        f({1, 2}) = 6
+        f({1, 3}) = 2
+        f({1, 6}) = 3
+        f({1, 8}) = 3
+        f({4, 9}) = 3
+        f({1, 3, 6}) = 7 # or {6, 1, 3}
+        f({1, 7, 9}) = 6
+        f({7, 1, 0}) = 0
+        # Note: Need rules for other combinations if they occur. May need default/fallback.
+
+  - action: rotate_grid
+    input: input_grid
+    output: rotated_grid
+    details: Rotate 90 degrees clockwise.
+
+  - action: apply_recoloring
+    input: rotated_grid, original_pixel_type (BG/FG), original_region_info, OutputBG, map f
+    output: final_output_grid
+    details: Iterate through output grid pixels. Determine corresponding input pixel. If input pixel was BG, assign OutputBG. If input pixel was FG, find its region, calculate S for bbox, find O=f(S), assign O.
+
+relationships:
+  - relationship: pixel_origin
+    entities: [output_pixel, input_pixel]
+    details: Each output pixel corresponds to a specific input pixel after rotation. (r_out, c_out) <- (H_in - 1 - c_out, r_out)
+  - relationship: area_mapping
+    entities: [input_foreground_region, output_foreground_area]
+    details: The color of the output area is determined by the set of FG colors in the input region's bounding box via map f.
+  - relationship: background_mapping
+    entities: [input_background_pixels, output_background_area]
+    details: All input background pixels map to a single area in the output filled with the calculated OutputBG color.

@@ -1,0 +1,47 @@
+task_context:
+  description: Swaps the vertical positions of two distinct non-background color groups.
+  grid_properties:
+    background_color: 0 # white
+    num_non_background_colors: 2
+
+input_elements:
+  - element_type: color_group
+    count: 2
+    properties:
+      - color: non-zero, distinct
+      - pixels: all pixels in the grid matching the group's color
+      - name: upper_group (identified by bounding box)
+      - name: lower_group (identified by bounding box)
+      - bounding_box: min_row, max_row, min_col, max_col for all pixels of the color
+      - relative_position: The bounding box of one group is strictly above the other (no row overlap between bounding boxes).
+
+output_elements:
+  - element_type: color_group
+    count: 2
+    properties:
+      - color: same as corresponding input groups
+      - pixels: same set of pixels as the corresponding input group, but potentially different coordinates
+      - name: new_upper_group (originally lower_group)
+      - name: new_lower_group (originally upper_group)
+      - bounding_box:
+          - For new_upper_group (original lower): Same bounding box as in the input.
+          - For new_lower_group (original upper): Shifted vertically downwards.
+
+transformation:
+  action: vertical_swap_by_color_group
+  details:
+    - Identify the two distinct non-background colors present in the input grid.
+    - For each color, find all pixels belonging to it and determine its bounding box (min/max row/col).
+    - Identify the 'upper group' as the one whose bounding box has the smaller minimum row index.
+    - Identify the 'lower group' as the one whose bounding box has the larger minimum row index.
+    - Calculate the vertical gap between the bounding boxes: `gap = lower_group.bbox.min_row - upper_group.bbox.max_row - 1`.
+    - Create a new output grid of the same dimensions as the input, filled with the background color (white).
+    - Copy all pixels belonging to the 'lower group' from the input grid to the output grid, maintaining their original row and column coordinates.
+    - Calculate the required vertical shift for the upper group's pixels: `shift = (lower_group.bbox.max_row + gap + 1) - upper_group.bbox.min_row`.
+    - Copy all pixels belonging to the 'upper group' from the input grid to the output grid, adding the calculated `shift` to their original row coordinate while keeping their column coordinate the same.
+  preserves:
+    - Pixel counts for each color.
+    - The exact shape and internal pattern of each color group (relative pixel positions within the group).
+    - Relative horizontal position of each color group.
+    - The vertical gap between the bounding boxes of the two groups.
+    - The absolute position of the lower color group.

@@ -1,0 +1,59 @@
+elements:
+  - object: Frame
+    properties:
+      - color: gray (5)
+      - shape: rectangle
+      - role: defines the region of interest for the output
+
+  - object: MappingKeyArea
+    properties:
+      - location: outside the Frame's bounding box
+      - contains: MappingPairs and SeparatorPixels
+
+  - object: MappingPair
+    properties:
+      - structure: two adjacent, distinct colored blocks (often rectangles)
+      - role: defines a color transformation rule (color_A -> color_B)
+      - location: within MappingKeyArea
+
+  - object: InnerContent
+    properties:
+      - location: inside the Frame
+      - composition: pixels potentially subject to color transformation
+      - includes: BackgroundPixels
+
+  - object: SeparatorPixel / BackgroundPixel
+    properties:
+      - color: varies by task (e.g., azure(8) in train_1, blue(1) in train_2)
+      - location: separates MappingPairs in MappingKeyArea, acts as background/separator within InnerContent
+      - behavior: remains unchanged during transformation
+
+actions:
+  - name: locate_frame
+    input: input_grid
+    output: bounding_box_of_gray_frame
+
+  - name: extract_mapping_rules
+    input: input_grid, frame_bounding_box
+    process: scan area outside frame_bounding_box for adjacent color blocks (MappingPairs)
+    output: dictionary_of_color_maps {color_A: color_B, ...}
+
+  - name: identify_invariant_background
+    input: input_grid, frame_bounding_box
+    process: determine the dominant non-mapping color in the MappingKeyArea (outside the frame)
+    output: invariant_background_color
+
+  - name: crop_region
+    input: input_grid, frame_bounding_box
+    output: cropped_subgrid
+
+  - name: apply_transformation
+    input: cropped_subgrid, color_maps, invariant_background_color, frame_color (gray 5)
+    process: iterate through cropped_subgrid pixels, apply color_maps, keep invariant_background_color and frame_color unchanged
+    output: output_grid
+
+relationships:
+  - The Frame's bounding box determines the area to be cropped and transformed.
+  - The MappingPairs outside the Frame define the color changes applied inside the Frame.
+  - The SeparatorPixel color found outside the Frame identifies the color that remains unchanged inside the Frame (along with the Frame color itself).
+  - The dimensions of the output grid are identical to the dimensions of the Frame's bounding box in the input.

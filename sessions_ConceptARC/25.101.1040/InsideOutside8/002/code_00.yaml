@@ -1,0 +1,44 @@
+background_color: 0 # white
+
+objects:
+  - type: grid
+    properties:
+      height: variable
+      width: variable
+  - type: pixel
+    properties:
+      color: integer (0-9)
+      position: (row, column)
+      is_border_pixel: boolean
+      neighbors: list of 8 neighboring pixels (or fewer for edge/corner pixels)
+  - type: color_group
+    properties:
+      color: integer (0-9)
+      pixel_locations: list of (row, column)
+      count: integer
+      frequency_rank: integer (among non-background colors)
+
+roles:
+  - deleter_color (D): The non-background color with the highest frequency.
+  - target_color (T): The non-background color with the second highest frequency.
+
+parameters:
+  - frequency_ratio_threshold: 2.0 # Threshold for count(D) / count(T)
+
+relationships:
+  - adjacency: 8-way connectivity (including diagonals) between pixels.
+  - border_status: A pixel is on the border if its row or column index is 0 or the maximum index for the grid height/width minus 1.
+  - neighbor_color_count: For a target pixel, the count of its 8 neighbors that have the deleter color (d_count) or the target color (t_count).
+  - frequency_comparison: Check if count(D) > frequency_ratio_threshold * count(T).
+
+actions:
+  - count_colors: Determine the frequency of each non-background color.
+  - identify_roles: Assign D and T based on frequency counts. Calculate count(D) and count(T).
+  - filter_pixels:
+      - Iterate through each pixel of the target color (T) at position (r, c).
+      - Check if the pixel is on the border. If yes, remove (do not copy to output).
+      - If the pixel is interior:
+          - Calculate d_count (number of D neighbors) and t_count (number of T neighbors).
+          - Check the frequency comparison: `high_ratio = (count(D) > frequency_ratio_threshold * count(T))`
+          - Apply the keep condition: Keep pixel if `d_count == 0` AND (`t_count >= 1` OR `high_ratio`).
+  - generate_output: Create a new grid of the same size, initially filled with the background color, and place the kept T pixels.

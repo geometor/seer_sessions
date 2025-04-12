@@ -1,0 +1,57 @@
+# Facts observed from train_1, train_2, train_3, train_4 examples
+grid_properties:
+  size: variable
+  background_color_rule: most frequent color in the input grid
+colors:
+  present_in_input: variable
+  present_in_output: variable
+  unique_input_colors_rule: colors appearing exactly once in the input grid
+  fill_colors_determination:
+    mode_selection: based on presence of unique_input_colors
+    mode_unique_colors:
+      candidates_rule: form pairs (uc, neighbor_or_uc) where uc is unique color, neighbor_or_uc is uc or its non-background orthogonal neighbor.
+      outer_fill_color_rule: value from the candidate pair with the maximum value, breaking ties by maximizing uc.
+      inner_fill_color_rule: (if >1 unique color) highest unique color not used (directly or via neighbor pair) to determine outer_fill_color.
+    mode_no_unique_colors:
+      trigger: process per distinct color C found in size-3 objects
+      fill_color_rule(C): max non-background color adjacent to any cell of color C, or C itself if no different neighbors.
+  most_frequent_non_background_color_rule: find color counts excluding background, identify single highest count (if exists)
+objects_input:
+  properties:
+    - id
+    - color(s)
+    - location (list of [row, col])
+    - size (number of cells)
+  criteria:
+    size_3_objects: objects with size = 3
+    size_3_lt_5_objects: size-3 objects with color < 5 (used in unique color mode)
+transformation:
+  action: conditional_layered_fill
+  condition: presence of unique input colors
+  mode_unique_colors:
+    layers:
+      - layer_id: outer_fill
+        fill_color_rule: derived from unique colors and neighbors (pair rule)
+        region_definition:
+          method: minimal_bounding_box # Note: Potential minor deviations observed
+          source_objects: size-3 objects with color < 5
+        fill_rule: replace background color only
+      - layer_id: inner_fill (conditional)
+        condition: exists an inner_fill_color derived from unique colors AND a single most frequent non-background color
+        fill_color_rule: derived from remaining unique colors (highest remaining)
+        region_definition:
+          method: minimal_bounding_box # Note: Potential minor deviations observed
+          source_objects: size-3 objects with color < 5 AND color != single most frequent non-background color
+        fill_rule: replace background color only (overwrites outer fill where applicable)
+  mode_no_unique_colors:
+    process_per_color_group: For each distinct color C in size-3 objects
+      layers: # Conceptually, one layer per color C
+        - layer_id: fill_for_C
+          fill_color_rule: derived from adjacency rule for C
+          region_definition:
+            method: minimal_bounding_box # Note: Potential minor deviations observed
+            source_objects: size-3 objects with color C
+          fill_rule: replace background color only
+          # Overlap rule unclear, assume later fills might overwrite earlier ones or highest color wins? Coder needs to test.
+  preservation:
+    - all original non-background cells retain their color and position.

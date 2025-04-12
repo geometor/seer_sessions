@@ -1,0 +1,57 @@
+GridProperties:
+  - size: [9, 9] # Observed in examples
+  - background_color: Determined as the most frequent color in the input grid.
+
+Objects:
+  - type: SolidBlock
+    properties:
+      - shape: 3x3 square
+      - composition: Monochromatic (single non-background color)
+      - location: Defined by coordinates and bounding box (r_min, r_max, c_min, c_max)
+    actions:
+      - identify
+      - preserve_in_output (copy to output grid)
+  - type: NoisePixel
+    properties:
+      - shape: 1x1 pixel
+      - color: Non-background color, matches a SolidBlock color
+      - location: Scattered, not part of a SolidBlock
+    actions:
+      - identify
+      - group_by_color
+      - implicitly_remove_from_output (by not copying)
+      - trigger_block_expansion (conditionally, based on location and alignment)
+  - type: BackgroundPixel
+    properties:
+      - color: background_color
+      - location: coordinates (r, c)
+    actions:
+      - identify
+      - conditional_color_change (based on adjacency and noise alignment per Hypothesis 8)
+
+Relationships_And_Actions:
+  - relationship: Adjacency_Orthogonal
+    applies_to: [BackgroundPixel, SolidBlock]
+  - relationship: Location_Relative_To_Bounds
+    applies_to: [NoisePixel, SolidBlock] # e.g., noise is strictly outside block bounds on a specific side (Above, Below, Left, Right)
+  - relationship: Alignment_Strict_RowCol # (Hypothesis 8)
+    applies_to: [BackgroundPixel, NoisePixel]
+    definition: BackgroundPixel `n=(rn, cn)` aligns with NoisePixel `p=(rp, cp)` relative to an adjacent side `S` if:
+      - S is Above/Below AND `cp == cn`
+      - S is Left/Right AND `rp == rn`
+  - action: ConditionalColorChange # (Based on Hypothesis 8)
+    trigger: A BackgroundPixel `n = (rn, cn)` changes to color `c` if:
+      1. `input[n]` is background_color.
+      2. `n` is orthogonally adjacent to an *edge* pixel of a SolidBlock `b` of color `c`. Let the side(s) of adjacency be `S` (e.g., "Above", "Right").
+      3. For *at least one* side `s` in `S`:
+          a. There exists *at least one* NoisePixel `p = (rp, cp)` of color `c` that is strictly outside the bounding box of block `b` on side `s`.
+          b. AND this specific NoisePixel `p` aligns with `n` relative to side `s` (using Alignment_Strict_RowCol definition).
+    target: BackgroundPixel `n`
+    result: `output[n]` becomes color `c`.
+    # Note: This rule fails on 3 pixels in train_2, but is the most consistent identified so far.
+  - action: Initialization
+    target: OutputGrid
+    result: Filled with background_color.
+  - action: Finalization
+    target: OutputGrid
+    result: Contains preserved SolidBlocks and changed BackgroundPixels based on ConditionalColorChange (H8). All other pixels retain the background_color.

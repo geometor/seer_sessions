@@ -1,0 +1,39 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom collections import Counter, deque\n\n\"\"\"\nIdentifies a background color, movable objects (multi-pixel components), and potential marker pixels (single-pixel components).\nDetermines a reference column based on the top-most, left-most marker pixel.\nShifts all movable objects and all marker pixels horizontally so that their center column aligns with the reference column.\nThe internal structure of objects is preserved during the shift.\n\"\"\"\n\ndef find_connected_components(grid: np.ndarray, background_color: int) -> list[list[tuple[int, int]]]:\n    \"\"\"\n    Finds all connected components of non-background pixels.\n    Uses Breadth-First Search (BFS).\n    \"\"\"\n    rows, cols = grid.shape\n    visited = np.zeros_like(grid, dtype=bool)\n    components = []\n\n    for r in range(rows):\n        for c in range(cols):\n            if grid[r, c] != background_color and not visited[r, c]:\n                component_pixels = []\n                q = deque([(r, c)])\n                visited[r, c] = True\n                \n                while q:\n                    row, col = q.popleft()\n                    component_pixels.append((row, col))\n                    \n                    # Check 8 neighbors (including diagonals)\n                    for dr in [-1, 0, 1]:\n                        for dc in [-1, 0, 1]:\n                            if dr == 0 and dc == 0:\n                                continue\n                            nr, nc = row + dr, col + dc\n                            \n                            if 0 <= nr < rows and 0 <= nc < cols and \\\n                               grid[nr, nc] != background_color and not visited[nr, nc]:\n                                visited[nr, nc] = True\n                                q.append((nr, nc))\n                \n                if component_pixels:\n                    components.append(component_pixels)\n    return components\n\ndef get_component_center_col(component_pixels: list[tuple[int, int]]) -> int:\n    \"\"\"Calculates the approximate center column of a component.\"\"\"\n    if not component_pixels:\n        return -1 # Should not happen for valid components\n    cols = [c for r, c in component_pixels]\n    # Using integer division for center calculation, consistent with grid indices\n    # Alternative: round(np.mean(cols)) \n    # Using median might be more robust to outliers if shapes are complex/skewed\n    # Using (min_col + max_col) // 2 is another option\n    center_col = int(np.median(cols)) \n    # Let's use average rounded for potentially better centering\n    center_col = int(round(np.mean(cols))) \n    return center_col\n    \n\ndef transform(input_grid: list[list[int]]) -> list[list[int]]:\n    \"\"\"\n    Shifts non-background objects horizontally to align with a reference marker column.\n    \"\"\"\n    input_np = np.array(input_grid, dtype=int)\n    rows, cols = input_np.shape\n\n    # 1. Identify background color (most frequent color)\n    colors, counts = np.unique(input_np, return_counts=True)\n    background_color = colors[np.argmax(counts)]\n\n    # 2. Find all connected components of non-background colors\n    all_components_pixels = find_connected_components(input_np, background_color)\n\n    if not all_components_pixels:\n        # No non-background elements, return input as is\n        return input_grid\n\n    # 3. Separate components into markers (single-pixel) and objects (multi-pixel)\n    marker_components = []\n    object_components = []\n    for comp_pixels in all_components_pixels:\n        if len(comp_pixels) == 1:\n            marker_components.append(comp_pixels)\n        else:\n            object_components.append(comp_pixels)\n\n    # 4. Determine the reference marker column\n    ref_col = -1\n    if marker_components:\n        # Sort markers by row, then column to find the top-most, left-most\n        marker_components.sort() \n        ref_marker_pixel = marker_components[0][0] # The single pixel (r, c)\n        ref_col = ref_marker_pixel[1]\n    else:\n        # Fallback if no single-pixel markers? \n        # Based on examples, this seems unlikely for this specific task pattern.\n        # If needed, could try using the center of the top-most object, etc.\n        # For now, if no markers, maybe no movement? Return input.\n         return input_grid # Or define alternative reference logic\n\n    # 5. Initialize output grid with background color\n    output_np = np.full_like(input_np, background_color)\n\n    # 6. Process and move all components (markers and objects)\n    all_components_to_move = marker_components + object_components\n    \n    for comp_pixels in all_components_to_move:\n        # a. Get original colors and calculate center column\n        original_colors = {pixel: input_np[pixel] for pixel in comp_pixels}\n        comp_center_col = get_component_center_col(comp_pixels)\n        \n        # b. Calculate horizontal shift\n        dx = ref_col - comp_center_col\n        \n        # c. Apply shift and draw onto output grid\n        for (r, c) in comp_pixels:\n            new_c = c + dx\n            # Ensure the new position is within grid bounds\n            if 0 <= r < rows and 0 <= new_c < cols:\n                output_np[r, new_c] = original_colors[(r, c)]\n            # else: pixel moves off-grid (discarded)\n\n    # 7. Convert back to list of lists and return\n    return output_np.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "citation_metadata": {
+        "citation_sources": [
+          {
+            "start_index": 7938,
+            "end_index": 8302,
+            "uri": "https://github.com/abhisheksol/competivity-programming",
+            "license_": ""
+          }
+        ]
+      },
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 4781,
+    "candidates_token_count": 2946,
+    "total_token_count": 7727,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-preview-03-25",
+  "response_time": 27.961959,
+  "retries": 1
+}

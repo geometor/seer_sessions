@@ -1,0 +1,33 @@
+task_description: Identify distinct objects composed of non-background pixels. Remove specific types of two-color objects based on their internal and frame colors, where the background color (0) can count as an internal color if enclosed.
+
+definitions:
+  background_color: 0 # white
+  object: A contiguous group of non-background pixels (color > 0), identified using 4-way adjacency.
+  border_background: Background pixels connected to the grid's edge via a path of background pixels (4-way adjacency).
+  external_background: Background pixels adjacent (4-way) to an object pixel and part of the border_background set.
+  enclosed_background: Background pixels adjacent (4-way) to an object pixel but NOT part of the border_background set.
+  object_colors: The set of unique colors comprising an object's non-background pixels, plus background_color(0) if the object is adjacent to any enclosed_background pixels.
+  frame_color: For an object with exactly two object_colors, this is the color whose pixels are adjacent to external_background.
+  internal_color: For an object with exactly two object_colors, this is the color whose pixels are not adjacent to external_background, OR the background_color(0) if it is one of the two object_colors (i.e., represents enclosed background).
+
+rules:
+  - description: Identify all distinct objects and the border_background set in the input grid.
+  - description: For each object, determine its object_colors set (including potential enclosed background).
+  - condition: Proceed only if the count of object_colors is exactly 2.
+  - process:
+      - Determine the frame_color and internal_color based on adjacency to external_background.
+      - Handle cases where only one color touches external_background.
+      - Handle cases where neither touches external_background but one color is 0 (enclosed background).
+      - If both colors touch external, or neither touches and neither is 0, the object does not have a clear frame/internal structure for this rule.
+  - removal_criteria:
+      - description: Remove the object if a valid (internal_color, frame_color) pair was identified AND this pair matches one of the specific target pairs.
+      - pairs_to_remove:
+          - { internal: 1, frame: 2 } # Blue internal, Red frame
+          - { internal: 7, frame: 3 } # Orange internal, Green frame
+          - { internal: 0, frame: 4 } # White internal, Yellow frame
+  - action:
+      - if: removal_criteria met
+        then: Replace all pixels belonging to the object (identified by its stored coordinates) in the output grid with the background_color.
+      - else: Keep the object unchanged in the output grid.
+
+output_grid: The input grid modified by applying the removal action to all qualifying objects.

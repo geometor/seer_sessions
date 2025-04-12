@@ -1,0 +1,66 @@
+Grid:
+  type: object
+  properties:
+    dimensionality: 2D
+    cells:
+      type: list of lists
+      items: Cell
+
+Cell:
+  type: object
+  properties:
+    value:
+      type: integer
+      description: Represents a color (0, 5, 6, 7, 9)
+    position:
+      type: tuple (row, column)
+    neighbors:
+      type: list of Cells
+      description: 8 adjacent cells (orthogonal and diagonal)
+
+Colors:
+  - id: 0
+    role: Boundary / Frame component (mutable)
+  - id: 5
+    role: Fill color (mutable to 7)
+  - id: 6
+    role: Background / Boundary component (mutable)
+  - id: 7
+    role: Active/Seed color, Target fill color
+  - id: 9
+    role: Boundary / Frame component (mutable)
+
+Region: # Abstract object representing connected areas
+  type: object
+  properties:
+    boundary_colors: list of [0, 9]
+    fill_colors: list of [5, 7]
+    contains_only_5s: boolean # Derived property based on input state
+    contains_7s: boolean # Derived property based on input state
+
+Transformation:
+  type: action
+  description: Modifies the input grid based on region analysis and propagation.
+  sub_actions:
+    - Identify_Regions: Detect connected areas of 5s/7s bounded by 0s/9s.
+    - Flood_Fill_7s: # Primary transformation for 5s
+        description: Convert 5s to 7s based on proximity to 7s (input or newly converted).
+        trigger: Presence of 7s within or adjacent to a region of 5s.
+        mechanism: Iterative expansion or flood fill starting from all 7s.
+        rules:
+          - If a cell is 5 and has any 7 as a neighbor (in the current state), it becomes 7.
+          - Repeat until no more 5s can be converted this way.
+    - Convert_Pure_5_Regions: # Handles shapes with no initial 7s
+        description: Convert all 5s in a region to 7s.
+        trigger: A region contains only 5s (and no 7s) in the input.
+    - Boundary_Manipulation: # Secondary, less clear transformations
+        description: Modify boundary cells (0, 6, 9) based on region properties or specific patterns.
+        examples:
+          - Row copy/shift (Ex 1)
+          - Pattern substitution near boundaries (e.g., 0->6, 6->0, 9->0) (Ex 1, 2, 3)
+        trigger: Context-dependent (specific shape types, locations, or boundary patterns). (Rule needs further refinement)
+
+Relationships:
+  - Adjacency: Cells are neighbors (8-directional).
+  - Containment: Cells belong to Regions.
+  - Propagation: The state change of one cell (5->7) can trigger changes in adjacent cells.

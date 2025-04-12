@@ -1,0 +1,155 @@
+import numpy as np
+from typing import List, Tuple
+
+"""
+Filters a grid based on pixel adjacency rules derived from examples.
+
+The transformation identifies three color roles: background (assumed to be 0), 
+'target', and 'context'. 
+If exactly two non-background colors exist, the 'target' color is the one 
+with the lower frequency count, and the 'context' color is the one with the 
+higher frequency count. If only one non-background color exists, it's treated 
+as the 'target' color, and there is no 'context' color.
+
+The rule is to keep 'target' color pixels in the output grid *only if* they 
+are NOT adjacent (horizontally, vertically, or diagonally - 8-connectivity) 
+to any 'context' color pixel in the input grid. 
+
+All 'context' color pixels, as well as 'target' color pixels that *are* 
+adjacent to 'context' pixels, are replaced with the background color in the 
+output. Pixels that are already the background color remain so.
+
+If zero, more than two non-background colors exist, or if the two 
+non-background colors have equal frequency (making the target/context roles 
+ambiguous based on the frequency heuristic), the function returns a grid 
+filled entirely with the background color.
+
+The grid dimensions remain unchanged.
+"""
+
+def identify_colors(grid: np.ndarray) -> Tuple[int, int, int]:
+    """
+    Identifies background, target, and context colors based on frequency.
+    Assumes background=0. Finds non-background colors.
+    Hypothesis: If two non-background colors exist, Target color is less 
+                frequent than context color.
+    Returns: (background_color, target_color, context_color)
+             target_color or context_color can be -1 if not applicable/found.
+             Special negative codes (-2, -3) indicate ambiguity or errors.
+    """
+    unique_colors, counts = np.unique(grid, return_counts=True)
+    color_counts = dict(zip(unique_colors, counts))
+
+    background_color = 0
+    non_background_colors = {c: count for c, count in color_counts.items() if c != background_color}
+    num_non_background = len(non_background_colors)
+
+    target_color = -1
+    context_color = -1
+
+    if num_non_background == 0:
+        # Only background color present
+        pass # target/context remain -1
+    elif num_non_background == 1:
+        # Only one non-background color, assume it's target, no context
+        target_color = list(non_background_colors.keys())[0]
+        context_color = -1 # No context color
+    elif num_non_background == 2:
+        # Exactly two non-background colors, apply frequency heuristic
+        colors = list(non_background_colors.keys())
+        counts_list = list(non_background_colors.values())
+
+        # Assign based on frequency (target is less frequent)
+        if counts_list[0] < counts_list[1]:
+            target_color = colors[0]
+            context_color = colors[1]
+        elif counts_list[1] < counts_list[0]:
+            target_color = colors[1]
+            context_color = colors[0]
+        else:
+             # Tie in counts - ambiguous based on heuristic.
+             # print("Warning: Tie in non-background color counts, cannot distinguish target/context.")
+             target_color = -2 # Indicate ambiguity
+             context_color = -2
+
+    else: # More than two non-background colors
+        # print("Warning: More than two non-background colors found.")
+        # Cannot determine target/context based on the observed pattern.
+        target_color = -3 # Indicate >2 colors
+        context_color = -3
+
+    return background_color, target_color, context_color
+
+def check_neighbors_for_color(grid: np.ndarray, r: int, c: int, color_to_find: int) -> bool:
+    """
+    Checks the 8 neighbors (Moore neighborhood) of cell (r, c) in the grid
+    to see if any neighbor has the specified color_to_find.
+    Returns True if found, False otherwise.
+    Handles boundary conditions gracefully.
+    """
+    rows, cols = grid.shape
+    # Iterate through the 3x3 neighborhood centered at (r, c)
+    for dr in range(-1, 2):
+        for dc in range(-1, 2):
+            # Skip the center cell itself
+            if dr == 0 and dc == 0:
+                continue
+
+            # Calculate neighbor coordinates
+            nr, nc = r + dr, c + dc
+
+            # Check if the neighbor coordinates are within the grid bounds
+            if 0 <= nr < rows and 0 <= nc < cols:
+                # Check if the neighbor has the color we're looking for
+                if grid[nr, nc] == color_to_find:
+                    return True # Found the color in a neighbor
+
+    # If the loop completes without finding the color
+    return False
+
+def transform(input_grid_list: list[list[int]]) -> list[list[int]]:
+    """
+    Applies the transformation rule: Keeps target pixels only if they are not
+    adjacent (8-way connectivity) to any context pixel. Context pixels are removed.
+    Target/context colors are identified based on frequency (target is less frequent).
+    """
+    # Convert input list of lists to a numpy array for efficient processing
+    input_grid = np.array(input_grid_list, dtype=int)
+    rows, cols = input_grid.shape
+
+    # Step 1: Identify background, target, and context colors
+    background_color, target_color, context_color = identify_colors(input_grid)
+
+    # Step 2: Handle edge cases where color identification fails or is ambiguous
+    # If no target identified, or ambiguous, or too many colors, return an empty grid.
+    if target_color < 0: # Includes -1 (no target), -2 (ambiguous), -3 (>2 colors)
+        # print(f"Color identification issue (code: {target_color}). Returning empty grid.")
+        output_grid = np.full((rows, cols), background_color, dtype=int)
+        return output_grid.tolist()
+
+    # Step 3: Create a new grid initialized with the background color
+    output_grid = np.full((rows, cols), background_color, dtype=int)
+
+    # Step 4: Iterate through each pixel in the input grid
+    for r in range(rows):
+        for c in range(cols):
+            # Step 5: Check if the current pixel is the target color
+            if input_grid[r, c] == target_color:
+
+                # Step 6: Determine if the target pixel should be kept
+                keep_pixel = True # Assume keep unless adjacent to context
+
+                # Step 7: Check adjacency only if a context color exists
+                if context_color != -1: # context_color is -1 if only one non-bg color exists
+                    is_near_context = check_neighbors_for_color(input_grid, r, c, context_color)
+                    if is_near_context:
+                        keep_pixel = False # Rule: remove if adjacent to context
+
+                # Step 8: If the pixel should be kept, place it in the output grid
+                if keep_pixel:
+                    output_grid[r, c] = target_color
+            # Step 9: Pixels that are not the target color (i.e., background or context)
+            # are implicitly left as the background color initialized in output_grid.
+
+    # Step 10: Convert the resulting numpy array back to a list of lists
+    return output_grid.tolist()

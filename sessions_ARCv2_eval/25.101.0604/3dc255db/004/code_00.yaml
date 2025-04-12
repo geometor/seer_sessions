@@ -1,0 +1,68 @@
+elements:
+  - element: grid
+    properties:
+      - width: integer
+      - height: integer
+      - cells: list of lists of integers (colors)
+      - background_color: 0
+  - element: cell
+    properties:
+      - row: integer
+      - column: integer
+      - color: integer
+  - element: component
+    description: A connected group of non-zero cells (8-way adjacency).
+    properties:
+      - cells: set of (row, col) tuples
+      - colors: set of unique non-zero integers present
+      - num_colors: count of unique non-zero colors
+      - min_color: minimum non-zero color value
+      - max_color: maximum non-zero color value
+      - interface_cells: set of (row, col) cells adjacent (8-way) to a different non-zero color within the same component
+      - min_row_in_col: mapping {column_index: min_row_index} for component cells in that column
+
+actions:
+  - action: identify_components
+    description: Find all connected components of non-zero cells.
+  - action: filter_multi_color_components
+    description: Select components with more than one unique non-zero color.
+  - action: determine_max_color
+    description: Find the maximum color value in a component.
+  - action: identify_interface_cells
+    description: Find interface cells within a component.
+  - action: remove_cells
+    description: Change the color of specified cells to the background color (0) in the output grid.
+    variants:
+      - type: remove_all_max_color_cells
+        condition: if component's max_color is 7
+        target: all cells in the component with color 7
+      - type: remove_max_color_interface_cells
+        condition: if component's max_color is not 7
+        target: interface cells whose color is max_color
+  - action: determine_propagation_columns
+    description: Identify columns where color propagation should occur.
+    variants:
+      - type: median_column_of_removed
+        condition: if max_color was 7
+        input: columns where color 7 was removed
+        output: single median column index
+      - type: columns_of_any_removed_max_interface # Changed from "topmost"
+        condition: if max_color was not 7
+        input: set of removed max_color interface cells
+        output: set of columns containing any removed max_color interface cell
+  - action: propagate_max_color_upwards
+    description: Fill a vertical block of background cells with the component's max_color.
+    trigger: For each column identified by determine_propagation_columns.
+    target: Contiguous block of background (0) cells in the input grid ending immediately below the component's minimum row in that column.
+    color: The component's max_color.
+
+relationships:
+  - relationship: adjacency
+    description: Cells sharing an edge or corner (8-way).
+  - relationship: within_component
+    description: A cell belongs to a specific connected component.
+  - relationship: color_interface
+    description: An interface cell is adjacent to another cell within the same component with a different non-zero color.
+
+anomalies:
+  - anomaly: Training Example 1 exhibits a different transformation pattern not covered by the primary logic. It involves apparent horizontal changes and differs in the removal rule when max_color is 7 (only interface 7s removed, not all 7s).

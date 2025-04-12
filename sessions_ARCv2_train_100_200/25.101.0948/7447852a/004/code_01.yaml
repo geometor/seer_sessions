@@ -1,0 +1,55 @@
+task_context:
+  description: Selectively fill segments of white pixels with yellow based on row index, segment type (edge or internal), segment length, and the segment's ordinal position among other qualifying segments in the row. A special condition applies to filling the right edge in row 0.
+  grid_properties:
+    - dimensions: Input and output grids have the same dimensions for each example. Grids are always 3 rows high.
+    - colors_used: Input uses white(0) and red(2). Output uses white(0), red(2), and yellow(4).
+    - transformation_scope: Row-based; each row (0, 1, 2) is processed independently using different rules.
+
+objects:
+  - object_type: pixel
+    properties:
+      - color: white(0), red(2), yellow(4)
+      - location: (row, column)
+  - object_type: segment
+    definition: A contiguous horizontal sequence of white pixels within a row.
+    types:
+      - left_edge: Starts at column 0, ends before the first red pixel. Length is `c_first`.
+      - right_edge: Starts after the last red pixel, ends at the last column. Length is `width - 1 - c_last`.
+      - internal: Located between two consecutive red pixels `c1` and `c2`. Length is `c2 - c1 - 1`.
+    properties:
+      - interval_length: The distance between the defining elements (edge-to-red or red-to-red). For edge segments, this is `c_first` (left) or `width - 1 - c_last` (right). For internal segments, this is `c2 - c1`.
+      - start_col: Starting column index of the white pixel segment.
+      - end_col: Ending column index of the white pixel segment.
+      - defining_indices: For internal segments, the tuple `(c1, c2)`.
+  - object_type: qualifying_interval_list
+    definition: An ordered list of internal segments within a single row that meet a specific `interval_length` criterion for that row.
+    properties:
+      - row_index: The row the list belongs to.
+      - required_interval_length: The specific length (`c2-c1`) required for an interval to be included (4 for rows 0/2, 2 for row 1).
+      - intervals: Ordered list of internal segments `[(c1_1, c2_1), (c1_2, c2_2), ...]` matching the criteria.
+      - count: Number of intervals in the list.
+
+relationships:
+  - relationship_type: adjacency
+    description: Red pixels define the boundaries of white pixel segments within each row.
+  - relationship_type: conditional_filling
+    description: >
+      White pixel segments are potentially filled with yellow based on conditions involving the row index, segment type (edge/internal), interval length, and the segment's ordinal position within the list of qualifying internal segments for that row. The filling of the right edge segment in row 0 has an additional dependency on the count of qualifying internal segments in that row.
+
+actions:
+  - action_type: initialize_output
+    description: Create a copy of the input grid.
+  - action_type: identify_red_pixels
+    description: For each row, find the column indices of all red pixels.
+  - action_type: identify_qualifying_internal_intervals
+    description: For each row, find all internal segments (between consecutive red pixels `c1`, `c2`) and create ordered lists (`qualifying_intervals`) of those segments that match the required interval length for that row (Length 4 for rows 0 & 2; Length 2 for row 1). Determine the count of these intervals.
+  - action_type: identify_and_conditionally_fill_edge_segments
+    description: For each row, check the left and right edge segments and fill with yellow based on row index, interval length, and potentially the count of qualifying internal intervals.
+      - Row 1, Left Edge: Fill if interval length (distance to edge) is 1.
+      - Row 2, Left Edge: Fill if interval length (distance to edge) is 2.
+      - Row 0, Right Edge: Fill if interval length (distance to edge) is 1 AND the count of qualifying internal intervals (length 4) for row 0 is greater than 2.
+  - action_type: conditionally_fill_specific_internal_segments
+    description: Based on the row index and the count of qualifying internal intervals, fill specific intervals from the ordered list with yellow.
+      - Row 0: If count >= 2, fill the 2nd interval (index 1) from the list of length-4 intervals.
+      - Row 1: If count >= 3, fill the 3rd interval (index 2) from the list of length-2 intervals. If count >= 6, also fill the 6th interval (index 5) from the list.
+      - Row 2: If count >= 3, fill the 3rd interval (index 2) from the list of length-4 intervals.

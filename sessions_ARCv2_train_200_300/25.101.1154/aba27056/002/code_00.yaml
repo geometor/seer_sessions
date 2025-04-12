@@ -1,0 +1,48 @@
+task_type: conditional_fill # Changed from flood_fill as simple flood fill fails
+grid_properties:
+  size: variable, input and output grids have the same dimensions.
+  background_color: white (0)
+  fill_color: yellow (4)
+objects:
+  - id: foreground_shape
+    description: Contiguous shape(s) made of a single non-white color present in the input. These shapes remain unchanged in the output and act as barriers or reference points for the fill.
+    color: variable (orange 7, magenta 6, green 3 in examples)
+  - id: background_pixels
+    description: Pixels with the background color (white 0).
+    color: white (0)
+  - id: boundary_pixels
+    description: Pixels located on the grid edges (row 0, row H-1, col 0, col W-1).
+    color: any
+  - id: target_pixels
+    description: A subset of the background_pixels that change color to fill_color. The selection criteria are currently unclear but seem related to connectivity, boundary proximity, and potentially the geometry of the foreground_shape.
+    color: white (0) in input, yellow (4) in output
+  - id: non_target_pixels
+    description: Background_pixels that remain white (0) in the output. In the provided examples, these often appear near the foreground shape or boundary in specific configurations not fully explained by simple flood fill.
+    color: white (0) in input and output
+actions:
+  - name: identify_foreground
+    input: input grid
+    output: coordinates and color of non-white pixels.
+  - name: identify_background
+    input: input grid
+    output: coordinates of white (0) pixels.
+  - name: determine_fill_targets
+    input: input grid, foreground coordinates, background coordinates
+    output: set of coordinates of background pixels to be filled yellow.
+    # Note: The logic for this step is the core uncertainty.
+    # Initial hypothesis: Targets are all background pixels reachable via 4-connectivity from a white boundary pixel. (This failed tests).
+    # Refined hypotheses (all failed): Based on coordinate parity, distance, neighbor counts, shadows, diagonal alignment.
+    # Current best guess: Reverts to boundary flood fill, acknowledging failure.
+  - name: apply_fill
+    input: input grid, target coordinates, fill_color
+    output: output grid with target pixels changed to fill_color.
+transformation:
+  - step: Initialize the output grid as a copy of the input grid.
+  - step: Identify all white (0) pixels on the grid boundary (row 0, H-1, col 0, W-1).
+  - step: Perform a breadth-first search (flood fill) starting from these boundary white pixels.
+  - step: The search propagates only to 4-adjacent white (0) pixels within the grid bounds.
+  - step: Maintain a set of all white pixels visited/reachable during this search.
+  - step: Iterate through all pixels (r, c) of the grid.
+  - step: If the pixel (r, c) was white in the input AND it was visited/reachable by the boundary flood fill search, set its color to yellow (4) in the output grid.
+  - step: Otherwise, the pixel retains its original color from the input grid.
+  # Acknowledgment: This procedure matches the initial code and produced outputs inconsistent with the provided expected outputs for all training examples. The exact condition determining which reachable white pixels turn yellow remains unidentified.

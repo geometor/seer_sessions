@@ -1,0 +1,77 @@
+elements:
+  - object: grid
+    role: input
+    properties:
+      - height: H
+      - width: W_in
+      - pixels: color values 0-9
+      - background_color: most frequent color value
+  - object: vertical_line
+    role: separator
+    properties:
+      - column_index: c_idx
+      - color: sep_color (must not be background_color)
+      - structure: all pixels in column `c_idx` have `sep_color`
+      - span: full height H
+  - object: primary_separator_color
+    role: structure_delimiter
+    properties:
+      - color value forming the maximum number of separator_lines (N)
+      - tie-breaking: color whose first separator_line has the minimum column_index
+  - object: primary_separator_indices
+    role: location_markers
+    properties:
+      - sorted list of column indices [idx_1, idx_2, ..., idx_N] where separator_lines of the primary_separator_color exist
+  - object: section
+    role: content_area
+    properties:
+      - contiguous block of columns in the input grid, defined by primary_separator_indices
+      - section_0: columns 0 to `idx_1 - 1` (width W_out = idx_1)
+      - section_N: columns `idx_N + 1` to `W_in - 1` (actual area after last separator)
+  - object: source_section
+    role: pattern_origin
+    properties:
+      - definition: the slice of the input grid corresponding to section_N, but truncated or adjusted to have exactly width W_out.
+      - columns: `idx_N + 1` to `idx_N + W_out`
+      - validity: requires `idx_N + 1 < W_in` and `idx_N + W_out <= W_in`.
+  - object: pattern
+    role: content_element
+    properties:
+      - representation: a tuple representing a row segment (list of pixel colors) of width W_out
+      - origin: extracted from a valid source_section
+      - characteristic: must contain at least one non-background color
+  - object: unique_pattern_set
+    role: distinct_content
+    properties:
+      - content: set of unique non-background patterns found in the source_section
+      - associated_min_row_index (r_min): the minimum row index (0-based, relative to grid) where each unique pattern first appears in the source_section
+  - object: grid
+    role: output
+    properties:
+      - height: H
+      - width: W_out
+      - initial_state: filled with background_color
+      - final_state: populated by placing selected unique patterns according to placement rules.
+
+relationships:
+  - Output width W_out is determined by the index of the first primary separator line (`idx_1`).
+  - The number of primary separator lines (N) dictates the pattern placement logic.
+  - The source_section (derived from section N, width W_out) provides the patterns.
+  - The placement of patterns depends on N and the pattern's `r_min` in the source_section.
+
+actions:
+  - identify: background_color
+  - find: all separator_lines and their colors/indices
+  - determine: primary_separator_color and primary_separator_indices [idx_1, ..., idx_N]
+  - calculate: N = count of primary separators
+  - calculate: W_out = idx_1
+  - create: output grid O (H x W_out) filled with background_color
+  - define_and_validate: source_section S (columns idx_N + 1 to idx_N + W_out, check bounds and width == W_out)
+  - extract: unique_pattern_set with associated r_min values from valid source_section S
+  - conditional_placement:
+    - if N == 3:
+      - calculate target_row = r_min + 2
+    - else (N != 3):
+      - calculate target_row = r_min
+      - # Note: This rule for N!=3 is known to be incomplete based on examples 1 & 3, as it places more patterns than expected. A filtering mechanism is missing.
+    - place: each unique pattern P into output grid O at its calculated target_row, if target_row is valid (0 <= target_row < H) and the pattern's width matches W_out.

@@ -1,0 +1,36 @@
+task_type: object_extraction_by_color_and_position
+input_grid_properties:
+  - contains_multiple_objects: true
+  - background_color: white (0)
+  - object_colors_present: vary per example (blue, red, green, yellow, gray, orange, maroon observed)
+output_grid_properties:
+  - size: 3x3 (fixed)
+  - content: derived_from_single_input_object
+transformation_logic:
+  - step: identify_candidate_objects
+    criteria:
+      - property: color
+      - rule: object color is one of [red (2), orange (7), gray (5)]
+  - step: select_target_object
+    target: candidate_objects
+    selection_rule: choose the unique candidate object whose minimum bounding box has the maximum minimum row index (i.e., the object starting lowest vertically in the grid).
+    assumption: exactly one such object exists among the candidates.
+  - step: determine_bounding_box_origin
+    target: selected_target_object
+    output: top-left coordinates (min_r, min_c) of the bounding box.
+  - step: extract_subgrid
+    source: input_grid
+    subgrid_definition: 3x3 area starting from the bounding_box_origin
+  - step: map_to_output
+    rule: |
+      Create a 3x3 output grid initialized to white (0).
+      For each cell (r_out, c_out) from (0,0) to (2,2) in the output grid:
+        Calculate the corresponding input coordinate (r_in, c_in) = (min_r + r_out, min_c + c_out).
+        If (r_in, c_in) is within the input grid bounds AND the color at input_grid[r_in][c_in] is the color of the selected_target_object:
+          Set output_grid[r_out][c_out] = target_object_color.
+        Otherwise:
+          Leave output_grid[r_out][c_out] as white (0).
+  - step: generate_output
+    content: resulting_3x3_grid
+observation_notes:
+  - Example 2's provided expected output size (3x4) conflicts with the observed pattern (3x3) in other examples and the deduced rule. The transformation logic assumes a 3x3 output is correct.

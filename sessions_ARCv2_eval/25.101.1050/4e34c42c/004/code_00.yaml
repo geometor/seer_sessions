@@ -1,0 +1,48 @@
+task_type: pattern_extraction_and_assembly_by_marker
+components:
+  - role: background
+    properties:
+      - color: most frequent color (e.g., 8 in Ex1, 4 in Ex2)
+      - significance: defines empty space, used for padding
+  - role: marker
+    properties:
+      - color: specific color identifying patterns (assumption: 9 if BKG=8, 8 if BKG=4)
+      - location: forms connected components adjacent (8-way) to pattern_regions
+      - significance: identifies relevant patterns, defines extraction start row (`m_min_r`), defines output order
+  - role: pattern
+    properties:
+      - content: connected components of non-background, non-marker colors
+      - size_filter: must have more than 5 pixels
+      - adjacency_filter: must be adjacent (8-way) to a marker component
+      - significance: defines the column range (`p_min_c`, `p_max_c`) for extracted slices
+  - role: slice
+    properties:
+      - height: 5 rows (or less if grid boundary reached)
+      - source_rows: start at the minimum row (`m_min_r`) of the associated marker group
+      - source_columns: span the column range (`p_min_c` to `p_max_c`) of the associated pattern
+      - extraction: copy pixels from input grid based on source rows/columns
+  - role: output_grid
+    properties:
+      - composition: horizontal concatenation of processed slices
+      - ordering: slices sorted by `m_min_r` descending
+      - padding: slices padded with background color to height 5 before concatenation
+
+actions:
+  - identify_background_color: find most frequent color
+  - identify_marker_color: assume 9 or 8 based on background color
+  - find_marker_components: group connected marker pixels
+  - find_pattern_components: group connected non-background, non-marker pixels
+  - filter_pattern_components: remove patterns with size <= 5
+  - associate_markers_and_patterns: identify pattern components adjacent to marker components
+  - filter_associated_patterns: keep only patterns adjacent to markers
+  - determine_slice_parameters: for each kept pattern `P`, find its associated `m_min_r` and its column bounds (`p_min_c`, `p_max_c`)
+  - extract_slices: get `input[m_min_r : m_min_r+5, p_min_c : p_max_c+1]` for each unique `m_min_r` from parameters
+  - sort_slices: order extracted slices by `m_min_r` descending
+  - pad_slices: ensure height is 5 using background color
+  - concatenate_slices: join horizontally
+
+relationships:
+  - marker_adjacency: marker components identify relevant patterns via adjacency
+  - pattern_filtering: size and marker adjacency determine if a pattern is relevant
+  - marker_row_pattern_cols_to_slice: `m_min_r` defines slice rows, pattern's `p_min/max_c` define slice columns (Note: This works for Ex1 only)
+  - marker_row_to_output_order: `m_min_r` determines horizontal sort order (descending)

@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom collections import deque, Counter\n\n\"\"\"\nTransforms the input grid by performing a competitive flood fill based on seed pixels.\n\n1.  Identify the boundary color (red, color 2).\n2.  Identify the background color (most frequent color excluding boundary).\n3.  Identify 'seed' pixels (neither background nor boundary).\n4.  Create an output grid, initially a copy of the input.\n5.  Create a mask to track filled pixels (boundaries, seeds, and filled areas).\n6.  Sort seeds by priority: highest color index first, then lowest row, then lowest column.\n7.  Iterate through sorted seeds:\n    - Perform a Breadth-First Search (BFS) starting from the neighbors of the current seed.\n    - The BFS fills adjacent background pixels with the seed's color.\n    - The fill stops at boundaries, already filled pixels (by higher priority seeds or original elements), or grid edges.\n    - Update the output grid and the filled mask during the BFS.\n8.  Return the final output grid.\n\"\"\"\n\ndef find_background_color(grid: np.ndarray, boundary_color: int) -> int:\n    \"\"\"Finds the most frequent color in the grid, ignoring the boundary color.\"\"\"\n    counts = Counter(grid.flatten())\n    if boundary_color in counts:\n        del counts[boundary_color] # Don't consider boundary color as background\n    if not counts: # Handle edge case of grid with only boundary color or empty\n        overall_counts = Counter(grid.flatten())\n        if overall_counts:\n            return overall_counts.most_common(1)[0][0]\n        else:\n            return 0 # Default background\n    return counts.most_common(1)[0][0]\n\ndef bfs_fill(input_grid: np.ndarray,\n             output_grid: np.ndarray,\n             filled_mask: np.ndarray,\n             start_loc: tuple[int, int],\n             seed_color: int,\n             background_color: int):\n    \"\"\"\n    Performs BFS fill originating from valid background neighbors of start_loc.\n    Updates output_grid and filled_mask in place.\n    \"\"\"\n    q = deque()\n    height, width = input_grid.shape\n    r_start, c_start = start_loc\n\n    # --- Initial Step: Seed the queue with valid neighbors ---\n    # Check the 4 direct neighbors of the actual seed location\n    for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n        nr, nc = r_start + dr, c_start + dc\n\n        # Check bounds\n        if 0 <= nr < height and 0 <= nc < width:\n            neighbor_loc = (nr, nc)\n            # Check if neighbor is background AND not already filled/blocked\n            if input_grid[neighbor_loc] == background_color and not filled_mask[neighbor_loc]:\n                # Fill this neighbor immediately\n                output_grid[neighbor_loc] = seed_color\n                filled_mask[neighbor_loc] = True\n                q.append(neighbor_loc) # Add to queue for further expansion\n\n    # --- BFS Expansion ---\n    while q:\n        r, c = q.popleft()\n\n        # Explore neighbors of the current cell (r, c) from the queue\n        for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n            nr, nc = r + dr, c + dc\n\n            # Check bounds\n            if 0 <= nr < height and 0 <= nc < width:\n                neighbor_loc = (nr, nc)\n                # Check if neighbor is background AND not already filled/blocked\n                if input_grid[neighbor_loc] == background_color and not filled_mask[neighbor_loc]:\n                    # Fill the neighbor\n                    output_grid[neighbor_loc] = seed_color\n                    filled_mask[neighbor_loc] = True\n                    q.append(neighbor_loc) # Add to queue\n\ndef transform(input_grid: list[list[int]]) -> list[list[int]]:\n    \"\"\"\n    Applies the competitive flood fill transformation.\n    \"\"\"\n    input_np = np.array(input_grid, dtype=int)\n    height, width = input_np.shape\n    output_grid = np.copy(input_np) # Initialize output grid\n\n    # --- Define constants ---\n    boundary_color = 2\n\n    # --- Identify background color ---\n    background_color = find_background_color(input_np, boundary_color)\n\n    # --- Identify seeds and initialize filled_mask ---\n    seeds = []\n    filled_mask = np.zeros_like(input_np, dtype=bool)\n    for r in range(height):\n        for c in range(width):\n            color = input_np[r, c]\n            if color == boundary_color:\n                filled_mask[r, c] = True # Mark boundaries as filled\n            elif color != background_color:\n                # This is a seed pixel\n                seeds.append({'color': color, 'row': r, 'col': c})\n                filled_mask[r, c] = True # Mark seed locations as filled\n\n    # --- Sort seeds by priority: highest color, lowest row, lowest col ---\n    # Sort key uses negative color for descending order\n    seeds.sort(key=lambda s: (-s['color'], s['row'], s['col']))\n\n    # --- Perform competitive BFS fill for each seed in priority order ---\n    for seed in seeds:\n        seed_loc = (seed['row'], seed['col'])\n        seed_color = seed['color']\n        # The BFS function handles filling adjacent background areas\n        # It modifies output_grid and filled_mask directly\n        bfs_fill(input_np, output_grid, filled_mask, seed_loc, seed_color, background_color)\n\n    # --- Return the result ---\n    return output_grid.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 25148,
+    "candidates_token_count": 1842,
+    "total_token_count": 26990,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-preview-03-25",
+  "response_time": 13.925034,
+  "retries": 1
+}

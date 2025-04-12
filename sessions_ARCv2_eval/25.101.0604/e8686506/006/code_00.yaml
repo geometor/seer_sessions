@@ -1,0 +1,39 @@
+task_description: Extract a subgrid defined by the combined bounding box of the non-background object(s) with the largest bounding box area. Populate the subgrid by copying original non-background pixels and filling original background pixels using a rule based on the non-frame objects.
+
+definitions:
+  background_color: The most frequently occurring pixel value in the input grid.
+  object: A connected component of pixels having the same non-background color. Connectivity is 8-way (includes diagonals). Assumed to be monochromatic.
+  pixel: A tuple `(row, col, color)`.
+  bounding_box: The smallest rectangle (min_row, min_col, max_row_exclusive, max_col_exclusive) enclosing all pixels of an object.
+  area: The area of a bounding box: `(max_row_exclusive - min_row) * (max_col_exclusive - min_col)`.
+  max_area_objects: The set of objects whose bounding boxes have the largest area among all objects in the input grid.
+  frame_bounding_box: The combined bounding box minimally enclosing all max_area_objects. This defines the size `(height, width)` and origin `(frame_r0, frame_c0)` of the output grid.
+  frame_objects: Synonym for max_area_objects.
+  non_frame_objects: All non-background objects that are NOT frame_objects.
+  non_frame_colors: The set of unique colors associated with the non_frame_objects.
+
+transformation_steps:
+  - step: Identify the `background_color`.
+  - step: Find all non-background `object`s using 8-way connectivity. Store the pixels and color belonging to each object.
+  - step: Calculate the `bounding_box` and its `area` for each object.
+  - step: Determine the maximum `bounding_box` area found (`max_area`).
+  - step: Identify all `frame_objects` (those with area == `max_area`).
+  - step: Identify all `non_frame_objects` and determine the set of `non_frame_colors`.
+  - step: Calculate the `frame_bounding_box` (origin `(frame_r0, frame_c0)`, size `height` x `width`) enclosing all `frame_objects`.
+  - step: Create an output grid of size `height` x `width`.
+  - step: For each cell `(out_r, out_c)` in the output grid:
+      - Corresponding input coordinates: `(in_r, in_c) = (frame_r0 + out_r, frame_c0 + out_c)`.
+      - Get the value from the input grid: `input_val = input[in_r][in_c]`.
+      - If `input_val` is NOT the `background_color`:
+          - Set `output[out_r][out_c] = input_val`. (Note: Potential inconsistency observed in train_2 example).
+      - Else (`input_val` IS the `background_color`):
+          - Determine the fill color based on a currently **unknown spatial rule** involving the input coordinates `(in_r, in_c)` and the `non_frame_objects` (or their pixels/colors).
+          - The fill color chosen will be one of the `non_frame_colors`.
+          - Assign this determined fill color to `output[out_r][out_c]`.
+  - step: Return the populated output grid.
+
+notes:
+  - Connectivity for objects is 8-way.
+  - Frame size/position is determined by the combined bounding box of object(s) with maximum bounding box area.
+  - The rule for filling background pixels within the frame is uncertain but uses colors from non-frame objects. Geometric proximity rules tested so far (closest pixel/centroid) are incorrect.
+  - Assumes non-frame objects exist for filling; fallback if none exist is likely the background color.

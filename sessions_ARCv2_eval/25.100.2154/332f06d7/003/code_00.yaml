@@ -1,0 +1,52 @@
+task_elements:
+  - grid:
+      type: object
+      description: A 2D array of digits.
+      properties:
+        - dimensions: variable
+        - unique_values_input: [0, 1, 2, 3]
+        - unique_values_output: [0, 1, 2, 3]
+  - border:
+      type: object
+      description: A frame composed of a single digit ('3') surrounding the grid's content.
+      properties:
+        - value: 3
+        - thickness: 1 cell (observed)
+      relationships:
+        - unchanged: between input and output
+  - digits:
+      type: object
+      description: Individual numerical values within the grid cells, excluding the border.
+      properties:
+        - default_value_map:
+            input_0: output_1
+            input_2: output_0
+            input_1: output_1
+            input_3: output_3
+        - transformation_mode: Defaults to applying 'default_value_map' cell-wise, unless the exception condition is met.
+  - monochromatic_square_block:
+      type: object
+      description: An NxN square (N>=2) of identical digits (0, 1, or 2). Relevant for the exception condition.
+      properties:
+        - digit_value: The digit composing the block (0, 1, or 2).
+        - size: The side length N of the square block.
+        - top_left_coord: The (row, col) of the top-left cell of the block.
+      relationships:
+        - maximality: The exception condition compares the *largest* MSB for '0' and '2'.
+
+relationships:
+  - identity: Grid dimensions remain constant between input and output for a given example.
+  - identity: The border ('3') remains constant.
+  - conditional_transformation:
+      condition_check: Find the largest MSB of '0's (L0_MSB, size N0 >= 2) and the largest MSB of '2's (L2_MSB, size N2 >= 2). If multiple largest exist, use the first in reading order.
+      exception_condition: (N0 >= 2) AND (N2 >= 2) AND (N0 == N2)
+      actions_if_exception:
+          - let N = N0 = N2.
+          - find_block: Locate the largest 0-MSB (L0_MSB) and largest 2-MSB (L2_MSB).
+          - find_block: Locate the *first* (in reading order) MSB of '1's with size N (L1_special).
+          - apply_map_selectively:
+              - Apply 'default_value_map' to all cells *except* those within L2_MSB and L1_special.
+              - For cells within L2_MSB: input '2' -> output '2'.
+              - For cells within L1_special: input '1' -> output '0'.
+      actions_if_no_exception:
+          - apply_map_globally: Apply 'default_value_map' to all cells (excluding border).

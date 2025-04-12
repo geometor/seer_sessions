@@ -1,0 +1,58 @@
+task_context:
+  problem_type: grid_transformation
+  grid_properties:
+    - dimensions_preserved: True
+    - background_color_preserved: True # Output uses input background color
+    - cell_values: integers 0-9 (colors)
+  transformation_rule: conditional
+transformation_elements:
+  background_color:
+    definition: Most frequent color, with preference for color 0 if dominant. Symbol: `bg`.
+  target_columns:
+    - definition:
+        - C1: Index of the rightmost input column containing any non-`bg` pixel.
+        - C2: Index of the rightmost input column left of C1 containing any non-`bg` pixel.
+    - role: Used primarily for determining the conditional rule.
+  key_pixels:
+    - definition:
+        - Topmost non-`bg` pixel in input column C1: Value `V1` at row `R1`.
+        - Topmost non-`bg` pixel in input column C2: Value `V2` at row `R2`.
+    - role: Their row indices (`R1`, `R2`) determine which transformation rule applies. Their values (`V1`, `V2`) are used in the H11c rule.
+  condition:
+    - logic: Check if `R1` is defined, `R2` is defined, AND `R1 < R2`.
+    - outcome_true: Apply H11c transformation.
+    - outcome_false: Apply H_DownProp transformation.
+  transformations:
+    - name: H11c (Rule for R1 < R2)
+      scope: Primarily affects output columns C1 and C2.
+      logic:
+        - Initialize output grid with `bg`.
+        - Column C1: Copy non-`bg` input pixels. Fill `bg` cells above `R1` with `V2`.
+        - Column C2: Copy non-`bg` input pixels. Fill `bg` cells above `R2` with `V2` only if `(output[r, C1] == bg OR input[r, C1] == V1)`.
+        - Other columns remain `bg`.
+    - name: H_DownProp (Rule for R1 >= R2 or C2 undefined)
+      scope: Affects all columns independently.
+      logic:
+        - Initialize output grid as a copy of the input grid.
+        - For each cell `(r, c)`: If `output[r, c] == bg`, find the first non-`bg` pixel `v'` below it in the *input* column `c` at row `r' > r`. If found, set `output[r, c] = v'`.
+objects:
+  - type: Pixel
+    properties: [color (int), position (row, col)]
+  - type: Column
+    properties: [index (int), pixels (list)]
+    derived_properties: [has_non_background (bool), topmost_non_background_pixel (Pixel: V@R)]
+  - type: Grid
+    properties: [pixels (2D array), dimensions (height, width), background_color (int)]
+    derived_properties: [C1 (int), C2 (int), R1 (int), V1 (int), R2 (int), V2 (int)]
+relationships:
+  - pixel_in_column
+  - topmost_pixel_in_column
+  - pixel_below_pixel (in same column)
+actions:
+  - find_background_color
+  - find_rightmost_column_index (C1)
+  - find_second_rightmost_column_index (C2)
+  - find_topmost_pixel_in_column (for C1 -> R1, V1; for C2 -> R2, V2)
+  - compare_row_indices (R1 < R2)
+  - apply_h11c_transformation
+  - apply_h_downprop_transformation

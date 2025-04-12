@@ -1,0 +1,64 @@
+task_type: selective_fill # Changed from flood_fill due to observed discrepancies
+grid_properties:
+  size: variable, input and output grids have the same dimensions.
+  background_color: white (0)
+  fill_color: yellow (4)
+objects:
+  - id: foreground_shape
+    description: Contiguous shape(s) made of a single non-white color present in the input. These shapes remain unchanged in the output and act as barriers to filling.
+    color: variable (orange 7, magenta 6, green 3 in examples)
+  - id: background_pixels
+    description: Pixels with the background color (white 0) in the input grid.
+    color: white (0)
+  - id: boundary_pixels
+    description: Pixels located on the grid edges (row 0, row H-1, col 0, col W-1).
+    color: any
+  - id: source_pixels
+    description: The subset of boundary_pixels that are also background_pixels (white 0). These are the potential starting points for the fill process.
+    color: white (0)
+  - id: fillable_pixels
+    description: The set of background_pixels that are reachable from at least one source_pixel via a path of 4-adjacent background_pixels.
+    color: white (0)
+  - id: target_pixels
+    description: >
+      The specific subset of fillable_pixels that actually change color to yellow (4)
+      in the output grid. The criteria for selecting target_pixels from fillable_pixels
+      are not fully understood and represent the core challenge of this task.
+      The standard flood fill assumes target_pixels = fillable_pixels, which has
+      been shown incorrect by the examples.
+    color: white (0) in input, yellow (4) in output
+  - id: non_target_pixels
+    description: >
+      Background_pixels that remain white (0) in the output. This includes background_pixels
+      not reachable from the boundary (e.g., enclosed holes initially white) AND
+      the subset of fillable_pixels that meet the (unknown) criteria for *not*
+      being filled yellow.
+    color: white (0) in input and output
+actions:
+  - name: identify_components
+    input: input grid
+    output: coordinates and color of foreground_shape pixels, coordinates of background_pixels.
+  - name: identify_source_pixels
+    input: background_pixels, grid dimensions
+    output: coordinates of source_pixels (white pixels on the boundary).
+  - name: find_fillable_pixels
+    input: input grid, source_pixels
+    output: set of coordinates of fillable_pixels (perform standard flood fill reachability).
+  - name: determine_target_pixels # The unknown step
+    input: fillable_pixels, input_grid # Potentially needs full grid context
+    output: set of coordinates of target_pixels (subset of fillable_pixels).
+    # Note: The logic here is unclear. Standard flood fill (target = fillable) fails.
+  - name: apply_fill
+    input: input grid, target_pixels, fill_color
+    output: output grid where target_pixels are set to fill_color, others retain input color.
+transformation_hypothesis: # Explicitly framing as hypothesis due to uncertainty
+  - step: Initialize the output grid as a copy of the input grid.
+  - step: Identify all white (0) pixels on the grid boundary (source_pixels).
+  - step: Determine all white pixels reachable from any source_pixel via 4-adjacent white paths (fillable_pixels). This is done via a standard flood fill / BFS reachability analysis.
+  - step: Identify a specific subset of these fillable_pixels as target_pixels based on an undetermined rule. (This rule is complex; in examples 1 & 2 it excludes many pixels near the top/left, in example 3 it excludes exactly four specific pixels).
+  - step: For each pixel (r, c) in the target_pixels set, change its color to yellow (4) in the output grid.
+  - step: All other pixels (foreground shapes, background pixels not in target_pixels) retain their original color from the input grid.
+  - step: >
+      NOTE: The standard flood fill algorithm (implemented in the provided code) assumes
+      step 4 is trivial (target_pixels = fillable_pixels). This assumption leads to
+      incorrect outputs for all provided training examples.

@@ -1,0 +1,54 @@
+task_type: grid_transformation
+grid_properties:
+  dimensionality: 2
+  cell_values: integers (0-9)
+  size: 10x10 (consistent)
+objects:
+  - name: cell
+    properties:
+      - value: integer (color)
+      - position: (row, column)
+  - name: grid
+    properties:
+      - cells: collection of cell objects
+  - name: connected_component
+    properties:
+      - cells: set of cell positions
+      - contains_trigger_value: boolean (true if any cell in component has value 2 or 3 in input)
+relationships:
+  - type: adjacency
+    between: cell, cell
+    properties:
+      - direction: orthogonal (North, South, East, West) for flanking check
+      - direction: 8-directional (Ortho + Diagonal) for connectivity check
+  - type: flanking
+    definition: An input cell C at (r, c) with value 0 is flanked horizontally if input[r][c-1] == input[r][c+1] == X, where X != 0. It is flanked vertically if input[r-1][c] == input[r+1][c] == Y, where Y != 0.
+  - type: connectivity
+    definition: Two non-zero input cells are connected if they are adjacent (8-directional). A connected_component is a maximal set of such connected cells.
+actions:
+  - name: transform_grid
+    inputs: input_grid (grid object)
+    outputs: output_grid (grid object)
+    rule:
+      - description: Multi-step transformation based on flanking and non-zero cell connectivity in the input grid (derived from Examples 1 and 3).
+      - step_1_identify_bridges:
+          - target: Cells C where input_grid[C.position] == 0.
+          - condition: Cell C is flanked horizontally OR vertically in the input_grid.
+          - action: Mark C.position as a 'bridge_location'.
+      - step_2_analyze_connectivity:
+          - target: All non-zero cells in the input_grid.
+          - action_1: Determine connected components using 8-directional adjacency.
+          - action_2: For each component, check if it contains any cell with input value 2 or 3. Mark components containing 2 or 3 as 'main_components'.
+          - action_3: Create a mapping from each non-zero cell's position to its component identifier and whether that component is a 'main_component'.
+      - step_3_construct_output:
+          - initialize: output_grid conceptually empty or copy of input.
+          - iterate: through each cell position (r, c).
+          - rule_1: IF (r, c) is marked as 'bridge_location', THEN output_grid[r][c] = 1.
+          - rule_2: ELIF input_grid[r][c] == 1:
+              - check_condition: Is the component containing input cell (r, c) marked as a 'main_component'?
+              - if_main_component: THEN output_grid[r][c] = 1.
+              - if_not_main_component: THEN output_grid[r][c] = 0.
+          - rule_3: ELSE output_grid[r][c] = input_grid[r][c]. # Handles non-zero/non-one values and non-flanked zeros.
+observations:
+  - note: This rule accurately describes the transformations in Examples 1 and 3.
+  - anomaly: Example 2 exhibits a different pattern, possibly involving region filling or different connectivity rules, and is not explained by this hypothesis.

@@ -1,0 +1,57 @@
+task_elements:
+  - grid:
+      type: object
+      description: A 2D array of digits.
+      properties:
+        - dimensions: variable (e.g., [12, 12], [14, 14], [16, 16])
+        - unique_values_input: [0, 1, 2, 3]
+        - unique_values_output: [0, 1, 2, 3]
+  - border:
+      type: object
+      description: A frame composed of a single digit ('3') surrounding the grid's content.
+      properties:
+        - value: 3
+        - thickness: 1 cell (observed)
+      relationships:
+        - unchanged: between input and output
+  - digits:
+      type: object
+      description: Individual numerical values within the grid cells, excluding the border.
+      properties:
+        - value_map: conditional based on monochromatic square blocks
+  - monochromatic_square_block:
+      type: object
+      description: An NxN square (N>=2) of identical digits (0, 1, or 2).
+      properties:
+        - digit_value: The digit composing the block (0, 1, or 2).
+        - size: The side length N of the square block.
+        - top_left_coord: The (row, col) of the top-left cell of the block.
+      relationships:
+        - maximality: We are primarily interested in the largest such block for '0' and '2'.
+
+relationships:
+  - identity: Grid dimensions remain constant between input and output for a given example.
+  - identity: The border ('3') remains constant.
+  - conditional_transformation:
+      condition_check: Find the largest MSB of '0's (L0_MSB, size N0) and the largest MSB of '2's (L2_MSB, size N2).
+      branch_1: # Corresponds to Scenario 1
+        condition: N0 > 0 AND N2 == 0
+        actions:
+          - find_block: Locate the first largest 0-MSB (top_left_coord_0).
+          - change_value: At L0_MSB, input '0' -> output '1'.
+          - change_value: For ALL input '2's (L2_any), input '2' -> output '0'.
+          - identity: All input '1's -> output '1'.
+      branch_2: # Corresponds to Scenario 2
+        condition: N0 > 0 AND N2 > 0 AND N0 == N2 # Let N = N0 = N2
+        actions:
+          - find_block: Locate the first largest 0-MSB (top_left_coord_0).
+          - find_block: Locate the first largest 2-MSB (top_left_coord_2).
+          - change_value: At L0_MSB, input '0' -> output '1'.
+          - identity: At L2_MSB, input '2' -> output '2'.
+          - find_block: Locate the *first* (in reading order) MSB of '1's with size N (L1_special).
+          - change_value: At L1_special, input '1' -> output '0'.
+          - identity: All other input '1's -> output '1'.
+      branch_3: # Default/Fallback (implied)
+        condition: Other cases (e.g., N0=0, N2>0; or N0>0, N2>0, N0!=N2)
+        actions:
+          - identity: Input grid is copied to output grid. # Assumption based on lack of examples

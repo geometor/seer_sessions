@@ -1,0 +1,50 @@
+Task: Modify colors of 'base' objects and specific 'upper structure' pixels based on color context.
+
+Definitions:
+  - BackgroundColor: The most frequent color in the input grid.
+  - UpperStructure: A contiguous object composed solely of Blue (1) and/or Red (2) pixels, identified via 8-way connectivity.
+  - Base: A contiguous object composed of a single color (not Blue, Red, or BackgroundColor), identified via 8-way connectivity.
+  - Associated Base: A Base object is associated with an UpperStructure if it is adjacent (sharing side or corner, 8-way) to the structure AND its topmost pixel row (`base.min_r`) is greater than or equal to the structure's topmost pixel row (`structure.min_r`).
+  - TriggerPixel: A single-pixel object whose color is not BackgroundColor, Blue(1), or Red(2), is not an Associated Base, and is not adjacent (8-way) to any UpperStructure.
+
+Identification:
+  - Find all UpperStructures and potential Bases/Triggers using 8-way connectivity for object finding.
+  - Determine Associations between Structures and Bases. Record original colors of all Associated Bases.
+  - Filter single-pixel candidates to confirm TriggerPixels based on association and adjacency rules.
+  - Select Trigger: If multiple TriggerPixels exist, select the one with the highest color index.
+
+Transformation Scenarios:
+
+Scenario 1: Swap Case
+  - Condition: The set of original colors of all Associated Bases contains both Green (3) AND Azure (8).
+  - Actions (Applied based on original grid state):
+    1. Base Swap (Green->Azure): Change all pixels of original Green (3) Bases to Azure (8).
+    2. Base Swap (Azure->Green): Change all pixels of original Azure (8) Bases to Green (3).
+    3. Structure Red Pixel Change (Green Base -> Azure Struct): For every Red (2) pixel within an UpperStructure, if *any* Base associated with that structure was originally Green (3), change that Red (2) pixel to Azure (8). (This overrides Base Swap 1 for pixels that are part of both).
+    4. Base Pixel Below Red Change (Azure Base -> Red BasePixel): For every pixel `(br, bc)` within an Associated Base, if that Base's original color was Azure (8) AND the pixel directly above it `(br-1, bc)` was part of an associated UpperStructure AND was originally Red (2), change the pixel at `(br, bc)` to Red (2). (This overrides Base Swap 2 for these specific pixels).
+
+Scenario 2: Trigger Case
+  - Condition: Swap Case condition is false, AND one or more confirmed TriggerPixels exist.
+  - Actions:
+    1. Select Trigger: Identify the confirmed TriggerPixel `(tr, tc)` with the highest color index (`TargetColor`).
+    2. Base Color Change: Change all pixels of all Associated Bases (regardless of original color) to the `TargetColor`.
+    3. Trigger Removal: Change the selected TriggerPixel at `(tr, tc)` to the `BackgroundColor`.
+    4. Anomaly Rule (Specific to Example 2 context): If the selected `TargetColor` is Magenta (6), the `BackgroundColor` is Green (3), and the set of original Base colors contains only Yellow (4), then change the pixel at `(tr+4, tc)` to Yellow (4).
+
+Scenario 3: No Action
+  - Condition: Neither Swap Case nor Trigger Case conditions are met.
+  - Action: The grid remains unchanged.
+
+Example 1 Analysis (Swap Case):
+  - Background: 4. Bases: Green(3), Azure(8). Condition True.
+  - Struct (Top-Right): Base=Azure(8). Base pixels -> Green(3). Pixel below Red(2) at (3,13) is (4,13). Belongs to Base(8). Change (4,13) -> Red(2).
+  - Struct (Mid-Left): Base=Green(3). Base pixels -> Azure(8). Red(2) pixels in struct (6,4), (7,4) -> Azure(8).
+  - Struct (Bottom-Mid): Base=Green(3). Base pixels -> Azure(8). Red(2) pixels in struct (11,10)...(14,11) -> Azure(8).
+
+Example 2 Analysis (Trigger Case):
+  - Background: 3. Bases: Yellow(4). Potential Triggers: Magenta(6) at (10,3), Red(2) at (12,3). Swap Case False.
+  - Confirmed Triggers: Magenta(6) at (10,3) (color index 6), Red(2) at (12,3) (color index 2).
+  - Selected Trigger: Magenta(6) at (10,3). TargetColor=6.
+  - Action: Change all Base pixels (Yellow 4) to Magenta (6).
+  - Action: Change Trigger pixel (10,3) to Background (3).
+  - Action (Anomaly): Trigger=6, BG=3, Base was {4}. Change pixel at (10+4, 3) = (14, 3) to Yellow (4).

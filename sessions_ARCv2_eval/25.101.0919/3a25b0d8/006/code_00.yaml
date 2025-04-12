@@ -1,0 +1,66 @@
+task_description: Extract framed content patterns by associating content objects with adjacent container objects, stack them vertically preserving order, duplicate rows with horizontally symmetrical content, and pad to uniform width.
+
+elements:
+  - type: background_color
+    description: Most frequent color in the input grid.
+    value_example_1: 8 (Azure)
+    value_example_2: 1 (Blue)
+  - type: container_color
+    description: The non-background color C identified as forming frames around true_content. Heuristic: adjacent to the most diverse set of other non-background colors.
+    value_example_1: 1 (Blue)
+    value_example_2: 2 (Red)
+  - type: true_content_color
+    description: Any color that is not the background_color or the container_color.
+    values_example_1: [7, 3, 4, 6, 9]
+    values_example_2: [4, 3, 8]
+  - type: container_object
+    description: A connected object composed of the container_color. Found using connectivity=4.
+  - type: content_object
+    description: A connected object composed of a single true_content_color. Found using connectivity=4.
+  - type: pattern_components
+    description: The sets of coordinates defining a single pattern to be extracted.
+    components:
+      - content_coords: Coordinates of a single content_object.
+      - frame_coords: Coordinates of container_color pixels adjacent (8-way) to content_coords.
+    derivation: Each content_object adjacent to any container_color pixel forms the basis for one pattern_component set.
+  - type: pattern
+    description: A rectangular subgrid extracted from the input.
+    derivation: Defined by the minimal bounding box enclosing the union of content_coords and frame_coords from a single pattern_components set. Each content_object should contribute to only one pattern.
+  - type: pattern_sort_key
+    description: The minimum row index of the content_coords associated with a pattern. Used for vertical ordering.
+  - type: output_row
+    description: A single row within the final assembled output grid, derived from a row in an extracted pattern.
+  - type: row_duplication_rule
+    description: An output_row is duplicated if its sequence of true_content_pixels (pixels != background and != container) is non-empty and forms a horizontal palindrome.
+
+actions:
+  - identify_colors: Determine background_color and container_color.
+  - find_objects: Find all container_objects and content_objects.
+  - associate_content_to_frame: For each content_object:
+      1. Find all adjacent (8-way) container_color pixels ('potential_frame_pixels').
+      2. If potential_frame_pixels exist:
+          a. This content_object is valid for extraction.
+          b. Record the content_object's coordinates ('content_coords').
+          c. Record the adjacent container_color pixels ('frame_coords').
+          d. Calculate the minimum row index of 'content_coords' as the sort key.
+          e. Store these components, ensuring each content_object is used only once.
+  - extract_patterns: For each stored set of (content_coords, frame_coords):
+      1. Combine coordinates: `pattern_coords = content_coords U frame_coords`.
+      2. Calculate the minimal bounding box (BB) enclosing `pattern_coords`.
+      3. Extract the subgrid ('pattern') using BB.
+      4. Store the pattern associated with its sort key.
+  - sort_patterns: Order the extracted patterns based on their sort key (minimum content row index).
+  - assemble_and_duplicate_rows:
+      1. Create an initial list of rows by taking all rows from the sorted patterns sequentially.
+      2. Create a final list. For each row in the initial list:
+          a. Add the row to the final list.
+          b. Extract the 'true_content' pixels (sequence of pixels != background and != container).
+          c. If the true_content sequence is non-empty and palindromic, add the row to the final list again.
+  - pad_rows: Calculate the maximum width among rows in the final list. Pad each row symmetrically with the background_color to match this width.
+  - construct_output: Stack the padded rows.
+
+relationships:
+  - content_objects are framed by adjacent container_color pixels.
+  - pattern is the minimal bounding box enclosing a content_object and its adjacent frame pixels.
+  - output_rows are derived from pattern rows.
+  - final_grid is composed of padded, potentially duplicated output_rows ordered based on the original vertical position of the content.

@@ -1,0 +1,51 @@
+Grid:
+  type: object
+  properties:
+    size: 12x12 (consistent across examples)
+    cells: list of lists of integers (colors)
+
+Colors:
+  - 0: Black (Background/Empty)
+  - 1: Blue
+  - 2: Red (Boundary marker for Rule 1)
+  - 3: Green (Fill color for Rule 1 and Rule 3)
+  - 4: Magenta (Trigger for Rule 3 and Rule 4)
+  - 6: Cyan (Fill color for Rule 4, also subject to propagation)
+  - 7: Orange (Secondary trigger/boundary for Rule 3)
+
+Triggers_and_Patterns:
+  - Red_Boundaries: A pair of '2's on the same row in the input grid.
+  - Four_Seven: A '4' immediately followed by a '7' on the same row in the input grid.
+  - Four_Alone: A '4' in the input grid NOT immediately followed by a '7'.
+  - Horizontal_Gap_1: A non-'1' cell horizontally between two '1's.
+  - Horizontal_Gap_6: A non-'6' cell horizontally between two '6's.
+  - Vertical_Gap_1: A '0' cell vertically between two '1's (based on input grid).
+
+Actions:
+  - Modify_Boundary_Color: Change cell color (e.g., 2 -> 3).
+  - Fill_Horizontal_Segment: Change colors of cells between two columns on a row (e.g., fill with 3).
+  - Place_Marker: Change a single cell's color based on context (e.g., place 1 within a 3-filled segment).
+  - Copy_Row_Segment: Replace a segment of a row with the corresponding segment from the row below (based on input grid).
+  - Fill_Pattern: Replace a specific pattern with another (e.g., '4 7 0' -> '3 3 3 3').
+  - Fill_Column_Segment_Vertically: Change colors of cells in a column below a trigger cell (e.g., fill with 6).
+  - Propagate_Horizontally: Fill gaps based on horizontal neighbors (iterative).
+  - Propagate_Vertically: Fill a cell based on vertical neighbors (based on input grid).
+
+Rules_and_Order:
+  - rule_priority: Rules are checked and applied in a specific order. Actions modify a working copy of the grid. Some rules read context from the original input grid.
+  - 1_Red_Boundary_Transform:
+      - trigger: Red_Boundaries (c1, c2) found in input[r].
+      - context: Check if input[r][c1+1:c2] contains 0.
+      - action: Modify output[r]: output[r][c1]=3, output[r][c2]=3, output[r][c1+1:c2]=3. Place '1' at output[r][c1+2] if 0 was found, else at output[r][c2-1].
+  - 2_Four_Seven_Transform:
+      - trigger: Four_Seven pattern at input[r][c] and input[r][c+1].
+      - action: Modify output[r]: Replace output[r][0:c] with input[r+1][0:c]. Replace output[r][c:c+4] (or fewer if hitting boundary) with [3, 3, 3, 3]. Mark this '4' as processed.
+  - 3_Four_Alone_Transform:
+      - trigger: Four_Alone pattern at input[r][c] (i.e., input[r][c]==4 and input[r][c+1]!=7, and not processed by rule 2).
+      - action: Modify output grid: For i from r+1 to height-1, set output[i][c] = 6.
+  - 4_Horizontal_Propagation:
+      - trigger: Horizontal_Gap_1 or Horizontal_Gap_6 in the current output grid.
+      - action: Modify output grid: Fill gap with 1 or 6 respectively. Apply iteratively per row until no changes.
+  - 5_Vertical_1_Propagation:
+      - trigger: Vertical_Gap_1 (check input[r-1][c]==1, input[r+1][c]==1, input[r][c]==0).
+      - action: Modify output grid: Set output[r][c] = 1. (Applied after horizontal propagation).

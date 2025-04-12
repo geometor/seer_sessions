@@ -1,0 +1,70 @@
+task_description: Draw a line from a single 'agent' pixel, using its color, until the line reaches a boundary defined by 'obstacle' pixels. The agent is identified via prioritized rules (structural separation, unique color, unique isolation). The stopping rule depends on the obstacle configuration ('solid_line' vs 'scattered') and the direction of movement.
+
+definitions:
+  - name: background_pixel
+    value: 0 # white
+  - name: non_background_pixels
+    description: All pixels with color != 0.
+    properties:
+      - positions: List of (r, c, color) tuples.
+  - name: line_structure_pixels
+    description: The largest set of non-background pixels sharing the same color AND lying on a single row OR single column (minimum 2 pixels). Can be empty.
+  - name: agent_pixel
+    description: The single pixel initiating the line draw. Identified via prioritized rules.
+    properties:
+      - color: C
+      - position: (r0, c0)
+    identification_rules: # Priority Order
+      - 1: If line_structure_pixels exist AND exactly one non-background pixel remains outside this structure, that remaining pixel is the agent.
+      - 2: If rule 1 doesn't apply, find pixels with a color appearing only once grid-wide. If exactly one such pixel exists, it's the agent.
+      - 3: If rules 1 & 2 don't apply, find pixels with no neighbors (Moore neighborhood) of the same color. If exactly one such pixel exists, it's the agent.
+      - 4: Otherwise, no agent is identified.
+  - name: obstacle_pixels
+    description: All non-background pixels excluding the identified agent pixel.
+    properties:
+      - positions: Set of (r, c) coordinates.
+      - occupied_rows: R_O (Set of row indices containing obstacles).
+      - occupied_cols: C_O (Set of column indices containing obstacles).
+      - structure: Derived property, either 'solid_line' (if obstacles occupy only one row OR only one column, allowing single-pixel obstacles) or 'scattered'.
+
+parameters:
+  - name: line_direction
+    description: Vector (dr, dc) determined by agent position relative to grid boundaries.
+    values: # Examples
+      - (-1, 0) # Up
+      - (1, 0)  # Down
+      - (0, -1) # Left
+      - (0, 1)  # Right
+      - (-1, 1) # Up-Right
+    determination: Move away from the nearest grid edge/corner. Ties favor Up/Left components.
+
+transformations:
+  - step: Identify all non_background_pixels.
+  - step: Attempt to identify agent using rule 1 (line structure separation).
+  - step: If no agent yet, attempt using rule 2 (unique color).
+  - step: If no agent yet, attempt using rule 3 (unique spatial isolation).
+  - step: If an agent (C, (r0, c0)) was identified, define all other non-background pixels as obstacles. If no agent, stop and return input grid.
+  - step: Analyze obstacles to determine structure ('solid_line' or 'scattered') and get occupied rows (R_O) and columns (C_O).
+  - step: Determine line_direction (dr, dc) based on agent position (r0, c0) and grid dimensions.
+  - step: Initialize current position (r, c) = (r0, c0).
+  - step: Draw line segment:
+      - Loop:
+          - Calculate next position (nr, nc) = (r + dr, c + dc).
+          - Check grid bounds for (nr, nc). If out, stop loop.
+          - Define stop_before_coloring = False, stop_after_coloring = False.
+          - if structure == 'solid_line':
+              - if dr != 0 and dc == 0: # Pure vertical move
+                  if nr in R_O: stop_before_coloring = True
+              - elif dr == 0 and dc != 0: # Pure horizontal move
+                  if nc in C_O: stop_before_coloring = True
+              - elif dr != 0 and dc != 0: # Diagonal move
+                  if nr in R_O or nc in C_O: stop_before_coloring = True
+          - elif structure == 'scattered':
+              - if nr in R_O or nc in C_O:
+                  stop_after_coloring = True
+          - If stop_before_coloring: break loop.
+          - Color pixel (nr, nc) with C.
+          - If stop_after_coloring: break loop.
+          - Update (r, c) = (nr, nc).
+
+output_grid: The input grid modified by coloring the pixels along the drawn line segment. If no agent was identified, the output is identical to the input.

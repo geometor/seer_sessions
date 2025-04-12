@@ -1,0 +1,43 @@
+Task: Modify colors based on interactions between 'Upper Structures', 'Bases', and 'Trigger Pixels'.
+
+Definitions:
+  - BackgroundColor: The most frequent color in the input grid.
+  - Object: A contiguous group of pixels of the same non-background color, identified using 8-way connectivity.
+  - UpperStructure: An Object composed solely of Blue (1) and/or Red (2) pixels. Contains `structure_pixels` and `red_pixels`.
+  - Base: An Object whose color is not BackgroundColor, Blue (1), or Red (2).
+  - TriggerPixelCandidate: A Base object consisting of exactly one pixel.
+  - AssociatedBase: A Base object is associated with an UpperStructure if:
+      1. It is adjacent (8-way connectivity) to the UpperStructure.
+      2. Its topmost row (`base.min_r`) is >= the structure's topmost row (`structure.min_r`).
+  - ConfirmedTriggerPixel: A TriggerPixelCandidate that is NOT an AssociatedBase AND is NOT adjacent (8-way) to any UpperStructure.
+  - SelectedTrigger: If ConfirmedTriggerPixels exist, the one with the highest color index. Ties are resolved arbitrarily (e.g., first found). Stores `trigger_coord` and `TargetColor`.
+
+Identification Process:
+  1. Find BackgroundColor.
+  2. Find all Objects.
+  3. Categorize Objects into UpperStructures, Bases, and TriggerPixelCandidates.
+  4. Determine Associations: Map each UpperStructure to its list of AssociatedBases. Collect all `associated_base_pixels` and the set of `original_base_colors`.
+  5. Confirm Triggers: Filter TriggerPixelCandidates using association and adjacency rules.
+  6. Select Trigger: Choose the ConfirmedTriggerPixel with the highest color index.
+
+Transformation Scenarios (Applied based on original grid state):
+
+Scenario 1: Swap Case
+  - Condition: `original_base_colors` contains both Green (3) AND Azure (8).
+  - Actions (applied via a change map):
+    1. Base Swap (Green->Azure): For all pixels in original Green (3) AssociatedBases, map them to Azure (8).
+    2. Base Swap (Azure->Green): For all pixels in original Azure (8) AssociatedBases, map them to Green (3).
+    3. Structure Red -> Azure: For each UpperStructure associated with *any* original Green (3) Base, map its `red_pixels` to Azure (8).
+    4. Base Pixel Below Red -> Red: For each pixel `(br, bc)` in an original Azure (8) AssociatedBase, if the pixel above `(br-1, bc)` was originally a Red (2) pixel belonging to an associated UpperStructure, map `(br, bc)` to Red (2). (This overrides Rule 2).
+    5. Apply map to output grid.
+
+Scenario 2: Trigger Case
+  - Condition: Swap Case condition is false AND a SelectedTrigger exists.
+  - Actions:
+    1. Base Color Change: Change all `associated_base_pixels` to the `TargetColor`.
+    2. Trigger Removal: Change the pixel at `trigger_coord` to the `BackgroundColor`.
+    3. Anomaly Rule: If `TargetColor`=6, `BackgroundColor`=3, and `original_base_colors`={4}, change pixel at `(trigger_coord.row + 4, trigger_coord.col)` to Yellow (4) (check bounds).
+
+Scenario 3: No Action
+  - Condition: Neither Swap Case nor Trigger Case conditions are met.
+  - Action: The grid remains unchanged.

@@ -26,10 +26,10 @@ def run():
     output_dir = Path("../sessions_ARCv2_train_200_300/")
 
     #  tasks = Tasks("../tasks/ARCv2/training")
-    tasks = get_unsolved_tasks(Path("../sessions"))
+    tasks = get_unsolved_tasks(output_dir)
     tasks = tasks.get_ordered_tasks()
 
-    seer.run(tasks[200:300], output_dir, "unsolved")
+    seer.run(tasks[0:10], output_dir, "unsolved")
     
 
 if __name__ == "__main__":

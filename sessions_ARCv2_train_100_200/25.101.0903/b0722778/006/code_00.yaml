@@ -1,0 +1,43 @@
+Input Grid Structure:
+  - Property: Partitioned by single rows/columns of white pixels (0).
+  - Details: Creates a macro-grid structure where 2x2 cells are separated by single white pixel borders.
+  - Objects: Contiguous 2x2 blocks of non-white pixels (Input Blocks). Arranged in 'Block Rows', typically 3 blocks horizontally per row (Left at col 0, Middle at col 3, Right at col 6).
+
+Output Grid Structure:
+  - Property: Preserves input height.
+  - Property: Fixed width of 2 columns.
+  - Property: Preserves white separator rows found in the input at rows 2, 5, 8, etc.
+  - Objects: Contiguous 2x2 blocks of pixels (Output Blocks) arranged vertically, corresponding to the Block Rows from the input.
+
+Relationship: Input -> Output
+  - Action: Deconstruct Input
+    - Identify Input Blocks and group them by Block Row index `br` (0, 1, 2, ...).
+  - Action: Select Block (per Block Row)
+    - Input: The Input Blocks in a Block Row, the Block Row Index `br`.
+    - Rule:
+      - Calculate the sum of pixel values for each Input Block.
+      - If `br == 1`: Identify block(s) with the minimum sum.
+      - Otherwise (`br != 1`): Identify block(s) with the maximum sum.
+    - Tie-breaking: Select the block with the largest starting column index (rightmost).
+    - Output: One Selected Input Block `[[a, b], [c, d]]` per Block Row.
+  - Action: Transform Block (per Selected Input Block)
+    - Input: Selected Input Block `[[a, b], [c, d]]`.
+    - Rules (Apply first matching rule - Hypothesis 15):
+      1. If `a == c` and `b == d`: Output is `[[b, b], [a, a]]`.
+      2. Else if `a == b` and `c == d`: Output is `[[c, a], [c, a]]`.
+      3. Else if `a == c` and `c == d`: Output is `[[b, a], [d, c]]` (Horizontal Reflection). # Rule for a=c=d case
+      4. Else if `a == c`: Output is `[[c, c], [c, b]]`.
+      5. Else if `c == d`: Output is `[[a, b], [a, b]]` (Vertical Reflection Top->Bottom).
+      6. Else if `a == b`: Output is `[[a, b], [b, c]]`.
+      7. Else (Fallback): Output is `[[b, a], [d, c]]` (Horizontal Reflection).
+    - Output: One Transformed Output Block per Selected Input Block.
+  - Action: Construct Output
+    - Create an output grid (Height H, Width 2), initialized to white (0).
+    - Place each Transformed Output Block in the Output Grid starting at row `r` (where `r` is the starting row of the corresponding Block Row) and column 0.
+    - Ensure separator rows (2, 5, 8, ...) are white.
+
+Failures/Anomalies:
+  - Context: Example 1, Block Row index `br=0`.
+    - Observation: Selection rule yields `[[0,8],[0,8]]`. Transformation (Rule 1) yields `[[8,8],[0,0]]`. Expected output is `[[6,8],[8,8]]`. Mismatch.
+  - Context: Example 1, Block Row index `br=1`.
+    - Observation: Selection rule yields `[[2,1],[2,1]]`. Transformation (Rule 1) yields `[[1,1],[2,2]]`. Expected output is `[[4,5],[4,5]]`. Mismatch (Anomaly).

@@ -1,0 +1,48 @@
+task_context:
+  problem_type: grid_transformation
+  grid_properties:
+    - dimensions_preserved: True
+    - background_color_preserved: True # Mostly, output fill based on input bg
+    - cell_values: integers 0-9 (colors)
+transformation_elements:
+  target_columns:
+    - identification: The two rightmost columns in the input grid that contain any non-background pixels.
+    - definition:
+        - C1: The column with the largest index containing any non-background pixel.
+        - C2: The column with the largest index strictly less than C1 containing any non-background pixel.
+    - role: These are the only columns potentially modified or containing non-background pixels in the output (except for cases like Ex2, suggesting this might be incomplete).
+  key_pixels:
+    - identification: The topmost non-background pixel within column C1 and C2 of the input grid.
+    - definition:
+        - V_top_C1: Value of the non-background pixel with the minimum row index in input column C1.
+        - R_top_C1: Row index of V_top_C1.
+        - V_top_C2: Value of the non-background pixel with the minimum row index in input column C2.
+        - R_top_C2: Row index of V_top_C2.
+    - role: Their values (V_top_C1, V_top_C2) are used for filling background cells above them in the output columns C1 and C2 under specific conditions.
+  pixel_mapping_logic:
+    - scope: Operates primarily on output columns C1 and C2.
+    - base_copy: Pixels from input columns C1 and C2 are conditionally copied to the corresponding output columns.
+    - upward_fill_C1: Background cells in output column C1 *above* R_top_C1 are filled with the value V_top_C2.
+    - upward_fill_C2: Background cells in output column C2 *above* R_top_C2 are filled with the value V_top_C2, but *only* if certain conditions involving the content of input/output column C1 at that same row are met.
+  background_pixels:
+    - handling: Output grid is initialized with the input's background color. All cells outside columns C1 and C2 remain background. Cells within C1/C2 not explicitly assigned a color remain background.
+objects:
+  - type: Pixel
+    properties: [color (int), position (row, col)]
+  - type: Column
+    properties: [index (int), pixels (list)]
+    derived_properties: [has_non_background (bool), topmost_non_background_pixel (Pixel)]
+  - type: Grid
+    properties: [pixels (2D array), dimensions (height, width), background_color (int)]
+    derived_properties: [C1 (int), C2 (int)]
+relationships:
+  - pixel_in_column
+  - topmost_pixel_in_column
+actions:
+  - find_background_color
+  - find_rightmost_column_index (C1)
+  - find_second_rightmost_column_index (C2)
+  - find_topmost_pixel_in_column (for C1, C2)
+  - initialize_output_grid
+  - process_column_C1 (copy input pixels, apply upward fill using V_top_C2)
+  - process_column_C2 (copy input pixels, apply upward fill using V_top_C2 based on C1 content)

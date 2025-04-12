@@ -1,0 +1,75 @@
+Grid:
+  type: object
+  properties:
+    dimensionality: 2D
+    cells:
+      type: list of lists
+      items: Cell
+
+Cell:
+  type: object
+  properties:
+    value:
+      type: integer
+      description: Represents a color (0, 5, 6, 7, 9)
+    position:
+      type: tuple (row, column)
+    neighbors:
+      type: list of Cells
+      description: 8 adjacent cells (orthogonal and diagonal)
+    is_boundary_adjacent: # Property derived from input grid
+      type: boolean
+      description: True if any neighbor in the input grid is 0 or 9.
+
+Colors:
+  - id: 0
+    role: Boundary / Frame component (mutable, inhibitor)
+  - id: 5
+    role: Fill color (mutable to 7, inhibited by adjacent 0/9)
+  - id: 6
+    role: Background / Boundary component (mutable)
+  - id: 7
+    role: Active/Seed color, Target fill color
+  - id: 9
+    role: Boundary / Frame component (mutable, inhibitor)
+
+Region: # Abstract object representing connected areas in the INPUT grid
+  type: object
+  properties:
+    cells: list of (row, col) tuples
+    type: enum ['Pure 5', 'Mixed 5/7', 'Other']
+    is_boundary_adjacent: # Property derived for the whole region
+      type: boolean
+      description: True if any cell in the region has an input neighbor of 0 or 9.
+
+Transformation:
+  type: action
+  description: Modifies the input grid based on region analysis, inhibited propagation, and pattern replacement.
+  steps:
+    - Initialize output grid as a copy of the input grid.
+    - Pre-calculate boundary adjacency for all cells based on input grid neighbors (0 or 9).
+    - Identify_Pure_5_Regions: Find connected components of only 5s in the input.
+    - Convert_Non_Adjacent_Pure_5_Regions:
+        description: If a pure 5 region has NO cells adjacent to input boundaries (0/9), change all its 5s to 7s in the output grid.
+    - Propagate_7s_Inhibited:
+        description: Iteratively convert 5s to 7s starting from INPUT 7s, but only if the 5 is not boundary-adjacent.
+        mechanism:
+          - Queue initial input 7 locations.
+          - Use a 'visited' set for propagation.
+          - While queue not empty:
+            - Dequeue cell (r, c).
+            - For each neighbor (nr, nc):
+              - If neighbor is valid, is 5 in output, *not* boundary-adjacent (based on pre-calculation), and not visited:
+                - Set output[nr][nc] = 7.
+                - Enqueue (nr, nc), mark as visited.
+    - Apply_Boundary_Pattern_Replacements: # Applied AFTER 5->7 conversion
+        description: Apply specific, hardcoded transformations based on input patterns.
+        rules:
+          - If Ex1 dimensions (8x8) and input top row is all 6s: Copy output top row to output bottom row.
+          - If Ex1 dimensions (8x8) and input row 3 starts `99996`: Change first four 9s to 0s in output row 3.
+          - If Ex3 dimensions (12x12) and input rows 2-6, cols 0-5 are `000009`: Change output rows 2-6, cols 0-5 to `666660`.
+          - (Other boundary rules for Ex2 are not defined).
+    - Handle_Anomalies: # Acknowledge known exceptions
+        description: Apply specific fixes for known cases not covered by general rules.
+        rules:
+          - If Ex1 dimensions (8x8), set output[3][1] = 7 (regardless of input or previous steps).

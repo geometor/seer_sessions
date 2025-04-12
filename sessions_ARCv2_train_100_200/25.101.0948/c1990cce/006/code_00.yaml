@@ -1,0 +1,63 @@
+task_type: pattern_generation
+grid_properties:
+  dimensionality: input 1D, output 2D
+  input_width: variable (W)
+  output_width: W (same as input)
+  output_height: W (same as input)
+  color_palette: [0, 1, 2] # white, blue, red
+objects:
+  - object_type: pixel
+    properties:
+      color: {0: white, 1: blue, 2: red}
+      position: (row, column)
+  - object_type: pattern
+    description: Expanding diamond/triangle pattern originating from a single red pixel. Exhibits complex wave-like propagation and interaction.
+    generation_rule: Cellular automaton based on diagonal neighbors (L, R) from the previous row. Rules depend on neighbor colors, row index (r), distance from center (dist), propagation direction, and parity comparisons.
+relationships:
+  - type: spatial
+    description: Output grid dimensions (WxW) determined by input grid width W.
+  - type: positional
+    description: Column index 'center_c' of the initial red pixel is critical. Distance 'dist = abs(c - center_c)' modulates rules.
+  - type: temporal
+    description: Propagation rules differ significantly for early rows (r=1, 2) versus later rows (r>=3).
+  - type: parity_dependency
+    description: For r>=3 and dist>1, the propagation result for Red(2) depends on whether r and dist share the same parity (r%2 == dist%2).
+  - type: asymmetric_propagation
+    description: Blue(1) propagates differently depending on direction (L->1, R->0).
+  - type: generation
+    description: Each row (r > 0) is generated cell-by-cell based on the state of row (r-1).
+    rule_summary: Value at (r, c) depends on L=output[r-1, c-1], R=output[r-1, c+1], their colors, dist, r, and parity(r) vs parity(dist).
+actions:
+  - action: initialize_grid
+    actor: system
+    output: WxW grid filled with white (0)
+  - action: copy_input
+    actor: system
+    source: input row
+    target: output row 0
+  - action: find_center
+    actor: system
+    input: output row 0
+    output: column index 'center_c' of the red pixel (2)
+  - action: generate_rows
+    actor: system
+    input: output row r-1, center_c, row_index r
+    output: output row r (for r=1 to W-1)
+    rule_details:
+      - for each cell (r, c):
+        - get parents L=output[r-1, c-1], R=output[r-1, c+1] (handle boundaries)
+        - calculate dist = abs(c - center_c)
+        - apply collision/propagation logic:
+          - If L!=0 and R!=0: result = 0. # Collision
+          - Else if L!=0 and R==0: # Propagate L
+            - If L == 1: result = 1.
+            - If L == 2:
+              - If r <= 2: result = 2.
+              - If r >= 3: result = 1 if dist == 1 else (1 if (r%2!=0 and dist%2!=0) else 2).
+          - Else if L==0 and R!=0: # Propagate R
+            - If R == 1: result = 0. # Blue annihilates right
+            - If R == 2:
+              - If r <= 2: result = 2.
+              - If r >= 3: result = 0 if dist == 1 else (0 if (r%2 == dist%2) else 2).
+          - Else (L==0 and R==0): result = 0. # No propagation (Note: Ignores observed boundary anomalies)
+        - set output[r, c] = result

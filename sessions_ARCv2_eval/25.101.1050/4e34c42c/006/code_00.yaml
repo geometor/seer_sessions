@@ -1,0 +1,73 @@
+task_type: object_extraction_and_assembly_by_marker
+components:
+  - role: background
+    properties:
+      - color: most frequent color (BKG)
+      - significance: defines empty space, used for padding
+  - role: marker_pixel
+    properties:
+      - color: specific color (M) identifying patterns (heuristic: 9 if BKG=8, 8 if BKG=4)
+      - significance: used to identify marker components
+  - role: marker_component
+    properties:
+      - content: connected group of marker_pixels (8-way)
+      - properties: coordinates, min_row (m_min_r)
+      - significance: adjacency to patterns triggers extraction, m_min_r determines output order
+  - role: pattern_pixel
+    properties:
+      - color: any color that is not BKG and not M
+      - significance: form pattern components
+  - role: pattern_component
+    properties:
+      - content: connected group of pattern_pixels (8-way)
+      - properties: coordinates, size, bounding_box
+      - size_filter: must have size > 5
+      - adjacency_filter: must be adjacent (8-way) to at least one marker_component
+      - significance: defines the core shape of the object to be extracted
+  - role: combined_object
+    properties:
+      - composition: union of coordinates of a filtered pattern_component (P) and all marker_components (M_adj) adjacent to it
+      - properties: bounding_box (o_min_r, o_min_c, o_max_r, o_max_c)
+      - association: linked to a trigger_m_min_r = min(m.min_row for m in M_adj)
+      - significance: defines the region from which the output slice is derived
+  - role: output_slice
+    properties:
+      - source_rows: [o_min_r, o_min_r + 5) from the combined_object bounding box
+      - source_columns: [o_min_c, o_max_c + 1) from the combined_object bounding box
+      - content: pixels copied from input grid based on source rows/columns (clipped to grid bounds)
+      - height: variable initially, padded to 5
+      - association: linked to trigger_m_min_r for sorting
+  - role: output_grid
+    properties:
+      - composition: horizontal concatenation of processed output_slices
+      - ordering: slices sorted by trigger_m_min_r descending
+      - padding: slices padded with background color to height 5 before concatenation
+
+actions:
+  - identify_background_color: find most frequent color (BKG)
+  - identify_marker_color: assume M=9 if BKG=8, M=8 if BKG=4
+  - find_marker_components: group connected marker pixels, store coords and min_row
+  - find_pattern_components: group connected non-BKG, non-M pixels, store coords and size
+  - filter_pattern_components: keep only those with size > 5
+  - associate_patterns_and_markers:
+      for each filtered pattern P:
+        find adjacent marker components M_adj
+        if M_adj exists:
+          calculate trigger_m_min_r = min(m.min_row for m in M_adj)
+          combine coordinates O_coords = P.coords U (coords of all m in M_adj)
+          calculate O_bbox = (o_min_r, o_min_c, o_max_r, o_max_c) from O_coords
+          store unique tuple (trigger_m_min_r, o_min_r, o_min_c, o_max_c)
+  - extract_slices:
+      for each unique stored tuple:
+        extract slice S = input[o_min_r : o_min_r+5, o_min_c : o_max_c+1] (clipped)
+        store (trigger_m_min_r, S)
+  - sort_slices: order stored pairs by trigger_m_min_r descending
+  - pad_slices: ensure height is 5 using BKG color padding at bottom
+  - concatenate_slices: join horizontally
+
+relationships:
+  - marker_adjacency: marker components identify relevant patterns via adjacency
+  - pattern_filtering: size filter applied to patterns
+  - object_definition: relevant objects are the union of a pattern and its adjacent markers
+  - object_bbox_to_slice: the combined object's bbox defines the slice source rows (starting at o_min_r) and columns
+  - marker_min_row_to_output_order: the minimum row of the adjacent marker(s) determines the horizontal sort order (descending)

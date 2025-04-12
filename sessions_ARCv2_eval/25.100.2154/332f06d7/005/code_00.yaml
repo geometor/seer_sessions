@@ -1,0 +1,56 @@
+task_elements:
+  - grid:
+      type: object
+      description: A 2D array of digits.
+      properties:
+        - dimensions: variable
+        - unique_values_input: [0, 1, 2, 3]
+        - unique_values_output: [0, 1, 2, 3]
+  - border:
+      type: object
+      description: A frame composed of a single digit ('3') surrounding the grid's content.
+      properties:
+        - value: 3
+        - thickness: 1 cell (assumed)
+      relationships:
+        - unchanged: between input and output
+        - boundary: Defines the area for MSB search (MSBs must be fully within the non-border area).
+  - digits:
+      type: object
+      description: Individual numerical values within the grid cells.
+      properties:
+        - default_value_map:
+            input_0: output_1
+            input_2: output_0
+            input_1: output_1
+            input_3: output_3
+        - transformation_mode: Defaults to applying 'default_value_map' cell-wise, unless the exception condition is met.
+  - monochromatic_square_block:
+      type: object
+      description: An NxN square (N>=2) of identical digits (0, 1, or 2), located entirely within the non-border area.
+      properties:
+        - digit_value: The digit composing the block (0, 1, or 2).
+        - size: The side length N of the square block.
+        - top_left_coord: The (row, col) of the top-left cell of the block.
+        - center_coord: Geometric center (row+N/2 - 0.5, col+N/2 - 0.5).
+      relationships:
+        - maximality: The exception condition compares the *largest* MSB for '0' and '2'. If multiple largest exist, use the first in reading order.
+        - centrality: The exception action identifies the 1s-MSB (of matching size N) that is *closest* to the grid's center.
+
+relationships:
+  - identity: Grid dimensions remain constant between input and output for a given example.
+  - identity: The border ('3') remains constant.
+  - conditional_transformation:
+      condition_check: Find the largest MSB of '0's (L0_MSB, size N0 >= 2) and the largest MSB of '2's (L2_MSB, size N2 >= 2) *within the non-border area*.
+      exception_condition: (N0 >= 2) AND (N2 >= 2) AND (N0 == N2)
+      actions_if_exception:
+          - let N = N0 = N2.
+          - find_block: Locate the largest 0-MSB (L0_MSB) and largest 2-MSB (L2_MSB).
+          - find_target_block: Find all N x N MSBs of '1's (L1_candidates) within the non-border area. Select the L1_candidate (L1_target) whose center is closest to the grid center.
+          - apply_map_selectively:
+              - For cells within L0_MSB: input '0' -> output '1'.
+              - For cells within L2_MSB: input '2' -> output '2'.
+              - For cells within L1_target: input '1' -> output '0'.
+              - For all *other* cells: Apply 'default_value_map' (0->1, 2->0, 1->1, 3->3).
+      actions_if_no_exception:
+          - apply_map_globally: Apply 'default_value_map' to all cells.

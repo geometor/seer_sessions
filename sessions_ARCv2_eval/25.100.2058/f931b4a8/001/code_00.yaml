@@ -1,0 +1,47 @@
+observations:
+  - object: input_grid
+    properties:
+      - type: grid
+      - dimensions: 8x8
+      - contains_integers: true
+      - structure: composed of four 4x4 quadrants
+    quadrants:
+      - name: top_left (Q1)
+        position: rows 0-3, cols 0-3
+        content: Varies (uniform 1 in train_1, uniform 8 in train_2) - appears unused.
+      - name: top_right (Q2)
+        position: rows 0-3, cols 4-7
+        content: Varies (3s and 0s in train_1, uniform 6 in train_2) - appears unused.
+      - name: bottom_left (Q3)
+        position: rows 4-7, cols 0-3
+        content: Provides fill values. Can be uniform (train_1: all 5s) or have row-wise variation (train_2: rows of 1s and 5s). Rows appear internally uniform.
+      - name: bottom_right (Q4)
+        position: rows 4-7, cols 4-7
+        content: Provides the template pattern, containing non-zero values and 0s.
+  - object: output_grid
+    properties:
+      - type: grid
+      - dimensions: Variable (16x4 in train_1, 16x16 in train_2)
+      - contains_integers: true
+      - content: Values derived from Q3 and Q4.
+      - structure: Tiling of a derived 4x4 `core_pattern`.
+  - relationship: input_to_output
+    rule:
+      - A 4x4 `core_pattern` is generated based on Q4 and Q3.
+      - For each cell `(r, c)` (0-indexed relative coords) in the `core_pattern`:
+        - If `Q4[r, c]` is 0, the value is `Q3[r, 0]` (value from the corresponding row in Q3).
+        - Otherwise, the value is `Q4[r, c]`.
+      - The number of vertical tiles (`tile_rows`) for the output is the height of the `core_pattern` (4).
+      - The number of horizontal tiles (`tile_cols`) depends on Q3's content:
+        - If Q3 contains only one distinct numeric value, `tile_cols` = 1.
+        - If Q3 contains multiple distinct numeric values, `tile_cols` = width of the `core_pattern` (4).
+      - The output grid is constructed by tiling the `core_pattern` `tile_rows` times vertically and `tile_cols` times horizontally.
+      - Output dimensions are `(core_height * tile_rows, core_width * tile_cols)`.
+    transformation_details:
+      - template_pattern_source: Q4
+      - fill_values_source: Q3 (row-dependent)
+      - target_value_to_replace: 0
+      - base_tile_dimensions: 4x4 (derived `core_pattern`)
+      - vertical_tiling_factor: core_pattern_height (4)
+      - horizontal_tiling_factor: 1 if Q3 is uniform, core_pattern_width (4) otherwise.
+      - construction_method: Grid tiling of the `core_pattern`.

@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom scipy.ndimage import label, binary_dilation, generate_binary_structure\n\n\"\"\"\nIdentifies the largest contiguous non-background (non-white) object in the input grid.\nThen, identifies any background (white) pixels that are completely enclosed within this object (holes).\nFills these holes with the color of the largest object.\n\"\"\"\n\ndef find_largest_non_background_object_color(grid: np.ndarray) -> int:\n    \"\"\"\n    Finds the color of the largest connected component of non-background pixels.\n\n    Args:\n        grid: A numpy array representing the input grid.\n\n    Returns:\n        The integer color value of the largest non-background object.\n        Returns 0 (background color) if no non-background objects are found.\n    \"\"\"\n    background_color = 0\n    non_background_mask = grid != background_color\n\n    if not np.any(non_background_mask):\n        return background_color # No non-background pixels\n\n    # Label connected components of non-background pixels\n    # Use connectivity 1 (4-connectivity) to match visual perception of holes better\n    structure = generate_binary_structure(2, 1) \n    labeled_array, num_features = label(non_background_mask, structure=structure)\n\n    if num_features == 0:\n         return background_color # Should not happen if np.any(non_background_mask) is true\n\n    # Find the size of each component (feature)\n    component_sizes = np.bincount(labeled_array.ravel())\n    \n    # Ignore background label 0 if present in component_sizes\n    if len(component_sizes) > 0 and component_sizes[0] > 0:\n         component_sizes = component_sizes[1:] # Exclude background count\n         \n    if len(component_sizes) == 0:\n         return background_color # No non-background components found\n\n    # Find the label of the largest component\n    # Add 1 back because we sliced off the background label 0 index\n    largest_component_label = np.argmax(component_sizes) + 1 \n    \n    # Find the coordinates of any pixel belonging to the largest component\n    coords = np.argwhere(labeled_array == largest_component_label)\n    \n    if coords.size > 0:\n        # Get the color from the original grid at the first coordinate of the largest component\n        shape_color = grid[coords[0, 0], coords[0, 1]]\n        return int(shape_color)\n    else:\n         return background_color # Should not happen ideally\n\n\ndef transform(input_grid: list[list[int]]) -> list[list[int]]:\n    \"\"\"\n    Fills enclosed background regions (holes) within the largest non-background object \n    with the color of that object.\n\n    Args:\n        input_grid: A list of lists representing the input grid.\n\n    Returns:\n        A list of lists representing the transformed output grid.\n    \"\"\"\n    \n    grid = np.array(input_grid, dtype=int)\n    output_grid = grid.copy()\n    height, width = grid.shape\n    background_color = 0\n\n    # 1. Identify the color of the largest contiguous non-background object\n    shape_color = find_largest_non_background_object_color(grid)\n\n    # If no shape is found or the shape color is background, return original\n    if shape_color == background_color:\n        return output_grid.tolist()\n\n    # 2. Identify background pixels connected to the border (exterior background)\n    # We use a BFS (Breadth-First Search) approach, effectively a flood fill from the border.\n    \n    visited = np.zeros_like(grid, dtype=bool)\n    queue = []\n\n    # Add all border background pixels to the queue and mark as visited\n    for r in range(height):\n        if grid[r, 0] == background_color and not visited[r, 0]:\n            queue.append((r, 0))\n            visited[r, 0] = True\n        if grid[r, width - 1] == background_color and not visited[r, width - 1]:\n            queue.append((r, width - 1))\n            visited[r, width - 1] = True\n    for c in range(width):\n        if grid[0, c] == background_color and not visited[0, c]:\n            queue.append((0, c))\n            visited[0, c] = True\n        if grid[height - 1, c] == background_color and not visited[height - 1, c]:\n            queue.append((height - 1, c))\n            visited[height - 1, c] = True\n            \n    # Perform BFS to find all reachable background pixels from the border\n    q_idx = 0\n    while q_idx < len(queue):\n        r, c = queue[q_idx]\n        q_idx += 1\n\n        # Check 4 neighbors (up, down, left, right)\n        for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:\n            nr, nc = r + dr, c + dc\n\n            # Check if neighbor is within bounds\n            if 0 <= nr < height and 0 <= nc < width:\n                # Check if neighbor is background and not visited\n                if grid[nr, nc] == background_color and not visited[nr, nc]:\n                    visited[nr, nc] = True\n                    queue.append((nr, nc))\n\n    # 3. Identify and fill the holes\n    # Any background pixel that was NOT visited by the BFS is an internal hole.\n    for r in range(height):\n        for c in range(width):\n            if grid[r, c] == background_color and not visited[r, c]:\n                # This is an internal hole, fill it with the shape color\n                output_grid[r, c] = shape_color\n\n    return output_grid.tolist()\n\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 2476,
+    "candidates_token_count": 3011,
+    "total_token_count": 5487,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-preview-03-25",
+  "response_time": 25.113951,
+  "retries": 1
+}

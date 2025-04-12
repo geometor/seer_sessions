@@ -1,0 +1,35 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "Okay, let's analyze the task examples.\n\n**Perception of Elements:**\n\nThe task involves grids containing two distinct non-white colored objects. The transformation depends on the specific pair of colors present. There appear to be two main types of transformations:\n1.  **Object Shift:** One of the objects shifts its position horizontally (specifically, one column to the left). The object retains its color, overwriting pixels in its new path. Its original location becomes white.\n2.  **Color Bleed:** One object remains static, while specific pixels of the *other* object, adjacent to the first, change their color to match the first object's color.\n\nThe key seems to be identifying which color pair triggers which transformation, which object is affected, and the precise rule for the change (which object shifts, or exactly which pixels change color).\n\n**Observations:**\n\n*   Each input grid contains exactly two non-white colors.\n*   The relative positions vary: one object might be lower-right, or one might be inside the other.\n*   The transformation rule depends on the specific pair of colors involved.\n    *   Pairs {Blue(1), Red(2)} and {Yellow(4), Magenta(6)} result in the object with the *lower* color index (Blue=1, Yellow=4) shifting left by one column.\n    *   Pairs {Green(3), Yellow(4)} and {Blue(1), Gray(5)} result in a \"color bleed\" where the color with the *lower* index (Green=3, Blue=1) changes the color of specific adjacent pixels of the *higher* index object.\n*   For the \"Color Bleed\" cases:\n    *   {Green(3), Yellow(4)}: Yellow pixels adjacent to Green pixels change to Green if the Green neighbor is directly to the right or directly below the Yellow pixel.\n    *   {Blue(1), Gray(5)}: The single Gray pixel adjacent to the Blue pixel(s) that has the minimum column index (with row index as a tie-breaker) changes to Blue.\n\n**YAML Facts:**\n\n```"
+          },
+          {
+            "text": "yaml\ntask_type: object_transformation\ncomponents:\n  - role: grid\n    elements:\n      - role: background\n        color: white\n      - role: object\n        count: 2 # Exactly two distinct non-white objects per grid\n        properties:\n          - color: non-white (1-9)\n          - shape: variable (L-shape, rectangle, C-shape, single pixel)\n          - connectivity: contiguous pixels of the same color\n\nrelationships:\n  - type: color_pair_dependency\n    description: The transformation rule is determined by the specific pair of non-white colors present.\n  - type: spatial\n    description: Objects can be adjacent, or one can enclose the other.\n\nactions:\n  - name: identify_colors\n    inputs: input_grid\n    outputs: color1, color2\n  - name: determine_rule_type\n    inputs: color1, color2\n    outputs: action_type ('shift' or 'bleed'), lower_color_object, higher_color_object\n    logic: |\n      Based on the set {color1, color2}:\n      If {1, 2} or {4, 6}, action_type is 'shift', lower_color_object is the actor.\n      If {1, 5} or {3, 4}, action_type is 'bleed', lower_color_object dictates change on higher_color_object.\n  - name: execute_shift\n    inputs: input_grid, lower_color_object\n    outputs: output_grid\n    description: Translate the lower_color_object one column left, overwriting existing cells. Original object location becomes white.\n  - name: execute_bleed\n    inputs: input_grid, lower_color_object, higher_color_object, color_pair\n    outputs: output_grid\n    description: |\n      Identify pixels P of higher_color_object adjacent to lower_color_object.\n      If color_pair is {1, 5}:\n        Find the single pixel P with min column index (tie-break min row). Change P to lower_color.\n      If color_pair is {3, 4}:\n        Find all pixels P that have a lower_color neighbor directly right OR directly below. Change these P to lower_color.\n"
+          },
+          {
+            "text": "```\n\n**Natural Language Program:**\n\n1.  Identify the two unique non-white colors present in the input grid. Call them C1 and C2.\n2.  Determine the color with the lower index (C_low = min(C1, C2)) and the color with the higher index (C_high = max(C1, C2)).\n3.  Identify the object composed of C_low pixels (Object_low) and the object composed of C_high pixels (Object_high).\n4.  Check the specific pair of colors {C_low, C_high}:\n    a.  **If the pair is {1, 2} (Blue, Red) OR {4, 6} (Yellow, Magenta):**\n        i.  The transformation is **Shift Left**.\n        ii. Create the output grid by copying the input grid.\n        iii. Find all coordinates originally occupied by Object_low. Clear these locations in the output grid (set to white/0).\n        iv. Calculate the new coordinates for Object_low by subtracting 1 from the column index of each original pixel.\n        v.  Fill these new coordinates in the output grid with the color C_low, overwriting any existing colors at those locations.\n    b.  **If the pair is {1, 5} (Blue, Gray) OR {3, 4} (Green, Yellow):**\n        i.  The transformation is **Color Bleed**.\n        ii. Create the output grid by copying the input grid.\n        iii. Find all pixels P belonging to Object_high that are adjacent (sharing an edge or corner) to any pixel belonging to Object_low. These are the candidate pixels.\n        iv. **If the pair is {1, 5}:**\n            1. From the candidate pixels, find the single pixel P that has the minimum column index. If multiple candidates share the minimum column index, choose the one among them with the minimum row index.\n            2. Change the color of this selected pixel P in the output grid from C_high (Gray) to C_low (Blue).\n        v.  **If the pair is {3, 4}:**\n            1. For each candidate pixel P (color Yellow), check its neighbours.\n            2. If P has a neighbour Q (color Green) located directly to its right (relative coordinate (0, 1)) OR directly below it (relative coordinate (1, 0)), then mark P for change.\n            3. Change the color of all marked pixels P in the output grid from C_high (Yellow) to C_low (Green).\n5.  Return the modified output grid."
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 2302,
+    "candidates_token_count": 15492,
+    "total_token_count": 17794,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-preview-03-25",
+  "response_time": 130.15851,
+  "retries": 1
+}

@@ -1,0 +1,54 @@
+task_description: Transform an input grid to an output grid by rotating and recoloring based on original regions.
+
+elements:
+  - element: grid
+    attributes:
+      - type: 2D array of integers 0-9 (colors)
+      - size: H x W (input), W x H (output)
+      - max_size: 30x30
+
+  - element: region
+    description: Contiguous block of pixels of the same dominant color in the input grid.
+    attributes:
+      - color: The dominant color of the region.
+      - type:
+          - foreground: Regions not touching the bottom edge of the input grid.
+          - background: Region(s) touching the bottom edge of the input grid.
+      - noise: Some regions contain pixels of different colors.
+
+actions:
+  - action: rotate_grid
+    input: input_grid
+    output: rotated_grid
+    details: Rotate 90 degrees clockwise.
+
+  - action: map_colors
+    input: original_region_color
+    output: output_color
+    details: Each foreground region's color maps to a specific output color (Map M). This map is constant within a single example pair but may vary between pairs.
+
+  - action: color_propagation
+    input: intermediate_output_grid (with mapped foreground colors and background placeholders)
+    output: final_output_grid
+    details: Fill background placeholder pixels by copying the color from the nearest non-background pixel to their left in the same row.
+
+relationships:
+  - relationship: pixel_origin
+    entities: [output_pixel, input_pixel]
+    details: Each output pixel corresponds to a specific input pixel after rotation.
+
+  - relationship: region_mapping
+    entities: [input_region, output_color]
+    details: Foreground input regions determine the color of corresponding areas in the output via Map M.
+
+  - relationship: background_fill
+    entities: [output_background_pixel, output_foreground_pixel]
+    details: The color of an output pixel originating from the background region is determined by the color of the output pixel to its left in the same row that originated from a foreground region.
+
+processing_steps:
+  - step: Identify background region color B based on the bottom row of the input grid.
+  - step: Identify foreground regions and their colors C1, C2, ...
+  - step: Determine the color map M: {C1:O1, C2:O2, ...} by comparing foreground regions in input and output after accounting for rotation.
+  - step: Rotate the input grid 90 degrees clockwise.
+  - step: Create an intermediate output grid. For each pixel, find its original color/region. If it's from a foreground region Ci, color the intermediate pixel with M[Ci]. If it's from the background region B, mark it as a placeholder (-1). Noise pixels inherit the mapped color of their region.
+  - step: Create the final output grid by filling the background placeholders (-1) by propagating the color from the nearest non-placeholder pixel to the left in the same row.

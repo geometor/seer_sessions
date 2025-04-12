@@ -1,0 +1,44 @@
+task_type: grid_transformation
+components:
+  - type: grid
+    attributes:
+      background_color: white (0)
+      objects:
+        - type: color_group # Defined as all pixels of a specific non-gray color
+          properties:
+            color: [yellow(4), gray(5), magenta(6), orange(7)] # Observed colors
+            pixel_coordinates: set of (row, col) tuples
+            bounding_box: # Calculated based on all pixels of the color
+              type: rectangle
+              properties: [min_row, min_col, max_row, max_col, height, width]
+actions:
+  - action: identify_unique_colors
+    target: all non-background pixels in the input grid
+  - action: process_by_color
+    target: each unique color found
+    rules:
+      - condition: color is gray (5)
+        effect: ignore_color (pixels will be background in output unless overwritten)
+      - condition: color is not gray
+        steps:
+          - step: gather_all_pixels_of_color
+          - step: calculate_bounding_box # Based on all pixels of this color
+          - step: check_bounding_box_size
+            sub_rules:
+              - condition: height is 3 AND width is 3
+                effect: fill_bounding_box_in_output
+                arguments:
+                  color: current color
+                  area: bounding box coordinates
+              - condition: height is NOT 3 OR width is NOT 3
+                effect: copy_original_pixels_to_output
+                arguments:
+                  color: current color
+                  pixels: original coordinates of this color's pixels
+relationships:
+  - type: spatial
+    elements: [color_group, bounding_box]
+    relation: bounding_box encloses all pixels of the color_group
+  - type: conditional_transformation
+    condition: color value (gray vs. non-gray) AND bounding_box size (3x3 vs. not 3x3)
+    effect: determines transformation rule (ignore, fill_bbox, copy_original)

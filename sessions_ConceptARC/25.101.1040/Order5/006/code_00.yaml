@@ -1,0 +1,72 @@
+Grid:
+  Properties:
+    - Dimensions: Constant between input and output.
+    - Background: Primarily white (0).
+StaticObjects:
+  - Type: SeparatorLines
+    Properties:
+      - Color: Green (3)
+      - Shape: Vertical lines
+      - Location: Columns 0, 5, 10, 15, 20
+      - Role: Divide grid into sections; Remain unchanged.
+Sections:
+  - ID: 1
+    Location: Columns 1-4
+  - ID: 2
+    Location: Columns 6-9
+  - ID: 3
+    Location: Columns 11-14
+  - ID: 4
+    Location: Columns 16-19
+DynamicObjects:
+  - Type: PixelPattern
+    Properties:
+      - Color: Yellow (4)
+      - Shape: Collection of pixels within a section.
+      - Anchor: Defined by the top-leftmost yellow pixel coordinate (min_row, min_col) within the section in the input grid (used for Rule B).
+      - Role: Represents the content to be moved.
+Condition:
+  - Name: DetermineTransformationRule
+    BasedOn: Count of yellow (4) pixels within Section 3 (columns 11-14) of the input grid.
+    Rules:
+      - Rule A: If count == 3.
+      - Rule B: If count != 3.
+Actions:
+  - Name: IdentifySectionPixels
+    Target: Yellow pixels within each Section (1, 2, 3, 4) of the input grid.
+    Details: For each section, find all yellow pixel coordinates (r, c).
+  - Name: IdentifyPatternAnchorAndRelativeCoords (for Rule B)
+    Target: Yellow pixels within Sections 1, 3, 4 of the input grid.
+    Details: Find the top-leftmost anchor (min_row, min_col) and calculate relative coordinates (r-min_row, c-min_col).
+  - Name: CountYellowsInSection3
+    Target: Input grid, Section 3 (columns 11-14).
+    Details: Count pixels with value 4.
+  - Name: ApplyTransformation
+    Details: Based on the condition (Section 3 yellow count):
+      - Initialize the output grid as a copy of the input grid.
+      - Clear the yellow pixels (set to white 0) in the sections that will receive new patterns.
+      - Place the patterns according to the selected rule (A or B), using the appropriate placement logic.
+PlacementLogics:
+  - Name: ColumnTranslation (Rule A)
+    SourcePixels: List of (r, c) coordinates from the source section.
+    ColumnOffset: +15 (for Sec 1 -> Sec 4) or -15 (for Sec 4 -> Sec 1).
+    Details: For each source pixel (r, c), the target pixel is (r, c + ColumnOffset).
+  - Name: AnchorBasedRelativePlacement (Rule B)
+    SourcePattern: Anchor row (`anchor_row`) and relative coordinates (`rel_coords`) from the source section.
+    TargetSectionStartCol: The first column index of the target section.
+    Details: For each relative coordinate (rel_r, rel_c), the target pixel is (`anchor_row + rel_r`, `TargetSectionStartCol + rel_c`).
+TransformationRules:
+  - Rule A (Section 3 count == 3):
+    - Clear Output Sections: 1 and 4 (excluding green separators).
+    - Pattern Movement:
+      - Input Pixels Sec 1 -> Output Section 4 (using ColumnTranslation +15)
+      - Input Pixels Sec 4 -> Output Section 1 (using ColumnTranslation -15)
+      - Input Pattern 2 -> Output Section 2 (no change)
+      - Input Pattern 3 -> Output Section 3 (no change)
+  - Rule B (Section 3 count != 3):
+    - Clear Output Sections: 1, 3, and 4 (excluding green separators).
+    - Pattern Movement:
+      - Input Pattern 1 -> Output Section 3 (using AnchorBasedRelativePlacement)
+      - Input Pattern 3 -> Output Section 4 (using AnchorBasedRelativePlacement)
+      - Input Pattern 4 -> Output Section 1 (using AnchorBasedRelativePlacement)
+      - Input Pattern 2 -> Output Section 2 (no change)

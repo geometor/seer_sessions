@@ -1,0 +1,48 @@
+Observations:
+  - Input grids contain multiple objects separated by a single 'separator' color.
+  - Objects relevant to the transformation are contiguous blocks of a single non-separator color.
+  - These blocks may have internal 'noise' pixels (different colors, including the separator color) within their bounding boxes in the input grid.
+  - The key objects appear in two bounding box sizes: 'Frames' (larger, N x M) and 'Contents' (smaller, N-2 x M-2).
+  - The output grid arranges reconstructed Frame blocks, preserving their relative positions from the input.
+Properties:
+  - SeparatorColor: The single color separating the main objects (identified by neighborhood diversity or frequency).
+  - Objects: Contiguous blocks of a single non-separator color found via connected components.
+  - Object Properties:
+      - MainColor: The uniform color of the connected component block.
+      - Bounds: The min/max row/col coordinates encompassing the block's pixels (top, left, bottom, right inclusive).
+      - BoundingBoxSize: Height and Width derived from Bounds.
+      - Type: 'Frame' (BoundingBoxSize N x M) or 'Content' (BoundingBoxSize N-2 x M-2).
+  - Frame Properties: MainColor (Fc), BoundingBoxSize (N x M), Bounds_F.
+  - Content Properties: MainColor (Cc), BoundingBoxSize (N-2 x M-2), Bounds_C.
+  - InputPatternSlice: The rectangular region of the *original input grid* defined by the Content block's Bounds_C (size N-2 x M-2).
+Relationships:
+  - Frames are paired 1-to-1 with Contents.
+  - Pairing Rule: Sort Frames by reading order (top-left corner of Bounds_F). Sort Contents by reading order (top-left corner of Bounds_C). Pair the i-th Frame with the i-th Content.
+  - Output Layout: Mirrors the relative spatial arrangement of input Frames, determined by the top-left corners of their Bounds_F.
+Transformation Rule (Core Generation):
+  - For each paired Frame (Fc, Bounds_F) and Content (Cc, Bounds_C):
+  - Extract the InputPatternSlice from the input grid using Bounds_C.
+  - Create an Output Core grid of size N-2 x M-2.
+  - Iterate through each pixel `p` at `(i, j)` in the InputPatternSlice:
+      - If `p` is the `SeparatorColor`, the Output Core pixel `Oc[i, j]` is the `FrameColor` (Fc).
+      - Otherwise (if `p` is any other color), the Output Core pixel `Oc[i, j]` is the `ContentColor` (Cc).
+Actions:
+  - Identify the Separator Color.
+  - Find all contiguous non-separator colored blocks (objects) using connected components. Record their MainColor and Bounds.
+  - Calculate BoundingBoxSize (height, width) for each block from its Bounds.
+  - Categorize blocks into Frames (BoundingBoxSize N x M) and Contents (BoundingBoxSize N-2 x M-2). Verify that the number of Frames equals the number of Contents.
+  - Create an ordered list of Frames (sorted by reading order based on Bounds[0], Bounds[1]).
+  - Create an ordered list of Contents (sorted by reading order based on Bounds[0], Bounds[1]).
+  - Determine the output grid dimensions based on the relative positions (Bounds) and sizes (BoundingBoxSize) of the Frames.
+  - Initialize the output grid (e.g., filled with white=0).
+  - Iterate through the paired Frames (F) and Contents (C) using their sorted lists (i-th F pairs with i-th C):
+      - Get Frame Color (Fc = F.MainColor).
+      - Get Content Color (Cc = C.MainColor).
+      - Get Frame Bounds (Bounds_F).
+      - Get Content Bounds (Bounds_C).
+      - Extract the InputPatternSlice from the original input grid using Bounds_C.
+      - Generate the Output Core (Oc) grid (size N-2 x M-2) by applying the Transformation Rule (Core Generation) pixel by pixel, using Fc, Cc, SeparatorColor, and InputPatternSlice.
+      - Calculate the target top-left position (`out_r`, `out_c`) for the current Frame in the output grid based on Bounds_F relative to the top-leftmost Frame.
+      - Draw the 1-pixel border of the Frame using Fc at the target location (`out_r`, `out_c`) in the output grid.
+      - Place the generated Output Core (Oc) into the interior area (inside the border) at the target location in the output grid.
+  - Return the completed output grid.

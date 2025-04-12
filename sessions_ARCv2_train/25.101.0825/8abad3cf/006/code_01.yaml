@@ -1,0 +1,43 @@
+task_description: Rearrange pixels into a new grid where non-dominant colors form elements (single pixels or blocks) arranged horizontally, separated by gaps of the dominant color. The placement rule for the top row is specific to the last element.
+
+definitions:
+  - &input_grid The source 2D array of pixels.
+  - &color_counts A mapping of each color value to its frequency in the input_grid.
+  - &dominant_color The color with the highest frequency in color_counts.
+  - &pixel_color The color with a frequency of exactly 1, if such a color exists. Represents a single-pixel element.
+  - &block_colors Colors with frequency > 1, excluding the dominant_color. Represent block elements.
+  - &output_height Calculated as: (number of block_colors) + (1 if pixel_color exists) + 1.
+  - &block_width_map A mapping from each block_color C_i to its width W_i = floor(sqrt(count of C_i)).
+  - &element_order The sequence in which elements are placed horizontally:
+      - If pixel_color exists: [pixel_color] + [block_colors sorted by index descending].
+      - Otherwise: [block_colors sorted by index ascending].
+  - &elements_to_place A filtered version of element_order, removing any block_color whose calculated width is 0.
+  - &element_widths A mapping for elements_to_place: 1 for pixel_color, W_i for block_colors.
+  - &output_width Calculated as: Sum of element_widths for elements_to_place + (number of elements_to_place - 1) gaps.
+  - &output_grid The target 2D array, initialized with dominant_color.
+  - &last_placed_block The element corresponding to the last item in elements_to_place, *if* it is a block_color.
+
+transformation_steps:
+  - Calculate color_counts from input_grid.
+  - Identify dominant_color, pixel_color, and block_colors.
+  - Calculate output_height.
+  - Calculate block_width_map for all block_colors.
+  - Determine element_order based on pixel_color presence.
+  - Create elements_to_place by filtering element_order for non-zero widths (using block_width_map and width=1 for pixel_color).
+  - If elements_to_place is empty, calculate output_width = 0. Otherwise, calculate output_width based on element_widths and gaps.
+  - If output_width <= 0, create an output_grid of size output_height x 0 (list of empty lists).
+  - Otherwise, create output_grid of size output_height x output_width, filled with dominant_color.
+  - Identify the last_placed_block from elements_to_place.
+  - Initialize `current_col = 0`.
+  - Iterate through elements_to_place with index `i`:
+    - Get element_color C and its width W.
+    - If C is pixel_color:
+      - Set output_grid[output_height - 1, current_col] = C.
+    - If C is a block_color:
+      - Fill rectangle output_grid[1 : output_height, current_col : current_col + W] = C.
+      - If C is the color of the last_placed_block:
+        - Fill top row segment output_grid[0, current_col : current_col + W] = C.
+    - Increment `current_col` by W.
+    - If `i` is not the index of the last element in elements_to_place:
+      - Increment `current_col` by 1 (for the gap).
+  - Return the final output_grid.

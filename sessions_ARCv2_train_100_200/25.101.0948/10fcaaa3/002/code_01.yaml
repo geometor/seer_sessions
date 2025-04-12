@@ -1,0 +1,38 @@
+task_type: transformation
+grid_properties:
+  - input_size: H x W (variable)
+  - output_size: 2H x 2W
+  - output_composition: 2x2 tiling of a generated base_tile
+base_tile_generation:
+  source: input_grid (I)
+  target: base_tile (T), size H x W
+  pixel_mapping:
+    - condition: input pixel I[r][c] is non-white (1-9)
+      action: copy input pixel value to base_tile T[r][c]
+    - condition: input pixel I[r][c] is white (0)
+      action: # Rule is complex and not fully determined by examples
+        # Primary Hypothesis (Simple Checkerboard):
+        - check parity: (r + c) % 2
+        - if parity is 0 (even): set base_tile pixel T[r][c] to azure (8)
+        - if parity is 1 (odd): set base_tile pixel T[r][c] to white (0)
+        # Observed Deviations from Primary Hypothesis in Expected Outputs:
+        - deviation_type_1: Pixels predicted as azure (8) by checkerboard appear as white (0) in expected output (Observed in Ex1, Ex3, Ex4).
+        - deviation_type_2: Pixels predicted as white (0) by checkerboard appear as azure (8) in expected output (Observed in Ex1, Ex2).
+        - deviation_type_3: The entire checkerboard pattern seems inverted or significantly altered in some examples (esp. Ex2).
+        # Conclusion: The exact rule for background pixels (0 vs 8) is ambiguous, likely involving context from non-white pixels, but the precise mechanism is unclear from the provided examples. The simple checkerboard rule is the most consistent starting point but demonstrably incomplete/incorrect.
+output_grid_construction:
+  source: base_tile (T), size H x W
+  target: output_grid (O), size 2H x 2W
+  rule: O[r][c] = T[r % H][c % W] # Tiling
+objects:
+  - type: background
+    color: white (0) in input
+    transformed_to: pattern of white (0) and azure (8) in the base tile background, then tiled. Exact pattern rule is unclear but related to checkerboard logic and non-white pixel context.
+  - type: foreground_pixels
+    color: non-white (1-9) in input
+    transformed_to: preserved color, tiled 2x2 in the output.
+relationships:
+  - type: tiling
+    description: Output is a 2x2 repeat of a generated base tile pattern.
+  - type: checkerboard_basis
+    description: The background transformation appears fundamentally based on a coordinate parity rule (r+c)%2 using white (0) and azure (8), but this rule is modified by unknown factors related to nearby non-white pixels.

@@ -1,0 +1,33 @@
+task_description: Extract connected non-background objects from the core area of an input grid, pad them symmetrically to a consistent width, and stack them vertically in order.
+
+definitions:
+  grid: A 2D array of digits.
+  background_color: 8
+  border_markers: [0, 1, 2] # Digits often found outside the core processing area. Not used in core logic.
+  core_grid: The smallest rectangular subgrid of the input containing all cells with values != background_color. Identified by finding min/max rows/cols of non-background cells.
+  object: A connected component (4-way connectivity) of cells within the core_grid containing digits != background_color.
+  bounding_box: The smallest rectangle enclosing an object, defined by coordinates relative to the core_grid.
+  object_subgrid: The content of the core_grid within an object's bounding box.
+  target_width: The width to which all object_subgrids are padded. For most examples (2, 3, 4), this is the maximum width found among all object_subgrids extracted from the core_grid. For example 1, the target_width appears fixed at 6, regardless of object widths.
+
+actions:
+  - identify_core_grid: Find bounds of non-background_color cells in input_grid; extract subgrid.
+  - find_objects: Within core_grid, find connected components of non-background_color digits.
+  - extract_subgrids: Extract the subgrid for each object's bounding_box from the core_grid.
+  - determine_target_width:
+      - Default Rule: Find the maximum width among all extracted object_subgrids.
+      - Exception Rule (Train 1): Set target_width to 6. (Need a condition to trigger this, possibly based on input content/borders).
+  - order_subgrids: Sort extracted object_subgrids based on the top-left coordinate of their object's bounding_box within the core_grid (top-to-bottom, then left-to-right).
+  - pad_subgrids: For each ordered object_subgrid, pad symmetrically with background_color (8) to match the determined target_width. Add extra padding column to the right if needed.
+  - concatenate_subgrids: Stack the ordered, padded subgrids vertically.
+
+relationships:
+  - The output grid consists *only* of the stacked, padded representations of objects from the core_grid.
+  - Output grid width is determined by the target_width.
+  - Output grid height is the sum of the heights of the padded object_subgrids.
+  - Object order in output matches spatial order (top-down, left-right) in the core_grid.
+
+observation_notes:
+  - Crucial first step is isolating the core_grid. All subsequent steps operate on this core_grid.
+  - The target_width rule has an exception for train_1 (fixed width 6) compared to others (max object width). Identifying the trigger for this exception is needed.
+  - The previous code failed by omitting core grid extraction and incorrectly combining input with processed objects.

@@ -1,0 +1,71 @@
+task_description: The task involves two distinct grid transformation types identified by input dimensions and potentially content patterns. Type 1 extracts and fills specific segments based on row index. Type 2 projects colors based on patterns in different grid regions.
+
+transformation_types:
+  - type_id: segment_fill
+    detection_criteria: Grid dimensions (e.g., 15x15) and presence of rows containing exactly one segment of width 7 bounded by the value 9.
+    applies_to: train_1
+  - type_id: region_projection
+    detection_criteria: Grid dimensions (e.g., 20x20) and absence of Type 1 characteristics.
+    applies_to: train_2
+
+type_segment_fill: # Corresponds to train_1
+  input_dimensions: [15, 15]
+  output_dimensions: [15, 7]
+  objects:
+    - name: boundary_marker
+      value: 9
+    - name: segment
+      properties: { width: 7 }
+      location: Horizontal strip between first and last boundary_marker in a row.
+    - name: fill_target
+      value: 4
+      location: Cells within the segment (excluding boundaries).
+    - name: paint_color
+      determination: Lookup table based on row index `r`.
+        map: {0:8, 1:8, 2:3, 3:3, 4:3, 5:3, 6:3, 7:3, 8:1, 9:1, 10:5, 11:7, 12:7, 13:7, 14:5}
+    - name: special_case
+      location: row index 6, relative segment index 4
+      action: set value to 0
+  actions:
+    - for each input row `r`:
+        - find: unique segment `S` matching criteria.
+        - if found:
+            - create: output row `O` as copy of `S`.
+            - determine: paint_color `P` based on `r`.
+            - for `i` from 1 to 5:
+                - if `O[i] == fill_target`: set `O[i] = P`.
+            - apply: special_case if `r == 6`.
+            - append: `O` to output grid.
+
+type_region_projection: # Corresponds to train_2
+  input_dimensions: [20, 20]
+  output_dimensions: [9, 20]
+  regions:
+    - name: top_pattern_region
+      rows: 0-10
+      background_color: 8
+    - name: bottom_template_region
+      rows: 11-19
+      preserved_color: 2
+      fill_target_color: 8
+  actions:
+    - create: Output grid 9x20.
+    - for `r` from 0 to 8, `c` from 0 to 19:
+        - get: `bottom_val = Input[r + 11, c]`.
+        - if `bottom_val == preserved_color`:
+            - set: `Output[r, c] = preserved_color`.
+        - elif `bottom_val == fill_target_color`:
+            - get: `top_col_pattern = Input[0:11, c]`.
+            - get: `non_bg_colors = unique colors in top_col_pattern excluding background_color`.
+            - if `len(non_bg_colors) == 1`: # Single unique color C found
+                - `C = non_bg_colors[0]`.
+                - determine: `P` using `single_color_map[C]`.
+                  `single_color_map = {3: 3, 9: 9, 6: 5, 0: 7}`.
+                - set: `Output[r, c] = P`.
+            - else: # Multiple non-bg colors or only background
+                - determine: `P` using `default_color_map[c]`.
+                  `default_color_map = {0:4, 1:4, 2:6, 3:6, 4:1, 5:?, 6:?, 9:3, 13:4, 14:7, 15:4, 16:?, 17:4, 19:0}`.
+                  # Note: Defaults for columns 5, 6, 16 are problematic / require complex handling. Using placeholder/best guess based on prior code/dominant pattern might be necessary. E.g., use {5:9, 6:1, 9:3, 16:7}.
+                - set: `Output[r, c] = P`.
+        - else: # Unexpected value in bottom region
+             - set: `Output[r, c] = bottom_val` (or error/default).

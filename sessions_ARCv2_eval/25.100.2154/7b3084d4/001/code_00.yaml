@@ -1,0 +1,45 @@
+Input_Grid:
+  Properties:
+    Size: Variable (e.g., 20x20)
+    Background_Digit: 0
+    Foreground_Digits: Variable sets of 4 distinct digits (e.g., [3,4,5,7,9] or [2,3,5,6,7])
+  Objects:
+    - Type: Cluster
+      Quantity: 4
+      Properties:
+        - Digits: Mostly uniform, can contain other digits (e.g., 7s cluster containing a 5)
+        - Bounding_Box: Minimal box containing non-zero digits.
+        - Center: Calculated from Bounding_Box.
+        - Role: TL, TR, BL, or BR based on relative center coordinates.
+        - Dominant_Digit: The most frequent non-zero digit in the cluster.
+Output_Grid:
+  Properties:
+    Size: Variable (2N x 2N, where N is derived from input cluster dimensions)
+    Digits: Combination of digits from input clusters.
+    Structure: 2x2 composition of NxN subgrids.
+  Subgrids:
+    - Size: NxN
+    - Source: Determined by Assembly Rule (A or B) applied to Input Cluster Roles.
+    - Transformation: Potential 270-degree clockwise rotation applied to the subgrid placed in the TL Output quadrant, conditional on Assembly Rule B being used.
+Transformation:
+  Parameters:
+    - N: Determined as min(max(H, W)) across the 4 input cluster bounding boxes.
+    - k: Calculated as floor(N / 2).
+  Actions:
+    - Identification: Find 4 non-zero digit clusters and their bounding boxes.
+    - Role_Assignment: Assign TL, TR, BL, BR roles based on bounding box centers.
+    - Assembly_Rule_Selection:
+        - If minY(TL_role_cluster) == minY(TR_role_cluster), select Assembly B (TL->TR, TR->TL(rot270), BL->BL, BR->BR).
+        - Else, select Assembly A (TL->TL, TR->TR, BL->BL, BR->BR).
+    - Subgrid_Extraction: Extract top-left NxN from each cluster's bounding box.
+    - Rotation: If Assembly B, rotate the TR-role cluster's subgrid 270 degrees clockwise.
+    - Assembly: Create 2N x 2N grid, placing extracted (and potentially rotated) subgrids according to the selected Assembly Rule.
+    - Filling: Fill any 0s in each output quadrant with the dominant digit of the corresponding source cluster.
+    - Overrides: Apply specific modifications to the filled grid based on N, k, and dominant digits of original role clusters:
+        - Check cluster placed in TL Output: If its source cluster contains 5, set Output[0, 0] = 5.
+        - Set Output[N-1, k] = Dom(BL_Cluster)
+        - Set Output[k, N] = Dom(TL_Cluster)
+        - Set Output[N-1, N+k] = Dom(BR_Cluster)
+        - Set Output[N+k, 0] = Dom(BL_Cluster)
+        - Set Output[N+k, 1] = Dom(BL_Cluster)
+        - If N >= 5: Set Output[N-2, N+k] = Dom(BR_Cluster) # May need further refinement

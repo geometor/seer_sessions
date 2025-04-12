@@ -1,0 +1,76 @@
+task_context:
+  grid_size: [16, 16]
+  background_color: 7 # orange
+  center_column_index: 7.5 # For 16 wide grid (0-15)
+  num_examples: 3
+
+constants:
+  colors:
+    orange: 7
+    maroon: 9
+    white: 0
+    red: 2
+    blue: 1
+  projection_threshold_row: 13
+  projection_k_near: 6
+  projection_k_far: 5
+  projection_dist_threshold: 5.0 # Max distance from center for row-based k
+  l_shape_global_rows: [1, 9]
+  l_shape_global_cols: [0, 3, 6, 9]
+
+objects:
+  - type: V-shape
+    definition: 3 pixels of the same non-orange color C at (r, c), (r+1, c-1), (r+1, c+1).
+    properties:
+      center: (r, c)
+      color: C
+      is_central: Boolean (abs(c - center_column_index) is minimum among all V-shapes of the same color)
+      dist_from_center: abs(c - center_column_index)
+    observed_colors: [9, 0] # maroon, white
+    examples: [train_1, train_2]
+  - type: L-shape
+    definition: 3 pixels of red(2) color at (r, c), (r, c+1), (r+1, c).
+    properties:
+      corner: (r, c)
+      pixels: [(r, c), (r, c+1), (r+1, c)]
+      color: 2 # red
+      dist_from_center: abs(c - center_column_index)
+    observed_colors: [2] # red
+    examples: [train_3]
+
+transformations:
+  - rule: V-shape Projection
+    input_trigger: Any V-shape found in the input grid.
+    actions:
+      - For each V-shape with center (r, c) and color C:
+          1. Calculate row-based offset: k_row = projection_k_near if r < projection_threshold_row else projection_k_far.
+          2. Calculate distance offset: k = projection_k_far if dist_from_center > projection_dist_threshold else k_row.
+          3. Determine target coordinate: target_coord = (r - k, c).
+          4. Determine output color C':
+             - If C is white(0), then C' is maroon(9).
+             - If C is maroon(9):
+               - If is_central is true, C' is blue(1).
+               - If is_central is false, C' is maroon(9).
+          5. If target_coord is within grid bounds, modify output grid at target_coord with color C'.
+    examples: [train_1, train_2]
+
+  - rule: L-shape Global Pattern and Central Modification
+    input_trigger: Presence of any red(2) L-shapes in the input grid.
+    actions:
+      - If red L-shapes exist:
+          1. Apply global pattern: Modify output grid at all (row, col) where row is in l_shape_global_rows and col is in l_shape_global_cols, setting color to maroon(9).
+          2. Find the minimum row `min_r` among all found red L-shape corners.
+          3. Identify all red L-shapes L with corner (min_r, c).
+          4. Find the L-shape L_central among these with the minimum dist_from_center. (Handle ties by choosing the one with smallest column index c).
+          5. For each pixel coordinate `p` in L_central.pixels: modify output grid at `p` with color maroon(9).
+    examples: [train_3]
+
+relationships:
+  - type: Relative Position (V-shape)
+    description: Projection distance `k` depends on V-shape row `r` and column `c` relative to the center column. Centrality determines output color for maroon V-shapes.
+  - type: Relative Position (L-shape)
+    description: Local modification targets the L-shape in the minimum row `min_r` that is closest to the center column `c`.
+  - type: Color Mapping (V-shape)
+    map: {white: maroon, maroon_central: blue, maroon_non_central: maroon}
+  - type: Color Mapping (L-shape)
+    map: {red_trigger: maroon_global_pattern, red_central_min_row: maroon_overwrite}

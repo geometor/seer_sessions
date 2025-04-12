@@ -1,0 +1,46 @@
+task_context:
+  description: Swaps the vertical positions of two distinct non-background color groups based on their bounding boxes.
+  grid_properties:
+    background_color: 0 # white
+    num_non_background_colors: 2
+
+input_elements:
+  - element_type: color_group
+    count: 2
+    properties:
+      - color: non-zero, distinct colors (e.g., C1, C2)
+      - pixels: all pixels in the grid matching the group's color
+      - bounding_box: (min_row, max_row, min_col, max_col) enclosing all pixels of that color.
+  - derived_properties:
+    - upper_group: The color group whose bounding box has the minimum `min_row`. Let its color be CU, bbox BU.
+    - lower_group: The other color group. Let its color be CL, bbox BL.
+    - vertical_gap: `gap = BL.min_row - BU.max_row - 1`. Assumed non-negative.
+
+output_elements:
+  - element_type: color_group
+    count: 2
+    properties:
+      - color: CU (original upper color)
+        pixels: Same set of relative pixel positions as input upper group, shifted vertically.
+        bounding_box: Shifted BU. New min_row = `BL.max_row + gap + 1`.
+      - color: CL (original lower color)
+        pixels: Same absolute pixel positions as input lower group.
+        bounding_box: Same as BL.
+
+transformation:
+  action: vertical_swap_by_color_group_bbox
+  details:
+    - Identify the two distinct non-background colors (CU, CL) and their properties (pixel coordinates, bounding boxes BU, BL).
+    - Determine which is upper (CU, BU) and lower (CL, BL) based on `min_row` of BU and BL.
+    - Calculate the vertical gap between bounding boxes: `gap = BL.min_row - BU.max_row - 1`.
+    - Create an output grid filled with the background color.
+    - Copy all pixels of color CL from the input to their same coordinates in the output.
+    - Calculate the vertical shift for the upper group: `shift = (BL.max_row + gap + 1) - BU.min_row`.
+    - For each input pixel of color CU at `(r, c)`, copy it to `(r + shift, c)` in the output grid.
+  preserves:
+    - Pixel counts for each color.
+    - The shape and relative internal pattern of each color group.
+    - Relative horizontal position of each color group's bounding box.
+    - The vertical gap between the bounding boxes.
+    - The absolute position (pixels and bounding box) of the lower color group.
+  assumption: The transformation rule is consistent across examples; the discrepancy in train_2's expected output is likely an anomaly in the example data.

@@ -1,0 +1,33 @@
+task_type: grid_transformation
+grid_properties:
+  variable_dimensions: true # Examples: 7x7, 12x12, 17x17
+  variable_background: true # Examples: 0, 7, 1
+  value_set: [0, 1, 2, 3, 4, 7, 8, 9] # Combined from examples
+object_roles:
+  - role: anchor
+    values_observed: [[2, 8], [2], [2]] # Per example
+    behavior: Located in a single column (anc_c). Preserved in place in the output.
+  - role: mover
+    values_observed: [4, 3, 7] # Per example
+    behavior: Transformation depends on relative position to anchor (left/right) and potentially static objects.
+    left_rules: # Apply if mover coords are mostly < anc_c
+      - relative_column: -1
+        action: Vertical shift (value-dependent), horizontal shift 0. Place if target is background.
+      - relative_column: -2
+        action: Vertical shift (value-dependent), horizontal shift +1. Place if target is background. Track success.
+      - relative_column: <-2
+        action: Remove.
+      - conditional_generation: If mover=4 and successful move from rel_col -2, place 4 at (0, anc_c).
+    right_rules: # Apply if mover coords are mostly > anc_c
+      - preservation_rule: Preserve mover at (r, anc_c + 1) if input(r, anc_c) is anchor. Store location (pr, pc).
+      - removal_rule: Remove other input mover locations.
+      - generation_rule: Generate a new shape using mover color, positioned relative to static object(s) and potentially (pr, pc). (e.g., Train 3 'V' shape relative to static '9's column and (6,7)).
+  - role: static
+    values_observed: [null, [4], [9]] # Per example
+    behavior: Preserved in place in the output. May act as reference points for mover generation.
+collision_resolution:
+  priority:
+    - Anchor column preservation
+    - Static value preservation
+    - Mover transformations (left: col -1 > col -2; right: preserved > generated?) - Needs refinement.
+  mechanism: If a target cell for a lower-priority action is already occupied, the action is cancelled or overwritten based on exact rules.

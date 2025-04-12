@@ -1,0 +1,45 @@
+task_type: grid_transformation
+
+input_features:
+  grid_dimensions: [20, 20] # Example, can vary
+  background_color: 0
+  objects:
+    - type: shape
+      properties:
+        - color: integer (1-9)
+        - contiguity: cells of the same color are connected
+        - contains_noise: boolean (typically only one shape is True)
+    - type: noise_pixel
+      properties:
+        - color: integer (1-9)
+        - location: (row, col)
+        - container_shape_color: integer (color of the shape it's inside)
+      constraints:
+        - color != 0
+        - color != container_shape_color
+
+output_features:
+  grid_dimensions: variable (e.g., [8, 8], [10, 10]) depends on input
+  content: grid derived from the noise pattern of one input shape
+
+relationships:
+  - type: containment
+    description: One shape contains noise pixels.
+  - type: transformation
+    description: The noise pattern within the identified shape is scaled and rendered to produce the output grid.
+  - type: scaling
+    description: |
+      Output grid dimensions are an integer multiple ('scale')
+      of the noise pattern's minimal bounding box dimensions.
+  - type: rendering_rule # Tentative hypothesis
+    description: |
+      Each output pixel's color is determined by the maximum color value
+      among the four noise grid cells surrounding the output pixel's
+      mapped location in the noise grid space. Out-of-bounds noise cells
+      are treated as having a value of 0.
+
+actions:
+  - identify_noisy_shape: Find the unique shape containing internal noise pixels.
+  - extract_noise_grid: Determine the minimal bounding box of noise pixels and create the noise_grid.
+  - calculate_scale: Compute the scaling factor based on output grid and noise_grid dimensions.
+  - render_output: For each output pixel, map its location, identify relevant noise neighbors, apply max function (with boundary handling), and assign color.

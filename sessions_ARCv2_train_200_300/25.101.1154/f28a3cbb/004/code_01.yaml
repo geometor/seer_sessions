@@ -1,0 +1,53 @@
+GridProperties:
+  - size: [9, 9] # Observed in examples, generalize later if needed
+  - background_color: Determined as the most frequent color in the input grid.
+
+Objects:
+  - type: SolidBlock
+    properties:
+      - shape: 3x3 square
+      - composition: Monochromatic (single non-background color)
+      - location: Defined by coordinates and bounding box (r_min, r_max, c_min, c_max)
+    actions:
+      - identify
+      - preserve_in_output (copy to output grid)
+  - type: NoisePixel
+    properties:
+      - shape: 1x1 pixel
+      - color: Non-background color, matches a SolidBlock color
+      - location: Scattered, not part of a SolidBlock
+    actions:
+      - identify
+      - group_by_color
+      - implicitly_remove_from_output (by not copying)
+      - trigger_block_expansion (conditionally)
+  - type: BackgroundPixel
+    properties:
+      - color: background_color
+      - location: coordinates (r, c)
+    actions:
+      - identify
+      - conditional_color_change (based on adjacency and noise alignment)
+
+Relationships_And_Actions:
+  - relationship: Adjacency_Orthogonal
+    applies_to: [BackgroundPixel, SolidBlock]
+  - relationship: Location_Relative_To_Bounds
+    applies_to: [NoisePixel, SolidBlock] # e.g., noise is above, below, left, right of block bounds
+  - relationship: Alignment_RowCol
+    applies_to: [BackgroundPixel, NoisePixel] # Check if same row or same column
+  - action: ConditionalColorChange
+    trigger: A BackgroundPixel `n = (r_n, c_n)` changes to color `c` if:
+      1. `input[n]` is background_color.
+      2. `n` is orthogonally adjacent to an *edge* pixel of a SolidBlock `b` of color `c`. Let the side(s) of adjacency be `S` (e.g., "Above", "Right").
+      3. There exists *at least one* NoisePixel `p = (r_p, c_p)` of color `c` that satisfies *both* of the following for *any* side `s` in `S`:
+          a. `p` is strictly outside the bounding box of block `b` on side `s` (e.g., if `s` is "Above", then `r_p < r_min` of block `b`).
+          b. `p` is aligned with `n` along the axis perpendicular to side `s` (e.g., if `s` is "Above" or "Below", then `c_p == c_n`; if `s` is "Left" or "Right", then `r_p == r_n`).
+    target: BackgroundPixel `n`
+    result: `output[n]` becomes color `c`.
+  - action: Initialization
+    target: OutputGrid
+    result: Filled with background_color.
+  - action: Finalization
+    target: OutputGrid
+    result: Contains preserved SolidBlocks and changed BackgroundPixels based on ConditionalColorChange. All other pixels retain the background_color.

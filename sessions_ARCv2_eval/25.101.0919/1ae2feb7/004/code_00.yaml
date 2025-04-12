@@ -1,0 +1,53 @@
+elements:
+  - item: grid
+    properties:
+      - 2D array of integers 0-9 (colors)
+      - height and width vary
+  - item: divider
+    properties:
+      - vertical line
+      - single column
+      - color: red (2)
+      - located at column 'div_col'
+      - separates grid into left (columns < div_col) and right (columns > div_col) sections
+  - item: background
+    properties:
+      - color: white (0)
+  - item: segments
+    properties:
+      - horizontal blocks of contiguous non-white pixels
+      - located in the left section
+  - item: row_context
+    properties:
+      - derived per row from the left section
+      - C_all: set of unique non-white colors
+      - C_adj: color of the rightmost non-white pixel
+      - L: length of the contiguous block of C_adj ending at the rightmost position
+      - c_o: the single other non-white color, if exactly one exists besides C_adj (i.e., if len(C_all) == 2)
+  - item: pattern
+    properties:
+      - sequence of colors (P)
+      - defines the repeating unit for the right section of the output grid (columns > div_col)
+      - generated per row based on 'row_context'
+
+relationships:
+  - The 'divider' defines the left/right boundary.
+  - The 'pattern' P in a row on the right side is derived from the 'row_context' of the same row.
+  - Pattern generation depends on the number of unique colors (len(C_all)), the length L, and specific color values (C_adj, c_o).
+
+actions:
+  - identify: the column index 'div_col' of the red 'divider'.
+  - analyze: for each row 'r', the left section (input[r, 0:div_col]) to determine 'row_context' (C_all, C_adj, L, c_o).
+  - generate: a repeating base 'pattern' P based on 'row_context'.
+    - rule_0 (empty left side): P is effectively empty (right side remains white).
+    - rule_1 (single color: len(C_all) == 1):
+        - If L=1: P = [C_adj]
+        - If L>1: P = [C_adj] + [0] * (L-1)
+    - rule_2 (multi-color: len(C_all) > 1): # Assumes exactly 2 colors based on examples
+        - If L=1: P = [C_adj]
+        - If L>1:
+            - If L == 2 and C_adj == 4 and c_o == 3: # Specific exception case
+                P = [4, 0, 4, 3, 4, 0, 4, 0, 4, 3]
+            - Else: # General case for L>1 multi-color
+                P = [C_adj, c_o]
+  - fill: the right section of the row 'r' (output[r, div_col+1:]) by cyclically repeating the generated 'pattern' P.

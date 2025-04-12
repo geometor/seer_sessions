@@ -1,0 +1,57 @@
+objects:
+  - id: background
+    type: grid_area
+    color: white
+  - id: floor
+    type: horizontal_line # Can contain white pixels but includes azure pixels
+    color: azure
+    location: lowest_row_containing_azure # The specific row containing azure (8) pixels, typically the bottom-most such row.
+    persistent: true # Remains unchanged in output
+  - id: bars
+    type: collection
+    elements:
+      type: horizontal_segment
+      properties:
+        color: non-white, non-azure
+        location: various rows above the floor
+        length: number of contiguous pixels of the same color in the row
+        original_row_index: the row index where the bar was located in the input
+        contiguity: horizontal
+
+actions:
+  - name: identify_elements
+    input: input_grid
+    output:
+      - floor_row_index: index of the lowest row containing azure (8)
+      - list_of_bars: collection of tuples (color, length, original_row_index) for each bar above the floor
+  - name: sort_bars
+    input: list_of_bars
+    criteria:
+      - primary: length (descending - longest first)
+      - secondary: original_row_index (ascending - highest row first in case of length tie)
+    output: sorted_list_of_bars
+  - name: create_output_grid
+    input: input_grid_dimensions
+    process: Initialize grid with white (0)
+    output: output_grid
+  - name: place_floor
+    input: input_grid_floor_row, floor_row_index
+    target: output_grid
+    process: Copy the floor row content from input to the same row index in output.
+  - name: place_bars
+    input: sorted_list_of_bars, grid_width, floor_row_index
+    target: output_grid
+    process: Iterate through sorted bars. For each bar, calculate the starting column for right-alignment (`grid_width - bar_length`). Place the bar in the highest available row *below* the previously placed bar (or below the top of the grid if it's the first bar), starting from the row immediately above the floor (`floor_row_index - 1`) and moving upwards.
+    output: output_grid with floor and stacked bars
+
+relationships:
+  - type: spatial
+    description: Bars are initially located above the floor. In the output, they are stacked vertically immediately above the floor and aligned to the right edge.
+  - type: order
+    description: The final vertical stacking order (bottom to top) is determined by the bars' length (longest first) and then their original row index (highest original row first for ties).
+  - type: alignment
+    description: In the output, bars are aligned to the right edge of the grid.
+
+grid_properties:
+  - width: constant between input and output
+  - height: constant between input and output

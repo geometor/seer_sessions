@@ -1,0 +1,56 @@
+task_type: transformation
+grid_properties:
+  dimensionality: 2
+  value_range: 0-9
+  background_color: 0 # white
+
+input_elements:
+  - type: grid
+    description: Contains pixels of various colors (1-9) on a white background (0).
+  - type: object_set
+    description: Implicit objects formed by contiguous pixels of the same non-white color.
+  - type: color_frequency
+    description: Each non-white color appears a certain number of times.
+
+output_elements:
+  - type: grid
+    description: Contains a hollow rectangular frame of a single color on a white background.
+  - type: object
+    name: frame
+    description: A hollow rectangle defined by a top-left and bottom-right corner.
+    properties:
+      color: The single color used for the frame.
+      border_pixels: Pixels forming the perimeter of the rectangle.
+      interior_pixels: Pixels inside the frame (all white).
+      exterior_pixels: Pixels outside the frame (all white).
+
+transformation_steps:
+  - step: 1
+    action: identify_key_color
+    input: input_grid
+    output: key_color
+    rule: Find the non-white color (1-9) with the highest frequency. If there's a tie, select the color with the lowest numerical value.
+  - step: 2
+    action: find_key_pixels
+    input: input_grid, key_color
+    output: key_pixel_locations
+    rule: Identify the coordinates of all pixels in the input grid that have the key_color.
+  - step: 3
+    action: calculate_initial_bounding_box
+    input: key_pixel_locations
+    output: initial_bbox (min_row, min_col, max_row, max_col)
+    rule: Determine the smallest rectangle enclosing all key_pixel_locations.
+  - step: 4
+    action: adjust_bounding_box
+    input: initial_bbox, key_pixel_locations
+    output: final_bbox (final_min_row, final_min_col, final_max_row, final_max_col)
+    rule: Iteratively check the count of key_color pixels on each of the four borders (top, bottom, left, right) of the current bounding box. If a border contains exactly one key_color pixel, shrink the box by moving that border inwards by one step. Repeat this check until no border shrinks in a full iteration.
+  - step: 5
+    action: create_output_grid
+    input: final_bbox, key_color, input_grid_dimensions
+    output: output_grid
+    rule: Create a new grid of the same dimensions as the input, filled with the background color (white, 0). Draw the hollow rectangular frame defined by final_bbox using the key_color.
+
+relationships:
+  - The output frame's color is determined by the most frequent non-white color in the input.
+  - The output frame's position and size are derived from the bounding box of the key color pixels in the input, potentially adjusted by removing edges with only one key color pixel.

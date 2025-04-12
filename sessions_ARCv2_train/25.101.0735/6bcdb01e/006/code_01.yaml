@@ -1,0 +1,56 @@
+task_elements:
+  - object: grid
+    properties:
+      - type: matrix
+      - content: single-digit integers (3, 7, 8)
+      - size: variable, consistent between input and output
+  - object: cell
+    properties:
+      - value: 3, 7, or 8
+      - role:
+        - 8: boundary/wall (static, blocks connectivity)
+        - 3: seed/source (initiates change, remains 3)
+        - 7: fillable/changeable state
+relationships:
+  - type: connectivity
+    description: Cells are connected to their 4 adjacent neighbours (up, down, left, right). Connectivity is blocked by cells with value 8.
+  - type: region
+    id: R
+    description: The set of all non-8 cells reachable from any initial '3' cell via paths of adjacent non-8 cells. Determined using BFS.
+actions:
+  - action: identify_region_R
+    description: Perform BFS starting from all input '3' cells to find the connected component R, avoiding '8' cells and grid boundaries.
+  - action: create_intermediate_grid
+    description: Create an intermediate grid based on the input grid and region R.
+    logic: |
+      Initialize intermediate_grid = deepcopy(input_grid).
+      For each cell (r, c):
+        If (r, c) is in R AND input_grid[r][c] == 7:
+          intermediate_grid[r][c] = 3
+        Else:
+          intermediate_grid[r][c] = input_grid[r][c]
+  - action: create_final_output_grid
+    description: Create the final output grid by adjusting the intermediate grid to preserve certain '7's (holes).
+    logic: |
+      Initialize output_grid = deepcopy(intermediate_grid).
+      For each cell (r, c):
+        If input_grid[r][c] == 7 AND (r, c) in R:  # Check if it was an originally fillable cell in R
+          # Check the 2x2 hole preservation condition
+          If r > 0 AND c > 0:
+            Define tl=(r-1,c-1), tc=(r-1,c), bl=(r,c-1), br=(r,c)
+            # Condition 1: Check if the 2x2 block in the *intermediate* grid is all '3's
+            If (intermediate_grid[tl[0]][tl[1]] == 3 AND
+                intermediate_grid[tc[0]][tc[1]] == 3 AND
+                intermediate_grid[bl[0]][bl[1]] == 3 AND
+                intermediate_grid[br[0]][br[1]] == 3):
+              # Condition 2: Check if the corresponding 2x2 block in the *input* grid was all non-'8's
+              If (input_grid[tl[0]][tl[1]] != 8 AND
+                  input_grid[tc[0]][tc[1]] != 8 AND
+                  input_grid[bl[0]][bl[1]] != 8 AND
+                  input_grid[br[0]][br[1]] != 8): # br was 7, so != 8
+                # Condition 3: Check if all four cells of the block belong to region R
+                If (tl in R AND tc in R AND bl in R AND br in R):
+                  # All conditions met, revert this cell to '7' in the final output
+                  output_grid[r][c] = 7
+  - action: finalize
+    description: The final state of output_grid after the second pass is the result.

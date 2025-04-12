@@ -1,0 +1,28 @@
+task_type: scaling_and_mapped_neighbor_sampling
+input_object:
+  type: grid
+  description: A grid of pixels with varying dimensions (H_in x W_in).
+output_object:
+  type: grid
+  description: A grid of pixels with fixed dimensions (12x12).
+transformation:
+  operation: scale_and_sample_via_mapping
+  scaling_factors:
+    height: scale_h = 12 // H_in (integer division)
+    width: scale_w = 12 // W_in (integer division)
+  block_shape: [scale_h, scale_w] # Varies with input dimensions (e.g., 2x3, 3x2)
+  sampling:
+    source: 3x3 neighborhood of the corresponding input pixel.
+    method: Each output pixel Output[r, c] samples the color from one neighbor (offset dr, dc) of the source input pixel Input[i, j], where i = r // scale_h and j = c // scale_w.
+    neighbor_selection:
+      dependency: Determined by the relative position (rel_r = r % scale_h, rel_c = c % scale_w) within the block.
+      mapping: A specific, fixed mapping `OffsetMap[block_shape](rel_r, rel_c) -> (dr, dc)` exists for each unique block shape. This mapping must be empirically derived from the examples.
+    boundary_handling:
+      method: Applied when the selected neighbor coordinate (i+dr, j+dc) is outside the input grid bounds.
+      rule: The rule for determining the color in out-of-bounds cases is UNDETERMINED and needs to be derived from the examples. It is not simply 0/black.
+relationships:
+  - Each input pixel Input[i, j] corresponds conceptually to an output block starting at Output[i * scale_h, j * scale_w] of size scale_h x scale_w.
+  - The color of Output[r, c] is determined by Input[i+dr, j+dc] or a boundary rule, where (dr, dc) is a function of (r % scale_h, c % scale_w) specific to the (scale_h, scale_w) block shape.
+observations:
+  - The scaling factors and block shapes differ between examples, requiring potentially different neighbor offset mappings (OffsetMap) for each shape.
+  - The boundary handling rule needs careful examination, as the default assumption of 0/black is inconsistent with observed outputs (e.g., color 6 in Example 1).

@@ -1,0 +1,75 @@
+elements:
+  - object: Frame
+    properties:
+      - color: gray (5)
+      - shape: rectangle (hollow)
+      - role: defines the region of interest (ROI) for cropping and output
+
+  - object: MappingKeyArea
+    properties:
+      - location: outside the Frame's bounding box
+      - contains: MappingPairs, TemplateBlocks, SeparatorPixels
+
+  - object: MappingPair
+    properties:
+      - structure: two adjacent, distinct colored blocks (e.g., A next to B)
+      - role: defines a color transformation rule (color_A -> color_B)
+      - location: within MappingKeyArea
+
+  - object: TemplateBlock
+    properties:
+      - structure: a contiguous block composed ONLY of a source color (e.g., color_A from mapping A->B) and the BackgroundColor
+      - shape: specific pattern defining the output object's shape
+      - role: provides the visual template for a transformed object
+      - location: within MappingKeyArea
+      - association: one unique TemplateBlock exists for each source color_A in the mappings
+
+  - object: SourceBlock
+    properties:
+      - structure: a contiguous block of a single source color (e.g., color_A)
+      - location: inside the Frame
+      - role: input object to be transformed
+
+  - object: BackgroundColor
+    properties:
+      - color: varies by task (most frequent color in MappingKeyArea excluding frame and mapping colors)
+      - role: invariant color, used within TemplateBlocks and fills empty space
+
+actions:
+  - name: locate_frame
+    input: input_grid
+    output: bounding_box_of_gray_frame
+
+  - name: analyze_key_area
+    input: input_grid, frame_bounding_box
+    process:
+      - Identify adjacent blocks to find MappingPairs (A -> B).
+      - Determine BackgroundColor (most frequent outside color != frame, A, B).
+      - For each source color A, find its corresponding TemplateBlock (contiguous block outside frame made of only A and BackgroundColor).
+    output: dictionary_of_color_maps {A: B, ...}, BackgroundColor, dictionary_of_templates {A: template_array, ...}
+
+  - name: crop_to_frame
+    input: input_grid, frame_bounding_box
+    output: cropped_subgrid (initial state of output)
+
+  - name: locate_source_blocks
+    input: cropped_subgrid, source_colors (keys from color_maps)
+    output: list_of_source_blocks [{r, c, h, w, color}, ...] (coordinates relative to cropped_subgrid)
+
+  - name: apply_templates
+    input: cropped_subgrid, list_of_source_blocks, dictionary_of_templates, dictionary_of_color_maps, BackgroundColor
+    process:
+      - Create an output grid initialized with BackgroundColor, same size as cropped_subgrid.
+      - Copy the gray (5) frame pixels from cropped_subgrid to output grid.
+      - For each SourceBlock (color A at r, c):
+          - Get the TemplateBlock array for color A.
+          - Create the target pattern by replacing A with B (from mapping A->B) in the template array, leaving BackgroundColor unchanged.
+          - Place this target pattern onto the output grid, aligning its top-left corner with the SourceBlock's top-left corner (r, c).
+    output: final_output_grid
+
+relationships:
+  - The Frame defines the output dimensions and boundary.
+  - MappingPairs define which colors change (A -> B).
+  - BackgroundColor defines the invariant fill color.
+  - TemplateBlocks define the *shape* of the output for each transformed color.
+  - SourceBlocks inside the frame trigger the application of their corresponding transformed TemplateBlock.

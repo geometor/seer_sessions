@@ -1,0 +1,42 @@
+# Facts observed from train_1, train_2, and train_3 examples
+grid_properties:
+  size: variable # [10, 10] or [12, 17]
+  background_color_rule: most frequent color in the input grid
+colors:
+  present_in_input: variable
+  present_in_output: variable
+  unique_input_colors_rule: colors appearing exactly once in the input grid
+  fill_colors_determination:
+    candidates:
+      - unique colors
+      - orthogonal neighbors of unique colors (if not background)
+    outer_fill_color: highest value among candidates
+    inner_fill_color: (if >1 unique color exists) highest unique color NOT used (directly or via neighbor) to determine outer_fill_color.
+  most_frequent_non_background_color_rule: find color counts excluding background, identify single highest count (if exists)
+objects_input:
+  properties:
+    - id
+    - color(s)
+    - location (list of [row, col])
+    - size (number of cells)
+  criteria:
+    bounding_box_source_objects: objects with size 3 AND color < 5
+    inner_bounding_box_source_objects: objects meeting outer criteria AND whose color is NOT the single most frequent non-background color
+transformation:
+  action: layered_fill_region
+  layers:
+    - layer_id: outer_fill
+      fill_color_rule: derived from unique colors and neighbors (highest candidate)
+      region_definition:
+        method: bounding_box
+        source_objects: size-3 objects with color < 5
+      fill_rule: replace background color only
+    - layer_id: inner_fill (conditional)
+      condition: exists an inner_fill_color derived from unique colors
+      fill_color_rule: derived from unique colors (highest remaining unique)
+      region_definition:
+        method: bounding_box
+        source_objects: size-3 objects with color < 5 AND color != single most frequent non-background color
+      fill_rule: replace background color only (overwrites outer fill where applicable)
+  preservation:
+    - all original non-background cells retain their color and position.

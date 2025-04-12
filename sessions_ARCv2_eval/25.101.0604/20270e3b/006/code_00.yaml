@@ -1,0 +1,88 @@
+elements:
+  - object: grid
+    properties:
+      - representation: 2D array of integers
+      - colors: [1, 4, 7] (7 is signal)
+      - dimensions: height (H), width (W)
+  - object: color_7
+    properties:
+      - role: primary signal, instruction marker
+      - characteristic: transient (absent in output)
+      - location_properties:
+          - exists: boolean
+          - coords: list of (row, col) tuples
+          - rows_with_any_7: set of row indices
+          - rows_all_7: set of row indices containing only 7s
+          - is_in_first_row: boolean (row 0 has a 7)
+          - is_in_last_row: boolean (row H-1 has a 7)
+          - first_col_any_7 (min_c): min column index of any 7
+          - first_col_row_0 (min_c_first_row): min column index of 7 in row 0
+          - first_col_row_H-1 (min_c_last_row): min column index of 7 in last row
+
+actions:
+  - action: analyze_signal
+    actor: transformation process
+    input: input grid
+    output: color_7 location_properties
+  - action: determine_transformation_mode
+    actor: transformation process
+    input: color_7 location_properties
+    output: mode ('A', 'B', 'C', 'None')
+    logic:
+      - If not color_7.exists -> Mode 'None'
+      - Else if color_7.rows_all_7 is not empty -> Mode 'A'
+      - Else if color_7.is_in_first_row OR color_7.is_in_last_row -> Mode 'B'
+      - Else -> Mode 'C'
+  - action: execute_mode_A # Row removal (all-7, sandwiched-1)
+    actor: transformation process
+    input: input grid, signal properties (rows_all_7)
+    output: output grid
+    status: Implemented and verified (Example 3).
+    logic:
+      - Identify `R_all_7 = color_7.rows_all_7`.
+      - Identify `R_sandwiched_1` (rows of all 1s between rows in `R_all_7`).
+      - Remove rows in `R_all_7` union `R_sandwiched_1`.
+  - action: execute_mode_B # Boundary 7 -> Width adjustment + Complex modification
+    actor: transformation process
+    input: input grid, signal properties (min_c, min_c_first_row, min_c_last_row)
+    output: output grid
+    status: Partially implemented. Width calculation verified (Examples 1, 2). Content generation rule is UNKNOWN and current implementation (slice + 7->4 replace) is INCORRECT.
+    logic:
+      - Calculate output width `W_out`:
+          - If `min_c_last_row` exists and `min_c == min_c_last_row`: `W_out = min_c + 5`
+          - Else (`min_c_first_row` must exist): `W_out = min_c_first_row - 1`
+      - Create output grid of size (H, W_out).
+      - Populate content: Slice `input_grid[:, :W_out]`. Apply complex, context-dependent modifications within this slice (exact rules TBD).
+  - action: execute_mode_C # Non-boundary, non-all-7 -> Row removal + Unknown modification/extension
+    actor: transformation process
+    input: input grid, signal properties (rows_with_any_7)
+    output: output grid
+    status: Partially implemented. Row removal verified (Example 4). Content modification and width extension rules are UNKNOWN and NOT implemented.
+    logic:
+      - Step 1 (Implemented): Identify `R_any_7 = color_7.rows_with_any_7`. Create intermediate grid by removing rows in `R_any_7`.
+      - Step 2 (Not Implemented): Apply unknown modifications to the intermediate grid content. Extend the width of the intermediate grid by appending columns based on unknown rules.
+  - action: execute_mode_None # No 7s
+    actor: transformation process
+    input: input grid
+    output: output grid (identical to input)
+    status: Implemented (by default if no 7s found).
+
+relationships:
+  - relationship: determines
+    subject: color_7 properties
+    object: transformation_mode
+  - relationship: defines (Mode A)
+    subject: color_7.rows_all_7
+    object: rows to remove
+  - relationship: defines (Mode B)
+    subject: color_7 boundary properties
+    object: output grid width
+  - relationship: requires (Mode B)
+    subject: correct output generation
+    object: context-dependent modification rules (unknown)
+  - relationship: defines (Mode C - Step 1)
+    subject: color_7.rows_with_any_7
+    object: rows to remove
+  - relationship: requires (Mode C - Step 2)
+    subject: correct output generation
+    object: modification and width extension rules (unknown)

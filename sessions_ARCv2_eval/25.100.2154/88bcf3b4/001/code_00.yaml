@@ -1,0 +1,48 @@
+task_type: grid_transformation
+grid_properties:
+  variable_dimensions: true # Example 1: 7x7, Example 2: 12x12
+  variable_background: true # Example 1: 0, Example 2: 7
+  value_set: [0, 2, 3, 4, 7, 8] # Combined from examples
+anchor_column_behavior:
+  identification: Contains a consistent set of non-background values (e.g., [2, 8] or [2]).
+  action: Preserve all values in this column in the output.
+value_specific_behaviors:
+  - value: 4 # Based on train_1 (as mover) and train_2 (as static)
+    roles: [mover, static]
+    static_behavior: # Observed in train_2
+      condition: If not acting as a mover relative to an anchor column.
+      action: Preserve original position.
+    mover_behavior: # Observed in train_1
+      condition: If identified as the primary mover value relative to the anchor column.
+      rules:
+        - relative_column: -1 # One column left of anchor
+          action: Preserve position (move up 0, right 0).
+        - relative_column: -2 # Two columns left of anchor
+          action: Move up 2 rows, right 1 column.
+        - relative_column: other
+          action: Remove.
+      generation_trigger: # Observed in train_1
+        condition: At least one successful move occurred from relative_column -2.
+        action: Place '4' at row 0 of the anchor column.
+  - value: 3 # Based on train_2 (as mover)
+    roles: [mover]
+    mover_behavior:
+      condition: If identified as the primary mover value relative to the anchor column.
+      rules:
+        - relative_column: -1 # One column left of anchor
+          action: Move up 1 row, right 0 columns.
+        - relative_column: -2 # Two columns left of anchor
+          action: Move up 1 row, right 1 column.
+        - relative_column: other
+          action: Remove.
+  - value: [2, 8] # Based on train_1 and train_2 (as anchor components)
+    roles: [anchor]
+    anchor_behavior:
+      action: Define the anchor column; preserve position within that column.
+collision_resolution:
+  priority:
+    - Anchor column preservation
+    - Static value preservation
+    - Mover transformations from relative_column -1
+    - Mover transformations from relative_column -2
+  mechanism: If a target cell for a lower-priority move is already occupied, the move is cancelled.

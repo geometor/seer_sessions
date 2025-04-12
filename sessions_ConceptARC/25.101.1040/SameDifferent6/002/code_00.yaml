@@ -1,0 +1,37 @@
+task_description: Identify distinct objects composed of non-background pixels. Remove specific types of two-color objects based on their internal and frame colors.
+
+definitions:
+  background_color: 0 # white
+  object: A contiguous group of non-background pixels (color > 0).
+  border_background: Background pixels connected to the grid's edge via other background pixels.
+  external_background: Background pixels adjacent to an object pixel and part of the border_background set.
+  enclosed_background: Background pixels adjacent to an object pixel but NOT part of the border_background set (relevant for train_3).
+  object_colors: The set of unique colors comprising an object's non-background pixels, plus background_color(0) if it has enclosed_background pixels adjacent to it.
+  frame_color: For a two-color object, the color whose pixels are adjacent to external_background.
+  internal_color: For a two-color object, the color whose pixels are not adjacent to external_background, OR the background_color(0) if it's one of the two colors (i.e., enclosed background).
+
+rules:
+  - description: Iterate through each distinct object in the input grid.
+  - conditions:
+      - Find all object_colors.
+      - Proceed only if the count of object_colors is exactly 2.
+      - Determine the frame_color and internal_color based on adjacency to external_background.
+  - removal_criteria:
+      - description: Remove the object if its (internal_color, frame_color) pair matches a specific set.
+      - pairs_to_remove:
+          - { internal: 1, frame: 2 } # Blue internal, Red frame
+          - { internal: 7, frame: 3 } # Orange internal, Green frame
+          - { internal: 0, frame: 4 } # White internal, Yellow frame
+  - action:
+      - if: removal_criteria met
+        then: Replace all pixels belonging to the object (the original non-background pixels) in the output grid with the background_color.
+      - else: Keep the object unchanged in the output grid.
+
+output_grid: The input grid modified by applying the removal action.
+
+Notes:
+  - Connectivity for objects and background is based on 4-way adjacency (up, down, left, right).
+  - The identification of frame/internal relies solely on connectivity to the external background, not on shape properties like convexity or single internal regions.
+  - Objects with more than two colors (including enclosed background) are never removed.
+  - Objects with two colors where both colors touch the external background are not clearly frame/internal and are not removed by this rule.
+  - Objects with two colors where neither touches the external background (e.g., fully enclosed within another object) are not removed unless one color is enclosed background(0), in which case that is the internal color.

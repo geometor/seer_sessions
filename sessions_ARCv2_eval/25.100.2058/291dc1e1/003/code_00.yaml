@@ -1,0 +1,98 @@
+common_properties:
+  background_digit: 8
+  object_height: 2 # Key patterns/objects are consistently 2 rows high.
+  ignored_input_rows: [0, 1] # First two rows.
+  ignored_input_columns: [0, 1, -1] # First two and last columns.
+  object_definition: Maximal connected rectangular components of non-background digits, exactly 2 rows high, within the core input area.
+
+transformation_strategies:
+  - strategy_name: Stacking
+    observed_in: [train_2, train_3, train_4]
+    trigger_conditions:
+      - Input grid height <= 10 (tentative)
+      - AND absence of specific complex/asymmetric patterns seen in train_1.
+      - Potentially correlated with input row 0 patterns (`0 1...` or `1 1...`).
+    input_processing: Identify all object *instances* and their locations within the core input.
+    output_construction:
+      - Determine max object width (`W`).
+      - Output dimensions: `(2 * num_objects) x W`.
+      - Determine object order based on input row 0:
+        - If row 0 starts `0 1 1...`: Order is top-to-bottom, left-to-right scan of core input.
+        - If row 0 starts `1 1 1...`: Group objects by row pairs (e.g., core rows 0-1, then 2-3, etc.). Order is group-by-group (top-down), and within each group, right-to-left scan.
+      - For each object instance (in determined order):
+        - Center its pattern horizontally in width `W`, padding with background_digit.
+        - Append the resulting 2 rows to the output.
+
+  - strategy_name: Composition
+    observed_in: [train_1]
+    trigger_conditions:
+      - Input grid height > 10 (tentative)
+      - OR presence of specific complex patterns (e.g., `[[1,6],[2,6]]`, `[[4,7],[7,4]]`).
+      - Potentially correlated with input row 0 pattern (`0 2...`).
+    input_processing: Identify object *types* present.
+    output_construction:
+      - Target output grid has fixed dimensions (e.g., 12x6 for train_1).
+      - A predefined layout maps specific input object types to specific locations and patterns in the output grid.
+      - May involve transformations (e.g., transposition) or combining parts of different objects.
+      - Unspecified cells filled with background_digit.
+
+example_train_1: # Composition Strategy
+  input_grid:
+    dimensions: [20, 8]
+    row_0_pattern: "0 2..." # Trigger?
+    core_area: Rows 2-19, Columns 2-6
+    identified_object_types: # Types relevant for composition
+      - T_44, T_99, T_12_66, T_66, T_4774, T_77, T_33
+  output_grid:
+    dimensions: [12, 6] # Fixed
+    structure: Fixed layout composed from specific object types.
+
+example_train_2: # Stacking Strategy (Top-Down, Left-Right)
+  input_grid:
+    dimensions: [8, 11]
+    row_0_pattern: "0 1..." # Trigger?
+    core_area: Rows 2-7, Columns 2-9
+    identified_object_instances: # Order matters
+      - P1: [[3, 3], [3, 3]] @ core (0,0)
+      - P2: [[4, 4, 4, 4], [4, 4, 4, 4]] @ core (0,4)
+      - P3: [[6, 6], [6, 6]] @ core (4,0)
+      - P4: [[9, 9], [9, 9]] @ core (4,4)
+  output_grid:
+    dimensions: [8, 4] # Dynamic: 2*4 objects, max_width=4
+    structure: Vertical stack: P1, P2, P3, P4 (centered).
+
+example_train_3: # Stacking Strategy (Top-Down, Left-Right)
+  input_grid:
+    dimensions: [8, 28]
+    row_0_pattern: "0 1..." # Trigger?
+    core_area: Rows 2-7, Columns 2-26
+    identified_object_instances: # Order matters
+      - P1: [[3, 3, ..., 3], [3, 3, ..., 3]] (w=8) @ core (0,0)
+      - P2: [[9, 9], [9, 9]] (w=2) @ core (0,10)
+      - P3: [[7, 7, 7, 7], [7, 7, 7, 7]] (w=4) @ core (0,14)
+      - P4: [[4, 4, 4, 4], [4, 4, 4, 4]] (w=4) @ core (0,20)
+      - P5: [[9, 9], [9, 9]] (w=2) @ core (4,0)
+      - P6: [[6, 6, ..., 6], [6, 6, ..., 6]] (w=8) @ core (4,4)
+      - P7: [[4, 4], [4, 4]] (w=2) @ core (4,14)
+  output_grid:
+    dimensions: [14, 8] # Dynamic: 2*7 objects, max_width=8
+    structure: Vertical stack: P1, P2, P3, P4, P5, P6, P7 (centered).
+
+example_train_4: # Stacking Strategy (Row-Grouped, Right-Left)
+  input_grid:
+    dimensions: [8, 23]
+    row_0_pattern: "1 1..." # Trigger?
+    core_area: Rows 2-7, Columns 2-21
+    identified_object_instances: # Location matters for grouping/ordering
+      # Group 1 (Core Rows 0-1)
+      - P1: [[3, 3, 3, 3, 3, 3], [3, 3, 3, 3, 3, 3]] (w=6) @ core (0,0) # 4th in group
+      - P2: [[7, 7], [7, 7]] (w=2) @ core (0,7) # 3rd in group
+      - P3: [[3, 3], [3, 3]] (w=2) @ core (0,11) # 2nd in group
+      - P4: [[4, 4, 4, 4], [4, 4, 4, 4]] (w=4) @ core (0,15) # 1st in group
+      # Group 2 (Core Rows 3-4)
+      - P5: [[3, 3, 3, 3], [3, 3, 3, 3]] (w=4) @ core (3,3) # 3rd in group
+      - P6: [[6, 6, 6, 6, 6, 6], [6, 6, 6, 6, 6, 6]] (w=6) @ core (3,9) # 2nd in group
+      - P7: [[9, 9], [9, 9]] (w=2) @ core (3,17) # 1st in group
+  output_grid:
+    dimensions: [14, 6] # Dynamic: 2*7 objects, max_width=6
+    structure: Vertical stack: P4, P3, P2, P1, P7, P6, P5 (centered).

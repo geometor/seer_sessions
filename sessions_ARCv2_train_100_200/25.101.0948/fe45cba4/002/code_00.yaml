@@ -1,0 +1,47 @@
+task_description: Rearrange pixels of one foreground color into a corner rectangle based on edge contact rules, preserving the other foreground color.
+
+elements:
+  - element: grid
+    properties:
+      - background_color: 7 (orange)
+      - foreground_colors: [2 (red), 9 (maroon)] # Typically two, but logic should handle 1.
+      - height: variable (e.g., 8)
+      - width: variable (e.g., 8)
+  - element: pixel_group
+    properties:
+      - color: one of the foreground_colors
+      - location: coordinates of pixels in the input grid
+      - count: N, total number of pixels of this color
+      - unique_edge_contacts: count of unique grid edges (T, B, L, R) touched by any pixel of this color
+      - edge_contact_counts: dict mapping each edge (T, B, L, R) to the count of pixels touching that edge
+
+actions:
+  - action: select_target_color
+    criteria: Choose the foreground color with the highest `unique_edge_contacts`. Tie-break by choosing the color with the higher `count`.
+    output: target_color, other_color
+  - action: count_pixels
+    input: target_color pixels in input grid
+    output: count N
+  - action: determine_rectangle_shape
+    input: N
+    computation: Find integer factors (R, C) of N minimizing abs(R-C). Tie-break by choosing the pair with the smaller R.
+    output: Height R, Width C
+  - action: determine_target_corner
+    input: edge_contact_counts for target_color
+    computation:
+      - Find highest vertical contact: Compare counts for T and B. Choose T if counts are equal or T > B, else choose B. (Result: `vert_edge`)
+      - Find highest horizontal contact: Compare counts for R and L. Choose R if counts are equal or R > L, else choose L. (Result: `horiz_edge`)
+      - Combine `vert_edge` and `horiz_edge` (e.g., T + R -> TR).
+    output: target_corner (TL, TR, BL, BR)
+  - action: transform_grid
+    steps:
+      - Create output grid, initially a copy of the input.
+      - Erase original target_color pixels: Change all pixels in the output grid that had the `target_color` in the input grid to the `background_color`.
+      - Draw rectangle: Fill a rectangle of `target_color` with shape (Height R, Width C) in the `target_corner` of the output grid.
+
+relationships:
+  - The `target_color` is determined by maximizing interaction with the grid boundaries (unique edges first, then total count).
+  - The `rectangle_shape` (R, C) is determined solely by the `count` N of the `target_color`.
+  - The `target_corner` is determined by the distribution of `target_color` pixels along the grid boundaries (highest vertical contact + highest horizontal contact, with tie-breaks).
+  - The `other_color` pixels remain unchanged in their original positions.
+  - The `background_color` fills space not occupied by the `other_color` or the new `target_color` rectangle.

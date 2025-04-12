@@ -1,0 +1,70 @@
+task_description: Rotate grid 90 deg clockwise and recolor based on original region structure, noise, and a background color rule.
+
+definitions:
+  - definition: background_pixel
+    criteria: Pixel belongs to a connected component (8-way) of a color found on the input grid's bottom edge, and the component touches the bottom edge.
+  - definition: foreground_pixel
+    criteria: Any pixel that is not a background_pixel.
+  - definition: structural_foreground_region
+    criteria: A maximal connected component (8-way) of foreground_pixels (structure defined by fg_mask).
+  - definition: region_dominant_color
+    criteria: The most frequent color among all pixels within a structural_foreground_region.
+  - definition: region_noise_colors
+    criteria: Set of colors within a structural_foreground_region that differ from its region_dominant_color.
+
+elements:
+  - element: grid
+    attributes:
+      - type: 2D array of integers 0-9 (colors)
+      - size: H x W (input), W x H (output)
+  - element: input_background_pixels
+    attributes:
+      - colors: The set of colors present in all background pixels.
+  - element: input_foreground_region (structural)
+    attributes:
+      - dominant_color: The region_dominant_color.
+      - noise_colors: The region_noise_colors.
+
+actions:
+  - action: determine_output_background_color
+    input: Set of colors of all input_background_pixels (InputBGSet).
+    output: color (OutputBG)
+    rule: |
+      if InputBGSet is empty:
+        OutputBG = 0
+      else:
+        OutputBG = max(0, min(InputBGSet) - 1)
+    # Note: This rule is known to fail on train_2 and train_3 based on analysis.
+
+  - action: determine_output_foreground_color
+    input: dominant_color, noise_colors
+    output: output_fg_color
+    rule: |
+      if len(noise_colors) == 1:
+        output_fg_color = noise_colors.pop()
+      else: # 0 or multiple noise colors
+        output_fg_color = dominant_color
+
+  - action: rotate_and_color
+    input: input_grid, background_mask, structural_regions_info, OutputBG, fg_color_rule
+    output: final_output_grid (W x H)
+    details: |
+      Rotate input 90 deg clockwise. Create output grid.
+      For each output pixel (r_out, c_out):
+        Find corresponding input pixel (r_in, c_in).
+        If input pixel is background: set output pixel to OutputBG.
+        If input pixel is foreground:
+          Find its structural_region_id.
+          Determine output_fg_color using the rule based on that region's dominant/noise colors.
+          Set output pixel to output_fg_color.
+
+relationships:
+  - relationship: pixel_origin
+    entities: [output_pixel, input_pixel]
+    details: Each output pixel corresponds to a specific input pixel after rotation. (r_out, c_out) <- (H_in - 1 - c_out, r_out)
+  - relationship: region_mapping
+    entities: [input_structural_foreground_region, output_area_color]
+    details: The output color depends on the input region's dominant color and whether it has a unique noise color.
+  - relationship: background_mapping
+    entities: [input_background_pixels, output_background_area]
+    details: All input background pixels map to a single area in the output filled with the calculated OutputBG color.

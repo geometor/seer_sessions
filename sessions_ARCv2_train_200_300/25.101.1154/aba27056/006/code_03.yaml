@@ -1,0 +1,73 @@
+task_type: selective_boundary_fill # Renamed to reflect the selective nature tied to boundary reachability
+grid_properties:
+  size: variable, input and output grids have the same dimensions.
+  background_color: white (0)
+  fill_color: yellow (4)
+objects:
+  - id: foreground_shape
+    description: Contiguous shape(s) made of a single non-white color present in the input. These shapes remain unchanged in the output and act as barriers to filling.
+    color: variable (orange 7, magenta 6, green 3 in examples)
+  - id: background_pixels
+    description: Pixels with the background color (white 0) in the input grid.
+    color: white (0)
+  - id: boundary_pixels
+    description: Pixels located on the grid edges (row 0, row H-1, col 0, col W-1).
+    color: any
+  - id: source_pixels
+    description: The subset of boundary_pixels that are also background_pixels (white 0). These are the initial starting points for determining reachability.
+    color: white (0)
+  - id: fillable_pixels
+    description: >
+      The set of background_pixels that are reachable from at least one source_pixel
+      via a path of 4-adjacent background_pixels (determined by standard flood fill/BFS).
+      This represents the maximum potential area for filling.
+    color: white (0)
+  - id: target_pixels
+    description: >
+      The specific subset of fillable_pixels that actually change color to yellow (4)
+      in the output grid. The selection rule determining which fillable_pixels become
+      target_pixels is currently UNKNOWN. Standard flood fill (target_pixels = fillable_pixels)
+      is incorrect, as shown by the examples where many fillable_pixels remain white (0)
+      in the expected output.
+    color: white (0) in input, yellow (4) in output
+  - id: non_target_fillable_pixels
+    description: >
+       The subset of fillable_pixels that are NOT selected to become target_pixels and thus
+       remain white (0) in the output. Identifying the properties of these pixels
+       is key to solving the task. Examples include pixels at (0,1) in Ex1, (0,0) in Ex2,
+       and (4,0), (4,5), (5,1), (5,4) in Ex3.
+    color: white (0)
+  - id: unreachable_background_pixels
+    description: >
+      Background_pixels that are not reachable from any source_pixel (e.g., white pixels
+      completely enclosed by foreground shapes). These always remain white (0).
+      (Note: No such pixels exist in the provided training examples).
+    color: white (0)
+actions:
+  - name: identify_components
+    input: input grid
+    output: coordinates of foreground_shape pixels, coordinates of background_pixels.
+  - name: identify_source_pixels
+    input: background_pixels, grid dimensions
+    output: coordinates of source_pixels.
+  - name: find_fillable_pixels
+    input: input grid, source_pixels
+    output: set of coordinates of all background_pixels reachable from source_pixels via 4-connectivity.
+    implementation_note: Standard BFS/Flood Fill algorithm.
+  - name: select_target_pixels # The unknown step
+    input: fillable_pixels, input_grid # Potentially needs full grid context, foreground shape info, etc.
+    output: set of coordinates of target_pixels.
+    description: >
+      Applies an UNKNOWN selection rule to choose a subset of fillable_pixels.
+      This rule is the core logic missing from the current understanding. It must correctly
+      exclude pixels like (0,1) in Ex1 and (4,0) in Ex3 while including pixels like (0,0) in Ex1.
+  - name: apply_fill
+    input: input grid, target_pixels, fill_color
+    output: output grid where target_pixels are set to fill_color, others retain input color.
+transformation_summary:
+  - step: Copy the input grid to create the output grid.
+  - step: Identify all white (0) pixels reachable from any white (0) pixel on the boundary via 4-adjacent white paths (the `fillable_pixels`).
+  - step: Apply an unknown selection rule to choose a subset of these `fillable_pixels` (the `target_pixels`).
+  - step: Change the color of the `target_pixels` to yellow (4) in the output grid.
+  - step: All other pixels (foreground shapes, unreachable white pixels, and fillable-but-not-targeted white pixels) retain their original input color.
+  - uncertainty: The rule for selecting `target_pixels` from `fillable_pixels` is not determined. The standard flood fill approach (selecting all `fillable_pixels`) is incorrect.

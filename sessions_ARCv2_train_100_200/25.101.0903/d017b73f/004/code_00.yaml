@@ -1,0 +1,46 @@
+task_context:
+  grid_properties:
+    - height_constant: True # Grid height H remains the same (H=3 in examples).
+    - width_variable: True # Grid width decreases.
+    - background_color: 0 # White '0' is the background color.
+  objects:
+    - type: column # Columns are key units of operation.
+    - property: empty # Columns consisting entirely of the background color.
+    - property: non_empty # Columns containing at least one non-background pixel.
+  object_interrelations:
+    - type: relative_order # Relative horizontal order of non-empty columns is preserved between input and output.
+actions:
+  - name: identify_column_types
+    input: input_grid
+    output: list_of_empty_column_indices, list_of_non_empty_column_indices
+    description: Classify each column index as belonging to an empty or non-empty column.
+  - name: filter_and_map_columns
+    input: list_of_non_empty_column_indices
+    output: mapping_c_to_c_new, output_width_W_out
+    description: Create a mapping from original non-empty column indices `c` to their new 0-based indices `c_new` based on their preserved relative order. Determine the output width `W_out` as the count of non-empty columns.
+  - name: determine_column_shift # <--- Key uncertainty here
+    input: new_column_index_c_new, grid_height_H # Based on analysis of Example 1
+    output: shift_amount_S
+    description: >
+      Calculate the vertical cyclic shift amount S for the column based on its
+      destination index `c_new` in the output grid and the grid height `H`.
+      Candidate Rule (from Ex1): S = c_new // H (integer division).
+      NOTE: This rule is verified for Example 1 ONLY and fails for Examples 2, 3, and 4.
+      The correct general rule is currently unknown.
+  - name: apply_vertical_cyclic_shift
+    input: input_column_data, shift_amount_S, grid_height_H
+    output: shifted_column_data
+    description: Shift the elements of the input column `c` vertically and cyclically by S positions downwards. Pixel at original row `r` moves to `(r + S) % H`.
+  - name: construct_output_grid
+    input: input_grid, list_of_non_empty_column_indices, mapping_c_to_c_new, H, W_out, calculated_shifts
+    output: output_grid
+    description: Assemble the output grid (`H` x `W_out`) by taking each non-empty input column `c`, applying its calculated vertical shift `S` (determined via `c_new`), and placing the result into the output grid at column `c_new`.
+relationships:
+  - type: column_mapping
+    description: A direct, order-preserving mapping exists between the original index `c` of non-empty columns and their new index `c_new` in the output grid. `c_new` = position in the sequence of non-empty columns.
+  - type: vertical_shift_rule # <--- Key uncertainty here
+    description: >
+      Each non-empty column undergoes a vertical cyclic shift `S` before being placed in the output grid.
+      The amount `S` appears related to the column's position in the output grid (`c_new`) and the grid height (`H`).
+      Hypothesis `S = c_new // H` fits Example 1 perfectly but fails on other examples.
+      The true rule determining `S` is not fully captured by this hypothesis and requires further insight.

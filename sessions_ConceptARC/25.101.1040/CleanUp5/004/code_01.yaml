@@ -1,0 +1,83 @@
+task_type: conditional_color_transformation
+grid_properties:
+  preserves_size: true
+  background_color: 0 # white
+
+input_features:
+  - name: pixel_colors
+    description: The grid contains pixels of various colors (0-9).
+    values:
+      - example_1: [0, 2, 3] # white, red, green
+      - example_2: [0, 4] # white, yellow
+  - name: color_count_non_white
+    description: Number of distinct non-white colors in the input grid.
+    values:
+      - example_1: 2
+      - example_2: 1
+  - name: C_max
+    description: The non-white color with the highest numerical value. Relevant when color_count_non_white > 0.
+    values:
+      - example_1: 3 # green
+      - example_2: 4 # yellow
+  - name: C_next
+    description: The non-white color with the second highest numerical value. Relevant when color_count_non_white > 1.
+    values:
+      - example_1: 2 # red
+  - name: C_max_pixel_properties
+    description: Properties of pixels having color C_max. Relevant when color_count_non_white > 1.
+    properties: [location (row, col), local_connectivity_to_C_max]
+    values:
+      - example_1:
+          - pixel: (3,12), row: 3, connectivity: isolated (no adjacent C_max)
+          - pixel: (3,18), row: 3, connectivity: horizontal pair (adjacent to (3,19))
+          - pixel: (3,19), row: 3, connectivity: horizontal pair (adjacent to (3,18))
+          - other C_max pixels: rows != 3 or not isolated/horizontal pair
+  - name: connected_components_single_color
+    description: Non-white pixels of the same color form connected components (using 8-way adjacency). Relevant when color_count_non_white == 1.
+    properties: [size, shape, pixels]
+    values:
+      - example_2:
+          components_of_color_4:
+            - size: 1 # isolated pixels
+            - size: 2, shape: horizontal_line
+            - size: >= 2, shape: other (vertical lines, complex shapes)
+
+actions:
+  - name: change_pixel_color
+    description: Modify the color of specific pixels in the output grid.
+
+transformation_logic:
+  - branch: Determine based on `color_count_non_white` (N)
+  - condition: N == 1
+    action:
+      - Identify the single non-white color `C`.
+      - Find all connected components (8-way) of color `C`.
+      - Initialize output as a copy of the input.
+      - Target pixels for change:
+          - All pixels in components of size 1.
+          - The leftmost pixel of components that are horizontal lines of size 2.
+      - Change targeted pixels to white (0) in the output.
+  - condition: N > 1
+    action:
+      - Identify the highest color `C_max` and the second highest color `C_next`.
+      - Initialize output as a copy of the input.
+      - Iterate through each pixel `p` with coordinates `(r, c)` in the input grid.
+      - If `input_grid[r][c] == C_max`:
+          - Check if `r == 3` (row index 3).
+          - Check if pixel `p` is isolated (no 8-way neighbors are `C_max`).
+          - Check if pixel `p` is part of a horizontal pair (exactly one horizontal neighbor `(r, c-1)` or `(r, c+1)` is `C_max`, and no other neighbors are `C_max`).
+          - If `r == 3` AND (pixel `p` is isolated OR pixel `p` is part of a horizontal pair):
+              - Set `output_grid[r][c] = C_next`.
+          - Else:
+              - Set `output_grid[r][c] = 0` (white).
+      - Else (pixel color is not `C_max`):
+          - Keep the original color: `output_grid[r][c] = input_grid[r][c]`.
+  - condition: N == 0
+    action: Output grid is identical to the input grid (all white).
+
+output_features:
+  - name: pixel_colors
+    description: The output grid contains a subset of the input's non-white pixels, potentially with some colors changed or removed.
+    values:
+      - example_1: [0, 2]
+      - example_2: [0, 4]

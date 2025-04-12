@@ -1,0 +1,62 @@
+task_context:
+  description: Transforms grid colors based on the presence or absence of a 3x3 red block.
+  colors_involved: [white(0), blue(1), red(2), green(3)]
+  key_pattern:
+    type: block
+    shape: 3x3
+    color: red(2)
+    role: Primary condition for branching logic.
+  conditional_branches: 2
+
+branch_1: # Logic derived from Example 3 and confirmed correct.
+  condition: A 3x3 block of red(2) pixels EXISTS in the input grid.
+  secondary_pattern:
+    type: block
+    shape: 3x3
+    color: white(0)
+    role: Its location determines the location of a transformation in the output.
+    required: True # Based on Example 3
+    finder: first_occurrence # Scan top-to-bottom, left-to-right.
+  actions:
+    - description: Find the top-left coordinate (Wr, Wc) of the first 3x3 white(0) block.
+    - description: Initialize the output grid by copying the input.
+    - description: If no 3x3 white block is found, return the initial copy (no change - assumption).
+    - object: all white(0) pixels
+      action: change_color
+      to_color: blue(1) # Applied globally first.
+    - object: all red(2) pixels
+      action: remain_unchanged
+    - object: all blue(1) pixels
+      action: remain_unchanged # Unless overwritten below.
+    - object: all green(3) pixels
+      action: remain_unchanged # Unless overwritten below.
+    - description: Calculate target top-left (Tr, Tc) = (Wr - 6, Wc + 6).
+    - object: specific_location
+      location_derived_from: Input 3x3 white block position (Wr, Wc) via (Wr-6, Wc+6) transform.
+      action: create_block
+      shape: 3x3
+      color: white(0) # Overwrites pixels at the target location (Tr:Tr+3, Tc:Tc+3), bounds permitting.
+
+branch_2: # Logic derived from Examples 1 & 4; fails Example 2.
+  condition: A 3x3 block of red(2) pixels DOES NOT EXIST in the input grid.
+  actions:
+    - description: Initialize the output grid by copying the input.
+    - object: all white(0) pixels
+      action: change_color
+      to_color: blue(1)
+    - object: all red(2) pixels
+      action: change_color
+      to_color: white(0)
+    - object: all blue(1) pixels
+      action: remain_unchanged
+    - object: all green(3) pixels
+      action: remain_unchanged
+  unexplained_behavior:
+    example: train_2
+    description: >
+      The expected output requires an additional change not covered by the general
+      rule for this branch. Specifically, a 2x2 block of blue(1) pixels located
+      at input coordinates (7,8)-(8,9) changes to white(0). The trigger for this
+      specific transformation is unclear, as it does not occur in other examples
+      (train_1, train_4) that also lack a 3x3 red block. The implemented rule
+      correctly handles train_1 and train_4.

@@ -1,0 +1,86 @@
+task_description: >
+  Reorganizes an input grid based on the configuration of separator lines ('6')
+  and the resulting partitioning or quadrant structure. Uses '7' as background.
+  Operates in one of three modes: Split Vertical, Split Horizontal, or Extract Quadrant.
+
+elements:
+  - id: grid
+    description: A 2D numpy array of integers.
+  - id: background_digit
+    value: 7
+    description: Represents empty space or background.
+  - id: separator_digit
+    value: 6
+    description: Used to form complete horizontal or vertical lines.
+  - id: pattern_digits
+    value: [1, 2, 3, 4, 8, 9] # Observed
+    description: Digits representing patterns, distinct from background and separator.
+  - id: horizontal_separator_line
+    description: A complete row composed entirely of separator_digits (6). Found at specific row indices.
+  - id: vertical_separator_line
+    description: A complete column composed entirely of separator_digits (6). Found at specific column indices.
+  - id: pattern_region
+    description: A connected component of pattern_digits. Used for counting patterns.
+  - id: subgrid
+    description: >
+      A rectangular section of the input grid obtained by splitting along separator_lines.
+      Assumed to be 5x5 containing a single pattern in split modes.
+  - id: quadrant
+    description: >
+      One of four 5x5 sections of the input grid defined by single central
+      horizontal and vertical separators (e.g., in an 11x11 grid).
+      Quadrants are Top-Left (TL), Top-Right (TR), Bottom-Left (BL), Bottom-Right (BR).
+
+relationships_and_actions:
+  - action: identify_separators
+    input: grid
+    output: list of horizontal_separator_indices, list of vertical_separator_indices
+  - action: count_patterns
+    input: grid
+    output: number_of_patterns
+  - action: check_partitioning
+    input: grid_shape, separator_indices (h or v), num_patterns
+    output: boolean (does_partition)
+    description: >
+      Checks if separators partition the grid perfectly for the number of patterns,
+      assuming 5x5 pattern blocks (e.g., rows == num_patterns * 5 + len(h_sep)).
+  - action: check_quadrant_conditions
+    input: grid_shape, h_sep_indices, v_sep_indices, num_patterns
+    output: boolean (is_quadrant_case)
+    description: >
+      Checks if exactly one H separator and one V separator exist, num_patterns is
+      a perfect square (e.g., 4), and grid dimensions fit the pattern
+      (rows == cols == sqrt(num_patterns) * 5 + 1).
+  - action: determine_mode
+    input: grid, h_sep_indices, v_sep_indices, num_patterns, partition_h, partition_v, quadrant_conditions
+    output: mode ('split_vertical', 'split_horizontal', 'extract_quadrant', 'unknown')
+    description: >
+      1. If ONLY vertical separators exist AND partition_v is true: mode = 'split_vertical'.
+      2. Else if ONLY horizontal separators exist AND len(h_sep) > 1 AND partition_h is true: mode = 'split_horizontal'.
+      3. Else if quadrant_conditions is true: mode = 'extract_quadrant'.
+      4. Otherwise: mode = 'unknown'.
+  - action: execute_split_vertical
+    condition: mode == 'split_vertical'
+    input: grid, v_separator_indices
+    output: output_grid
+    description: >
+      Extracts subgrids (left-to-right). Stacks them vertically, separated by
+      horizontal lines of '6's.
+  - action: execute_split_horizontal
+    condition: mode == 'split_horizontal'
+    input: grid, h_separator_indices
+    output: output_grid
+    description: >
+      Extracts subgrids. Reverses order (bottom-to-top). Concatenates them
+      horizontally, separated by vertical lines of '6's.
+  - action: execute_extract_quadrant
+    condition: mode == 'extract_quadrant'
+    input: grid, h_sep_index, v_sep_index
+    output: output_grid
+    description: >
+      Extracts the four 5x5 quadrants (TL, TR, BL, BR) based on the separator indices.
+      Stacks them vertically in the order TL, BR, TR, BL, separated by horizontal lines of '6's.
+  - action: construct_output
+    input: result from execution actions (e.g., stacked/concatenated numpy array)
+    output: final_output_grid (list of lists)
+    description: Converts the numpy array result into the required list-of-lists format. Returns empty list if no mode applied or failed.

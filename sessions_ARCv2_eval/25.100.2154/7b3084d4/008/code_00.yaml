@@ -1,0 +1,47 @@
+Input_Grid:
+  Properties:
+    Size: Variable (e.g., 20x20)
+    Background_Digit: 0
+  Objects:
+    - Type: Cluster
+      Quantity: Must be exactly 4 for the transformation to apply.
+      Definition: Connected component (Von Neumann neighborhood) of non-zero digits.
+      Properties:
+        - Bounding_Box: (min_r, min_c, max_r, max_c)
+        - H: Height (max_r - min_r + 1)
+        - W: Width (max_c - min_c + 1)
+        - Max_Dim: max(H, W)
+        - Center: (avg_r, avg_c) based on bbox corners.
+        - Component_Digits: List of all non-zero digits within the component's coordinates.
+        - Dominant_Digit: Most frequent digit in Component_Digits.
+        - Contains_5: Boolean, true if 5 is present in Component_Digits.
+        - Role: TL_Cluster, TR_Cluster, BL_Cluster, BR_Cluster (Assigned based on sorted Center Y then X).
+Parameters:
+  - N: min(cluster.Max_Dim for cluster in clusters) - Must be > 0.
+  - Output_Size: 2N x 2N
+  - k: N // 2
+Transformation_Steps:
+  - 1_Find_Clusters: Identify exactly 4 clusters and calculate their properties. Sort by center (Y then X). If not 4, stop.
+  - 2_Determine_N: Calculate N from cluster dimensions. If N<=0, stop.
+  - 3_Assign_Roles: Assign TL, TR, BL, BR roles based on sorted order. Record dominant digits D_TL, D_TR, D_BL, D_BR.
+  - 4_Select_Assembly_Rule:
+      - If minY(TL_Cluster.bbox) == minY(TR_Cluster.bbox): Rule B (Swap top placement, set Rotation=True)
+      - Else: Rule A (Standard placement, set Rotation=False)
+  - 5_Extract_Subgrids: Get top-left NxN from each *role* cluster's bbox (`Subgrid_TL`, etc.).
+  - 6_Rotate_If_Needed: If Rotation=True, rotate `Subgrid_TR` 270 deg clockwise -> `Transformed_Subgrid`.
+  - 7_Assemble_Grid:
+      - Create 2N x 2N `OutputGrid`.
+      - Place subgrids based on Assembly Rule (TL_Out uses `Transformed_Subgrid` if Rule B, else `Subgrid_TL`; TR_Out uses `Subgrid_TL` if Rule B, else `Subgrid_TR`; BL/BR use respective subgrids).
+  - 8_Fill_Zeroes:
+      - Iterate through `OutputGrid`.
+      - If cell `(r,c)` has a 0 originating from the source subgrid:
+          - Determine output quadrant (TL, TR, BL, BR).
+          - Determine the dominant digit of the *source cluster* for that quadrant (e.g., TL_Out gets D_TR if Rule B, D_TL if Rule A).
+          - Replace 0 with the corresponding source dominant digit.
+  - 9_Apply_Boundary_Modifications:
+      - Rule_9.1 (Digit_5_Override): If *any* input cluster `Contains_5`, set `OutputGrid[0, 0] = 5`.
+      - Rule_9.2 (Other_Overrides):
+          - If N > 2: Apply specific point overrides using dominant digits D_TL, D_BL, D_BR at coordinates relative to N and k=N//2 (e.g., `[k, N]`, `[N-1, k]`, `[N+k, 0]`, etc., including conditional `[N-2, N+k]` for N>=5). Bounds checking is essential.
+          - If N == 2: The boundary modification pattern is significantly different and not captured by the N>2 point overrides. Only Rule 9.1 applies based on current validated logic. The remaining modifications for N=2 are currently undefined.
+Output_Grid:
+  - The final state of `OutputGrid` after all modifications. Return empty list if prerequisites (4 clusters, N>0) are not met.

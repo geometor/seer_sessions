@@ -1,0 +1,47 @@
+task_type: pattern_based_replacement # Modifying pixels based on local patterns
+color_invariance:
+  non_azure_pixels: unchanged # Pixels that are not 8 retain their color
+target_object_pixels:
+  color: 8 # azure
+  transformation: conditional_replacement
+  output_colors: [0, S] # Becomes either white (0) or the source color S
+source_object_pixels:
+  color: S # The single color in the input grid != 0 and != 8 (e.g., 3, 4, 6)
+  role: determines_applicable_patterns # Defines which set of rules applies
+background_color: 0 # white, also used for padding outside grid boundaries
+transformation_rule:
+  scope: only_azure_pixels # Only pixels with value 8 are potentially changed
+  condition_type: source_specific_raw_neighborhood_match
+  input_dependency: 3x3_neighborhood_of_azure_pixel_in_input # Padded with 0
+  success_patterns_by_source: # Dictionary mapping source color S to a set of raw 3x3 patterns
+    source: derived_from_all_training_examples # Patterns where input=8 and output=S for that specific S
+    # Patterns derived from code execution:
+    3: # Source color Green
+      count: 5
+      patterns:
+        - ((0, 0, 0), (3, 3, 0), (3, 0, 0))
+        - ((3, 3, 3), (8, 8, 8), (8, 8, 8))
+        - ((8, 0, 0), (8, 3, 3), (0, 3, 0))
+        - ((8, 8, 0), (8, 8, 3), (0, 0, 3))
+        - ((8, 8, 8), (8, 8, 8), (8, 8, 8))
+    4: # Source color Yellow
+      count: 4
+      patterns:
+        - ((0, 4, 4), (0, 8, 8), (0, 8, 8))
+        - ((4, 4, 0), (8, 8, 8), (8, 8, 8))
+        - ((8, 8, 0), (8, 8, 0), (4, 4, 0))
+        - ((8, 8, 8), (8, 8, 8), (0, 4, 4))
+    6: # Source color Magenta
+      count: 2
+      patterns:
+        - ((6, 6, 6), (8, 8, 8), (8, 8, 8))
+        - ((6, 8, 8), (6, 8, 8), (6, 8, 8))
+  output_determination:
+    - For an azure (8) pixel at (r, c):
+    - Identify the source color S for the entire input grid.
+    - Get the raw 3x3 input neighborhood N (as a tuple) centered at (r, c), padded with 0.
+    - Look up the set of success patterns associated with S (e.g., `success_patterns_by_source[S]`).
+    - If N is found within that specific set:
+        - The output pixel becomes S.
+    - Otherwise (if N is not in the set for S):
+        - The output pixel becomes 0.

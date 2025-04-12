@@ -1,0 +1,40 @@
+task_elements:
+  - element: Grid
+    properties:
+      - type: 2D array
+      - content: non-negative integers (0-9)
+      - zero_meaning: background/empty
+      - dimensions: variable height and width
+  - element: Global Key Values
+    properties:
+      - role: Global Min Non-Zero (R)
+        identification: Smallest non-zero integer globally in the input grid.
+      - role: Global Max Non-Zero (T)
+        identification: Largest non-zero integer globally in the input grid.
+      - condition: Global R and T must exist and R != T for the primary rule.
+  - element: Transformation
+    properties:
+      - type: cell value modification
+      - scope: column-wise, conditional based on presence/absence of R
+      - preserves_dimensions: true
+      - preserves_zeros: true
+  - element: Columnar Process
+    properties:
+      - scope: Operates independently on each column.
+      - branching: Applies one of two rules based on presence of Global R.
+      - grid_property_dependency: Uses number of rows (`rows`).
+  - element: Primary Rule (Column contains Global R)
+    properties:
+      - identification: Find row index `first_r_row` of the first Global R.
+      - blocking_condition: If `first_r_row >= rows // 2`, no replacement occurs.
+      - target_identification: If not blocked, find `first_t_below_r_row` (first Global T below `first_r_row`). If none, no replacement occurs.
+      - start_row_determination:
+          - If `first_r_row == 1`, `start_row = first_t_below_r_row + 4`.
+          - Otherwise, `start_row = first_t_below_r_row`.
+      - application: If `start_row < rows`, iterate downwards from `start_row`. If input cell is T, change output cell to R.
+  - element: Secondary Rule (Column does NOT contain Global R)
+    properties:
+      - identification: Find local min non-zero (`min_l`) and local max non-zero (`max_l`) values *within the column*.
+      - condition: Requires `min_l`, `max_l` to exist, `min_l != max_l`.
+      - trigger: Find `first_min_l_row`, `last_min_l_row`, and `first_max_l_row`. Replacement occurs if `first_min_l_row < first_max_l_row` AND `last_min_l_row > first_max_l_row`.
+      - application: If triggered, replace *all* occurrences of `max_l` with `min_l` in the column.

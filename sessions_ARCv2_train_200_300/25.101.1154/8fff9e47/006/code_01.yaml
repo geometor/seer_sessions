@@ -1,0 +1,43 @@
+task_type: scaling_and_mapped_neighbor_sampling
+input_object:
+  type: grid
+  description: A grid of pixels with varying dimensions (H_in x W_in). Dimensions must be divisors of 12.
+output_object:
+  type: grid
+  description: A grid of pixels with fixed dimensions (12x12).
+transformation:
+  operation: scale_and_sample_via_mapping
+  scaling_factors:
+    height: scale_h = 12 // H_in (integer division)
+    width: scale_w = 12 // W_in (integer division)
+  block_shape: [scale_h, scale_w] # Determines which offset map to use (e.g., 2x3, 3x2)
+  sampling:
+    source: 3x3 neighborhood of the corresponding input pixel.
+    method: Each output pixel Output[r, c] samples the color from one neighbor (offset dr, dc) of the source input pixel Input[i, j], where i = r // scale_h and j = c // scale_w.
+    neighbor_selection:
+      dependency: Determined by the relative position (rel_r = r % scale_h, rel_c = c % scale_w) within the block.
+      mapping: A specific, fixed mapping `OffsetMap[block_shape](rel_r, rel_c) -> (dr, dc)` is used, derived empirically from the examples.
+        map_2x3: # For scale_h=2, scale_w=3
+          (0,0): (1,1)   # SE
+          (0,1): (-1,0)  # N
+          (0,2): (1,-1)  # SW
+          (1,0): (-1,1)  # NE
+          (1,1): (0,-1)  # W
+          (1,2): (0,1)   # E
+        map_3x2: # For scale_h=3, scale_w=2
+          (0,0): (-1,1)  # NE
+          (0,1): (1,-1)  # SW
+          (1,0): (-1,-1) # NW
+          (1,1): (1,1)   # SE
+          (2,0): (0,-1)  # W
+          (2,1): (0,1)   # E
+    boundary_handling:
+      method: Applied when the selected neighbor coordinate (ni = i+dr, nj = j+dc) is outside the input grid bounds (ni < 0 or ni >= H_in or nj < 0 or nj >= W_in).
+      rule: Use the color of the central source input pixel, Input[i, j].
+relationships:
+  - Each input pixel Input[i, j] corresponds conceptually to an output block starting at Output[i * scale_h, j * scale_w] of size scale_h x scale_w.
+  - The color of Output[r, c] is determined by Input[i+dr, j+dc] (if in bounds) or Input[i, j] (if out of bounds), where (dr, dc) is uniquely determined by the block shape (scale_h, scale_w) and the relative position (r % scale_h, c % scale_w) via the appropriate OffsetMap.
+observations:
+  - The transformation requires input dimensions to be divisors of 12.
+  - Two distinct neighbor offset maps are needed for the two block shapes observed.
+  - The boundary handling rule is consistent across both examples.

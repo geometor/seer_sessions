@@ -1,0 +1,67 @@
+task_description: Determines the dimensions of an all-white output grid based on properties of objects in the input grid, specifically comparing the number of objects (N) to the number of unique colors (C) and utilizing object heights and colors.
+
+definitions:
+  object: A contiguous block of pixels of the same non-white color, identified using 4-way adjacency.
+  N: The total count of distinct objects in the input grid.
+  C: The count of unique non-white colors present in the input grid.
+  MaxH: The maximum height of any object in the input grid.
+  height: The number of rows spanned by an object's bounding box.
+  width: The number of columns spanned by an object's bounding box.
+  color: The integer value (1-9) of the pixels comprising an object.
+
+rules: # Revised based on re-evaluation
+  - condition: N == C # Number of objects equals number of unique colors
+    action:
+      - find_object: Locate an object where its height property is numerically equal to its color property.
+      - output_dimensions: Use the height and width of the found object.
+      - fallback (if no such object found): # Not observed, but included for completeness
+          calculate: MaxH (maximum height among all objects).
+          calculate: Width = C - 1 (Ensure non-negative).
+          output_dimensions: MaxH by Width.
+  - condition: N != C # Number of objects differs from number of unique colors
+    action:
+      - calculate: MaxH (maximum height among all objects).
+      - calculate: Width = C - 1 (Ensure non-negative).
+      - output_dimensions: MaxH by Width.
+
+output_grid:
+  content: All pixels are white (0).
+  dimensions: Determined by the applicable rule (N==C or N!=C).
+
+examples:
+  train_1:
+    analysis:
+      objects: [(Color=2, H=3, W=3), (Color=3, H=3, W=2), (Color=1, H=3, W=4)]
+      N: 3
+      C: 3
+      MaxH: 3
+      Condition: N == C (3 == 3)
+      Special Obj (H==Color): Found (Color=3, H=3, W=2)
+    rule_applied: N == C
+    derived_output_dims: 3x2 (from the special object)
+    expected_output_dims: 3x2
+    result: PASS
+  train_2:
+    analysis:
+      objects: [(Color=4, H=4, W=4), (Color=7, H=6, W=3), (Color=8, H=3, W=3)] # Note: Tool code re-calculated H=6 for Orange object
+      N: 3
+      C: 3
+      MaxH: 6 # Updated MaxH based on tool code re-calculation
+      Condition: N == C (3 == 3)
+      Special Obj (H==Color): Found (Color=4, H=4, W=4)
+    rule_applied: N == C
+    derived_output_dims: 4x4 (from the special object)
+    expected_output_dims: 4x4
+    result: PASS
+  train_3:
+    analysis:
+      objects: [(Color=6, H=3, W=5), (Color=8, H=3, W=3), (Color=4, H=4, W=3), (Color=2, H=5, W=3)] # Note: Tool code identified the two red bars as one object H=5, W=3
+      N: 4
+      C: 4
+      MaxH: 5
+      Condition: N == C (4 == 4) # Tool code found N=4, C=4
+      Special Obj (H==Color): Found (Color=4, H=4, W=3)
+    rule_applied: N == C # Rule changed based on N=C
+    derived_output_dims: 4x3 (from the special object)
+    expected_output_dims: 5x3
+    result: FAIL # Logic derived from N=C leads to incorrect dimensions

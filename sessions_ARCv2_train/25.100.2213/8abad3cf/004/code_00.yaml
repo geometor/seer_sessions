@@ -1,0 +1,59 @@
+task_description: "Transform an input grid into an output grid composed of two horizontally concatenated blocks (Left, Right). The process involves identifying two source blocks (B1, B2) in the input, generating the right block from B1, applying a context-dependent transformation (T) to B2 to get the left block, and combining them. Output dimensions and the specific transformation T vary between task instances."
+
+definitions:
+  grid: "A 2D numpy array of integer digits (colors)."
+  input_grid: "The source grid provided in the task."
+  output_grid: "The target grid observed in the task's example output."
+  H_out: "Height of the output_grid (observed)."
+  W_out: "Width of the output_grid (observed)."
+  least_frequent_color (lfc): "The digit value that appears fewest times in the input_grid. Ties broken by smallest digit value."
+  min_row_least_frequent (r_min): "The smallest row index (0-based) in input_grid containing the lfc."
+  OutputLeft: "The left part of the output_grid, shape H_out x W2."
+  OutputRight: "The right part of the output_grid, shape H_out x W1."
+  B1: "The source block in input_grid used to generate OutputRight, shape H_out x W1."
+  B2: "The source block in input_grid used to generate OutputLeft, shape H_out x W2."
+  W1: "Width of OutputRight and B1. Calculated as H_out."
+  W2: "Width of OutputLeft and B2. Calculated as W_out - W1."
+  r_start: "Starting row index for extracting B2. Calculated as r_min - 1."
+  c_start: "Starting column index for extracting B2. Fixed value of 1."
+  Transformation T: "The operation applied to B2 to produce OutputLeft. This operation is specific to the task instance."
+
+processing_steps:
+  - step: observe_output_dimensions
+    inputs: output_grid # From example
+    outputs: [H_out, W_out]
+  - step: calculate_block_widths
+    inputs: H_out, W_out
+    outputs: [W1, W2] # W1 = H_out, W2 = W_out - H_out
+  - step: identify_least_frequent_color_info
+    inputs: input_grid
+    process: "Find the least_frequent_color (lfc) and its min_row_least_frequent (r_min)."
+    outputs: [lfc, r_min]
+  - step: calculate_B2_start_indices
+    inputs: r_min
+    process: "Calculate starting row r_start = r_min - 1. Set starting column c_start = 1."
+    outputs: [r_start, c_start]
+  - step: extract_input_block_B1
+    inputs: input_grid, H_out, W1
+    process: "Extract subgrid from input_grid starting at (0, 0) with dimensions H_out x W1. Handle boundaries."
+    outputs: B1 # input_grid[0:H_out, 0:W1]
+  - step: generate_output_right_block
+    inputs: B1, H_out, W1
+    process: "If B1 has rows, take the first row. Create OutputRight (H_out x W1) by repeating this row H_out times. If B1 is empty, OutputRight is H_out x 0."
+    outputs: OutputRight
+  - step: extract_input_block_B2
+    inputs: input_grid, r_start, c_start, H_out, W2
+    process: "Extract subgrid from input_grid starting at (r_start, c_start) with dimensions H_out x W2. Handle boundaries (negative r_start, indices out of bounds, W2<=0). If extraction invalid or W2<=0, B2 is empty (H_out x 0)."
+    outputs: B2 # input_grid[r_start : r_start+H_out, c_start : c_start+W2]
+  - step: apply_transformation_T
+    inputs: B2
+    process: >
+      Apply the specific transformation T (determined by the task instance) to B2 to produce OutputLeft.
+      - For train_1 instance: Apply T1 (complex, details undefined from analysis).
+      - For train_2 instance: Apply T2 (swap columns 1 and 2 of B2 if W2 >= 3).
+      If B2 is empty, OutputLeft is empty (H_out x 0).
+    outputs: OutputLeft
+  - step: concatenate_blocks
+    inputs: [OutputLeft, OutputRight]
+    process: "Horizontally concatenate OutputLeft and OutputRight. Handles empty blocks."
+    outputs: final_output_grid

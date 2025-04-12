@@ -1,0 +1,40 @@
+task_type: object_transformation_and_assembly
+
+input_features:
+  - grid: 2D array of pixels (0-9)
+  - background_color: white (0)
+  - objects:
+      - type: contiguous blocks of non-white pixels
+      - properties:
+          - color: (1-9)
+          - shape: variable (square, hollow square, L-shape, cross, irregular)
+          - size: variable
+          - bounding_box: {min_row, max_row, min_col, max_col, height, width}
+          - position: defined by bounding_box
+
+output_features:
+  - grid: 2D array of pixels (0-9)
+  - background_color: white (0)
+  - objects:
+      - type: solid squares
+      - properties:
+          - color: derived from selected input objects
+          - size: uniform within each example (S x S), determined from input objects
+          - arrangement: horizontal sequence
+
+transformation_steps:
+  - identify_objects: Find all contiguous non-white pixel groups in the input.
+  - calculate_properties: Determine bounding box, color, dimensions for each object.
+  - filter_objects: Select a subset of "key" objects based on specific criteria (e.g., bounding box dimensions like NxN or (N+1)x(N+1), shape properties like solid square, or specific shape patterns). This criteria seems task-dependent based on the examples.
+  - determine_output_size: Find the minimum dimension (min(height, width)) across the bounding boxes of all selected key objects. Let this be S.
+  - create_output_squares: For each selected key object, generate a solid S x S square using the object's color.
+  - sort_squares: Order the generated S x S squares based on the minimum column index of the corresponding key objects in the input grid.
+  - assemble_output: Arrange the sorted S x S squares horizontally in a new grid.
+
+relationships:
+  - input_object_color -> output_square_color
+  - min_dimension(input_key_object_bounding_boxes) -> output_square_size
+  - min_col(input_key_object_bounding_box) -> horizontal_order(output_squares)
+
+uncertainties:
+  - The precise criteria for filtering/selecting the "key" objects in the `filter_objects` step needs to be generalized or parameterized based on the input characteristics. The current examples suggest different criteria (BB size 4x4/5x5 in Ex1; Solid Squares >=3x3 + specific 3x4 shape in Ex2).

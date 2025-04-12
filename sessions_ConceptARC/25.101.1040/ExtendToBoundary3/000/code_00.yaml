@@ -1,0 +1,53 @@
+task_description: Draw a line from a single 'agent' pixel, using its color, until the line reaches a boundary defined by 'obstacle' pixels. The stopping rule depends on the obstacle configuration.
+
+definitions:
+  - name: background_pixel
+    value: 0 # white
+  - name: agent_pixel
+    description: A unique non-background pixel, identified either by its unique color or spatial isolation.
+    properties:
+      - color: C
+      - position: (r0, c0)
+  - name: obstacle_pixels
+    description: All non-background pixels excluding the agent pixel.
+    properties:
+      - positions: Set of (r, c) coordinates.
+      - occupied_rows: R_O (Set of row indices containing obstacles).
+      - occupied_cols: C_O (Set of column indices containing obstacles).
+      - structure: Derived property, either 'solid_line' (if obstacles form a contiguous horizontal or vertical line) or 'scattered'.
+
+parameters:
+  - name: line_direction
+    description: Vector (dr, dc) determined by agent position relative to grid boundaries.
+    values:
+      - (-1, 0) # Up
+      - (1, 0)  # Down
+      - (0, -1) # Left
+      - (0, 1)  # Right
+      - (-1, -1) # Up-Left
+      - (-1, 1)  # Up-Right
+      - (1, -1)  # Down-Left
+      - (1, 1)   # Down-Right
+    determination: Move away from the nearest grid edge/corner.
+
+transformations:
+  - step: Identify agent (C, (r0, c0)) and obstacles (O, R_O, C_O).
+  - step: Classify obstacle structure ('solid_line' or 'scattered').
+  - step: Determine line_direction (dr, dc).
+  - step: Initialize current position (r, c) = (r0, c0).
+  - step: Draw line segment based on obstacle structure:
+      - if structure == 'solid_line':
+          - Loop:
+              - Calculate next position (nr, nc) = (r + dr, c + dc).
+              - Check grid bounds for (nr, nc). If out, stop loop.
+              - Check if (nr, nc) hits the obstacle line boundary (e.g., nr is in R_O if obstacle is horizontal line, nc is in C_O if obstacle is vertical line). If yes, stop loop.
+              - If not stopped: color pixel (nr, nc) with C, update (r, c) = (nr, nc).
+      - if structure == 'scattered':
+          - Loop:
+              - Calculate next position (nr, nc) = (r + dr, c + dc).
+              - Check grid bounds for (nr, nc). If out, stop loop.
+              - Check stop condition: Is row `nr` in R_O OR column `nc` in C_O?
+              - If stop condition is TRUE: color pixel (nr, nc) with C, then stop loop.
+              - If stop condition is FALSE: color pixel (nr, nc) with C, update (r, c) = (nr, nc).
+
+output_grid: The input grid modified by coloring the pixels along the drawn line segment.

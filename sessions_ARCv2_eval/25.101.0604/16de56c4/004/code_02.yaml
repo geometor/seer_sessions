@@ -1,0 +1,59 @@
+task_description: Transforms a 2D grid based on patterns in its rows, with the transformation mode determined by the adjacency of non-zero elements in the last non-zero row.
+grid_properties:
+  dimensionality: 2D
+  cell_values: integers (0-9)
+  background_color: 0
+objects:
+  - name: grid
+    properties:
+      - rows: list of lists of integers
+      - height: integer
+      - width: integer
+      - last_non_zero_row_index: integer (index of the last row containing any non-zero value, or None)
+      - last_non_zero_row_data: list of integers (the actual data of the last non-zero row, or None)
+      - last_non_zero_row_has_adjacent_non_zeros: boolean (derived property)
+  - name: row
+    properties:
+      - index: integer
+      - cells: list of integers
+      - width: integer
+      - non_zero_cells: list of (column_index, value) tuples, sorted by column_index
+      - first_non_zero_column: integer (c_min, if exists)
+      - last_non_zero_column: integer (c_max, if exists)
+      - last_non_zero_value: integer (V, value at c_max, if exists)
+      - step: integer (difference between first two non-zero column indices, if len(non_zero_cells) >= 2)
+      - all_non_zeros_same_value: boolean (true if all non-zero cells have the same value)
+actions:
+  - name: determine_transformation_mode
+    input: last_non_zero_row_data
+    output: mode ('independent_row' or 'reference_overlay')
+    logic: If last_non_zero_row_data is None or has no non-zero cells, mode is 'reference_overlay'. Otherwise, check if any non-zero cells in last_non_zero_row_data have consecutive column indices. If yes, mode is 'independent_row'. If no, mode is 'reference_overlay'.
+  - name: transform_independent_row (Mode A)
+    input: input_row_data
+    output: output_row_data
+    logic:
+      - Get row properties: non_zero_cells, c_min, c_max, V, step, all_non_zeros_same_value, width.
+      - If len(non_zero_cells) < 2, return a copy of the input row.
+      - Initialize output_row as a copy of input_row.
+      - If step == 1:
+          - If all_non_zeros_same_value is True: Fill output_row from c_min to width-1 (inclusive) with V.
+          - Else (different values): Fill output_row from c_min to c_max (inclusive) with V.
+      - Else (step > 1):
+          - Initialize current_column `c = c_min`.
+          - If all_non_zeros_same_value is True: Loop while `c < width`: set output_row[c] = V; c += step.
+          - Else (different values): Loop while `c <= c_max`: set output_row[c] = V; c += step.
+      - Return output_row.
+  - name: transform_reference_overlay_row (Mode B)
+    input: input_row_data, reference_row_data, width
+    output: output_row_data
+    logic:
+      - Initialize output_row as a list of zeros of length `width`.
+      - Get non_zero_cells_ref from reference_row_data.
+      - For each (c, v) in non_zero_cells_ref: set output_row[c] = v.
+      - Get non_zero_cells_input from input_row_data.
+      - For each (c, v) in non_zero_cells_input: set output_row[c] = v (overwriting previous value if any).
+      - Return output_row.
+relationships:
+  - The overall transformation strategy (Mode A or Mode B) depends entirely on whether the last non-zero row of the input grid contains adjacent non-zero elements.
+  - Mode A transforms each row based only on its own internal non-zero patterns.
+  - Mode B transforms each row by first establishing a base pattern from the non-zeros of the reference row and then overwriting it with the non-zeros from the current input row.

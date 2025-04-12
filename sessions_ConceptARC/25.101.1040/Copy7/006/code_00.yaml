@@ -1,0 +1,61 @@
+task_type: pattern_transfer_relative
+components:
+  - role: background
+    properties:
+      color: white (0)
+  - role: source_object # The 'frame' containing the pattern
+    properties:
+      shape: variable (usually hollow rectangle or L-shape)
+      main_color: variable
+      count: 1
+  - role: pattern_object # The linear pattern inside the source
+    properties:
+      shape: linear (diagonal, anti-diagonal)
+      color: variable
+      count: 1
+      position: Bounding box is contained within or equal to the source_object's bounding box.
+  - role: target_object # The 'frame' where the pattern is copied to
+    properties:
+      shape: variable (usually hollow rectangle or L-shape)
+      main_color: variable
+      count: 1
+relationships:
+  - type: containment
+    between: pattern_object, source_object
+    details: pattern_object's bbox is contained within or equal to source_object's bbox. pattern_object.id != source_object.id.
+  - type: role_assignment
+    details: Assumes exactly three non-background objects fulfilling the roles of pattern, source, and target based on the containment relationship.
+identification:
+  - object: pattern_object, source_object
+    criteria: Find the unique pair of objects (A, B) where A's bbox is contained in B's bbox. A is the pattern_object, B is the source_object.
+  - object: target_object
+    criteria: The object that is neither the pattern_object nor the source_object.
+actions:
+  - type: extract_pattern_details
+    source: pattern_object, source_object
+    details:
+      - pattern_color: color of the pattern_object.
+      - pattern_relative_coords: list of (dr, dc) offsets of pattern_object pixels relative to the source_object's bbox top-left corner `(src_min_r, src_min_c)`. `(dr, dc) = (pixel_r - src_min_r, pixel_c - src_min_c)`.
+  - type: determine_pattern_rule
+    source: pattern_relative_coords
+    details: Identify the line type and calculate source parameter `k_s`.
+      - 'anti_diag': if all `(dr, dc)` satisfy `dr + dc = k_s`.
+      - 'main_diag_offset': if all `(dr, dc)` satisfy `dr - dc = k_s`.
+      - Returns `pattern_type` (string) and `k_s` (int).
+  - type: calculate_target_parameter
+    source: pattern_type, k_s, target_object
+    details: Calculate target parameter `k_t`.
+      - Get target bbox height `H_t = target_max_r - target_min_r + 1`.
+      - if `pattern_type` is 'anti_diag': `k_t = H_t - 1`.
+      - if `pattern_type` is 'main_diag_offset': `k_t = k_s`.
+  - type: apply_pattern
+    target: target_object's area in the output grid
+    details:
+      - Get target bbox `(tgt_min_r, tgt_min_c, tgt_max_r, tgt_max_c)` and dimensions `H_t`, `W_t`.
+      - Iterate through relative coordinates `(dr_t, dc_t)` where `0 <= dr_t < H_t` and `0 <= dc_t < W_t`.
+      - Check if `(dr_t, dc_t)` satisfies the rule determined by `pattern_type` using parameter `k_t`:
+          - if `pattern_type` is 'anti_diag', check `dr_t + dc_t == k_t`.
+          - if `pattern_type` is 'main_diag_offset', check `dr_t - dc_t == k_t`.
+      - If the rule is satisfied:
+          - Calculate absolute coordinates: `abs_r = tgt_min_r + dr_t`, `abs_c = tgt_min_c + dc_t`.
+          - Set the pixel `output_grid[abs_r][abs_c]` to `pattern_color`.

@@ -1,0 +1,82 @@
+elements:
+  - object: pixel
+    properties:
+      - color: red (2), green (3), gray (5)
+      - size: 1x1
+      - role: trigger for transformation or ignored based on specific location context
+  - object: square_2x2
+    properties:
+      - color: magenta (6)
+      - fill: solid
+      - size: 2x2
+      - role: trigger for transformation (to Magenta 4x4 hollow)
+  - object: L_shape_blue
+    properties:
+      - color: blue (1)
+      # Coordinates relative to top-left (r,c): (r,c+1), (r,c+2), (r+1,c), (r+1,c+3), (r+2,c), (r+2,c+3), (r+3,c+1), (r+3,c+2) # From train_2 example at (5,5)
+      - structure: Specific 8-pixel shape seen in train_2
+      - role: copied directly to output
+  - object: hollow_square_4x4_yellow
+    properties:
+      - color: yellow (4)
+      - fill: hollow
+      - size: 4x4
+      - role: deleted (ignored during output generation)
+
+ignored_locations: # Specific input pixel locations (row, col, color) that are NOT transformed
+  - (5, 5, 5) # Train 1, Gray
+  - (16, 2, 3) # Train 1, Green
+  - (5, 5, 3) # Train 2, Green
+  - (9, 9, 3) # Train 2, Green
+  - (4, 4, 2) # Train 3, Red
+
+actions:
+  - action: transform_to_hollow_square_4x4
+    description: Replaces specific input objects/pixels with a 4x4 hollow square anchored at the input's top-left corner.
+    applies_to:
+      - object: pixel
+        color: red (2)
+        output_color: yellow (4)
+        condition: location is NOT in ignored_locations
+      - object: pixel
+        color: green (3)
+        output_color: blue (1)
+        condition: location is NOT in ignored_locations
+      - object: pixel
+        color: gray (5)
+        output_color: gray (5)
+        condition: location is NOT in ignored_locations
+      - object: square_2x2
+        color: magenta (6)
+        output_color: magenta (6)
+    output_object:
+      - object: hollow_square_4x4
+        size: 4x4
+        anchor: top-left corner of input object
+        color: determined by input object/color mapping
+
+  - action: copy
+    description: Copies the object directly to the output grid.
+    applies_to:
+      - object: L_shape_blue
+        condition: Matches the specific structure found in train_2
+    result: Identical object shape and color in the output at the same coordinates.
+
+  - action: delete
+    description: Object is identified but not transferred to the output grid.
+    applies_to:
+      - object: hollow_square_4x4_yellow
+
+  - action: ignore
+    description: The pixel is identified but explicitly not processed based on rules.
+    applies_to:
+      - object: pixel
+        condition: location and color match one of the `ignored_locations`.
+
+relationships:
+  - relationship: position_mapping
+    description: The top-left coordinate of an input object (pixel or shape bounding box) serves as the anchor point (top-left coordinate) for the corresponding output 4x4 hollow square. For copied shapes, coordinates are preserved.
+  - relationship: overlap_resolution
+    description: When multiple output shapes (squares or copied objects) occupy the same pixel, the one processed/drawn later takes precedence. Assumes a processing order (e.g., based on input object anchor: top-to-bottom, left-to-right).
+  - relationship: object_priority
+    description: Multi-pixel shapes (Magenta 2x2, Blue L, Yellow 4x4) are identified first. Their constituent pixels are marked and not considered as individual pixels for transformation/ignore rules.

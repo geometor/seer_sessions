@@ -1,0 +1,783 @@
+
+## train_1
+
+**input:**
+```
+0 0 0 0 0 0 0
+0 0 0 0 0 2 0
+0 0 0 0 0 0 0
+0 0 0 4 4 8 0
+0 0 0 4 0 8 0
+0 0 4 4 0 8 0
+0 4 0 0 0 8 0
+```
+
+
+**output:**
+```
+0 0 0 0 0 4 0
+0 0 0 0 4 2 0
+0 0 0 0 4 0 0
+0 0 0 0 4 8 0
+0 0 0 0 0 8 0
+0 0 0 0 0 8 0
+0 0 0 0 0 8 0
+```
+
+
+## train_2
+
+**input:**
+```
+7 7 7 7 4 7 7 7 7 7 7 7
+7 7 7 7 4 7 7 7 7 7 7 7
+7 7 7 7 4 7 7 7 7 7 7 7
+7 7 7 7 7 7 7 7 7 7 7 7
+7 7 7 7 7 7 7 7 7 7 7 7
+7 7 7 7 7 7 3 2 7 7 7 7
+7 7 7 7 7 3 7 2 7 7 7 7
+7 7 7 7 7 3 7 2 7 7 7 7
+7 7 7 3 3 7 7 2 7 7 7 7
+7 7 7 7 7 7 7 2 7 7 7 7
+7 7 7 7 7 7 7 2 7 7 7 7
+7 7 7 7 7 7 7 2 7 7 7 7
+```
+
+
+**output:**
+```
+7 7 7 7 4 7 7 7 7 7 7 7
+7 7 7 3 4 7 7 7 7 7 7 7
+7 7 7 3 4 7 7 7 7 7 7 7
+7 7 7 7 3 7 7 7 7 7 7 7
+7 7 7 7 7 3 7 7 7 7 7 7
+7 7 7 7 7 7 3 2 7 7 7 7
+7 7 7 7 7 7 7 2 7 7 7 7
+7 7 7 7 7 7 7 2 7 7 7 7
+7 7 7 7 7 7 7 2 7 7 7 7
+7 7 7 7 7 7 7 2 7 7 7 7
+7 7 7 7 7 7 7 2 7 7 7 7
+7 7 7 7 7 7 7 2 7 7 7 7
+```
+
+
+## train_3
+
+**input:**
+```
+1 1 1 1 1 1 2 1 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 2 1 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 2 1 1 1 1 1 7 7 1 1 1
+1 1 1 1 1 1 2 1 1 1 1 1 7 1 1 1 1
+1 1 1 1 1 1 2 1 1 1 1 7 7 1 1 1 1
+1 1 1 1 1 1 2 1 7 7 7 1 1 1 1 1 1
+1 1 1 1 1 1 2 7 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 9 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 9 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 9 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+```
+
+
+**output:**
+```
+1 1 1 1 1 1 2 1 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 2 1 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 2 1 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 2 1 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 2 1 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 2 1 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 2 7 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 7 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 7 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 9 7 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 9 7 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 9 7 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 7 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 7 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 7 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+```
+
+
+## train_4
+
+**input:**
+```
+0 0 0 0 0 0 0 0 0 0
+0 0 0 3 0 0 0 0 0 0
+0 0 3 0 0 0 0 0 0 0
+0 0 0 3 0 0 0 0 0 0
+0 0 0 8 5 0 0 0 0 0
+0 0 0 8 5 0 0 0 0 0
+0 0 8 0 5 0 0 0 0 0
+0 0 8 0 5 0 0 0 0 0
+0 8 8 0 5 0 0 0 0 0
+0 0 0 0 5 0 0 0 0 0
+```
+
+
+**output:**
+```
+0 0 0 8 0 0 0 0 0 0
+0 0 8 3 0 0 0 0 0 0
+0 8 3 0 0 0 0 0 0 0
+0 0 8 3 0 0 0 0 0 0
+0 0 0 8 5 0 0 0 0 0
+0 0 0 0 5 0 0 0 0 0
+0 0 0 0 5 0 0 0 0 0
+0 0 0 0 5 0 0 0 0 0
+0 0 0 0 5 0 0 0 0 0
+0 0 0 0 5 0 0 0 0 0
+```
+
+
+## train_5
+
+**input:**
+```
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+0 0 0 3 0 0 0 0 0
+0 0 0 3 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+0 0 0 0 9 6 0 0 0
+0 0 0 9 0 6 0 0 0
+9 9 9 0 0 6 0 0 0
+9 0 0 0 0 6 0 0 0
+```
+
+
+**output:**
+```
+0 0 0 0 9 0 0 0 0
+0 0 0 9 0 0 0 0 0
+0 0 9 3 0 0 0 0 0
+0 0 9 3 0 0 0 0 0
+0 0 0 9 0 0 0 0 0
+0 0 0 0 9 6 0 0 0
+0 0 0 0 0 6 0 0 0
+0 0 0 0 0 6 0 0 0
+0 0 0 0 0 6 0 0 0
+```
+
+**Perception**
+
+The task involves transforming input grids based on the positions of non-background pixels within each row. The transformation seems to focus on the two rightmost pixels in each row of the input grid and maps them to specific columns in the output grid. The background color remains the same, and the grid dimensions are preserved. The core operation appears to be a projection or consolidation of information from each row onto two specific target columns, determined by the overall grid content.
+
+**Facts**
+
+
+```yaml
+task_context:
+  problem_type: grid_transformation
+  grid_properties:
+    - dimensions_preserved: True
+    - background_color_preserved: True
+    - cell_values: integers 0-9 (colors)
+transformation_elements:
+  target_columns:
+    - identification: Determined by the overall content of the input grid.
+    - role: Serve as the destination columns for projected pixels.
+    - definition:
+        - rightmost_column (max_col): The column with the largest index containing any non-background pixel in the input grid.
+        - second_rightmost_column (col_R2): The column with the largest index less than max_col that contains any non-background pixel in the input grid.
+  pixel_selection:
+    - scope: Performed row by row on the input grid.
+    - criteria: Identify the non-background pixels in the current row.
+    - focus: Primarily on the one or two rightmost non-background pixels within the row.
+  pixel_mapping:
+    - scope: Maps selected input pixels to the output grid.
+    - logic:
+        - The rightmost non-background pixel of input row `r` is mapped to output row `r` at column `max_col`.
+        - The second rightmost non-background pixel (if it exists) of input row `r` is mapped to output row `r` at column `col_R2`.
+    - collision_handling: Implicitly handled by the selection; only the two rightmost pixels influence the output for that row in the target columns. Other pixels in the row are ignored for this projection.
+  background_pixels:
+    - handling: Fill all cells in the output grid initially. Cells not overwritten by the mapping remain background color.
+objects:
+  - type: Pixels
+    properties:
+      - color (value 0-9)
+      - position (row, column)
+  - type: Rows
+    properties:
+      - collection of pixels
+      - rightmost non-background pixel
+      - second rightmost non-background pixel
+  - type: Columns
+    properties:
+      - index
+      - contains_non_background (boolean)
+relationships:
+  - pixel_in_row: A pixel belongs to a specific row.
+  - pixel_in_column: A pixel belongs to a specific column.
+  - rightmost_pixel: For a given row, the non-background pixel with the highest column index.
+  - second_rightmost_pixel: For a given row, the non-background pixel with the second-highest column index.
+actions:
+  - find_background_color
+  - find_rightmost_column_index (max_col)
+  - find_second_rightmost_column_index (col_R2)
+  - initialize_output_grid
+  - iterate_through_rows
+  - find_row_pixels
+  - sort_row_pixels_by_column
+  - place_pixel_in_output_grid
+```
+
+
+**Natural Language Program**
+
+1.  Determine the background color (the most frequent color in the input grid).
+2.  Identify the column index of the rightmost column containing any non-background pixel across the entire input grid. Call this `max_col`.
+3.  Identify the column index of the rightmost column *before* `max_col` that contains any non-background pixel across the entire input grid. Call this `col_R2`. If no such column exists (i.e., all non-background pixels are in `max_col`), consider `col_R2` to be undefined or handle as a special case (though examples suggest `col_R2` usually exists).
+4.  Create a new output grid of the same dimensions as the input grid, filled entirely with the background color.
+5.  Process each row of the input grid individually, from top to bottom (row index `r` from 0 to height-1):
+    a.  Find all non-background pixels within the current row `r`.
+    b.  If non-background pixels exist in row `r`:
+        i.  Sort these pixels based on their column index in descending order.
+        ii. Let the pixel with the highest column index be `P1` (the rightmost pixel in the row) with color `V1`. Place color `V1` into the output grid at position (`r`, `max_col`).
+        iii. If there is at least one more non-background pixel in the sorted list (i.e., the row had at least two non-background pixels), let the pixel with the second-highest column index be `P2` (the second rightmost) with color `V2`. Place color `V2` into the output grid at position (`r`, `col_R2`).
+6.  The final state of the new grid is the result.
+```python
+import numpy as np
+from collections import Counter
+
+"""
+The transformation identifies two target columns in the output grid based on the overall distribution of non-background pixels in the input grid. 
+Specifically, it finds the rightmost column index ('max_col') containing any non-background pixel and the second rightmost column index ('col_R2') containing any non-background pixel.
+It then iterates through each row of the input grid. For each row, it finds the non-background pixels. 
+The color of the rightmost non-background pixel in the input row is placed in the corresponding row of the output grid at column 'max_col'.
+If there is a second rightmost non-background pixel in the input row, its color is placed in the corresponding row of the output grid at column 'col_R2'.
+The rest of the output grid is filled with the background color, which is the most frequent color in the input grid.
+"""
+
+def find_background_color(grid: np.ndarray) -> int:
+    """Finds the most frequent color in the grid, assumed to be the background."""
+    counts = Counter(grid.flatten())
+    if not counts:
+        return 0 # Default background if grid is empty
+    # Common case: most frequent is background
+    # Handle cases where the background might not be the absolute most frequent
+    # But typically in ARC, the background (often 0) dominates.
+    background_color = counts.most_common(1)[0][0]
+    return background_color
+
+def find_target_columns(grid: np.ndarray, background_color: int) -> tuple[int | None, int | None]:
+    """
+    Finds the indices of the rightmost and second rightmost columns
+    containing non-background pixels.
+    Returns (max_col, col_R2). Returns None for an index if not found.
+    """
+    rows, cols = grid.shape
+    non_bg_cols = set()
+    for c in range(cols):
+        if np.any(grid[:, c] != background_color):
+            non_bg_cols.add(c)
+
+    sorted_cols = sorted(list(non_bg_cols))
+
+    max_col = sorted_cols[-1] if sorted_cols else None
+    col_R2 = sorted_cols[-2] if len(sorted_cols) > 1 else None
+
+    return max_col, col_R2
+
+
+def transform(input_grid: list[list[int]]) -> list[list[int]]:
+    """
+    Transforms the input grid by projecting the two rightmost non-background
+    pixels of each row onto two specific columns determined by the overall grid content.
+    """
+    input_np = np.array(input_grid, dtype=int)
+    height, width = input_np.shape
+
+    # 1. Determine the background color
+    background_color = find_background_color(input_np)
+
+    # 2. & 3. Identify target columns max_col and col_R2
+    max_col, col_R2 = find_target_columns(input_np, background_color)
+
+    # Handle cases where target columns might not be found (e.g., grid is all background)
+    if max_col is None:
+        # If no non-background pixels, return the input grid (or an all-background grid)
+        return input_np.tolist() # Or create a new background grid
+
+    # 4. Create the output grid filled with background color
+    output_np = np.full_like(input_np, background_color)
+
+    # 5. Process each row
+    for r in range(height):
+        row = input_np[r, :]
+        # 5a. Find non-background pixels and their column indices
+        non_bg_indices = np.where(row != background_color)[0]
+
+        # 5b. If non-background pixels exist in the row
+        if non_bg_indices.size > 0:
+            # Sort indices descending to easily get rightmost and second rightmost
+            sorted_non_bg_indices = np.sort(non_bg_indices)[::-1]
+
+            # i. Get the rightmost pixel's color and place it in the output at max_col
+            rightmost_col_idx = sorted_non_bg_indices[0]
+            rightmost_color = input_np[r, rightmost_col_idx]
+            output_np[r, max_col] = rightmost_color
+
+            # iii. If a second rightmost pixel exists and col_R2 is defined
+            if len(sorted_non_bg_indices) > 1 and col_R2 is not None:
+                second_rightmost_col_idx = sorted_non_bg_indices[1]
+                second_rightmost_color = input_np[r, second_rightmost_col_idx]
+                output_np[r, col_R2] = second_rightmost_color
+
+    # 6. Return the result as a list of lists
+    return output_np.tolist()
+```
+
+Previous Code:
+```python
+import numpy as np
+from collections import Counter
+
+"""
+The transformation identifies two target columns in the output grid based on the overall distribution of non-background pixels in the input grid. 
+Specifically, it finds the rightmost column index ('max_col') containing any non-background pixel and the second rightmost column index ('col_R2') containing any non-background pixel.
+It then iterates through each row of the input grid. For each row, it finds the non-background pixels. 
+The color of the rightmost non-background pixel in the input row is placed in the corresponding row of the output grid at column 'max_col'.
+If there is a second rightmost non-background pixel in the input row, its color is placed in the corresponding row of the output grid at column 'col_R2'.
+The rest of the output grid is filled with the background color, which is the most frequent color in the input grid.
+"""
+
+def find_background_color(grid: np.ndarray) -> int:
+    """Finds the most frequent color in the grid, assumed to be the background."""
+    counts = Counter(grid.flatten())
+    if not counts:
+        return 0 # Default background if grid is empty
+    # Common case: most frequent is background
+    # Handle cases where the background might not be the absolute most frequent
+    # But typically in ARC, the background (often 0) dominates.
+    background_color = counts.most_common(1)[0][0]
+    return background_color
+
+def find_target_columns(grid: np.ndarray, background_color: int) -> tuple[int | None, int | None]:
+    """
+    Finds the indices of the rightmost and second rightmost columns
+    containing non-background pixels.
+    Returns (max_col, col_R2). Returns None for an index if not found.
+    """
+    rows, cols = grid.shape
+    non_bg_cols = set()
+    for c in range(cols):
+        if np.any(grid[:, c] != background_color):
+            non_bg_cols.add(c)
+
+    sorted_cols = sorted(list(non_bg_cols))
+
+    max_col = sorted_cols[-1] if sorted_cols else None
+    col_R2 = sorted_cols[-2] if len(sorted_cols) > 1 else None
+
+    return max_col, col_R2
+
+
+def transform(input_grid: list[list[int]]) -> list[list[int]]:
+    """
+    Transforms the input grid by projecting the two rightmost non-background
+    pixels of each row onto two specific columns determined by the overall grid content.
+    """
+    input_np = np.array(input_grid, dtype=int)
+    height, width = input_np.shape
+
+    # 1. Determine the background color
+    background_color = find_background_color(input_np)
+
+    # 2. & 3. Identify target columns max_col and col_R2
+    max_col, col_R2 = find_target_columns(input_np, background_color)
+
+    # Handle cases where target columns might not be found (e.g., grid is all background)
+    if max_col is None:
+        # If no non-background pixels, return the input grid (or an all-background grid)
+        return input_np.tolist() # Or create a new background grid
+
+    # 4. Create the output grid filled with background color
+    output_np = np.full_like(input_np, background_color)
+
+    # 5. Process each row
+    for r in range(height):
+        row = input_np[r, :]
+        # 5a. Find non-background pixels and their column indices
+        non_bg_indices = np.where(row != background_color)[0]
+
+        # 5b. If non-background pixels exist in the row
+        if non_bg_indices.size > 0:
+            # Sort indices descending to easily get rightmost and second rightmost
+            sorted_non_bg_indices = np.sort(non_bg_indices)[::-1]
+
+            # i. Get the rightmost pixel's color and place it in the output at max_col
+            rightmost_col_idx = sorted_non_bg_indices[0]
+            rightmost_color = input_np[r, rightmost_col_idx]
+            output_np[r, max_col] = rightmost_color
+
+            # iii. If a second rightmost pixel exists and col_R2 is defined
+            if len(sorted_non_bg_indices) > 1 and col_R2 is not None:
+                second_rightmost_col_idx = sorted_non_bg_indices[1]
+                second_rightmost_color = input_np[r, second_rightmost_col_idx]
+                output_np[r, col_R2] = second_rightmost_color
+
+    # 6. Return the result as a list of lists
+    return output_np.tolist()
+```
+Results for code_00.py:
+
+Train Set Results:
+
+## Example 1:
+Input:
+```
+0 0 0 0 0 0 0
+0 0 0 0 0 2 0
+0 0 0 0 0 0 0
+0 0 0 4 4 8 0
+0 0 0 4 0 8 0
+0 0 4 4 0 8 0
+0 4 0 0 0 8 0
+```
+Expected Output:
+```
+0 0 0 0 0 4 0
+0 0 0 0 4 2 0
+0 0 0 0 4 0 0
+0 0 0 0 4 8 0
+0 0 0 0 0 8 0
+0 0 0 0 0 8 0
+0 0 0 0 0 8 0
+```
+Transformed Output:
+```
+0 0 0 0 0 0 0
+0 0 0 0 0 2 0
+0 0 0 0 0 0 0
+0 0 0 0 4 8 0
+0 0 0 0 4 8 0
+0 0 0 0 4 8 0
+0 0 0 0 4 8 0
+```
+Match: False
+Pixels Off: 6
+Size Correct: True
+Color Palette Correct: True
+Color Count Correct: True
+Score: 12.244897959183675
+
+## Example 2:
+Input:
+```
+7 7 7 7 4 7 7 7 7 7 7 7
+7 7 7 7 4 7 7 7 7 7 7 7
+7 7 7 7 4 7 7 7 7 7 7 7
+7 7 7 7 7 7 7 7 7 7 7 7
+7 7 7 7 7 7 7 7 7 7 7 7
+7 7 7 7 7 7 3 2 7 7 7 7
+7 7 7 7 7 3 7 2 7 7 7 7
+7 7 7 7 7 3 7 2 7 7 7 7
+7 7 7 3 3 7 7 2 7 7 7 7
+7 7 7 7 7 7 7 2 7 7 7 7
+7 7 7 7 7 7 7 2 7 7 7 7
+7 7 7 7 7 7 7 2 7 7 7 7
+```
+Expected Output:
+```
+7 7 7 7 4 7 7 7 7 7 7 7
+7 7 7 3 4 7 7 7 7 7 7 7
+7 7 7 3 4 7 7 7 7 7 7 7
+7 7 7 7 3 7 7 7 7 7 7 7
+7 7 7 7 7 3 7 7 7 7 7 7
+7 7 7 7 7 7 3 2 7 7 7 7
+7 7 7 7 7 7 7 2 7 7 7 7
+7 7 7 7 7 7 7 2 7 7 7 7
+7 7 7 7 7 7 7 2 7 7 7 7
+7 7 7 7 7 7 7 2 7 7 7 7
+7 7 7 7 7 7 7 2 7 7 7 7
+7 7 7 7 7 7 7 2 7 7 7 7
+```
+Transformed Output:
+```
+7 7 7 7 7 7 7 4 7 7 7 7
+7 7 7 7 7 7 7 4 7 7 7 7
+7 7 7 7 7 7 7 4 7 7 7 7
+7 7 7 7 7 7 7 7 7 7 7 7
+7 7 7 7 7 7 7 7 7 7 7 7
+7 7 7 7 7 7 3 2 7 7 7 7
+7 7 7 7 7 7 3 2 7 7 7 7
+7 7 7 7 7 7 3 2 7 7 7 7
+7 7 7 7 7 7 3 2 7 7 7 7
+7 7 7 7 7 7 7 2 7 7 7 7
+7 7 7 7 7 7 7 2 7 7 7 7
+7 7 7 7 7 7 7 2 7 7 7 7
+```
+Match: False
+Pixels Off: 13
+Size Correct: True
+Color Palette Correct: True
+Color Count Correct: False
+Score: 18.05555555555557
+
+## Example 3:
+Input:
+```
+1 1 1 1 1 1 2 1 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 2 1 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 2 1 1 1 1 1 7 7 1 1 1
+1 1 1 1 1 1 2 1 1 1 1 1 7 1 1 1 1
+1 1 1 1 1 1 2 1 1 1 1 7 7 1 1 1 1
+1 1 1 1 1 1 2 1 7 7 7 1 1 1 1 1 1
+1 1 1 1 1 1 2 7 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 9 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 9 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 9 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+```
+Expected Output:
+```
+1 1 1 1 1 1 2 1 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 2 1 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 2 1 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 2 1 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 2 1 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 2 1 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 2 7 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 7 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 7 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 9 7 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 9 7 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 9 7 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 7 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 7 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 7 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+```
+Transformed Output:
+```
+1 1 1 1 1 1 1 1 1 1 1 1 1 2 1 1 1
+1 1 1 1 1 1 1 1 1 1 1 1 1 2 1 1 1
+1 1 1 1 1 1 1 1 1 1 1 1 7 7 1 1 1
+1 1 1 1 1 1 1 1 1 1 1 1 2 7 1 1 1
+1 1 1 1 1 1 1 1 1 1 1 1 7 7 1 1 1
+1 1 1 1 1 1 1 1 1 1 1 1 7 7 1 1 1
+1 1 1 1 1 1 1 1 1 1 1 1 2 7 1 1 1
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 1 1 1 1 9 1 1 1
+1 1 1 1 1 1 1 1 1 1 1 1 1 9 1 1 1
+1 1 1 1 1 1 1 1 1 1 1 1 1 9 1 1 1
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+```
+Match: False
+Pixels Off: 34
+Size Correct: True
+Color Palette Correct: True
+Color Count Correct: False
+Score: 23.529411764705884
+
+## Example 4:
+Input:
+```
+0 0 0 0 0 0 0 0 0 0
+0 0 0 3 0 0 0 0 0 0
+0 0 3 0 0 0 0 0 0 0
+0 0 0 3 0 0 0 0 0 0
+0 0 0 8 5 0 0 0 0 0
+0 0 0 8 5 0 0 0 0 0
+0 0 8 0 5 0 0 0 0 0
+0 0 8 0 5 0 0 0 0 0
+0 8 8 0 5 0 0 0 0 0
+0 0 0 0 5 0 0 0 0 0
+```
+Expected Output:
+```
+0 0 0 8 0 0 0 0 0 0
+0 0 8 3 0 0 0 0 0 0
+0 8 3 0 0 0 0 0 0 0
+0 0 8 3 0 0 0 0 0 0
+0 0 0 8 5 0 0 0 0 0
+0 0 0 0 5 0 0 0 0 0
+0 0 0 0 5 0 0 0 0 0
+0 0 0 0 5 0 0 0 0 0
+0 0 0 0 5 0 0 0 0 0
+0 0 0 0 5 0 0 0 0 0
+```
+Transformed Output:
+```
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 3 0 0 0 0 0
+0 0 0 0 3 0 0 0 0 0
+0 0 0 0 3 0 0 0 0 0
+0 0 0 8 5 0 0 0 0 0
+0 0 0 8 5 0 0 0 0 0
+0 0 0 8 5 0 0 0 0 0
+0 0 0 8 5 0 0 0 0 0
+0 0 0 8 5 0 0 0 0 0
+0 0 0 0 5 0 0 0 0 0
+```
+Match: False
+Pixels Off: 14
+Size Correct: True
+Color Palette Correct: True
+Color Count Correct: True
+Score: 14.0
+
+## Example 5:
+Input:
+```
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+0 0 0 3 0 0 0 0 0
+0 0 0 3 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+0 0 0 0 9 6 0 0 0
+0 0 0 9 0 6 0 0 0
+9 9 9 0 0 6 0 0 0
+9 0 0 0 0 6 0 0 0
+```
+Expected Output:
+```
+0 0 0 0 9 0 0 0 0
+0 0 0 9 0 0 0 0 0
+0 0 9 3 0 0 0 0 0
+0 0 9 3 0 0 0 0 0
+0 0 0 9 0 0 0 0 0
+0 0 0 0 9 6 0 0 0
+0 0 0 0 0 6 0 0 0
+0 0 0 0 0 6 0 0 0
+0 0 0 0 0 6 0 0 0
+```
+Transformed Output:
+```
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 3 0 0 0
+0 0 0 0 0 3 0 0 0
+0 0 0 0 0 0 0 0 0
+0 0 0 0 9 6 0 0 0
+0 0 0 0 9 6 0 0 0
+0 0 0 0 9 6 0 0 0
+0 0 0 0 9 6 0 0 0
+```
+Match: False
+Pixels Off: 12
+Size Correct: True
+Color Palette Correct: True
+Color Count Correct: False
+Score: 29.62962962962962
+**General Assessment**
+
+The initial analysis identified a pattern involving the two rightmost non-background pixels in each row being projected onto two specific columns (`max_col`, `col_R2`) determined by the overall grid content. However, testing this hypothesis using the provided code showed significant discrepancies between the transformed output and the expected output across multiple examples.
+
+The core issue seems to be the determination of the target columns and the mapping logic. While the output grids consistently show non-background pixels concentrated in specific columns (often the rightmost two that contained pixels in the input), the values placed in these columns, especially in the second target column (`C2`), and the appearance of pixels in rows that were empty in the input, suggest a more complex vertical interaction or propagation rule within these columns, potentially influenced by the topmost pixel in each column.
+
+Hypotheses involving copying columns C1 and C2 directly, or propagating values downwards, did not match. Hypotheses involving propagating the topmost pixel's value upwards within columns C1 and C2 (Hypotheses 6-11) showed promise, particularly for Example 1. Hypothesis 11c achieved the closest match for Example 1 by defining specific interaction rules for upward filling in C1 and C2 based on each other's topmost pixel and content. However, even H11c failed to generalize correctly to Example 2, which exhibited output content in columns *other* than the rightmost two (C1, C2), suggesting the fundamental assumption about processing only C1 and C2 might be incorrect or incomplete.
+
+**Strategy:** The most promising approach (H11c) correctly models Example 1 almost perfectly. The failure on Example 2 suggests either Example 2 represents a different variation of the rule, or the rule itself needs further refinement, perhaps considering more columns or a different method for selecting the "key" columns and their interaction. Given the success on Example 1, we will proceed with the logic from Hypothesis 11c, acknowledging it might not cover all examples perfectly.
+
+**Metrics (Recap)**
+The code execution confirmed the identification of background color (`bg`), rightmost column with non-background pixels (`C1`), second rightmost column (`C2`), and the row/value of the topmost non-background pixel in those columns (`topmost_C1`, `topmost_C2`) for each example input.
+
+| Example | bg | C1 | C2 | Topmost C1 (Row, Val) | Topmost C2 (Row, Val) |
+| :------ | :- | :- | :- | :-------------------- | :-------------------- |
+| 1       | 0  | 5  | 4  | (1, 2)                | (3, 4)                |
+| 2       | 7  | 7  | 6  | (5, 2)                | (5, 3)                |
+| 3       | 1  | 13 | 12 | (2, 7)                | (2, 7)                |
+| 4       | 0  | 4  | 3  | (4, 5)                | (1, 3)                |
+| 5       | 0  | 5  | 4  | (5, 6)                | (5, 9)                |
+
+---
+
+**Facts**
+
+
+```yaml
+task_context:
+  problem_type: grid_transformation
+  grid_properties:
+    - dimensions_preserved: True
+    - background_color_preserved: True # Mostly, output fill based on input bg
+    - cell_values: integers 0-9 (colors)
+transformation_elements:
+  target_columns:
+    - identification: The two rightmost columns in the input grid that contain any non-background pixels.
+    - definition:
+        - C1: The column with the largest index containing any non-background pixel.
+        - C2: The column with the largest index strictly less than C1 containing any non-background pixel.
+    - role: These are the only columns potentially modified or containing non-background pixels in the output (except for cases like Ex2, suggesting this might be incomplete).
+  key_pixels:
+    - identification: The topmost non-background pixel within column C1 and C2 of the input grid.
+    - definition:
+        - V_top_C1: Value of the non-background pixel with the minimum row index in input column C1.
+        - R_top_C1: Row index of V_top_C1.
+        - V_top_C2: Value of the non-background pixel with the minimum row index in input column C2.
+        - R_top_C2: Row index of V_top_C2.
+    - role: Their values (V_top_C1, V_top_C2) are used for filling background cells above them in the output columns C1 and C2 under specific conditions.
+  pixel_mapping_logic:
+    - scope: Operates primarily on output columns C1 and C2.
+    - base_copy: Pixels from input columns C1 and C2 are conditionally copied to the corresponding output columns.
+    - upward_fill_C1: Background cells in output column C1 *above* R_top_C1 are filled with the value V_top_C2.
+    - upward_fill_C2: Background cells in output column C2 *above* R_top_C2 are filled with the value V_top_C2, but *only* if certain conditions involving the content of input/output column C1 at that same row are met.
+  background_pixels:
+    - handling: Output grid is initialized with the input's background color. All cells outside columns C1 and C2 remain background. Cells within C1/C2 not explicitly assigned a color remain background.
+objects:
+  - type: Pixel
+    properties: [color (int), position (row, col)]
+  - type: Column
+    properties: [index (int), pixels (list)]
+    derived_properties: [has_non_background (bool), topmost_non_background_pixel (Pixel)]
+  - type: Grid
+    properties: [pixels (2D array), dimensions (height, width), background_color (int)]
+    derived_properties: [C1 (int), C2 (int)]
+relationships:
+  - pixel_in_column
+  - topmost_pixel_in_column
+actions:
+  - find_background_color
+  - find_rightmost_column_index (C1)
+  - find_second_rightmost_column_index (C2)
+  - find_topmost_pixel_in_column (for C1, C2)
+  - initialize_output_grid
+  - process_column_C1 (copy input pixels, apply upward fill using V_top_C2)
+  - process_column_C2 (copy input pixels, apply upward fill using V_top_C2 based on C1 content)
+```
+
+
+---
+
+**Natural Language Program**
+
+1.  Determine the background color (`bg`) of the input grid (e.g., the most frequent color).
+2.  Identify the column index (`C1`) of the rightmost column in the input grid containing any pixel different from `bg`. If no such column exists, return a copy of the input grid.
+3.  Identify the column index (`C2`) of the rightmost column *before* `C1` (index < `C1`) containing any pixel different from `bg`. If no such column exists, treat `C2` specific steps as inactive or handle appropriately (based on examples, likely return grid processed only for C1 if applicable, or just C1/C2 columns).
+4.  Find the topmost (minimum row index) non-background pixel in input column `C1`. Let its row be `R_top_C1` and its value be `V_top_C1`. If column `C1` has no non-background pixels, set `V_top_C1` to `bg` and `R_top_C1` to infinity (or grid height).
+5.  Find the topmost (minimum row index) non-background pixel in input column `C2`. Let its row be `R_top_C2` and its value be `V_top_C2`. If column `C2` has no non-background pixels (or `C2` wasn't found), set `V_top_C2` to `bg` and `R_top_C2` to infinity (or grid height).
+6.  Create a new output grid of the same dimensions as the input, filled entirely with `bg`.
+7.  Process **output column `C1`**: Iterate through each row `r` from 0 to height-1:
+    a.  Get the value `V_current_C1` from the *input* grid at `(r, C1)`.
+    b.  If `V_current_C1` is not `bg`, set the output grid at `(r, C1)` to `V_current_C1`.
+    c.  Else (if `V_current_C1` is `bg`), check if `r < R_top_C1`. If it is, set the output grid at `(r, C1)` to `V_top_C2`. (Fill cells above the original topmost C1 pixel with C2's topmost value).
+8.  Process **output column `C2`**: Iterate through each row `r` from 0 to height-1:
+    a.  Get the value `V_current_C2` from the *input* grid at `(r, C2)`.
+    b.  If `V_current_C2` is not `bg`, set the output grid at `(r, C2)` to `V_current_C2`.
+    c.  Else (if `V_current_C2` is `bg`), check if `r < R_top_C2`. If it is:
+        i.  Check the condition: (`output[r, C1] == bg`) OR (`input[r, C1] == V_top_C1`). (Note: Use the already computed `output` value for C1, and the `input` value for C1 compared against `V_top_C1`).
+        ii. If the condition is true, set the output grid at `(r, C2)` to `V_top_C2`. (Fill cells above the original topmost C2 pixel with C2's topmost value, subject to the condition based on C1).
+9.  The final state of the new grid is the result.

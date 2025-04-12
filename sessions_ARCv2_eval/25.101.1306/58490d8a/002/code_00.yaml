@@ -1,0 +1,62 @@
+task_elements:
+  - element: background_color
+    description: The dominant color of the input grid (most frequent).
+    properties:
+      value: [green (3), blue (1), azure (8)] # Observed in examples
+  - element: key_region
+    description: The largest square region in the input composed mostly of white pixels (0), containing isolated single non-white pixels ('key_pixels') aligned in the same relative column.
+    properties:
+      shape: square
+      size: N x N (N varies: 7, 7, 5 in examples)
+      content: white (0) background
+      contains: key_pixels
+      location: [top_left=(13,0), top_left=(0,11), top_left=(2,9)] # Observed
+  - element: key_pixels
+    description: Isolated single non-white pixels found within the key_region.
+    properties:
+      color: C (varies: 1, 2, 3, 4, 8 observed)
+      relative_row: r (0 to N-1)
+      relative_column: c_rel (constant relative column 1, 0-based index, within the key region)
+      alignment: All key_pixels within a key_region share the same relative_column.
+      isolation: Not adjacent (cardinal directions) to other non-white pixels within the key_region.
+  - element: other_objects
+    description: Various contiguous shapes or single pixels of different colors located outside the key_region. These do not influence the output.
+  - element: output_grid
+    description: The transformed grid.
+    properties:
+      background_color: white (0)
+      height: N (matches key_region size)
+      width: W (rule: max(N, 2*max_count - 1). Exception: If BG=1 and N=7, W=12)
+      contains: output_pixels
+  - element: output_pixels
+    description: Pixels placed in the output grid based on key_pixels.
+    properties:
+      color: C (same as corresponding key_pixel)
+      row: r (same as relative_row of corresponding key_pixel)
+      count: Determined by a mapping f(key_pixel_color, input_background_color)
+      columns: [1, 3, 5, ..., 2*count - 1] # 0-based indices
+
+relationships:
+  - type: mapping
+    from: [key_pixel_color, input_background_color]
+    to: output_pixel_count
+    details: |
+      f(Color=1, BG=8) -> count=2
+      f(Color=2, BG=1) -> count=2
+      f(Color=2, BG=3) -> count=2
+      f(Color=3, BG=1) -> count=4
+      f(Color=4, BG=3) -> count=1
+      f(Color=4, BG=8) -> count=1
+      f(Color=8, BG=1) -> count=2
+      f(Color=8, BG=3) -> count=3
+      Default count is 0 if pair not found.
+  - type: determination
+    from: key_region size N
+    to: output_grid height
+  - type: determination
+    from: [key_region size N, max_output_pixel_count, input_background_color]
+    to: output_grid width
+    details: W = max(N, 2*max_count - 1). If BG=1 and N=7, override W=12. (max_count is the max count derived from the mapping for any key pixel).
+  - type: placement_rule # UPDATED
+    element: output_pixels
+    details: Place 'count' pixels of color C at row 'r' (same as key_pixel's relative row) in the output grid. Use 0-based column indices: 1, 3, 5, ..., (2*count - 1).

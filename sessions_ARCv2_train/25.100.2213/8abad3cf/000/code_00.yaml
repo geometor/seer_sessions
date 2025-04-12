@@ -1,0 +1,72 @@
+task_description: "Transform an input grid into an output grid by identifying, processing, and concatenating two sub-blocks derived from the input."
+
+definitions:
+  grid: "A 2D array of integer digits (colors)."
+  block: "A rectangular sub-section of a grid."
+  least_frequent_color: "The digit value that appears fewest times in the input grid."
+  min_row_least_frequent: "The smallest row index containing the least_frequent_color."
+
+processing_steps:
+  - step: determine_output_dimensions
+    inputs: output_grid
+    outputs: [H, W] # Height and Width of the output grid
+  - step: determine_block_widths
+    inputs: H, W
+    outputs: [W1, W2] # W1 = H, W2 = W - H
+  - step: identify_input_block_B1
+    inputs: input_grid, H, W1
+    outputs: B1 # input_grid[0:H, 0:W1]
+  - step: generate_output_right_block
+    inputs: B1, H, W1
+    process: "Find the first row of B1. Create an H x W1 block by repeating this row H times."
+    outputs: OutputRight
+  - step: identify_input_block_B2_location
+    inputs: input_grid, H, W2
+    process: "Find least_frequent_color. Find min_row_least_frequent (r_min). Calculate r_start = r_min - 1. Set c_start = 1."
+    outputs: [r_start, c_start]
+  - step: extract_input_block_B2
+    inputs: input_grid, r_start, c_start, H, W2
+    outputs: B2 # input_grid[r_start : r_start+H, c_start : c_start+W2]
+  - step: transform_block_B2
+    inputs: B2
+    # Note: Transformation rule seems context-dependent based on examples.
+    # Example train_2: Swap columns 1 and 2 of B2.
+    # Example train_1: Transformation is more complex and not fully determined.
+    process: "Apply a specific transformation to B2 (e.g., swap columns 1 and 2)."
+    outputs: OutputLeft
+  - step: concatenate_blocks
+    inputs: [OutputLeft, OutputRight]
+    process: "Horizontally join OutputLeft and OutputRight."
+    outputs: final_output_grid
+
+example_train_1:
+  input_dims: [7, 7]
+  output_dims: [4, 10]
+  H: 4
+  W: 10
+  W1: 4
+  W2: 6
+  least_frequent_color: 1
+  min_row_least_frequent: 2
+  r_start: 1 # 2 - 1
+  c_start: 1
+  B1: input[0:4, 0:4]
+  B2: input[1:5, 1:7]
+  OutputRight_rule: Repeat first row of B1 ([4,4,4,4]) 4 times.
+  OutputLeft_rule: Transform B2 (complex transformation).
+
+example_train_2:
+  input_dims: [7, 4]
+  output_dims: [3, 6]
+  H: 3
+  W: 6
+  W1: 3
+  W2: 3
+  least_frequent_color: 6
+  min_row_least_frequent: 4
+  r_start: 3 # 4 - 1
+  c_start: 1
+  B1: input[0:3, 0:3]
+  B2: input[3:6, 1:4]
+  OutputRight_rule: Repeat first row of B1 ([9,9,9]) 3 times.
+  OutputLeft_rule: Transform B2 by swapping column 1 and column 2.

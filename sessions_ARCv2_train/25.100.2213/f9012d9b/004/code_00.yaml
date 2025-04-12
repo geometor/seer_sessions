@@ -1,0 +1,54 @@
+task_elements:
+  - object: input_grid
+    properties:
+      - type: 2D array of integers
+      - dimensions: variable (Rows x Columns)
+      - values: non-negative integers, including 0
+  - object: output_pattern
+    properties:
+      - type: 2D array of integers (subgrid)
+      - dimensions: 1x1 or 2x2
+      - source: extracted from input_grid based on frequency rules and grid size
+      - constraint: consists of non-zero numbers from the input
+  - object: subgrid_pattern
+    properties:
+      - type: 2D array (1x1 number or 2x2 grid)
+      - constraint: must contain only non-zero numbers to be considered in frequency analysis
+      - attributes:
+          - value: the number itself (for 1x1) or tuple representation (for 2x2)
+          - frequency: count of occurrences in the input grid
+          - occurrences: list of top-left coordinates (row, col) of each occurrence
+          - first_occurrence: the coordinate pair in 'occurrences' with the minimum row index, breaking ties with the minimum column index.
+          - last_occurrence: the coordinate pair in 'occurrences' with the maximum row index, breaking ties with the maximum column index.
+actions:
+  - action: check_grid_size
+    description: Determine if grid dimensions (Rows x Columns) are both <= 4 or if either is > 4.
+  - action: find_1x1_patterns
+    description: Identify unique non-zero numbers, count their frequencies.
+  - action: find_2x2_patterns
+    description: Identify unique 2x2 subgrids containing only non-zero numbers, count their frequencies, and record all occurrence coordinates.
+  - action: filter_patterns_by_frequency
+    description: Create subsets of patterns based on frequency (e.g., frequency = 1, frequency > 1).
+  - action: find_min_frequency
+    description: Find the minimum frequency within a specified set of patterns (e.g., all 1x1, or 2x2 with F>1).
+  - action: select_candidate_patterns
+    description: Identify all patterns matching a target frequency.
+  - action: apply_tie_breaking
+    description: Resolve cases where multiple patterns are candidates after frequency selection.
+    rules:
+      - rule: tie_break_1x1
+        condition: Applied when grid <= 4x4 and multiple 1x1 patterns share the minimum frequency.
+        logic: Select the pattern (number) with the largest numerical value.
+      - rule: tie_break_2x2_f_eq_1
+        condition: Applied when grid > 4x4 and all non-zero 2x2 patterns have frequency 1.
+        logic: Select the pattern whose single occurrence ('last_occurrence' is the same as 'first_occurrence' here) has the maximum row index, breaking ties with the maximum column index.
+      - rule: tie_break_2x2_f_gt_1
+        condition: Applied when grid > 4x4, patterns with frequency > 1 exist, and multiple patterns share the minimum frequency *among those with F>1*.
+        logic: Select the pattern whose 'first_occurrence' has the maximum row index, breaking ties with the minimum column index.
+relationships:
+  - relationship: size_determines_primary_logic
+    description: Grid size (<=4x4 vs >4x4) dictates whether to focus on 1x1 or 2x2 patterns.
+  - relationship: frequency_filters_candidates
+    description: Frequency analysis (minimum overall for 1x1, minimum among F>1 for 2x2, or handling F=1 cases for 2x2) determines the initial set of candidate patterns.
+  - relationship: tie_breaking_selects_final
+    description: Specific tie-breaking rules based on value (1x1) or occurrence position (2x2, differing rules for F=1 vs F>1 scenarios) resolve ambiguity to select the single output pattern.

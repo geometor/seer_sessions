@@ -1,0 +1,137 @@
+
+## train_1
+
+**input:**
+```
+2 0
+0 0
+```
+
+
+**output:**
+```
+2 2 0 0
+2 2 0 0
+0 0 1 0
+0 0 0 1
+```
+
+
+## train_2
+
+**input:**
+```
+0 0 0 5 0
+0 5 0 0 0
+0 0 0 0 0
+0 5 0 0 0
+0 0 0 0 0
+```
+
+
+**output:**
+```
+1 0 0 0 0 0 5 5 0 0
+0 1 0 0 0 0 5 5 0 0
+0 0 5 5 0 0 0 0 1 0
+0 0 5 5 0 0 0 0 0 1
+1 0 0 0 1 0 0 0 0 0
+0 1 0 0 0 1 0 0 0 0
+0 0 5 5 0 0 1 0 0 0
+0 0 5 5 0 0 0 1 0 0
+0 0 0 0 1 0 0 0 1 0
+0 0 0 0 0 1 0 0 0 1
+```
+
+
+## train_3
+
+**input:**
+```
+0 0 0 0 0 3
+0 0 0 0 0 0
+0 3 0 0 0 0
+0 0 0 0 0 0
+0 0 0 0 0 0
+0 0 0 0 0 0
+```
+
+
+**output:**
+```
+0 0 0 0 0 0 0 0 0 0 3 3
+0 0 0 0 0 0 0 0 0 0 3 3
+1 0 0 0 0 0 0 0 0 0 0 0
+0 1 0 0 0 0 0 0 0 0 0 0
+0 0 3 3 0 0 0 0 0 0 0 0
+0 0 3 3 0 0 0 0 0 0 0 0
+0 0 0 0 1 0 0 0 0 0 0 0
+0 0 0 0 0 1 0 0 0 0 0 0
+0 0 0 0 0 0 1 0 0 0 0 0
+0 0 0 0 0 0 0 1 0 0 0 0
+0 0 0 0 0 0 0 0 1 0 0 0
+0 0 0 0 0 0 0 0 0 1 0 0
+```
+
+**Perception:**
+
+The core transformation involves scaling the input grid by a factor of two. Each pixel in the input grid corresponds to a 2x2 block in the output grid. The content of this 2x2 block is determined by the color of the original input pixel and its immediate orthogonal neighbours.
+
+1.  **Scaling:** The output grid is twice the height and twice the width of the input grid.
+2.  **Non-White Pixels:** If an input pixel has a color other than white (0), the corresponding 2x2 block in the output grid is filled entirely with that color.
+3.  **White Pixels:** If an input pixel is white (0), the corresponding 2x2 output block's content depends on the input pixel's cardinal neighbours (up, down, left, right).
+    *   If all existing cardinal neighbours of the white input pixel are also white, the output block becomes a diagonal pattern: blue (1) top-left, white (0) top-right, white (0) bottom-left, blue (1) bottom-right.
+    *   If any existing cardinal neighbour of the white input pixel is non-white, the output block remains entirely white (0).
+
+**Facts:**
+
+
+```yaml
+Input Grid:
+  - object: grid
+  - properties:
+      - height: H
+      - width: W
+      - pixels: Located at (r, c), have a color C (0-9, 0 is white)
+
+Output Grid:
+  - object: grid
+  - properties:
+      - height: 2H
+      - width: 2W
+      - pixels: Colors derived from input grid
+
+Transformation Rules:
+  - rule: Scaling
+    - relationship: Each input pixel (r, c) maps to a 2x2 output block starting at (2*r, 2*c).
+  - rule: Pattern Replacement based on Input Color and Neighbourhood
+    - input_pixel: color C at (r, c)
+    - output_block: 2x2 block starting at (2*r, 2*c)
+    - condition: If C is not white (C > 0)
+      - action: Fill output_block with color C. -> [[C, C], [C, C]]
+    - condition: If C is white (C == 0)
+      - sub_condition: Check cardinal neighbours (up, down, left, right) of input pixel (r, c). Are all neighbours that exist within the grid bounds also white (0)?
+        - if True: Set output_block to [[blue(1), white(0)], [white(0), blue(1)]].
+        - if False: Set output_block to [[white(0), white(0)], [white(0), white(0)]].
+```
+
+
+**Natural Language Program:**
+
+1.  Initialize an `output_grid` with dimensions `2 * input_height` by `2 * input_width`, filling it with the white color (0).
+2.  Iterate through each cell `(r, c)` of the `input_grid`.
+3.  Let `input_color` be the color of the cell `(r, c)`.
+4.  Determine the top-left coordinates `(out_r, out_c)` of the corresponding 2x2 block in the `output_grid`, where `out_r = 2 * r` and `out_c = 2 * c`.
+5.  If `input_color` is not white (`input_color > 0`):
+    a.  Set the color of the four cells in the `output_grid` block starting at `(out_r, out_c)` (i.e., `(out_r, out_c)`, `(out_r+1, out_c)`, `(out_r, out_c+1)`, `(out_r+1, out_c+1)`) to `input_color`.
+6.  If `input_color` is white (`input_color == 0`):
+    a.  Assume initially that the condition for the special blue pattern is `True`.
+    b.  Check the neighbor above: If `r > 0` and the color of `input_grid[r-1, c]` is not white, set the condition to `False`.
+    c.  Check the neighbor below: If `r < input_height - 1` and the color of `input_grid[r+1, c]` is not white, set the condition to `False`.
+    d.  Check the neighbor left: If `c > 0` and the color of `input_grid[r, c-1]` is not white, set the condition to `False`.
+    e.  Check the neighbor right: If `c < input_width - 1` and the color of `input_grid[r, c+1]` is not white, set the condition to `False`.
+    f.  If the condition remains `True` after checking all neighbours:
+        i.  Set `output_grid[out_r, out_c]` to blue (1).
+        ii. Set `output_grid[out_r+1, out_c+1]` to blue (1).
+    g.  (Otherwise, if the condition became `False`, the block remains white (0) as initialized).
+7.  Return the final `output_grid`.

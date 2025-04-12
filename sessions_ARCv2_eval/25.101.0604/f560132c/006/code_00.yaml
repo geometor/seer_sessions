@@ -1,0 +1,72 @@
+task_type: grid_transformation
+
+input_features:
+  grid_dimensions: variable
+  background_color: 0
+  objects:
+    - type: shape # Connected component of non-zero cells
+      properties:
+        - color: integer (1-9)
+        - contiguity: 4-directional
+        - cells: list of (row, col) tuples
+        - bounding_box: (min_r, min_c, max_r, max_c)
+        - dimensions: (H_comp, W_comp) # Height/Width of bounding_box
+        - colors_present: set of unique colors within the component
+        - is_noisy: boolean (True if len(colors_present) > 1)
+        - border_color: integer (most frequent color if is_noisy, tie-break with max color value)
+    - type: noise_pixel
+      properties:
+        - color: integer (1-9)
+        - location: (row, col)
+        - container_shape_color: integer # The border_color of the shape it's inside
+      constraints:
+        - Exists only within a 'noisy' shape
+        - color != 0
+        - color != container_shape_color
+
+output_features:
+  grid_dimensions: [H_out, W_out] # Derived, see relationships
+  content: grid derived by scaling and interpolating (using max) the noise pattern of the unique noisy input shape
+
+relationships:
+  - type: containment
+    description: Exactly one shape ('noisy_shape') contains noise pixels.
+  - type: transformation
+    description: The noise pattern within the 'noisy_shape' is scaled up and rendered using a max-neighbor rule to produce the output grid.
+  - type: scale_determination
+    description: |
+      The integer scaling factor ('Scale') is determined by the width of the
+      bounding box of the 'noisy_shape' (`W_comp`).
+      Scale = W_comp - 1.
+  - type: output_size_determination
+    description: |
+      The output grid dimensions (`H_out`, `W_out`) are determined by scaling the
+      dimensions of the minimal bounding box of the noise pixels (`H_noise`, `W_noise`)
+      by the calculated 'Scale'.
+      H_out = H_noise * Scale
+      W_out = W_noise * Scale
+  - type: rendering_rule # Revised rule (back to original hypothesis, with correct scale)
+    description: |
+      Each output pixel's color at `(r_out, c_out)` is determined by:
+      1. Mapping `(r_out, c_out)` to fractional coordinates `(r_f, c_f)` in the
+         noise grid space: `r_f = r_out / Scale`, `c_f = c_out / Scale`.
+      2. Identifying the four noise grid integer coordinate points defined by
+         the floor and ceiling of the fractional coordinates:
+         P_tl = `(floor(r_f), floor(c_f))`
+         P_tr = `(floor(r_f), ceil(c_f))`
+         P_bl = `(ceil(r_f), floor(c_f))`
+         P_br = `(ceil(r_f), ceil(c_f))`
+      3. Retrieving the color values from the noise grid at these four points.
+         Out-of-bounds lookups are treated as 0.
+      4. Assigning the maximum of these four color values to the output pixel `(r_out, c_out)`.
+
+actions:
+  - find_components: Identify all 4-directionally connected components of non-zero cells.
+  - identify_noisy_shape: Find the unique component containing more than one distinct color. Store its bounding box width (`W_comp`).
+  - determine_border_color: Find the most frequent color within the noisy shape (tie-break with max color value).
+  - extract_noise_pixels: Identify all pixels within the noisy shape whose color is not the border color.
+  - calculate_noise_bbox: Find the minimal bounding box containing all noise pixels. Store its dimensions (`H_noise`, `W_noise`).
+  - create_noise_grid: Create a grid of size `H_noise` x `W_noise` containing the noise pixels relative to their bounding box origin.
+  - calculate_scale: Compute `Scale = W_comp - 1`. Ensure Scale > 0.
+  - calculate_output_size: Compute `H_out = H_noise * Scale`, `W_out = W_noise * Scale`.
+  - render_output: Create the output grid of size `H_out` x `W_out` using the revised rendering_rule (max of floor/ceil neighbors).

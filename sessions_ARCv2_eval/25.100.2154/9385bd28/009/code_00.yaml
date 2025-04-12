@@ -1,0 +1,61 @@
+# Facts observed from all training examples and code execution analysis
+grid_properties:
+  size: variable
+  background_color_rule: most frequent color in the input grid # Confirmed
+colors:
+  present_in_input: variable
+  present_in_output: variable
+  unique_input_colors_rule: colors appearing exactly once (excluding background_color) # Confirmed
+  fill_colors_determination:
+    mode_selection: based on presence of unique_input_colors # Confirmed
+    mode_unique_colors:
+      candidates_rule: form pairs (uc, neighbor_or_uc); neighbor is non-bg orthogonal neighbor, neighbor_or_uc can be uc itself # Confirmed
+      outer_fill_color_rule: value from the candidate pair with the maximum value, breaking ties by maximizing uc # Confirmed
+      uc_used_rule: the unique color 'uc' from the pair selected for outer_fill_color # Confirmed
+      inner_fill_color_rule: (if >1 unique color exists) highest unique color NOT equal to uc_used # Confirmed
+    mode_no_unique_colors:
+      trigger: process per distinct color C found in size-3 objects # Confirmed
+      fill_color_rule(C): max(max_adjacent_non_background_neighbor, C) # Confirmed (Corrected from previous attempts)
+  most_frequent_non_background_color_rule: find the set of colors sharing the maximum frequency among non-background colors # Confirmed
+objects_input:
+  properties: # Confirmed
+    - id
+    - color
+    - location (list of [row, col])
+    - size (number of cells)
+  criteria: # Confirmed identification criteria
+    size_3_objects: objects with size = 3
+    size_3_lt_5_objects: size-3 objects with color < 5 (used for Mode 1 Outer BB)
+transformation:
+  action: conditional_layered_fill # Confirmed structure
+  condition: presence of unique input colors # Confirmed
+  mode_unique_colors:
+    layers:
+      - layer_id: outer_fill
+        fill_color_rule: Use outer_fill_color determined above # Confirmed
+        region_definition:
+          method: minimal_bounding_box # Confirmed method type
+          source_objects: size_3_objects with color < 5 # Confirmed correct source objects
+        fill_rule: replace background_color only # Confirmed
+      - layer_id: inner_fill (conditional)
+        condition: inner_fill_color exists # Confirmed correct trigger
+        fill_color_rule: Use inner_fill_color determined above # Confirmed
+        region_definition:
+          method: minimal_bounding_box # Assumed method type
+          source_objects_rule: | # RULE IS UNCERTAIN / INCORRECT
+            Current hypothesis (known flawed): Select from 'size_3_lt_5_objects' those whose color is NOT in the set of most_frequent_non_background_color(s).
+            *Known Issue: Produces incorrect regions for E2 (slightly) and E3 (majorly). The correct rule is unknown.*
+        fill_rule: replace background_color only (overwrites outer fill) # Confirmed
+  mode_no_unique_colors:
+    process_per_color_group: For each distinct color C in size_3_objects (sorted numerically) # Confirmed structure
+      layers:
+        - layer_id: fill_for_C
+          fill_color_rule: Use fill_color_C determined above (max(adj, C)) # Confirmed
+          region_definition:
+            method: minimal_bounding_box # RULE IS UNCERTAIN / INCORRECT
+            source_objects: size_3_objects with color C # Assumed source
+            *Known Issue: Produces incorrect region for C=6 in E4 (where fill color came from neighbor). The correct rule is unknown.*
+          fill_rule: replace background_color only # Confirmed
+          overlap_rule: Later fills (higher C) overwrite earlier fills # Confirmed behavior
+  preservation:
+    - all original non-background cells retain their color and position # Confirmed

@@ -1,0 +1,56 @@
+Grid:
+  type: object
+  properties:
+    size: 12x12 (consistent across examples)
+    cells: list of lists of integers (colors)
+
+Colors:
+  - 0: Black (Background/Empty - fillable by propagation)
+  - 1: Blue (Subject to vertical and horizontal propagation)
+  - 2: Red (Boundary marker for Rule 1)
+  - 3: Green (Fill color for Rule 1 & 2, subject to horizontal propagation)
+  - 4: Magenta (Trigger for Rule 2 and Rule 3)
+  - 6: Cyan (Fill color for Rule 3, subject to horizontal propagation, potential target for cleanup)
+  - 7: Orange (Secondary trigger/boundary for Rule 2)
+
+Triggers_and_Patterns:
+  - Red_Boundaries: A pair of '2's on the same row in the input grid.
+  - Four_Seven: A '4' immediately followed by a '7' on the same row in the input grid.
+  - Four_Alone: A '4' in the input grid NOT immediately followed by a '7', and not processed by Four_Seven rule.
+  - Vertical_Gap_1_Input: A '0' cell in the input grid vertically between two '1's in the input grid.
+  - Horizontal_Gap_0: A '0' cell in the working grid horizontally between two identical non-zero colors (1, 3, or 6).
+  - Cleanup_Pattern_Row_Start: Row in the working grid starts with '0 1'.
+  - Cleanup_Pattern_Cell: A '6' cell at column index 10 (width-2) in a row matching Cleanup_Pattern_Row_Start.
+
+Actions:
+  - Modify_Boundary_Color: Change cell color (e.g., 2 -> 3).
+  - Fill_Horizontal_Segment: Change colors of cells between two columns on a row (e.g., fill with 3).
+  - Place_Marker: Change a single cell's color based on context (e.g., place 1 within a 3-filled segment).
+  - Copy_Row_Segment: Replace a segment of a row with the corresponding segment from the row below (based on input grid).
+  - Fill_Pattern: Replace a specific pattern with another (e.g., '4 7 ...' -> '3 3 3 3').
+  - Fill_Column_Segment_Vertically: Change colors of cells in a column from a trigger cell downwards (e.g., fill with 6).
+  - Fill_Zero_Gap_Horizontally: Change a '0' cell's color based on its identical horizontal neighbors (iterative).
+  - Fill_Zero_Gap_Vertically: Change a '0' cell's color based on its vertical neighbors (using input grid context).
+  - Clear_Cell: Change a cell's color to '0'.
+
+Rules_and_Order: (Applied sequentially)
+  - 1_Red_Boundary_Transform:
+      - trigger: Red_Boundaries (c1, c2) found in input[r].
+      - context: Check if input[r][c1+1:c2] contains 0.
+      - action: Modify output[r]: output[r][c1]=3, output[r][c2]=3, output[r][c1+1:c2]=3. Place '1' at output[r][c1+2] if 0 was found, else at output[r][c2-1].
+  - 2_Four_Seven_Transform:
+      - trigger: Four_Seven pattern at input[r][c] and input[r][c+1].
+      - action: Modify output[r]: Replace output[r][0:c] with input[r+1][0:c]. Replace output[r][c:c+4] with [3, 3, 3, 3] (respecting grid width). Mark this '4' at (r,c) as processed.
+  - 3_Four_Alone_Transform:
+      - trigger: Four_Alone pattern at input[r][c] (not processed by rule 2).
+      - action: Modify output grid: Set output[r][c] = 6. For i from r+1 to height-1, set output[i][c] = 6.
+  - 4_Vertical_1_Propagation:
+      - trigger: Vertical_Gap_1_Input at input[r][c].
+      - action: Modify output grid: Set output[r][c] = 1.
+  - 5_Horizontal_Propagation:
+      - trigger: Horizontal_Gap_0 in the current output grid (for colors 1, 3, or 6).
+      - action: Modify output grid: Fill the '0' gap with the neighbor color (1, 3, or 6). Apply iteratively per row until no changes.
+  - 6_Cleanup_Row_Start_Pattern:
+      - trigger: Row `r` in output grid has `output[r][0] == 0` and `output[r][1] == 1`.
+      - context: Check `output[r][10] == 6`. (Assuming width 12, checking column 10 specifically based on train_3).
+      - action: Modify output grid: Set `output[r][10] = 0`.

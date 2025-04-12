@@ -1,0 +1,87 @@
+elements:
+  - object: grid
+    properties:
+      - type: 2D array of integers (colors)
+      - size: constant (e.g., 8x20)
+  - object: cell
+    properties:
+      - coordinates: (row, column)
+      - color: integer (0-9)
+  - object: color
+    properties:
+      - value: integer
+      - role:
+          - 0: background
+          - 5: frame_color
+          - others: content_colors
+  - object: main_frame
+    properties:
+      - color: 5 (frame_color)
+      - connectivity: largest connected component of frame_color cells
+      - location: typically forms a border, potentially touching grid edges
+    relationships:
+      - encloses: inner_area
+  - object: inner_area
+    properties:
+      - location: region enclosed by main_frame
+      - content: cells containing background, frame_color, or content_colors
+  - object: non_frame_5
+    properties:
+      - color: 5 (frame_color)
+    relationships:
+      - location: not part of main_frame
+      - classification:
+          - internal (inside inner_area)
+          - external (outside inner_area)
+
+actions:
+  - action: identify_main_frame
+    inputs:
+      - input_grid
+      - frame_color
+    outputs:
+      - set of main_frame cell coordinates
+  - action: classify_non_frame_5s
+    inputs:
+      - input_grid
+      - frame_color
+      - main_frame coordinates
+    outputs:
+      - set of external_5 coordinates
+      - set of internal_5 coordinates
+  - action: transform_cell
+    inputs:
+      - current_cell (r, c)
+      - input_grid
+      - main_frame coordinates
+    process:
+      - determine current color `V_curr = input[r][c]`
+      - determine color below `V_below = input[r+1][c]` (handle boundaries)
+      - check if `(r, c)` is main_frame, internal_5, external_5, or other
+      - apply rules based on type and `V_below`
+    outputs:
+      - output_color for cell (r, c)
+
+rules:
+  - rule: preserve_main_frame
+    condition: cell is part of main_frame
+    action: output_color = frame_color
+  - rule: remove_external_5s
+    condition: cell is an external_5
+    action: output_color = background_color
+  - rule: propagate_into_internal_5s
+    condition: cell is an internal_5
+    action: |
+      if V_below is a content_color:
+        output_color = V_below
+      else:
+        output_color = background_color
+  - rule: fill_above_background
+    condition: V_curr is a content_color AND V_below is background_color
+    action: output_color = frame_color
+  - rule: handle_vertical_repeats (less certain)
+    condition: V_curr is a content_color AND V_below == V_curr
+    action: output_color = frame_color (potentially only if at end of repeat sequence)
+  - rule: default_copy
+    condition: none of the above apply
+    action: output_color = V_curr

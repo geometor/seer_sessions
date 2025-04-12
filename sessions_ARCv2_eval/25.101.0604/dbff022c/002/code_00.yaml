@@ -1,0 +1,75 @@
+elements:
+  - element: grid
+    properties:
+      - type: 2D array of integers (0-9)
+      - size: variable (rows x columns)
+  - element: cell
+    properties:
+      - value: integer (0-9)
+      - position: (row, column)
+  - element: shape
+    properties:
+      - type: connected component (8-way adjacency) of identical non-zero cells
+      - border_color: integer (C > 0)
+      - cells: set of cell positions {(r, c), ...}
+  - element: interior_zero
+    properties:
+      - type: cell with value 0
+      - characteristic: cannot reach the grid boundary via a path of orthogonally connected 0-valued cells
+      - position: (row, column)
+  - element: fill_color
+    properties:
+      - value: integer (F > 0) or None
+
+relationships:
+  - type: spatial
+    description: Cells have orthogonal and diagonal neighbors. Shapes occupy regions. Interior zeros are enclosed by shapes.
+  - type: enclosure
+    description: An interior zero is enclosed by the shape whose cells form the immediate non-zero barrier around the connected component of interior zeros it belongs to. Determined by checking non-zero orthogonal neighbors of the interior zero.
+  - type: context
+    description: The fill color for a shape of color 4 depends on the minimum border color of *other* shapes present in the grid.
+
+actions:
+  - action: identify_shapes
+    input: grid
+    output: list of shapes (with border_color, cells)
+    method: Find connected components of non-zero cells using 8-way adjacency (orthogonal + diagonal).
+  - action: find_all_interior_zeros
+    input: grid
+    output: set of interior_zero positions {(r, c), ...}
+    method:
+      1. Initialize a queue with all boundary cells (r=0 or r=max or c=0 or c=max) that have value 0.
+      2. Perform a Breadth-First Search (BFS) using orthogonal steps, visiting only 0-valued cells. Mark all visited cells.
+      3. Any 0-valued cell *not* marked as visited by the BFS is an interior zero.
+  - action: determine_enclosing_shape
+    input: interior_zero position (rz, cz), grid, cell_to_shape_map
+    output: the shape object S that encloses the zero
+    method: Check orthogonal neighbors (nr, nc) of (rz, cz). If grid[nr][nc] > 0, find the shape S containing (nr, nc) using cell_to_shape_map. Assume the first one found is the enclosing shape.
+  - action: determine_fill_color
+    input: enclosing_shape S, all_shapes
+    output: fill_color F (integer or None)
+    logic:
+      - Let C = S['color']
+      - If C=3 -> F=3
+      - If C=7 -> F=7
+      - If C=8 -> F=1
+      - If C=2 -> F=7
+      - If C=4:
+        - Find border colors of all shapes other than S -> other_border_colors set.
+        - If other_border_colors is empty -> F=None
+        - Else -> min_obd = min(other_border_colors)
+          - If min_obd = 5 -> F=5
+          - If min_obd = 3 -> F=6
+          - Else -> F=None
+      - Else (C=5 or other unspecified colors) -> F=None
+  - action: apply_fill
+    input: grid, all_interior_zeros, all_shapes, cell_to_shape_map
+    output: modified grid
+    method:
+      1. Create output_grid = copy(grid).
+      2. For each interior_zero (rz, cz) in all_interior_zeros:
+         a. Find enclosing_shape S = determine_enclosing_shape((rz, cz), grid, cell_to_shape_map).
+         b. Determine fill_color F = determine_fill_color(S, all_shapes).
+         c. If F is not None:
+            output_grid[rz][cz] = F
+      3. Return output_grid.

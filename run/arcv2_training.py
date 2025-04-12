@@ -29,7 +29,7 @@ def run():
     tasks = get_unsolved_tasks(output_dir)
     tasks = tasks.get_ordered_tasks()
 
-    #  seer.run(tasks[0:100], output_dir, "ARCv2 training 000:100")
+    #  seer.run(tasks[0:3], output_dir, "ARCv2 training 000:003")
     seer.run(tasks, output_dir, "unsolved")
     
 

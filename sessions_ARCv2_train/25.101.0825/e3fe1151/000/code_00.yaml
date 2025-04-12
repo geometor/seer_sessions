@@ -1,0 +1,54 @@
+GridProperties:
+  - type: square grid (NxN, N=5 in examples)
+  - center_row: N // 2
+  - center_col: N // 2
+
+Objects:
+  - name: CentralCross
+    pixels: cells (r, c) where r == center_row or c == center_col
+    color: orange (7)
+    invariant: true
+  - name: QuadrantPixels
+    pixels: cells (r, c) where r != center_row and c != center_col
+    properties: Belong to one of four quadrants (TL, TR, BL, BR) based on r, c relative to center_row, center_col.
+
+SourcePoints:
+  - name: P_TR # Top-Right Corner
+    location: [0, N-1]
+  - name: P_BR # Bottom-Right Corner
+    location: [N-1, N-1]
+  - name: P_Alt # Alternative for P_BR
+    location: [N-2, N-2]
+
+DerivedValues:
+  - name: V_TR # Value from P_TR
+    value: Input[P_TR]
+  - name: V_BR_raw # Raw value from P_BR
+    value: Input[P_BR]
+  - name: use_alt # Flag indicating if P_Alt is used
+    value: (V_BR_raw == 7)
+  - name: V_BR # Final second source value
+    value: Input[P_Alt] if use_alt else V_BR_raw
+
+TransformationRule:
+  - name: PixelUpdate
+    target: QuadrantPixels with color orange (7)
+    action: Replace color based on quadrant and source values (V_TR, V_BR) and use_alt flag.
+    condition: Input[r,c] == 7 and r != center_row and c != center_col
+    logic:
+      - If use_alt is true:
+          - TL quadrant pixels change to V_TR
+          - TR, BL, BR quadrant pixels change to V_BR
+      - If use_alt is false:
+          - TL, TR quadrant pixels change to V_BR
+          - BR quadrant pixels change to V_TR
+          - BL quadrant pixels change to V_BR if V_TR < V_BR else V_TR
+  - name: PixelKeep
+    target: All other pixels (CentralCross orange pixels, non-orange QuadrantPixels)
+    action: Keep original color.
+
+Relationships:
+  - Quadrants are defined by the CentralCross.
+  - Transformation depends on values at specific corner locations (P_TR, P_BR) or an alternative location (P_Alt).
+  - The assignment of source colors (V_TR, V_BR) to quadrants depends on whether the alternative location was used.
+  - The assignment for the BL quadrant when the alternative is not used depends on the numerical comparison between V_TR and V_BR.

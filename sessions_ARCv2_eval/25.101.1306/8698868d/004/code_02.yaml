@@ -1,0 +1,48 @@
+Observations:
+  - Input grids contain multiple rectangular objects separated by a single 'separator' color.
+  - Rectangular objects are identified as contiguous blocks of non-separator colors.
+  - These objects primarily appear in two sizes: 'Frames' (larger, size N x M) and 'Contents' (smaller, size N-2 x M-2).
+  - Both Frame and Content blocks, when identified as contiguous areas of a single color, may have bounding boxes in the input grid that contain other 'noise' pixels (including the separator color).
+  - The output grid arranges the Frame blocks, preserving their relative positions from the input.
+  - The output consists of reconstructing each frame block individually.
+Properties:
+  - SeparatorColor: The single color separating the main rectangular objects (identified by neighborhood diversity or frequency).
+  - Objects: Rectangular blocks found via connected components (Frames, Contents).
+  - Object Properties:
+      - MainColor: The single color of the connected component block.
+      - Bounds: The min/max row/col coordinates encompassing the block's pixels (top, left, bottom, right inclusive).
+      - Size: Height and Width derived from Bounds.
+      - Type: 'Frame' (larger size N x M) or 'Content' (smaller size N-2 x M-2).
+  - Frame Properties: MainColor (Fc), Size (N x M), Bounds.
+  - Content Properties: MainColor (Cc), Size (N-2 x M-2), Bounds.
+  - InputPatternSlice: The rectangular region of the *original input grid* defined by the Content block's Bounds (size N-2 x M-2).
+Relationships:
+  - Frames are paired 1-to-1 with Contents.
+  - Pairing Rule: Sort Frames by reading order (top-left corner). Sort Contents by reading order. Pair the i-th Frame with the i-th Content.
+  - Output Layout: Mirrors the relative spatial arrangement of input Frames, determined by their top-left corners.
+Transformation Rule (Core Generation):
+  - For each paired Frame (Fc, Bounds_F) and Content (Cc, Bounds_C):
+  - Extract the InputPatternSlice from the input grid using Bounds_C.
+  - Create an Output Core grid of size N-2 x M-2.
+  - Iterate through each pixel `p` at `(i, j)` in the InputPatternSlice:
+      - If `p` is the `SeparatorColor`, the Output Core pixel `Oc[i, j]` is the `FrameColor` (Fc).
+      - Otherwise (if `p` is any other color, including Cc or noise), the Output Core pixel `Oc[i, j]` is the `ContentColor` (Cc).
+Actions:
+  - Identify the Separator Color.
+  - Find all contiguous non-separator colored blocks (objects) using connected components. Record their MainColor, Bounds, and Size.
+  - Categorize blocks into Frames (size N x M) and Contents (size N-2 x M-2) based on Size. Verify that the number of Frames equals the number of Contents.
+  - Create an ordered list of Frames (sorted by reading order based on Bounds[0], Bounds[1]).
+  - Create an ordered list of Contents (sorted by reading order based on Bounds[0], Bounds[1]).
+  - Determine the output grid dimensions based on the relative positions and sizes of the Frames.
+  - Initialize the output grid (e.g., filled with white=0).
+  - Iterate through the paired Frames (F) and Contents (C) using their sorted lists (i-th F pairs with i-th C):
+      - Get Frame Color (Fc = F.MainColor).
+      - Get Content Color (Cc = C.MainColor).
+      - Get Frame Bounds (Bounds_F).
+      - Get Content Bounds (Bounds_C).
+      - Extract the InputPatternSlice from the original input grid using Bounds_C.
+      - Generate the Output Core (Oc) grid (size N-2 x M-2) by applying the Transformation Rule (Core Generation) pixel by pixel, using Fc, Cc, SeparatorColor, and InputPatternSlice.
+      - Calculate the target top-left position (`out_r`, `out_c`) for the current Frame in the output grid based on Bounds_F relative to the top-leftmost Frame.
+      - Draw the 1-pixel border of the Frame using Fc at the target location (`out_r`, `out_c`) in the output grid.
+      - Place the generated Output Core (Oc) into the interior area (inside the border) at the target location in the output grid.
+  - Return the completed output grid.

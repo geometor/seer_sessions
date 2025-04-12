@@ -1,0 +1,34 @@
+task_description: Identify distinct objects composed of non-background pixels. Remove specific types of two-color objects based on their internal and frame colors, where the background color (0) can count as an internal color if enclosed.
+
+definitions:
+  background_color: 0 # white
+  object: A contiguous group of non-background pixels (color > 0), identified using 4-way adjacency.
+  border_background: Background pixels connected to the grid's edge via a path of background pixels (4-way adjacency).
+  external_background: Background pixels adjacent (4-way) to an object pixel and part of the border_background set.
+  enclosed_background: Background pixels adjacent (4-way) to an object pixel but NOT part of the border_background set.
+  object_colors: The set of unique colors comprising an object's non-background pixels, plus background_color(0) if the object is adjacent to any enclosed_background pixels.
+  frame_color: For an object with exactly two object_colors, this is the color whose pixels are adjacent to external_background. Determined by checking if any pixel of that color in the object has a neighbor in the border_background set.
+  internal_color: For an object with exactly two object_colors, this is the color whose pixels are not adjacent to external_background, OR the background_color(0) if it is one of the two object_colors (i.e., represents enclosed background). Determined by exclusion if the other color is the frame_color.
+
+rules:
+  - description: Initialize the output grid as a copy of the input grid.
+  - description: Identify all distinct objects (sets of coordinates) and the border_background set (coordinates) in the input grid.
+  - description: For each object identified by its coordinates `obj_coords`:
+      1. Determine its `object_colors` set (including potential enclosed background 0).
+      2. Check if the size of `object_colors` is exactly 2.
+      3. If size is 2, determine the `frame_color` and `internal_color` based on adjacency of the object's pixels to the `border_background` set.
+         - If only one color's pixels touch the `border_background`, it's the `frame_color`.
+         - If neither color's pixels touch the `border_background` AND one color is 0, then 0 is the `internal_color`.
+         - Otherwise, no valid frame/internal pair is assigned for removal purposes.
+      4. Set a flag `should_remove` to False initially.
+      5. If a valid `internal_color` and `frame_color` were assigned, check if the pair (`internal_color`, `frame_color`) matches one of the `pairs_to_remove`.
+      6. If it matches, set `should_remove` to True.
+      7. If `should_remove` is True:
+         - Iterate through all coordinates `(r, c)` in `obj_coords`.
+         - Set `output_grid[r][c]` to `background_color` (0).
+  - pairs_to_remove:
+      - { internal: 1, frame: 2 } # Blue internal, Red frame
+      - { internal: 7, frame: 3 } # Orange internal, Green frame
+      - { internal: 0, frame: 4 } # White internal, Yellow frame
+
+output_grid: The final state of the output grid after processing all objects.

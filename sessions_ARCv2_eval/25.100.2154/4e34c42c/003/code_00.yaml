@@ -1,0 +1,52 @@
+task_description: "Selects a pair of objects based on shared height and combines them, potentially with padding derived from other objects."
+definitions:
+  background_digit: Most frequent digit in the input grid.
+  object: Connected component of non-background digits.
+  object_properties:
+    - content: The subgrid corresponding to the object's bounding box.
+    - height: Height of the bounding box.
+    - width: Width of the bounding box.
+    - min_row: Minimum row index of the bounding box.
+    - min_col: Minimum column index of the bounding box.
+processing_steps:
+  - step: 1. identify_objects
+    input: input_grid
+    output: list_of_objects, background_digit
+    actions:
+      - determine background_digit
+      - find connected components of non-background digits
+      - calculate object_properties for each component
+  - step: 2. select_pair
+    input: list_of_objects
+    output: selected_pair (A, B), ignored_set, H_pair
+    actions:
+      - group objects by height
+      - find height H_pair shared by exactly two objects
+      - identify the two objects with height H_pair as the candidate_pair
+      - determine Left_Object (A) and Right_Object (B) based on min_col
+      - assign A and B to selected_pair
+      - assign all other objects to ignored_set
+  - step: 3. analyze_ignored
+    input: ignored_set, B (Right_Object)
+    output: rule_type (Simple or Complex), widest_ignored_object (C)
+    actions:
+      - if ignored_set is empty: rule_type = Simple, C = None
+      - else:
+          - find C = object in ignored_set with maximum width (W_C_maxW)
+          - if W_C_maxW > B.width: rule_type = Complex
+          - else: rule_type = Simple
+  - step: 4. apply_transformation
+    input: A, B, C, H_pair, background_digit, rule_type
+    output: output_grid
+    actions:
+      - if rule_type == Simple:
+          - slice_A = A.content[:, 1:] # Remove first column
+          - output_grid = hstack(B.content, slice_A)
+      - else: # rule_type == Complex
+          - pad_width = C.width - 2
+          - padding_base = C.content[:, :pad_width]
+          - padding = vertically_center(padding_base, H_pair, background_digit)
+          - assembly_slice_A = A.content[:, 2:] # Remove first two columns
+          - assembly_slice_B = B.content # Use full content
+          - assembly = hstack(assembly_slice_A, assembly_slice_B)
+          - output_grid = hstack(padding, assembly)

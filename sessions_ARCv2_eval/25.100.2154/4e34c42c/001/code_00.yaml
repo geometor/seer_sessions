@@ -1,0 +1,52 @@
+task_type: conditional_grid_transformation
+input_properties:
+  - grid_representation: matrix of digits
+  - background_digit: determined per example (e.g., 8, 4)
+  - foreground_elements: clusters of non-background digits
+objects:
+  - role: selected_pair # Objects A and B
+    criteria:
+      - find connected components of non-background digits
+      - calculate bounding_box and height H for each
+      - identify the height H_pair shared by exactly two objects
+      - select the two objects (A, B) with height H_pair
+    properties:
+      - content: subgrid within bounding box
+      - height: H_pair
+      - width: W_A, W_B
+      - position: Left (A), Right (B) based on min column index
+  - role: ignored_set # Objects C...
+    criteria:
+      - all objects not in selected_pair
+    properties:
+      - content: subgrid within bounding box
+      - height: H_C != H_pair
+      - width: W_C
+relationships:
+  - type: width_comparison
+    objects: [Widest_Ignored_Object (C_maxW), Right_Selected_Object (B)]
+    condition: W_C_maxW > W_B
+transformation_logic:
+  - condition: W_C_maxW <= W_B (or no ignored objects) # Simple Rule (e.g., train_1)
+    steps:
+      - extract: Content_A (from Left Object A), Content_B (from Right Object B)
+      - slice: Sliced_Content_A = Content_A[:, 1:] # Remove first column
+      - concatenate: Output = hstack(Content_B, Sliced_Content_A)
+  - condition: W_C_maxW > W_B # Complex Rule (e.g., train_2)
+    steps:
+      - identify: Widest_Ignored_Object C (content: Content_C, width: W_C)
+      - extract: Content_A (from Left Object A, width W_A), Content_B (from Right Object B, width W_B)
+      - calculate_pad_width: Pad_W = W_C - 2
+      - slice_pad_content: Pad_Content_Base = Content_C[:, :Pad_W]
+      - create_padding: Pad = vertically_center(Pad_Content_Base, target_height=H_pair, pad_value=background_digit)
+      - slice_left: Slice_A = Content_A[:, 2:] # Remove first two columns
+      - slice_right_parts:
+          - R_Part1 = Content_B[:, 2:3] # Column 2
+          - R_Part2 = Content_B[:, 0:2] # Columns 0, 1
+          - R_Part3 = Content_B[:, 3:] # Columns 3 onwards
+      - reassemble_right: Slice_B = hstack(R_Part1, R_Part2, R_Part3)
+      - concatenate: Output = hstack(Pad, Slice_A, Slice_B)
+output_properties:
+  - grid_representation: matrix of digits
+  - dimensions: H_pair rows, variable width depending on rule applied
+  - content_origin: derived from selected_pair objects and potentially widest ignored object

@@ -1,0 +1,52 @@
+InputGrid:
+  Properties:
+    - SeparatorDistance (S): Integer, distance between repeating grid lines (e.g., 4). Found by index of first gray line + 1.
+    - CellSize: Integer, S-1.
+    - CellRows (M): Integer, number of rows of cells based on content bounds and S.
+    - CellCols (N): Integer, number of columns of cells based on content bounds and S.
+  Objects:
+    - InputCell: Defined by cell coordinate (r, c), 0 <= r < M, 0 <= c < N.
+    - InputShape: 2D array (CellSize x CellSize) representing non-background(0), non-gray(5) pixels within an InputCell. Can be empty.
+    - PixelCount: Integer, count of non-zero pixels in InputShape.
+    - InputKey: Located in the last row containing any non-zero pixel.
+      - Properties: Color (K), GridColumnIndex (I).
+      - Association: Activates InputCell column `c = I // S`. First key found for a column `c` determines its KeyColor K[c].
+
+DerivedInfo:
+  - ActiveCols: Ordered list of unique input cell column indices `c` that have an associated InputKey.
+  - KeyColorMap: Dictionary mapping active `c` to its associated KeyColor K[c].
+  - UniqueKeyColors (UKC): Set of unique KeyColors K from KeyColorMap.
+  - ColorMapRule: A specific dictionary mapping original KeyColor K to a DominantOutputColor K'. Determined solely by UKC:
+      - Rule1 (UKC={1,6,7}): {6:7, 7:1, 1:1}
+      - Rule2 (UKC={3,7,9}): {3:7, 7:3, 9:9}
+      - Rule3 (UKC={3,6,8}): {3:6, 8:8, 6:6}
+  - OutputCellSize: Integer. Defaults to InputCellSize. Exception: If InputGrid is 14x17 and S=4, OutputCellSize = 5.
+  - OutputCellRows (M'): M.
+  - OutputCellCols (N'): Number of columns in ActiveCols.
+
+OutputGrid:
+  Properties:
+    - Rows: M' * OutputCellSize.
+    - Cols: N' * OutputCellSize.
+    - Background: 0.
+  Objects:
+    - OutputCell: Defined by cell coordinate (R, C), 0 <= R < M', 0 <= C < N'. R corresponds to input `r`. C corresponds to the C-th element in ActiveCols.
+    - OutputShape: Placed within OutputCell (R, C). Derived from InputShape(r, c).
+    - OutputColor: Assigned to OutputShape.
+
+Actions:
+  - Select: Process only InputCells (r, c) where `c` is in ActiveCols.
+  - MapColor: For an active InputCell(r, c) with KeyColor K = KeyColorMap[c], find the DominantOutputColor K' = ColorMapRule[K].
+  - DetermineShape:
+    - If InputShape[r, c].PixelCount <= 4: OutputShape is a solid square (OutputCellSize x OutputCellSize).
+    - If InputShape[r, c].PixelCount > 4:
+        - If OutputCellSize == InputCellSize: OutputShape is InputShape[r, c].
+        - If OutputCellSize != InputCellSize: OutputShape is InputShape[r, c] scaled geometrically (point mapping + line drawing) to OutputCellSize x OutputCellSize.
+  - DetermineColor: Assign OutputColor to OutputShape:
+    - If OutputShape is NOT a square (i.e., Preserved/Scaled): OutputColor = K'.
+    - If OutputShape IS a square:
+        - Default OutputColor = K'.
+        - Override 1: If (ColorMapRule is Rule1 and K=6) OR (ColorMapRule is Rule3 and K=3), OutputColor = K.
+        - Override 2: If ColorMapRule is Rule3 and C == N'-1 (last output column), OutputColor = K'[R % N']. (Needs verification/refinement).
+        - *Refined Override Hypothesis*: If square, OutputColor = K (original key color for that column). Test this simpler rule.
+  - Place: Position the colored OutputShape into OutputCell (R, C) in the OutputGrid.

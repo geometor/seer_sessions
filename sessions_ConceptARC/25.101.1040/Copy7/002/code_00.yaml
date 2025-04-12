@@ -1,0 +1,55 @@
+task_type: pattern_transfer_relative
+components:
+  - role: background
+    properties:
+      color: white (0)
+  - role: frame_object # e.g., Magenta frame, Yellow frame, Orange frame, Red frame
+    properties:
+      shape: variable (usually hollow rectangle or L-shape)
+      main_color: variable (magenta, yellow, orange, red in examples)
+      count: 2 per grid
+      relation_to_pattern: one frame contains the pattern, one does not
+  - role: pattern_object # e.g., Green diagonal, Blue anti-diagonal
+    properties:
+      shape: linear (diagonal, anti-diagonal)
+      color: variable (green, blue in examples)
+      count: 1 per grid
+      position: fully contained within the bounding box of the source_object
+relationships:
+  - type: containment
+    between: pattern_object, source_object
+    details: pattern_object's bounding box is within source_object's bounding box.
+  - type: spatial
+    between: source_object, target_object
+    details: distinct frame objects, non-overlapping.
+identification:
+  - object: pattern_object
+    criteria: A distinct object whose bounding box is fully contained within the bounding box of another object, often the smallest non-background object.
+  - object: source_object
+    criteria: The frame_object whose bounding box contains the pattern_object's bounding box.
+  - object: target_object
+    criteria: The frame_object that is not the source_object.
+actions:
+  - type: extract_pattern_details
+    source: pattern_object, source_object
+    details:
+      - pattern_color: color of the pattern_object.
+      - pattern_relative_coords: list of (row, col) offsets of pattern_object pixels relative to the top-left corner of the source_object's bounding box.
+  - type: determine_pattern_rule
+    source: pattern_relative_coords
+    details: Identify the type of line (e.g., 'main_diag_offset', 'anti_diag') and calculate its parameter `k_s`.
+      - 'main_diag_offset': `dr - dc = k_s`
+      - 'anti_diag': `dr + dc = k_s`
+  - type: calculate_target_parameter
+    source: pattern_type, k_s, target_object
+    details: Calculate parameter `k_t` for applying the pattern to the target.
+      - if type is 'main_diag_offset': `k_t = k_s`
+      - if type is 'anti_diag': `k_t = H_t - 1` (where H_t is target bbox height)
+  - type: apply_pattern
+    target: target_object
+    details:
+      - Modify the output grid.
+      - Iterate through relative coordinates `(dr_t, dc_t)` within the target_object's bounding box (0 <= dr_t < H_t, 0 <= dc_t < W_t).
+      - If `(dr_t, dc_t)` satisfies the `pattern_type` rule with parameter `k_t`:
+          - Calculate absolute grid coordinates: `abs_r = target_min_r + dr_t`, `abs_c = target_min_c + dc_t`.
+          - Set the pixel at `(abs_r, abs_c)` to the `pattern_color`.

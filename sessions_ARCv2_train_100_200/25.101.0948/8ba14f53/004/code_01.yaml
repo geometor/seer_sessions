@@ -1,0 +1,57 @@
+objects:
+  - id: A # Left object
+    description: Largest contiguous block of non-white pixels starting further left.
+    properties:
+      color: C_A (variable)
+      location: Left side.
+      subgrid: Top-left 3x3 region of bounding box (A_sub). Rows are A0, A1, A2.
+      A2_completeness: Whether A2 contains any zeros.
+      A2_rightmost_value: The value of A2[2].
+      A2_pattern_c00: Whether A2 matches the pattern [non-zero, 0, 0].
+  - id: B # Right object
+    description: Second largest (or other largest) contiguous block of non-white pixels, starting further right than A.
+    properties:
+      color: C_B (variable)
+      location: Right side.
+      subgrid: Top-left 3x3 region of bounding box (B_sub). Rows B0, B1, B2.
+      B2_completeness: Whether B2 contains any zeros.
+      fourth_row_slice: First 3 elements of the 4th row of B's bounding box (B3_slice).
+output_grid:
+  description: A 3x3 grid derived from A and B subgrids and B's 4th row based on A2 and B2 patterns.
+  properties:
+    size: 3x3
+    rows: Out0, Out1, Out2.
+relationships:
+  - type: derivation
+    source: [A, B]
+    target: output_grid
+    details: Output rows are derived conditionally based primarily on the completeness and patterns of A2 and B2. Modification (erase rightmost non-zero) is applied conditionally. Out2 is derived from B3_slice or B0 or is all zeros.
+actions:
+  - action: identify_objects_and_bboxes
+    inputs: [input_grid]
+    outputs: [bbox_A, bbox_B]
+    description: Locate the two largest non-white objects and determine their minimal bounding boxes, sorted left-to-right.
+  - action: extract_subgrids_and_rows
+    inputs: [input_grid, bbox_A, bbox_B]
+    outputs: [A0, A1, A2, B0, B1, B2, B3_slice]
+    description: Get rows 0, 1, 2 from A_sub and B_sub. Get first 3 elements of row 3 from B_bbox (padding if needed).
+  - action: check_completeness
+    inputs: [A2, B2]
+    outputs: [A2_is_complete, B2_is_complete]
+    description: Determine if A2 and B2 contain zeros.
+  - action: check_patterns
+    inputs: [A2]
+    outputs: [A2_rightmost_is_zero, A2_is_c00_pattern]
+    description: Check if A2[2] is zero. Check if A2 matches the pattern [color, 0, 0].
+  - action: apply_modification
+    inputs: [row]
+    outputs: [modified_row]
+    description: Takes a 3-element row, finds the index k (0, 1, or 2) of the rightmost non-white pixel. If such a pixel exists, sets row[k] to 0. Returns the modified row.
+  - action: determine_output_rows
+    inputs: [A0, A1, A2, B0, B1, B2, B3_slice, checks_and_patterns]
+    outputs: [Out0, Out1, Out2]
+    description: Apply the refined conditional logic (based on A2_is_complete, A2[2], B2_is_complete, A2_is_c00_pattern) to select and potentially modify rows to produce Out0, Out1, Out2.
+  - action: assemble_output
+    inputs: [Out0, Out1, Out2]
+    outputs: [output_grid]
+    description: Construct the 3x3 output grid.

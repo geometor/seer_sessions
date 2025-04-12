@@ -1,0 +1,377 @@
+
+## train_1
+
+**input:**
+```
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 3 3 3 3 3 3 3 3 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 3 0 0 0 0 0 0 3 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 3 0 2 2 2 2 0 3 0 0 0 0 2 2 2 2 0 0 0 0
+0 0 3 0 2 2 2 2 0 3 0 0 0 0 2 2 2 2 0 0 0 0
+0 0 3 0 2 2 2 2 0 3 0 0 0 0 2 2 2 2 0 0 0 0
+0 0 3 0 2 2 2 2 0 3 0 0 0 0 2 2 2 2 0 0 0 0
+0 0 3 0 0 0 0 0 0 3 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 3 3 3 3 3 3 3 3 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+```
+
+
+**output:**
+```
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 3 3 3 3 3 3 3 3 0 0 3 3 3 3 3 3 3 3 0 0
+0 0 3 0 0 0 0 0 0 3 0 0 3 0 0 0 0 0 0 3 0 0
+0 0 3 0 2 2 2 2 0 3 0 0 3 0 2 2 2 2 0 3 0 0
+0 0 3 0 2 2 2 2 0 3 0 0 3 0 2 2 2 2 0 3 0 0
+0 0 3 0 2 2 2 2 0 3 0 0 3 0 2 2 2 2 0 3 0 0
+0 0 3 0 2 2 2 2 0 3 0 0 3 0 2 2 2 2 0 3 0 0
+0 0 3 0 0 0 0 0 0 3 0 0 3 0 0 0 0 0 0 3 0 0
+0 0 3 3 3 3 3 3 3 3 0 0 3 3 3 3 3 3 3 3 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+```
+
+
+## train_2
+
+**input:**
+```
+0 0 0 0 0 0 0
+0 0 0 4 0 0 0
+0 0 4 0 4 0 0
+0 4 0 1 0 4 0
+4 0 1 1 1 0 4
+0 4 0 1 0 4 0
+0 0 4 0 4 0 0
+0 0 0 4 0 0 0
+0 0 0 0 0 0 0
+0 0 0 0 0 0 0
+0 0 0 0 0 0 0
+0 0 0 1 0 0 0
+0 0 1 1 1 0 0
+0 0 0 1 0 0 0
+0 0 0 0 0 0 0
+0 0 0 0 0 0 0
+0 0 0 0 0 0 0
+```
+
+
+**output:**
+```
+0 0 0 0 0 0 0
+0 0 0 4 0 0 0
+0 0 4 0 4 0 0
+0 4 0 1 0 4 0
+4 0 1 1 1 0 4
+0 4 0 1 0 4 0
+0 0 4 0 4 0 0
+0 0 0 4 0 0 0
+0 0 0 0 0 0 0
+0 0 0 4 0 0 0
+0 0 4 0 4 0 0
+0 4 0 1 0 4 0
+4 0 1 1 1 0 4
+0 4 0 1 0 4 0
+0 0 4 0 4 0 0
+0 0 0 4 0 0 0
+0 0 0 0 0 0 0
+```
+
+**Perception of task elements:**
+
+The task involves identifying specific structures within the input grid and manipulating them to produce the output grid. The key elements appear to be:
+1.  **Objects:** Distinct contiguous blocks of non-white pixels.
+2.  **Relationships:** A spatial relationship where one object (container) fully encloses another object (contained) of a different color.
+3.  **Composite Objects:** The combination of a container object and the object(s) it contains.
+4.  **Other Objects:** Objects that are neither containers nor contained within the identified primary composite structure.
+5.  **Transformation:** The core transformation seems to be selecting the primary composite object, removing all other objects, and then duplicating the composite object within the grid boundaries.
+6.  **Placement:** The duplicated object is placed adjacent to the original, either horizontally or vertically, with a small gap. The specific direction and gap size appear context-dependent based on the examples.
+
+**YAML Facts:**
+
+
+```yaml
+Task: Duplicate Composite Object
+
+Input_Features:
+  - Grid: 2D array of pixels (0-9).
+  - Objects:
+    - Contiguous regions of non-white pixels.
+    - Properties: color, pixel coordinates, bounding box.
+  - Relationships:
+    - Containment: One object's pixels fully surround the pixels of another object of a different color.
+
+Identified_Structures:
+  - Container_Object: An object that fully encloses at least one other object of a different color.
+  - Contained_Object(s): Object(s) fully enclosed by the Container_Object.
+  - Composite_Object: The union of the Container_Object and its Contained_Object(s).
+  - Isolated_Objects: Objects that are not part of the identified Composite_Object.
+
+Transformation_Rule:
+  - Action: Identify the primary Composite_Object.
+  - Action: Create a new grid of the same dimensions as the input, initialized to the background color (0).
+  - Action: Draw the identified Composite_Object onto the new grid at its original position.
+  - Action: Determine placement (direction and gap) for a copy based on context (e.g., available space in the grid).
+    - Example 1 shows horizontal placement (right) with a gap of 2 pixels.
+    - Example 2 shows vertical placement (down) with a gap of 1 pixel.
+  - Action: Draw a copy of the Composite_Object onto the new grid at the determined translated position.
+  - Implicit_Action: Discard all Isolated_Objects from the input.
+
+Output_Features:
+  - Grid: Contains the original Composite_Object and one translated copy, with all other areas set to the background color.
+```
+
+
+**Natural Language Program:**
+
+1.  Analyze the input grid to identify all distinct objects (connected components of same-colored, non-white pixels).
+2.  Find the unique "composite object" which consists of a "container" object (whose pixels fully enclose pixels of another object) and the "contained" object(s) (the object(s) fully enclosed by the container, having a different color).
+3.  Initialize an output grid of the same dimensions as the input grid, filling it entirely with the background color (white, 0).
+4.  Copy the pixels belonging to the identified composite object (both container and contained parts) from the input grid to the output grid, preserving their original coordinates.
+5.  Determine the optimal direction (e.g., right or down) and distance (including a small gap, observed as 1 or 2 pixels) to place a duplicate of the composite object, likely based on the available space within the grid boundaries relative to the original composite object's position and size.
+6.  Create a translated copy of the composite object's pixels and draw them onto the output grid at the location determined in the previous step. Ensure the copy remains within the grid boundaries. Any objects present in the input grid that are not part of the selected composite object are not included in the output.
+```python
+import numpy as np
+from collections import deque
+
+"""
+Identify a composite object consisting of a container object and one or more contained objects fully enclosed within it.
+Create an output grid containing only this composite object and a single copy of it.
+The copy is placed adjacent to the original, either to the right or downwards, with a one-pixel gap, prioritizing the rightward placement if space allows.
+
+Workflow:
+1. Find all distinct objects (contiguous regions of the same non-background color) using 4-way connectivity.
+2. Identify the unique 'container' object that fully encloses one or more 'contained' objects of different colors.
+   An object is considered fully enclosed if all its adjacent pixels (including diagonals, 8-way check) belong either to itself or to the container object, and it does not touch the grid boundary.
+3. Determine the set of all pixels belonging to the container and all objects it encloses. This constitutes the 'composite object'. Calculate its combined bounding box.
+4. Initialize an output grid of the same size as the input, filled with the background color (0).
+5. Draw the composite object onto the output grid at its original location using the colors from the input grid.
+6. Determine the placement for a copy:
+   - Calculate the bounding box dimensions (height, width) of the composite object.
+   - Define a gap of 1 pixel.
+   - Check if a copy fits entirely within the grid boundaries when placed to the right of the original with the gap (i.e., copy_start_col + copy_width <= grid_width).
+   - Check if a copy fits entirely within the grid boundaries when placed below the original with the gap (i.e., copy_start_row + copy_height <= grid_height).
+   - If it fits to the right, set the translation vector (dx, dy) for rightward placement (dx = original_width + gap, dy = 0).
+   - Otherwise, if it fits downwards, set the translation vector for downward placement (dx = 0, dy = original_height + gap).
+   - If it fits neither way, no copy is placed (dx=0, dy=0).
+7. If a valid placement (dx > 0 or dy > 0) was determined, draw a copy of the composite object at the translated position (original_pixel_pos + (dy, dx)) on the output grid, using the original colors.
+8. Return the resulting output grid as a list of lists.
+"""
+
+def find_objects(grid: np.ndarray) -> list[dict]:
+    """
+    Finds all connected components of non-background pixels using 4-connectivity.
+    Each object stores its color, pixel coordinates (set), and bounding box.
+    """
+    objects = []
+    visited = set()
+    height, width = grid.shape
+    for r in range(height):
+        for c in range(width):
+            # Check if pixel is non-background and not yet visited
+            if grid[r, c] != 0 and (r, c) not in visited:
+                color = grid[r, c]
+                obj_pixels = set()
+                # Use BFS (deque) for finding connected components
+                q = deque([(r, c)])
+                visited.add((r, c))
+                # Initialize bounding box coordinates
+                min_r, min_c, max_r, max_c = r, c, r, c
+
+                while q:
+                    row, col = q.popleft()
+                    obj_pixels.add((row, col))
+                    # Update bounding box
+                    min_r = min(min_r, row)
+                    min_c = min(min_c, col)
+                    max_r = max(max_r, row)
+                    max_c = max(max_c, col)
+
+                    # Explore 4 neighbors (up, down, left, right)
+                    for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+                        nr, nc = row + dr, col + dc
+                        # Check if neighbor is within bounds, has the same color, and not visited
+                        if 0 <= nr < height and 0 <= nc < width and \
+                           grid[nr, nc] == color and (nr, nc) not in visited:
+                            visited.add((nr, nc))
+                            q.append((nr, nc))
+
+                # Store the found object's properties
+                objects.append({
+                    'color': color,
+                    'pixels': obj_pixels,
+                    'bbox': (min_r, min_c, max_r, max_c) # min_row, min_col, max_row, max_col
+                })
+    return objects
+
+def is_fully_enclosed(container_obj: dict, contained_obj: dict, grid: np.ndarray) -> bool:
+    """
+    Checks if contained_obj is fully enclosed by container_obj using 8-way adjacency.
+    Returns False if contained_obj touches the grid boundary, has the same color as container,
+    or touches any pixel not belonging to the container or itself.
+    """
+    # Basic checks: cannot contain itself or object of same color
+    if container_obj is contained_obj or container_obj['color'] == contained_obj['color']:
+        return False
+
+    container_pixels = container_obj['pixels']
+    contained_pixels = contained_obj['pixels']
+    height, width = grid.shape
+
+    # Check if contained object is non-empty
+    if not contained_pixels:
+        return False
+
+    for r, c in contained_pixels:
+        # Check if any pixel of the contained object is on the grid boundary
+        if r == 0 or r == height - 1 or c == 0 or c == width - 1:
+             return False # Cannot be fully enclosed if touching boundary
+
+        # Check all 8 neighbors (including diagonals)
+        for dr in [-1, 0, 1]:
+            for dc in [-1, 0, 1]:
+                if dr == 0 and dc == 0:
+                    continue # Skip self
+
+                nr, nc = r + dr, c + dc
+                neighbor_pos = (nr, nc)
+
+                # Neighbor must be within bounds (implicitly true due to boundary check above)
+                # Check if neighbor belongs EITHER to the contained object OR the container object
+                if neighbor_pos not in contained_pixels and neighbor_pos not in container_pixels:
+                    # Found a neighbor that is not part of the container or contained object
+                    # This means it touches background or another object.
+                    return False
+
+    # If all checks passed for all pixels, the object is fully enclosed.
+    return True
+
+
+def get_composite_object_pixels(objects: list[dict], grid: np.ndarray) -> tuple[set | None, tuple | None]:
+    """
+    Identifies the unique container object and collects all pixels from it
+    and all objects it fully encloses. Calculates the combined bounding box.
+    Assumes at most one such top-level container object exists per grid based on ARC patterns.
+    """
+    the_container = None
+    all_contained_objects = []
+
+    # Find the container object
+    for i, potential_container in enumerate(objects):
+        currently_contained = []
+        for j, potential_contained in enumerate(objects):
+            # Check if potential_container encloses potential_contained
+            if is_fully_enclosed(potential_container, potential_contained, grid):
+                 currently_contained.append(potential_contained)
+
+        # If this object contains other objects, consider it the container
+        if currently_contained:
+            if the_container is not None:
+                 # This case suggests multiple containers, which contradicts typical ARC task structure.
+                 # Handle by ignoring or raising an error if necessary. For now, we stick with the first found.
+                 print("Warning: Multiple container objects found, using the first one.")
+                 pass
+            else:
+                the_container = potential_container
+                all_contained_objects = currently_contained
+                # If strict uniqueness is assumed, we can break the loop here.
+                # break
+
+    # If no container was found, return None
+    if not the_container:
+        return None, None
+
+    # Collect all pixels from the container and all objects it encloses
+    composite_pixels = set(the_container['pixels'])
+    for contained_obj in all_contained_objects:
+        composite_pixels.update(contained_obj['pixels'])
+
+    # Calculate the combined bounding box of the composite object
+    if not composite_pixels:
+         return None, None # Should not happen if container was found
+
+    min_r = min(r for r, c in composite_pixels)
+    min_c = min(c for r, c in composite_pixels)
+    max_r = max(r for r, c in composite_pixels)
+    max_c = max(c for r, c in composite_pixels)
+    bbox = (min_r, min_c, max_r, max_c)
+
+    return composite_pixels, bbox
+
+
+def transform(input_grid: list[list[int]]) -> list[list[int]]:
+    """
+    Transforms the input grid by identifying a composite object (container + contained),
+    keeping only that object, and adding a translated copy next to it (right preferred, then down).
+    """
+    # Convert input list of lists to numpy array for easier manipulation
+    grid = np.array(input_grid, dtype=int)
+    height, width = grid.shape
+
+    # Step 1: Find all distinct objects in the grid
+    objects = find_objects(grid)
+    if not objects:
+        # If there are no objects, return an empty grid of the same size
+        return np.zeros_like(grid).tolist()
+
+    # Step 2: Identify the composite object (container + all enclosed) and its bounding box
+    composite_pixels, composite_bbox = get_composite_object_pixels(objects, grid)
+
+    # If no composite object (container enclosing others) is found, return empty grid
+    if not composite_pixels:
+         return np.zeros_like(grid).tolist()
+
+    # Extract bounding box info
+    min_r, min_c, max_r, max_c = composite_bbox
+    comp_h = max_r - min_r + 1
+    comp_w = max_c - min_c + 1
+
+    # Step 3: Initialize an output grid filled with the background color (0)
+    output_grid = np.zeros_like(grid)
+
+    # Step 4: Draw the original composite object onto the output grid
+    # Iterate through the identified pixels and copy their color from the input grid
+    for r, c in composite_pixels:
+        output_grid[r, c] = grid[r, c]
+
+    # Step 5: Determine placement for the copy (prefer right, then down, with 1 pixel gap)
+    dx, dy = 0, 0 # Initialize translation delta (dx for columns, dy for rows)
+    gap = 1
+
+    # Calculate where the copy would start if placed right or down
+    copy_start_col_right = min_c + comp_w + gap
+    copy_start_row_down = min_r + comp_h + gap
+
+    # Check if the entire copy fits within grid bounds if placed to the right
+    fits_right = (copy_start_col_right + comp_w <= width)
+    # Check if the entire copy fits within grid bounds if placed downwards
+    fits_down = (copy_start_row_down + comp_h <= height)
+
+    # Apply placement logic: prioritize right, then down
+    if fits_right:
+        # Set translation for rightward placement
+        dx = comp_w + gap
+        dy = 0
+    elif fits_down:
+        # Set translation for downward placement
+        dx = 0
+        dy = comp_h + gap
+    # If neither fits, dx and dy remain 0, and no copy will be drawn
+
+    # Step 6: Draw the copy if a valid placement was determined (dx > 0 or dy > 0)
+    if dx > 0 or dy > 0:
+        # Iterate through the original composite object's pixels
+        for r, c in composite_pixels:
+            # Calculate the corresponding coordinates for the copy
+            nr, nc = r + dy, c + dx
+            # Ensure the copy's pixel coordinates are within the grid bounds
+            if 0 <= nr < height and 0 <= nc < width:
+                # Copy the color from the original position in the input grid
+                output_grid[nr, nc] = grid[r, c]
+
+    # Step 7: Convert the final numpy grid back to a list of lists and return
+    return output_grid.tolist()
+```

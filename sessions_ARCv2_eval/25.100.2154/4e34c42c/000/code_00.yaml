@@ -1,0 +1,53 @@
+task_type: grid_transformation
+input_properties:
+  - grid_representation: matrix of digits
+  - background_digit: 8
+  - foreground_elements: clusters of non-8 digits
+objects:
+  - id: C1 # Cluster 1 (leftmost, 5-high)
+    location: roughly rows 6-10, cols 6-15
+    height: 5
+    width: 10 # Based on bounding box of non-8s
+    content: subgrid containing digits 1, 2, 3, 4, 9 and background 8s
+    bounding_box: rows 6-10, cols 6-15
+  - id: C2 # Cluster 2 (rightmost, 5-high)
+    location: roughly rows 11-15, cols 20-22
+    height: 5
+    width: 3 # Based on bounding box of non-8s
+    content: subgrid containing digits 1, 4, 6, 9 and background 8s
+    bounding_box: rows 11-15, cols 20-22
+  - id: C3 # Cluster 3 (ignored?)
+    location: roughly rows 18-20, cols 3-5
+    height: 3
+    width: 3
+    content: subgrid containing digits 2, 3
+    bounding_box: rows 18-20, cols 3-5
+relationships:
+  - type: height_match
+    objects: [C1, C2]
+    value: 5
+  - type: relative_horizontal_position
+    objects: [C1, C2]
+    relation: C1 is to the left of C2 (based on min column index)
+output_properties:
+  - grid_representation: matrix of digits
+  - dimensions: 5 rows, 12 columns (matches height of C1/C2, width is width(C2) + width(C1) - 1)
+  - content_origin: derived from C1 and C2
+transformation:
+  - action: identify_objects
+    criteria: connected components of non-background (non-8) digits
+  - action: filter_objects
+    criteria: select objects with matching height (height=5 in this case), resulting in C1 and C2
+  - action: order_objects
+    criteria: horizontal position (min column index), C1 (left), C2 (right)
+  - action: extract_content
+    source: C1 -> Content_Left
+    source: C2 -> Content_Right
+  - action: slice_content
+    source: Content_Left
+    operation: remove first column -> Sliced_Content_Left
+  - action: concatenate_content
+    part1: Content_Right
+    part2: Sliced_Content_Left
+    axis: horizontal
+    result: output grid

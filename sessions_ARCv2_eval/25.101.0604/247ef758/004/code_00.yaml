@@ -1,0 +1,123 @@
+objects:
+  - name: input_grid
+    properties:
+      - grid of digits (colors)
+      - height H
+      - width W
+  - name: output_grid
+    properties:
+      - grid of digits (colors)
+      - height H
+      - width W
+      - initialized to 0s
+  - name: axis_column
+    properties:
+      - vertical column in the grid
+      - index: axis_col
+      - identified as the first column 'j' where input_grid[1:H-1, j] contains a single unique non-zero value (axis_value)
+      - copied from input to output for middle rows
+  - name: value_column
+    properties:
+      - vertical column in the input grid
+      - index: axis_col + 1
+      - contains selector_color values for middle rows
+      - copied from input to output for middle rows
+  - name: left_zone
+    properties:
+      - region of the grid
+      - columns: 0 to axis_col - 1
+      - in output: set to 0 for middle rows (current implementation, known discrepancy with some expected outputs)
+  - name: right_zone
+    properties:
+      - region of the grid
+      - columns: axis_col + 2 to W - 1
+      - in output: modified based on selector_color and task context (axis_value)
+  - name: middle_rows
+    properties:
+      - rows: 1 to H - 2
+  - name: boundary_rows
+    properties:
+      - rows: 0 and H - 1
+  - name: selector_color
+    properties:
+      - color C found in input_grid[row, value_column_index] for a middle row
+      - determines the right_zone_action for the output row
+  - name: axis_value
+    properties:
+      - the single unique non-zero value found in input_grid[1:H-1, axis_col]
+      - determines the task context / applicable rule set for right_zone_actions
+  - name: right_zone_action
+    properties:
+      - an operation performed on the output grid's right_zone for a specific middle row
+      - selected from a rule set based on axis_value and triggered by selector_color C
+      - types:
+          - noop: leave right_zone as 0s
+          - draw: place a predefined 1D pattern with specified alignment (center/right)
+          - copy_last_col: copy input[r, W-1] to output[r, W-1]
+          - copy_indices: copy values from specific columns in input row 0 to the same columns in the output row
+          - copy_conditional_last_col: check input left_zone for a specific value; if not present, copy input[r, W-1] to output[r, W-1]
+
+actions:
+  - name: identify_axis_column
+    actor: system
+    operates_on: input_grid
+    description: Find axis_col and determine axis_value from middle rows.
+  - name: copy_boundary_rows
+    actor: system
+    operates_on: input_grid, output_grid, boundary_rows
+    description: Copy input rows 0 and H-1 to output rows 0 and H-1.
+  - name: process_middle_row
+    actor: system
+    operates_on: input_grid, output_grid, middle_rows, axis_col, axis_value
+    description: For each middle row 'r':
+      - clear_left_zone: Set output_grid[r, 0:axis_col] to 0. (Note: Known discrepancy)
+      - copy_axis_value: Set output_grid[r, axis_col] = input_grid[r, axis_col].
+      - copy_value_column_value: Set output_grid[r, axis_col+1] = input_grid[r, axis_col+1].
+      - determine_selector_color: C = input_grid[r, axis_col+1].
+      - select_rule_set: Choose the set of right_zone_actions based on axis_value.
+      - apply_right_zone_action: Find action for C in the rule set and modify output_grid[r, axis_col+2:W].
+  - name: apply_right_zone_action (details based on refined rules)
+    actor: system
+    operates_on: output_grid, input_grid, selector_color, right_zone, row 'r', axis_value specific rules
+    description: Executes the specific action for selector C within the context of axis_value.
+      - Context axis_value=2:
+          - C=4: draw [4,4,4] centered.
+          - C=7: draw [7,7,7] centered.
+          - C=6: copy input[r, W-1] to output[r, W-1].
+          - C=3: noop.
+      - Context axis_value=3:
+          - C=4: copy input[0, 7]->output[r, 7], input[0, 11]->output[r, 11], input[0, W-1]->output[r, W-1].
+          - C=7: draw [7,7,7,7,0,7,7,7] centered.
+          - C=5: draw [5,0,5] centered.
+          - C=3: noop.
+      - Context axis_value=1:
+          - C=3: draw [3,3,3] centered.
+          - C=6: draw [6,0,6,6] right-aligned.
+          - C=2: if 7 not in input[r, 0:axis_col], copy input[r, W-1] to output[r, W-1], else noop.
+          - C=1: noop.
+
+relationships:
+  - type: determination
+    from: axis_value
+    to: right_zone_action rule set
+    description: The axis_value determines which set of rules maps selector_color to actions.
+  - type: determination
+    from: selector_color
+    to: right_zone_action (within a rule set)
+    description: The selector_color triggers a specific action from the contextually chosen rule set.
+  - type: spatial
+    from: axis_column
+    to: left_zone, value_column, right_zone
+    description: Divides the grid horizontally.
+  - type: preservation
+    from: input_grid, boundary_rows
+    to: output_grid, boundary_rows
+    description: Boundary rows are copied.
+  - type: preservation
+    from: input_grid, axis_column, middle_rows
+    to: output_grid, axis_column, middle_rows
+    description: Axis column values are copied for middle rows.
+  - type: preservation
+    from: input_grid, value_column, middle_rows
+    to: output_grid, value_column, middle_rows
+    description: Value column values are copied for middle rows.

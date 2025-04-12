@@ -1,0 +1,40 @@
+task_type: grid_transformation
+grid_properties:
+  variable_dimensions: true # Examples: 7x7, 12x12, 17x17, 10x10
+  variable_background: true # Examples: 0, 7, 1, 0
+  value_set: [0, 1, 2, 3, 4, 5, 7, 8, 9] # Combined from examples
+object_roles:
+  - role: anchor
+    values_observed: [[2, 8], [2], [2], [5]] # Per example
+    behavior: Located in a single column (anc_c). Preserved in place in the output, overwriting background/static if necessary.
+  - role: static
+    values_observed: [null, [4], [9], [3]] # Per example
+    behavior: Preserved in place initially, but can be overwritten by mover or conditional generation steps. May act as reference points for right-side mover generation.
+  - role: mover
+    values_observed: [4, 3, 7, 8] # Per example
+    behavior: Transformation depends on mover value (M), relative position to anchor (left/right), and potentially static objects. Resulting placements overwrite previous cell values.
+    left_rules: # Apply if mover coords are mostly < anc_c
+      - relative_column: -1
+        action: Shift (dr, dc) depends on M. Place M at (r+dr, c+dc) if valid coords.
+            # M=4: (0,0); M=3: (-1,0); M=8: (-4,0)
+      - relative_column: -2
+        action: Shift (dr, dc) depends on M. Place M at (r+dr, c+dc) if valid coords. Track success.
+            # M=4: (-2,+1); M=3: (-1,+1); M=8: (-4,+1)
+      - relative_column: other
+        action: Remove.
+      - conditional_generation: If successful move occurred from rel_col -2:
+          # M=4: Place 4 at (0, anc_c).
+          # M=8: Place 8 at (0, anc_c - 1).
+          # Overwrites previous value.
+    right_rules: # Apply if mover coords are mostly > anc_c (Observed for M=7)
+      - preservation_rule: Preserve mover M at (r, anc_c + 1) if input(r, anc_c) is anchor. Store location (pr, pc). Overwrite previous value.
+      - removal_rule: Remove other input mover locations (effectively overwritten by background or generated shape).
+      - generation_rule: Generate a new shape ('V' for M=7) using mover color M, positioned relative to static object(s) and (pr, pc). Place M at shape coords, overwriting previous values.
+overwrite_logic:
+  priority: Appears sequential based on transformation steps. Later steps overwrite earlier ones.
+  order:
+    1. Background Initialization
+    2. Static Placement
+    3. Anchor Placement
+    4. Mover Transformation Placement
+    5. Conditional/Shape Generation Placement

@@ -1,0 +1,76 @@
+task_description: Transform a 2D input grid into a 2D output grid with different dimensions by extracting, transforming, and combining subgrids.
+
+elements:
+  - object: input_grid
+    alias: I
+    properties:
+      - type: 2D array of integers
+      - dimensions: I_rows x I_cols
+  - object: output_grid
+    alias: O
+    properties:
+      - type: 2D array of integers
+      - dimensions: O_rows x O_cols
+  - object: left_output_part
+    alias: O1
+    properties:
+      - type: 2D array of integers
+      - dimensions: O_rows x O1_cols
+  - object: right_output_part
+    alias: O2
+    properties:
+      - type: 2D array of integers
+      - dimensions: O_rows x O2_cols
+  - object: source_subgrid_for_O1
+    alias: S
+    properties:
+      - type: 2D array of integers
+      - dimensions: O_rows x O1_cols
+
+relationships:
+  - type: dimension_calculation
+    input: I_cols
+    output: O_rows
+    rule: O_rows = floor(I_cols / 2) + 1
+  - type: dimension_calculation
+    input: O_rows
+    output: O2_cols
+    rule: O2_cols = O_rows
+  - type: dimension_calculation
+    input: I_cols
+    output: O1_cols
+    rule: O1_cols = I_cols - 1
+  - type: dimension_calculation
+    input: [O1_cols, O2_cols]
+    output: O_cols
+    rule: O_cols = O1_cols + O2_cols
+  - type: concatenation
+    input: [O1, O2]
+    output: O
+    rule: O = horizontal_concatenate(O1, O2)
+
+actions:
+  - action: calculate_O2
+    input: I
+    parameters: O_rows
+    output: O2
+    rule: Tile the first O_rows elements of the first row of I (I[0, 0:O_rows]) vertically O_rows times.
+  - action: extract_subgrid_S
+    input: I
+    parameters: [I_rows, I_cols, O_rows, O1_cols]
+    output: S
+    rule: Extract subgrid S = I[(I_rows - O_rows):I_rows, 1:I_cols]. S has dimensions O_rows x O1_cols.
+  - action: calculate_O1 # Best hypothesis based on train_2, known to fail train_1
+    input: S
+    output: O1
+    rule: >
+      1. Flip the subgrid S vertically (upside-down) to create a temporary grid Temp.
+      2. If Temp has 3 or more columns, swap its second column (index 1) and third column (index 2).
+      3. The resulting grid is O1.
+
+derived_facts:
+  - train_1: I (7x7), O (4x10). O_rows=4, O_cols=10. O1 (4x6), O2 (4x4).
+  - train_2: I (7x4), O (3x6). O_rows=3, O_cols=6. O1 (3x3), O2 (3x3).
+  - O2_calculation_verified: The rule for O2 matches both examples.
+  - S_extraction_verified: The rule for S extraction is consistent.
+  - O1_calculation_hypothesis: The transformation (flipud(S) then swap cols 1&2) correctly produces O1 for train_2, but not for train_1. This rule will be used going forward until a better one is identified.

@@ -1,0 +1,98 @@
+elements:
+  - object: Frame
+    properties:
+      - color: gray (5)
+      - shape: hollow rectangle
+      - role: defines the region of interest (ROI) for output grid size and boundary.
+
+  - object: KeyArea
+    properties:
+      - location: outside the Frame's bounding box.
+      - contains: KeyPairs, BackgroundPixels.
+
+  - object: KeyPair
+    properties:
+      - structure: consists of two adjacent blocks - a SourceShape and an OutputShape.
+      - role: defines a transformation rule (SourceShape Color -> OutputShape Target Color) and the output shape (OutputShape shape).
+      - location: within KeyArea.
+
+  - object: SourceShape
+    properties:
+      - structure: contiguous block of a single color ('SourceColor').
+      - role: represents the input color identifier in a KeyPair.
+      - location: within KeyArea, adjacent to an OutputShape.
+
+  - object: OutputShape # Renamed from TemplateBlock for clarity
+    properties:
+      - structure: contiguous component composed ONLY of a 'TargetColor' and the 'BackgroundColor'.
+      - shape: specific pattern defining the output object's shape and internal structure. This IS the template.
+      - role: represents the output shape and target color identifier in a KeyPair.
+      - location: within KeyArea, adjacent to a SourceShape.
+
+  - object: SourceInstance
+    properties:
+      - structure: contiguous block of a single 'SourceColor' (matching a color from a SourceShape in KeyArea).
+      - location: inside the Frame.
+      - role: input object instance to be transformed.
+
+  - object: BackgroundColor
+    properties:
+      - color: varies by task (most frequent color in KeyArea excluding frame, SourceColors, and TargetColors).
+      - role: invariant color, used within OutputShapes and fills empty space in the output grid.
+
+actions:
+  - name: locate_frame
+    input: input_grid
+    output: bounding_box_of_gray_frame (r_min, c_min, r_max, c_max)
+
+  - name: analyze_key_area
+    input: input_grid, frame_bounding_box
+    process:
+      - Identify potential BackgroundColor (most frequent outside, non-frame).
+      - Find all SourceShapes (Solid Blocks) outside frame (color S != potential BG, != frame).
+      - Find all PatternBlocks (potential OutputShapes) outside frame (color T != potential BG, != frame + potential BG).
+      - Determine final BackgroundColor (most frequent outside non-frame, non-S, non-T).
+      - Filter PatternBlocks to get valid OutputShapes based on final BackgroundColor.
+      - Identify adjacent (SourceShape S, OutputShape O containing T) pairs.
+      - For each pair: record mapping S -> T, store O's array as template[S].
+    output: dictionary_of_mappings {S: T, ...}, BackgroundColor, dictionary_of_templates {S: template_array, ...}
+
+  - name: initialize_output_grid
+    input: frame_bounding_box, BackgroundColor
+    process: create new grid matching frame size, fill with BackgroundColor.
+    output: output_grid
+
+  - name: copy_frame_to_output
+    input: input_grid, frame_bounding_box, output_grid
+    process: copy gray (5) pixels from input frame location to output grid.
+    output: updated_output_grid
+
+  - name: find_source_instances_inside_frame
+    input: input_grid, frame_bounding_box, source_colors (keys from mappings)
+    process: find contiguous blocks of source_colors within the inner bounds of the frame.
+    output: list_of_source_instances [{color, r_min, c_min, coords}, ...] (absolute coordinates)
+
+  - name: apply_templates_to_output
+    input: output_grid, list_of_source_instances, dictionary_of_templates, dictionary_of_mappings, BackgroundColor, frame_bbox(r_min, c_min)
+    process:
+      - Create a mask to track painted cells (initially true for frame cells).
+      - For each SourceInstance (color S at r_abs, c_abs):
+          - Get TemplateShape 'T_shape' = templates[S].
+          - Get TargetColor 'T_color' = mappings[S].
+          - Calculate output placement top-left: r_rel = r_abs - r_min_frame, c_rel = c_abs - c_min_frame.
+          - Iterate through T_shape (size h x w):
+              - For pixel T_shape[r_t, c_t]:
+                  - Determine output pixel color: 'T_color' if T_shape pixel is T_color, 'BackgroundColor' if T_shape pixel is BackgroundColor.
+                  - Calculate output coordinate: out_r = r_rel + r_t, out_c = c_rel + c_t.
+                  - If (out_r, out_c) is within output bounds and not masked:
+                      - Place output color in output_grid[out_r, out_c].
+                      - Mark (out_r, out_c) in the mask.
+    output: final_output_grid
+
+relationships:
+  - Frame defines output grid size and boundary.
+  - KeyPairs (adjacent SourceShape and OutputShape) define transformations.
+  - SourceShape color maps to adjacent OutputShape's TargetColor.
+  - OutputShape provides the template (shape and internal pattern) for the transformation.
+  - BackgroundColor is invariant and populates OutputShapes and empty output space.
+  - SourceInstances inside the frame trigger the placement of the corresponding template.

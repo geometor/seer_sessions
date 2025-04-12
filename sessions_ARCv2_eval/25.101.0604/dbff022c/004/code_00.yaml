@@ -1,0 +1,87 @@
+elements:
+  - element: grid
+    properties:
+      - type: 2D array of integers (0-9)
+      - size: variable (rows x columns)
+  - element: cell
+    properties:
+      - value: integer (0-9)
+      - position: (row, column)
+  - element: shape
+    properties:
+      - type: connected component (8-way adjacency) of identical non-zero cells
+      - border_color: integer (C > 0)
+      - cells: set of cell positions {(r, c), ...}
+      - id: unique identifier per shape instance
+  - element: zero_component
+    properties:
+      - type: connected component (4-way/orthogonal adjacency) of 0-valued cells
+      - cells: set of cell positions {(r, c), ...}
+  - element: hole
+    properties:
+      - type: zero_component
+      - characteristic: All non-zero orthogonal neighbors of the component belong to the same, single shape instance.
+      - enclosing_shape: The unique shape instance identified by the neighbors.
+  - element: fill_color
+    properties:
+      - value: integer (F > 0) or None
+
+relationships:
+  - type: spatial
+    description: Cells have orthogonal and diagonal neighbors. Shapes occupy regions. Zero components occupy regions.
+  - type: adjacency
+    description: Cells within shapes are connected (8-way). Cells within zero components are connected (4-way). Zero components have orthogonal neighbors which can be other zeros or non-zero cells belonging to shapes.
+  - type: enclosure (local)
+    description: A hole (zero_component) is enclosed by a specific shape instance if all its non-zero orthogonal neighbors belong exclusively to that shape instance.
+  - type: context
+    description: The fill color for a hole enclosed by a shape of color 4 depends on the minimum border color of *other* shapes present in the grid.
+
+actions:
+  - action: identify_shapes
+    input: grid
+    output: list of shapes (with border_color, cells, id), cell_to_shape_map
+    method: Find connected components of non-zero cells using 8-way adjacency. Assign unique ID to each. Map cells to their shape object/ID.
+  - action: identify_zero_components
+    input: grid
+    output: list of zero_components (each with a set of cells)
+    method: Find connected components of 0-valued cells using 4-way adjacency.
+  - action: identify_holes
+    input: zero_component, grid, cell_to_shape_map
+    output: enclosing_shape object (or None if not a hole)
+    method:
+      1. Collect all unique non-zero orthogonal neighbors for all cells in the zero_component.
+      2. If no non-zero neighbors exist, it's not a hole (fully surrounded by 0s - edge case?). Return None.
+      3. Look up the shape instance for each non-zero neighbor using cell_to_shape_map.
+      4. If all non-zero neighbors belong to the *same* shape instance, return that shape instance.
+      5. Otherwise (neighbors are 0 or belong to multiple shapes), return None.
+  - action: determine_fill_color
+    input: enclosing_shape S, all_shapes
+    output: fill_color F (integer or None)
+    logic:
+      - Let C = S['color']
+      - If C=3 -> F=3
+      - If C=7 -> F=7
+      - If C=8 -> F=1
+      - If C=2 -> F=7
+      - If C=4:
+        - Find border colors of all shapes other than S (using shape id/object comparison) -> other_border_colors set.
+        - If other_border_colors is empty -> F=None
+        - Else -> min_obd = min(other_border_colors)
+          - If min_obd = 5 -> F=5
+          - If min_obd = 3 -> F=6
+          - Else -> F=None
+      - Else (C=5 or other unspecified colors) -> F=None
+  - action: apply_fill
+    input: grid, all_shapes, cell_to_shape_map
+    output: modified grid
+    method:
+      1. Create output_grid = copy(grid).
+      2. Find all zero_components using identify_zero_components.
+      3. For each zero_component:
+         a. Determine if it's a hole and find its enclosing_shape S = identify_holes(zero_component, grid, cell_to_shape_map).
+         b. If S is not None (it is a hole):
+            i. Determine fill_color F = determine_fill_color(S, all_shapes).
+            ii. If F is not None:
+                - For each cell (rz, cz) in the zero_component['cells']:
+                    output_grid[rz][cz] = F
+      4. Return output_grid.

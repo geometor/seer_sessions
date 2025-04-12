@@ -1,0 +1,49 @@
+elements:
+  - object: grid
+    properties:
+      - type: 2D array
+      - cell_colors: [white (0), magenta (6)]
+      - size: variable (10x10 in examples)
+  - object: pixel
+    properties:
+      - color: white (0) or magenta (6)
+      - position: (row, column)
+  - object: row
+    properties:
+      - contains: pixels
+      - index: integer
+actions:
+  - name: process_row
+    input: row_index, input_grid
+    output: modified_row_pixels
+    effects:
+      - preserves row index
+      - preserves count of magenta pixels
+      - changes column index of magenta pixels
+  - name: map_columns
+    input: set of input column indices for a row (C_in)
+    output: set of output column indices for that row (C_out)
+    constraints:
+      - |
+        Processes each row containing magenta pixels independently.
+      - |
+        |C_out| == |C_in|.
+      - |
+        Pixels are generally shifted leftward (output column <= input column).
+relationships:
+  - type: spatial
+    nodes: [pixel, pixel]
+    relation: adjacency (horizontal within a row is key)
+  - type: transformation
+    input: input_grid
+    output: output_grid
+    rule: apply process_row to each row
+rule_details:
+  - step: Identify magenta pixels in the current row.
+  - step: Determine their input column indices (C_in).
+  - step: If C_in is empty, the output row is all white.
+  - step: If C_in == {7}, the output columns C_out = {1}.
+  - step: Otherwise, calculate C_out based on the relative order (rank) of columns in C_in, mapping the k-th unique column to output column k. Specifically, find unique sorted columns U_in = sorted(list(set(C_in))), create map M: U_in[i] -> i, and C_out = { M[c] for c in C_in }.
+  - step: Place magenta pixels in the output row at columns specified by C_out.
+uncertainty:
+  - The rule "map rank to output column" does not explain the output {0, 3} for input {6, 8} in train_1, row 9. It predicts {0, 1}. The documented rule uses the simpler rank mapping as the most plausible generalization, acknowledging this discrepancy.

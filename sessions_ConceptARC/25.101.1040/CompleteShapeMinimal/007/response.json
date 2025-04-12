@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom scipy.ndimage import label, binary_fill_holes, generate_binary_structure\nfrom collections import Counter\n\n\"\"\"\nTransforms the input grid by identifying the largest connected non-background object (shape),\nfinding all enclosed background regions (potential holes) within it using binary_fill_holes,\nand then filling only those potential hole regions that consist of 1 or 2 pixels \nwith the color of the largest shape. Uses 4-way connectivity throughout.\n\"\"\"\n\ndef _find_largest_shape_mask_and_color(grid: np.ndarray, background_color: int = 0) -> tuple[np.ndarray | None, int]:\n    \"\"\"\n    Finds the mask and color of the largest 4-connected non-background object.\n\n    Args:\n        grid: The input grid as a numpy array.\n        background_color: The integer value representing the background.\n\n    Returns:\n        A tuple containing:\n        - A boolean numpy array mask for the largest shape, or None if no shape found.\n        - The integer color of the largest shape, or background_color if no shape found.\n    \"\"\"\n    non_background_mask = grid != background_color\n    if not np.any(non_background_mask):\n        return None, background_color\n\n    # Use 4-connectivity for defining shapes\n    structure = generate_binary_structure(2, 1) \n    labeled_array, num_features = label(non_background_mask, structure=structure)\n\n    if num_features == 0:\n        return None, background_color\n\n    # Find the size of each component, ignoring label 0 (background)\n    component_sizes = np.bincount(labeled_array.ravel())\n    if len(component_sizes) > 0:\n        component_sizes[0] = 0 \n    \n    if np.all(component_sizes == 0):\n        return None, background_color # No non-background components found\n\n    # Find the label of the largest component\n    largest_component_label = np.argmax(component_sizes)\n    \n    # Create mask for the largest shape\n    largest_shape_mask = (labeled_array == largest_component_label)\n    \n    # Get the color of the largest shape\n    # Find the first coordinate of the shape to get its color\n    coords = np.argwhere(largest_shape_mask)\n    if coords.size > 0:\n        shape_color = int(grid[coords[0, 0], coords[0, 1]])\n        return largest_shape_mask, shape_color\n    else:\n        # Should not happen if component_sizes had non-zero entries\n        return None, background_color\n\n\ndef transform(input_grid: list[list[int]]) -> list[list[int]]:  \n    \"\"\"\n    Applies the transformation rule to fill small (<= 2 pixels) holes \n    within the largest connected non-background shape.\n\n    Args:\n        input_grid: A list of lists representing the input grid.\n\n    Returns:\n        A list of lists representing the transformed output grid.\n    \"\"\"\n    # Convert input to numpy array and initialize output grid\n    grid = np.array(input_grid, dtype=int)\n    output_grid = grid.copy()\n    background_color = 0\n    \n    # 1. Find the largest connected non-background shape, its mask, and its color\n    largest_shape_mask, shape_color = _find_largest_shape_mask_and_color(grid, background_color)\n\n    # If no shape found, return the original grid\n    if largest_shape_mask is None:\n        return output_grid.tolist()\n\n    # 2. Identify potential holes using binary_fill_holes\n    # Use 4-connectivity for hole structure consistency\n    hole_structure = generate_binary_structure(2, 1)\n    filled_mask = binary_fill_holes(largest_shape_mask, structure=hole_structure)\n    \n    # Mask identifying only the pixels filled by binary_fill_holes\n    potential_hole_mask = filled_mask & ~largest_shape_mask\n    \n    # If no potential holes were found, return the original grid copy\n    if not np.any(potential_hole_mask):\n         return output_grid.tolist()\n\n    # 3. Label the connected components within the potential holes mask\n    # Use 4-connectivity for hole components\n    labeled_holes, num_hole_features = label(potential_hole_mask, structure=hole_structure)\n\n    if num_hole_features == 0:\n        # Should not happen if np.any(potential_hole_mask) was true, but check defensively\n        return output_grid.tolist()\n\n    # 4. Calculate the size of each hole component\n    hole_labels = labeled_holes[labeled_holes > 0] # Exclude background label 0\n    if hole_labels.size == 0:\n        return output_grid.tolist() # No actual hole regions found\n        \n    hole_sizes = Counter(hole_labels) # More direct than bincount when labels might not be contiguous\n\n    # 5. Iterate through hole components and fill small ones (size <= 2)\n    for hole_label, size in hole_sizes.items():\n        if size <= 2:\n            # Find pixels belonging to this small hole component\n            hole_coords = np.argwhere(labeled_holes == hole_label)\n            # Fill these pixels in the output grid with the shape color\n            for r, c in hole_coords:\n                output_grid[r, c] = shape_color\n                \n    # Convert the final grid back to list of lists and return\n    return output_grid.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 23891,
+    "candidates_token_count": 1922,
+    "total_token_count": 25813,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-preview-03-25",
+  "response_time": 16.266671,
+  "retries": 1
+}

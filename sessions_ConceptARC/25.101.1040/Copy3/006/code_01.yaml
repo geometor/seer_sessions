@@ -1,0 +1,60 @@
+task_description: Conditionally copy patterns within the grid based on the presence of magenta.
+
+conditions:
+  - condition_type: check_color_presence
+    color: magenta (6)
+    outcome_if_false: rule_no_magenta
+    outcome_if_true: rule_magenta_present
+
+rule_no_magenta:
+  assumption: Grid width W must be even for the rule to apply.
+  input_objects:
+    - object_type: connected_components
+      source_area: Left half of grid (cols 0 to W/2 - 1)
+      properties:
+        - color != white (0)
+      name: left_half_components
+  action:
+    type: copy_pixels_of_components
+    source_components: left_half_components
+    destination_rule: For each pixel (r, c_src) in a source component, copy its value to (r, c_src + W/2).
+    target_grid: output_grid (initially copy of input)
+    overwrite: true # Copying pixels overwrites destination pixels
+    preserve: Left half remains unchanged. Pixels in the right half not overwritten by copied component pixels remain unchanged.
+    preconditions: Grid width W is even.
+
+rule_magenta_present:
+  input_objects:
+    - object_type: connected_components
+      source_area: Full grid
+      properties:
+        - color != white (0)
+      name: all_objects
+  derived_objects:
+    - object_type: specific_component
+      source: all_objects
+      selection_criteria:
+        - filter: colors != {magenta} # Not only magenta
+        - metric: bounding_box_area (maximize)
+        - tiebreaker: min_row (minimize), then min_col (minimize)
+      name: main_pattern (P)
+    - object_type: specific_component
+      source: all_objects
+      selection_criteria:
+        - filter: magenta in colors
+        - filter: bounding_box[1] (min_col) > main_pattern.bounding_box[3] (max_col) # Starts right of P
+        - metric: bounding_box[0] (min_row, minimize) # Top-most
+        - tiebreaker: bounding_box[1] (min_col, minimize) # Left-most
+      name: marker (M)
+  action:
+    type: copy_region # Copy the rectangular bounding box
+    source_grid: input_grid
+    source_region: Defined by the bounding box of main_pattern (P)
+    destination_rule: Top-left corner is (marker.bounding_box[0] + 2, marker.bounding_box[1])
+    target_grid: output_grid (initially copy of input)
+    overwrite: true
+    preconditions: Both main_pattern (P) and marker (M) must be found. If not, no action is taken.
+
+output_grid_properties:
+  - dimensions: Same as input.
+  - content: Modified based on the applied rule (rule_no_magenta or rule_magenta_present). If preconditions for a rule are not met (e.g., odd width for rule_no_magenta, or P/M not found for rule_magenta_present), the output is an unchanged copy of the input.

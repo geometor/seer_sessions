@@ -1,0 +1,37 @@
+task_type: object_assembly_by_marker
+components:
+  - role: background
+    properties:
+      - color: most frequent color in the input grid (e.g., azure 8 in train_1, yellow 4 in train_2)
+      - significance: ignored during extraction, defines empty space
+  - role: marker_pixels
+    properties:
+      - color: specific color indicating patterns to extract (e.g., maroon 9 in train_1; potentially context-dependent like gray 5 or azure 8 in train_2)
+      - location: either adjacent to or part of the pattern to be extracted
+      - significance: identify patterns, define extraction region, determine output order
+  - role: pattern_regions
+    properties:
+      - shape: rectangular slices, always 5 rows high
+      - content: subgrids extracted from the input based on marker locations
+      - relationship_to_markers:
+          - adjacent_marker: slice might start at marker row, but column offset from marker column (e.g., marker column + 1)
+          - internal_marker: slice might encompass the marker and the associated pattern
+      - extraction_rule: precise definition of the 5xN slice relative to the marker(s)
+  - role: output_grid
+    properties:
+      - composition: horizontal concatenation of extracted pattern_regions
+      - ordering: pattern_regions are arranged based on the descending minimum row index of their corresponding marker_pixels in the input grid
+      - dimensions: height is always 5 rows; width is the sum of the widths of the extracted pattern_regions
+
+actions:
+  - identify_markers: find all pixels of the specific marker color(s)
+  - group_markers: identify connected components of marker pixels
+  - define_region: for each marker component, determine the associated 5xN rectangular region in the input grid based on relative position to pattern
+  - extract_regions: copy the pixel data from the defined regions
+  - order_regions: sort the extracted regions based on the descending minimum row index of their corresponding marker component
+  - concatenate: join the ordered regions horizontally
+
+relationships:
+  - marker_to_pattern: each marker component corresponds to one pattern_region to be extracted
+  - marker_position_to_extraction_rule: the location of the marker relative to the pattern dictates how the 5xN region is defined
+  - marker_row_to_output_order: the minimum row index of the marker component determines the horizontal position of its pattern_region in the output grid (descending order)

@@ -1,0 +1,51 @@
+task_description: Rearrange pixels from the input grid into a new grid composed of elements representing non-dominant colors, arranged horizontally with gaps filled by the dominant color. Elements are either single pixels or blocks with a specific structure.
+
+definitions:
+  - &dominant_color The color with the highest pixel count in the input grid.
+  - &pixel_color The color with a pixel count of exactly 1 in the input grid (if present).
+  - &block_colors All colors in the input grid that are neither the dominant color nor the pixel color (i.e., count > 1 and not dominant).
+  - &output_height Calculated as the number of block colors + (1 if pixel_color exists else 0) + 1.
+  - &block_width For a block color C with N pixels, its width W is floor(sqrt(N)).
+  - &output_elements The pixel_color (if present) and the block_colors.
+
+transformation_steps:
+  - Count occurrences of each color in the input grid.
+  - Identify the dominant_color, pixel_color (if any), and block_colors.
+  - Calculate the output_height H.
+  - For each block_color C_i with count N_i, calculate its block_width W_i = floor(sqrt(N_i)).
+  - Determine the horizontal placement order of output_elements:
+    - If pixel_color exists: Sort block_colors by color index descending. Order = [pixel_color] + [sorted block_colors].
+    - If no pixel_color: Sort block_colors by color index ascending. Order = [sorted block_colors].
+  - Calculate the total output width W_total: Sum of widths (1 for pixel_color, W_i for block_colors) + (number of elements - 1) gaps.
+  - Create an output grid of size H x W_total, filled entirely with dominant_color.
+  - Place the output_elements into the output grid according to the determined order, column by column, starting at column 0:
+    - Define `current_col = 0`.
+    - For each element in the order:
+      - If the element is the pixel_color:
+        - Place pixel_color at grid position (H-1, current_col).
+        - Advance `current_col` by 1.
+      - If the element is a block_color C_i with width W_i:
+        - Fill the rectangle from (1, current_col) to (H-1, current_col + W_i - 1) with color C_i. (Row 0 remains dominant_color).
+        - Advance `current_col` by W_i.
+      - If this is not the last element in the order:
+        - Advance `current_col` by 1 (leaving the gap column filled with dominant_color).
+
+example_1_facts:
+  dominant_color: 7
+  pixel_color: 1
+  block_colors: {4: 16, 5: 9}
+  output_height: 4
+  block_widths: {4: 4, 5: 3}
+  order: [1, 5, 4]
+  output_width: 10
+  output_layout: Pixel(1) at (3,0) | Gap(7) at col 1 | Block(5) W=3 (row 0 is 7, rows 1-3 are 5) at cols 2-4 | Gap(7) at col 5 | Block(4) W=4 (row 0 is 7, rows 1-3 are 4) at cols 6-9
+
+example_2_facts:
+  dominant_color: 7
+  pixel_color: null
+  block_colors: {6: 4, 9: 9}
+  output_height: 3
+  block_widths: {6: 2, 9: 3}
+  order: [6, 9]
+  output_width: 6
+  output_layout: Block(6) W=2 (row 0 is 7, rows 1-2 are 6) at cols 0-1 | Gap(7) at col 2 | Block(9) W=3 (row 0 is 7, rows 1-2 are 9) at cols 3-5

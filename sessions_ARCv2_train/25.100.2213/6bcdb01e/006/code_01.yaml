@@ -1,0 +1,43 @@
+objects:
+  - name: grid
+    properties:
+      - type: 2D array of integers
+      - dimensions: rows, columns (consistent between input and output)
+      - contains cells
+  - name: cell
+    properties:
+      - position: (row, column)
+      - value: integer (digit 3, 7, or 8)
+      - state: mutable (if 7), immutable (if 3 or 8 from input, or if 8 generally)
+  - name: digit_3
+    properties:
+      - role: source / fill_value
+      - behavior: cells with value 3 initiate and iteratively propagate a fill process. Initial 3s remain 3.
+  - name: digit_7
+    properties:
+      - role: background / potentially_fillable
+      - state: can change to 3 under specific conditions.
+      - condition_1: Must be adjacent (horizontally/vertically) to a cell that is currently 3 (either original or previously filled).
+      - condition_2 (Uncertain): There exists an additional constraint, not fully identified, that prevents *some* cells satisfying condition_1 from changing to 3. Simple BFS based only on condition 1 and barrier 8 results in overfilling (see metrics). This constraint might relate to proximity to 8s in the input, local patterns, or other non-trivial properties.
+  - name: digit_8
+    properties:
+      - role: barrier
+      - state: immutable
+      - behavior: blocks the propagation of the fill; the fill cannot enter or pass through an 8 cell. 8 cells in the input remain 8 in the output.
+relationships:
+  - type: adjacency
+    between: cell
+    definition: Cells sharing a horizontal or vertical edge are neighbors. Diagonal adjacency is not relevant.
+  - type: transformation
+    input: input_grid
+    output: output_grid
+    rule: constrained_iterative_fill_from_sources
+actions:
+  - name: constrained_iterative_fill_from_sources
+    description: A process based on Breadth-First Search (BFS) originates from initial '3' cells. It attempts to spread iteratively to adjacent '7' cells.
+    actor: digit_3 cells (initial and newly formed)
+    target: adjacent digit_7 cells in the evolving grid state.
+    constraint_barrier: Fill cannot propagate into or through digit_8 cells.
+    constraint_unknown: An additional rule prevents certain '7' cells, which are reachable via BFS and not blocked by an '8', from changing to '3'. The exact nature of this rule is not determined from the examples.
+    effect: If a target '7' cell meets *all* conditions (adjacency to '3', not '8', *and* satisfies the unknown constraint), its value changes to 3.
+    termination: The process continues until no more '7' cells can be changed according to the full set of rules (including the unknown constraint).

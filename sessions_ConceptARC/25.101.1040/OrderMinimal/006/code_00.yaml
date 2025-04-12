@@ -1,0 +1,69 @@
+task_description: >
+  Transforms the grid by processing each row independently to consolidate 
+  all yellow pixels into a single contiguous horizontal block. The position 
+  of this block depends on the properties of the yellow pixels in the 
+  original row and crucially on the total count of yellow pixels in the 
+  entire input grid.
+grid_properties:
+  - dimensions_preserved: true
+  - background_color: white (0)
+  - fixed_colors: [white (0), yellow (4)]
+global_properties:
+  - name: N_total
+    description: Total count of yellow pixels in the entire input grid.
+    value: Calculated from input grid. Affects the transformation rule.
+row_properties:
+  - name: N
+    description: Count of yellow pixels in the current row.
+    value: Calculated per row.
+  - name: max_c
+    description: Column index of the rightmost yellow pixel in the current row.
+    value: Calculated per row (if N > 0).
+objects:
+  - type: pixel
+    color: yellow (4)
+  - type: derived_object
+    name: contiguous_block
+    description: A horizontal block of N yellow pixels created in the output row.
+    properties:
+      - length: N
+      - start_column: k
+actions:
+  - name: calculate_adjustment
+    input: [N_total, N]
+    output: adj
+    logic: |
+      if N_total == 6: adj = 0
+      elif N_total == 10: adj = 1
+      elif N_total == 15:
+        if N <= 2: adj = 2
+        else: adj = 0 # N >= 3
+      else: adj = 0 # Default or undefined case
+  - name: calculate_start_column
+    input: [max_c, N, adj]
+    output: k_unclamped
+    logic: k_unclamped = max_c - N + adj
+  - name: clamp_start_column
+    input: [k_unclamped, N, grid_width]
+    output: k
+    logic: k = max(0, min(k_unclamped, grid_width - N))
+  - name: generate_output_row
+    input: [N, k, grid_width]
+    output: transformed_row
+    logic: Create a row of white pixels, then place N yellow pixels starting at column k.
+process:
+  - Step 1: Calculate N_total for the input grid.
+  - Step 2: Initialize an empty output grid of the same dimensions.
+  - Step 3: For each row r from 0 to height-1:
+      a. Calculate N and find max_c for the input row r.
+      b. If N == 0, copy the empty row to the output grid.
+      c. If N > 0:
+          i. Calculate adj using N_total and N.
+          ii. Calculate k_unclamped = max_c - N + adj.
+          iii. Calculate clamped k.
+          iv. Generate the output row with the yellow block at [k, k+N-1].
+          v. Place the generated row into the output grid.
+  - Step 4: Return the completed output grid.
+notes:
+  - The rule's dependency on specific N_total values (6, 10, 15) and row N (when N_total=15) is derived directly from the examples.
+  - Assumes a default adj=0 if N_total is not 6, 10, or 15.

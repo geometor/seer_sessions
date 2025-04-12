@@ -1,0 +1,52 @@
+elements:
+  - object: grid
+    properties:
+      - height: H (variable)
+      - width: W (variable)
+      - pixels: 2D array of colors (0-9)
+  - object: border
+    properties:
+      - type: outer (frame)
+      - color: FrameColor (F) - varies per task/section (e.g., 3, 4)
+      - location: typically row 0, row H-1, col 0, col W-1
+      - type: inner (segment delimiter)
+      - color: Red (2)
+      - location: column 1 and column W-2 within specific rows
+  - object: row_segment
+    properties:
+      - source_row_index: r
+      - start_column: 2
+      - end_column: W-3
+      - content: sequence of pixels from input grid[r][2:W-2]
+  - object: pattern_unit
+    properties:
+      - colors: ordered list of pixel colors
+      - length: L (typically 1-8)
+      - derivation: Determined from the input row_segment
+
+relationships:
+  - Grid contains Borders and Row Segments.
+  - Inner Borders (Red=2) define the horizontal boundaries of Row Segments.
+  - Each input Row Segment determines a single best Pattern Unit.
+  - The Pattern Unit is used to generate the corrected pixel sequence for the corresponding segment in the output grid.
+
+actions:
+  - initialize_output: Create a deep copy of the input grid.
+  - iterate_rows: Process each row 'r' from 0 to H-1.
+  - identify_pattern_row: Check if input_grid[r][1] == Red(2) and input_grid[r][W-2] == Red(2).
+  - extract_segment: If it's a pattern row, get the segment = input_grid[r][2 : W-2].
+  - determine_best_pattern_unit:
+      - For the extracted segment:
+          - Iterate through possible lengths `L` (e.g., 1 to max(8, len(segment))).
+          - For each `L`, iterate through all subsegments of length `L` starting at index `i` (`segment[i:i+L]`) as candidate patterns.
+          - Score each candidate pattern by counting how many positions in the *entire* segment match the pattern if it were repeated (`segment[j] == candidate[j % L]`).
+          - Identify the maximum score achieved by any candidate pattern.
+          - Select the pattern(s) that achieved the maximum score.
+          - If multiple patterns achieved the maximum score, choose the one with the shortest length `L`. (Further tie-breaking, e.g., earliest starting index `i`, might be needed but seems unnecessary based on examples).
+  - apply_correction:
+      - If a best pattern_unit is found:
+          - Iterate through columns 'c' from 2 to W-3 for the current row 'r'.
+          - Calculate the index within the pattern unit: `pattern_index = (c - 2) % length(pattern_unit)`.
+          - Determine the expected color `E = pattern_unit[pattern_index]`.
+          - Update the output grid: `output_grid[r][c] = E`.
+  - return_output: Return the modified output grid.

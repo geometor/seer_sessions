@@ -1,0 +1,51 @@
+task_elements:
+  - grid:
+      type: object
+      description: A 2D array of digits.
+      properties:
+        - dimensions: [rows, cols] (variable)
+        - unique_values_input: [0, 1, 2, 3]
+        - unique_values_output: [0, 1, 2, 3]
+        - center: Geometric center coordinates ((rows-1)/2, (cols-1)/2).
+  - border:
+      type: object
+      description: A frame composed of a single digit ('3') assumed to be 1 cell thick.
+      properties:
+        - value: 3
+      relationships:
+        - unchanged: between input and output
+        - boundary: Defines the interior region for valid MSB checks.
+  - digits:
+      type: object
+      description: Individual numerical values within the grid cells.
+      properties:
+        - default_value_map: {0: 1, 2: 0, 1: 1, 3: 3}
+        - transformation_mode: Defaults to applying 'default_value_map' cell-wise, unless the exception condition is met.
+  - monochromatic_square_block:
+      type: object
+      description: An NxN square (N>=2) of identical digits (0, 1, or 2).
+      properties:
+        - digit_value: The digit composing the block (0, 1, or 2).
+        - size: The side length N of the square block.
+        - top_left_coord: The (row, col) of the top-left cell of the block.
+        - center_coord: Geometric center (row + N/2 - 0.5, col + N/2 - 0.5).
+        - is_valid: True if N>=2 and the block is fully contained within the non-border area (all cells (r, c) satisfy 0 < r < rows-1 and 0 < c < cols-1).
+      relationships:
+        - maximality: The exception condition compares the *largest valid* MSB for '0' and '2'. If multiple largest exist, use the first in reading order.
+        - centrality: The exception action identifies the valid 1s-MSB (of matching size N) that is *closest* (Euclidean distance) to the grid's center. Ties broken by reading order.
+
+relationships:
+  - identity: Grid dimensions remain constant.
+  - identity: Border ('3') remains constant.
+  - conditional_transformation:
+      condition_check: Find the largest *valid* MSB of '0's (L0_MSB, size N0) and the largest *valid* MSB of '2's (L2_MSB, size N2).
+      exception_condition: (N0 >= 2) AND (N2 >= 2) AND (N0 == N2)
+      actions_if_exception:
+          - let N = N0 = N2.
+          - find_target_block: Find all *valid* N x N MSBs of '1's (L1_candidates). Select the L1_candidate (L1_target) whose center is closest to the grid center (Euclidean distance, tie-breaking by reading order). If no candidates exist, L1_target is null.
+          - apply_map_selectively:
+              - For cells within L2_MSB: output = 2.
+              - Else if L1_target is not null AND cell is within L1_target: output = 0.
+              - Else: Apply 'default_value_map' to the input cell value (0->1, 2->0, 1->1, 3->3).
+      actions_if_no_exception:
+          - apply_map_globally: Apply 'default_value_map' to all input cells.

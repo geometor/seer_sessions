@@ -1,0 +1,59 @@
+task_type: pattern_transfer_relative
+components:
+  - role: background
+    properties:
+      color: white (0)
+  - role: frame_object # e.g., Magenta frame, Yellow frame, Orange frame, Red frame
+    properties:
+      shape: variable (usually hollow rectangle or L-shape)
+      main_color: variable (magenta, yellow, orange, red in examples)
+      count: 2 per grid
+      relation_to_pattern: one frame contains the pattern, one does not
+  - role: pattern_object # e.g., Green diagonal, Blue anti-diagonal
+    properties:
+      shape: linear (diagonal, anti-diagonal)
+      color: variable (green, blue in examples)
+      count: 1 per grid
+      position: fully contained within the bounding box of the source_object
+relationships:
+  - type: containment
+    between: pattern_object, source_object
+    details: pattern_object's bounding box is contained within or equal to source_object's bounding box, and they represent different objects (different component IDs).
+  - type: spatial
+    between: source_object, target_object
+    details: distinct frame objects, non-overlapping.
+identification:
+  - object: pattern_object
+    criteria: A distinct object whose bounding box is contained within the bounding box of another object (source_object). Assume one such relationship.
+  - object: source_object
+    criteria: The object whose bounding box contains the pattern_object's bounding box.
+  - object: target_object
+    criteria: The remaining non-background object that is neither the pattern_object nor the source_object. Assume exactly one such object exists.
+actions:
+  - type: extract_pattern_details
+    source: pattern_object, source_object
+    details:
+      - pattern_color: color of the pattern_object.
+      - pattern_relative_coords: list of (row, col) offsets of pattern_object pixels relative to the top-left corner of the source_object's bounding box `(src_min_r, src_min_c)`. `(dr, dc) = (pixel_r - src_min_r, pixel_c - src_min_c)`.
+  - type: determine_pattern_rule
+    source: pattern_relative_coords
+    details: Identify the type of line and calculate its source parameter `k_s`.
+      - 'anti_diag': all `(dr, dc)` satisfy `dr + dc = k_s`.
+      - 'main_diag_offset': all `(dr, dc)` satisfy `dr - dc = k_s`.
+  - type: calculate_target_parameter
+    source: pattern_type, k_s, target_object
+    details: Calculate target parameter `k_t`.
+      - Get target bounding box height `H_t`.
+      - if type is 'anti_diag': `k_t = H_t - 1`
+      - if type is 'main_diag_offset': `k_t = k_s`
+  - type: apply_pattern
+    target: target_object in output grid
+    details:
+      - Get target bounding box `(tgt_min_r, tgt_min_c, tgt_max_r, tgt_max_c)` and dimensions `H_t`, `W_t`.
+      - Iterate through relative coordinates `(dr_t, dc_t)` where `0 <= dr_t < H_t` and `0 <= dc_t < W_t`.
+      - Check if `(dr_t, dc_t)` satisfies the rule determined by `pattern_type` using parameter `k_t`:
+          - if 'anti_diag': check `dr_t + dc_t == k_t`.
+          - if 'main_diag_offset': check `dr_t - dc_t == k_t`.
+      - If the rule is satisfied:
+          - Calculate absolute grid coordinates: `abs_r = tgt_min_r + dr_t`, `abs_c = tgt_min_c + dc_t`.
+          - Set the pixel at `(abs_r, abs_c)` in the output grid to the `pattern_color`.

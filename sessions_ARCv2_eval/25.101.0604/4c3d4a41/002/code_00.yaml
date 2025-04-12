@@ -1,0 +1,70 @@
+definitions:
+  - name: FRAME_COLOR
+    value: 5
+  - name: BACKGROUND_COLOR
+    value: 0
+  - name: CONTENT_COLOR
+    value: any color that is not FRAME_COLOR and not BACKGROUND_COLOR
+
+elements:
+  - object: grid
+    properties:
+      - type: 2D array of integers (colors)
+      - size: H x W (constant per task)
+      - source: input | output
+  - object: cell
+    properties:
+      - coordinates: (row, column) where 0 <= row < H, 0 <= column < W
+      - color: integer (from grid)
+      - role: determined by color and location relative to main_frame
+          - background: color == BACKGROUND_COLOR
+          - frame: color == FRAME_COLOR
+          - content: color is a CONTENT_COLOR
+  - object: main_frame
+    properties:
+      - color: FRAME_COLOR
+      - connectivity: The largest connected component of FRAME_COLOR cells in the input grid that touches at least one edge of the grid.
+      - scope: A set of cell coordinates.
+  - object: non_main_frame_cell
+    properties:
+      - coordinates: (row, column)
+      - input_color: color from input grid at (row, column)
+    relationships:
+      - status: derived from input_color and main_frame scope
+          - is_main_frame: cell coordinates are in main_frame scope
+          - is_non_frame_5: input_color == FRAME_COLOR and not is_main_frame
+          - is_content: input_color is a CONTENT_COLOR
+          - is_background: input_color == BACKGROUND_COLOR and not is_main_frame
+
+actions:
+  - action: determine_output_color
+    inputs:
+      - cell_coordinates: (r, c)
+      - input_grid: H x W array
+      - main_frame_scope: set of coordinates
+    process:
+      - Get input_color = input_grid[r, c]
+      - Check if (r, c) is in main_frame_scope.
+      - If yes, output_color = FRAME_COLOR.
+      - If no:
+          - If input_color == FRAME_COLOR (i.e., is_non_frame_5):
+              - Check color_below = input_grid[r+1, c] (handle boundary: treat as BACKGROUND_COLOR).
+              - If color_below is CONTENT_COLOR, output_color = color_below.
+              - Else, output_color = BACKGROUND_COLOR.
+          - If input_color is CONTENT_COLOR:
+              - Look down column c from row r+1.
+              - Find the first row index `r_look >= r+1` where `input_grid[r_look, c]` is BACKGROUND_COLOR or FRAME_COLOR.
+              - If BACKGROUND_COLOR is found first (or boundary reached), output_color = FRAME_COLOR.
+              - Else (FRAME_COLOR found first or neither found), output_color = input_color.
+          - If input_color == BACKGROUND_COLOR:
+              - output_color = BACKGROUND_COLOR.
+    outputs:
+      - output_color: integer for cell (r, c) in the output grid
+
+algorithm:
+  - step: Initialize output_grid with same dimensions as input_grid.
+  - step: Identify main_frame_scope from input_grid.
+  - step: For each cell (r, c) from (0, 0) to (H-1, W-1):
+      - Execute determine_output_color(r, c, input_grid, main_frame_scope).
+      - Assign the result to output_grid[r, c].
+  - step: Return output_grid.

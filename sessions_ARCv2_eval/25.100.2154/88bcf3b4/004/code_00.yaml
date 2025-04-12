@@ -1,0 +1,45 @@
+task_type: grid_transformation
+grid_properties:
+  variable_dimensions: true # Examples: 7x7, 12x12, 17x17, 10x10, 9x9
+  variable_background: true # Examples: 0, 7, 1, 0, 0
+  value_set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] # Combined from examples
+object_roles:
+  - role: anchor
+    values_observed: [[2, 8], [2], [2], [5], [6]] # Per example
+    behavior: Located in a single column (anc_c). Preserved in place in the output, overwriting background/static if necessary.
+  - role: static
+    values_observed: [null, [4], [9], [3], [3]] # Per example
+    behavior: Preserved in place initially, but can be overwritten by mover or conditional generation steps. May act as reference points for right-side mover generation (M=7).
+  - role: mover
+    values_observed: [4, 3, 7, 8, 9] # Per example
+    behavior: Transformation depends on mover value (M), relative position to anchor (left/right), and potentially static objects. Resulting placements overwrite previous cell values.
+    left_rules: # Apply if mover coords are mostly < anc_c
+      - relative_column: -1
+        action: Shift (dr, dc) = (lookup_dr1(M), 0). Place M at (r+dr, c+dc) if valid coords.
+            # lookup_dr1: M=4->0, M=3->-1, M=8->-4, M=9->0
+      - relative_column: -2
+        action: Shift (dr, dc) = (lookup_dr2(M), lookup_dc2(M)). Place M at (r+dr, c+dc) if valid coords. Track success flag_minus_2.
+            # lookup_dr2: M=4->-2, M=3->-1, M=8->-4, M=9->-2
+            # lookup_dc2: M=9->0, else +1
+      - relative_column: -3
+        action: If M=9, Shift (dr, dc) = (-5, 0). Place M at (r+dr, c+dc) if valid coords. Track success flag_minus_3. Else remove.
+            # For M!=9, this rule does not apply (effectively remove).
+      - relative_column: <-3
+        action: Remove.
+      - conditional_generation: If flag_minus_2 is true: # Check if M=9 trigger needs flag_minus_3? Train_5 suggests flag_minus_2 is sufficient.
+          # M=4: Place 4 at (0, anc_c).
+          # M=8: Place 8 at (0, anc_c - 1).
+          # M=9: Place 9 at (0, anc_c - 1) AND (1, anc_c - 1).
+          # Overwrites previous value.
+    right_rules: # Apply if mover coords are mostly > anc_c (Observed only for M=7)
+      - preservation_rule: Preserve M=7 at (r, anc_c + 1) if input(r, anc_c) is anchor. Store location (pr, pc). Overwrite previous value.
+      - removal_rule: Remove other input M=7 locations.
+      - generation_rule: Generate a 'V' shape using M=7, positioned relative to static object(s) (S=9) and (pr, pc). Place M=7 at shape coords, overwriting previous values.
+overwrite_logic:
+  priority: Sequential based on transformation steps. Later steps overwrite earlier ones.
+  order:
+    1. Background Initialization
+    2. Static Placement
+    3. Anchor Placement
+    4. Mover Transformation Placement (from rel_c -1, -2, -3 based on rules)
+    5. Conditional/Shape Generation Placement

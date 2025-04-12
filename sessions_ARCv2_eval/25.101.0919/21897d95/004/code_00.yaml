@@ -1,0 +1,73 @@
+task_description: Rotate grid 90 deg clockwise and recolor based on original region structure, noise, and propagation.
+
+definitions:
+  - definition: background_pixel
+    criteria: Pixel belongs to a connected component of a color found on the input grid's bottom edge, and the component touches the bottom edge.
+  - definition: foreground_pixel
+    criteria: Any pixel that is not a background_pixel.
+  - definition: foreground_region
+    criteria: A maximal connected component of foreground_pixels having the same dominant color.
+  - definition: region_noise_colors
+    criteria: Set of colors within a foreground_region that differ from its dominant color.
+
+elements:
+  - element: grid
+    attributes:
+      - type: 2D array of integers 0-9 (colors)
+      - size: H x W (input), W x H (output)
+
+  - element: input_background_area
+    description: All background_pixels in the input grid.
+    maps_to: placeholder pixels in the intermediate rotated grid.
+
+  - element: input_foreground_region
+    description: A connected component of same-colored foreground pixels in the input grid.
+    attributes:
+      - dominant_color: The main color of the region.
+      - noise_colors: The set of unique other colors within the region's pixels.
+    maps_to: a colored area in the intermediate rotated grid.
+
+actions:
+  - action: determine_intermediate_foreground_color
+    input: dominant_color, noise_colors
+    output: intermediate_color
+    rule: |
+      if len(noise_colors) == 1:
+        intermediate_color = noise_colors.pop()
+      else:
+        intermediate_color = dominant_color
+
+  - action: rotate_and_initial_color
+    input: input_grid, background_mask, foreground_regions_info
+    output: intermediate_grid (W x H)
+    details: |
+      Rotate input 90 deg clockwise.
+      For each output pixel (r_out, c_out):
+        Find corresponding input pixel (r_in, c_in).
+        If input pixel is background: set output pixel to placeholder (-1).
+        If input pixel is foreground:
+          Find its region.
+          Determine intermediate_color using determine_intermediate_foreground_color rule.
+          Set output pixel to intermediate_color.
+
+  - action: propagate_background_fill
+    input: intermediate_grid (with placeholders)
+    output: final_output_grid
+    details: |
+      Iterate through each row of the intermediate_grid.
+      For each row:
+        Initialize last_valid_color = 0 (or another default).
+        Iterate through columns left-to-right:
+          If current pixel is placeholder (-1): set it to last_valid_color.
+          If current pixel is not placeholder: update last_valid_color with its value.
+
+relationships:
+  - relationship: pixel_origin
+    entities: [output_pixel, input_pixel]
+    details: Each output pixel corresponds to a specific input pixel after rotation. (r_out, c_out) <- (H_in - 1 - c_out, r_out)
+  - relationship: region_mapping
+    entities: [input_foreground_region, output_area_color]
+    details: The output color depends on the input region's dominant color and its noise colors.
+  - relationship: background_fill
+    entities: [output_placeholder_pixel, output_non_placeholder_pixel]
+    details: Placeholder pixels get their color from the nearest non-placeholder pixel to their left in the same row.

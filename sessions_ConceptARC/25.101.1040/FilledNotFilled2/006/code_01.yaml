@@ -1,0 +1,69 @@
+task_description: >
+  Determines the dimensions of an all-white output grid based on comparing
+  properties of objects in the input grid. The final dimensions are chosen
+  between two potential calculations based on which yields the maximum grid area.
+
+definitions:
+  object: A contiguous block of pixels of the same non-white color (value 1-9), identified using 4-way adjacency.
+  N: The total count of distinct objects in the input grid.
+  C: The count of unique non-white colors present in the input grid.
+  MaxH: The maximum height (number of rows in bounding box) of any object.
+  height(obj): The height of a specific object's bounding box.
+  width(obj): The width of a specific object's bounding box.
+  color(obj): The integer value (1-9) of the pixels comprising a specific object.
+  special_object: An object where height(obj) == color(obj).
+  Dims_A: Potential output dimensions derived from the special_object (H x W). Only applicable if N == C and a special_object exists.
+  Dims_B: Potential output dimensions calculated as MaxH x max(0, C - 1).
+  Area(Dims): The area calculated as Height * Width for a given dimension set.
+
+rules:
+  - step: 1. Identify all objects and calculate N, C, MaxH.
+  - step: 2. Calculate Potential Dimensions B (Dims_B) = MaxH x max(0, C - 1). Calculate Area_B = Area(Dims_B).
+  - step: 3. Check if N == C.
+      - if_true:
+        - Search for a special_object.
+        - if_found:
+          - Calculate Potential Dimensions A (Dims_A) = height(special_object) x width(special_object). Calculate Area_A = Area(Dims_A).
+        - if_not_found:
+          - Dims_A is not applicable. Area_A = 0.
+      - if_false:
+        - Dims_A is not applicable. Area_A = 0.
+  - step: 4. Select Final Dimensions:
+      - condition: Dims_A is applicable AND Area_A >= Area_B
+        action: Use Dims_A as the final output dimensions.
+      - condition: Otherwise (Dims_A not applicable OR Area_B > Area_A)
+        action: Use Dims_B as the final output dimensions.
+  - step: 5. Ensure final dimensions are at least 1x1.
+
+output_grid:
+  content: All pixels are white (0).
+  dimensions: The final dimensions selected in Step 4 (and adjusted in Step 5 if necessary).
+
+examples: # Based on code_execution results using the Max Area rule
+  train_1:
+    properties: {N: 3, C: 3, MaxH: 3}
+    special_object: {Found: True, H: 3, W: 2}
+    dims_A: (3, 2), Area_A: 6
+    dims_B: (3, 2), Area_B: 6
+    selection: Dims_A (Area_A >= Area_B)
+    final_dims: (3, 2)
+    expected_dims: (3, 2)
+    result: PASS
+  train_2:
+    properties: {N: 3, C: 3, MaxH: 6}
+    special_object: {Found: True, H: 4, W: 4}
+    dims_A: (4, 4), Area_A: 16
+    dims_B: (6, 2), Area_B: 12
+    selection: Dims_A (Area_A >= Area_B)
+    final_dims: (4, 4)
+    expected_dims: (4, 4)
+    result: PASS
+  train_3:
+    properties: {N: 4, C: 4, MaxH: 5}
+    special_object: {Found: True, H: 4, W: 3}
+    dims_A: (4, 3), Area_A: 12
+    dims_B: (5, 3), Area_B: 15
+    selection: Dims_B (Area_B > Area_A)
+    final_dims: (5, 3)
+    expected_dims: (5, 3)
+    result: PASS

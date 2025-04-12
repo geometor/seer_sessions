@@ -1,0 +1,57 @@
+Grid:
+  type: 2D array of integers (pixels)
+  colors: {0: white, 2: red, 5: gray, 6: magenta}
+  size: variable
+
+Objects:
+  - type: Gray_Line
+    color: 5
+    shape: vertical line (usually solid, 1 pixel wide)
+    location: specific column index `gray_col`
+    role: barrier
+  - type: White_Object
+    color: 0
+    shape: contiguous region of pixels (4-connectivity)
+    location: initially left of Gray_Line (column index < `gray_col`)
+    properties:
+      - pixels: list of (row, col) tuples
+      - max_c: maximum original column index
+      - shift: calculated horizontal shift distance `max(0, (gray_col - 1) - max_c)`
+      - shifted: boolean (`shift > 0`)
+      - final_touch_rows: set of rows `r` where a pixel exists at `(r, gray_col - 1)` in the output grid.
+  - type: Background
+    color: 6 (magenta)
+  - type: Red_Region
+    color: 2
+    shape: horizontal rectangle segment(s)
+    location: right of Gray_Line (columns >= `gray_col + 1`)
+    status: appears only in output
+    properties:
+      - width: `w_red = min(4, count of contiguous all-magenta columns in input starting at gray_col + 1)`
+      - rows: A specific subset `R_red` of all rows where any object touches the boundary (`gray_col - 1`) in the output. Selection rule defined in Actions step 8.
+
+Actions:
+  - 1. Initialize `output_grid` as a copy of `input_grid`.
+  - 2. Find `gray_col`.
+  - 3. Calculate `w_red`.
+  - 4. Find all `White_Objects` left of `gray_col`.
+  - 5. For each `White_Object`:
+      - Calculate `shift`.
+      - Determine `shifted` status.
+      - Determine `final_touch_rows` (set of rows where object pixels end up in column `gray_col - 1`).
+  - 6. Prepare modifications:
+      - Collect original coordinates `(r, c)` for erasure if `shifted`.
+      - Collect target coordinates `(r, c + shift)` for drawing.
+  - 7. Apply modifications to `output_grid`:
+      - Erase originals (set to magenta).
+      - Draw shifted/copied objects (set to white).
+  - 8. Determine the final set of rows `R_red` to paint red:
+      - Initialize `R_red` as an empty set.
+      - For each `White_Object` that has non-empty `final_touch_rows`:
+          - Find contiguous vertical segments within its `final_touch_rows`.
+          - For each segment:
+              - If the number of rows in the segment is 3 or more:
+                  - Add all rows in the segment *except* the minimum (topmost) and maximum (bottommost) row of that segment to `R_red`.
+  - 9. If `w_red > 0`:
+      - For each row `r` in `R_red`:
+          - Paint red segment: Set `output_grid[r, gray_col + 1 : gray_col + 1 + w_red] = RED`. Ensure painting stays within grid bounds.

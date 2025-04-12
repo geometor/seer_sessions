@@ -1,0 +1,69 @@
+grid_properties:
+  variable_dimensions: True # Seen 20x20, 10x10
+  background_digit: 0
+input_features:
+  - type: SixBlock
+    value: 6
+    shape: 2x2
+    condition: Appears as a solid 2x2 block.
+  - type: TwoMarker
+    value: 2
+    condition: Any single '2'.
+  - type: FiveThreeRectangle
+    value: 5 and 3
+    shape: Rectangle defined by four points P1=(r1, c1), P2=(r1, c2), P3=(r2, c1), P4=(r2, c2)
+    condition: r1 < r2, c1 < c2, value at P1/P2 is 5, value at P3/P4 is 3.
+    tracked_data: Set of coordinates for the '3's used (P3, P4).
+  - type: ThreeMarker
+    value: 3
+    condition: Any single '3'. Can participate in FiveThreeRectangle or TriggerOneSquare rules.
+  - type: OneSquare
+    value: 1
+    shape: 4x4 hollow square
+    condition: Appears as a perfect hollow 4x4 square made of '1's, verifiable by `_is_hollow_square` function (checks perimeter = 1, interior != 1).
+    notes: Condition not met in Ex2 input.
+  - type: IgnoredFourSquare
+    value: 4
+    shape: 4x4 hollow square
+    condition: Appears as a hollow 4x4 square made of '4's. This pattern triggers no output rule.
+
+output_generation_rules:
+  # Rule execution order matters for overlaps; this reflects the Python code order.
+  - rule_id: GenerateSixBlocksFromFiveThreeRectangle # Rule 4 (Corrected)
+    source_feature: FiveThreeRectangle
+    input_locations: Corners P1=(r1, c1), P2=(r1, c2), P3=(r2, c1), P4=(r2, c2)
+    output_pattern: Four 2x2 blocks of '6's
+    output_locations: [(r1, c1), (r1, c2), (r2-3, c1), (r2-3, c2)] # Top-left of each output block. (Correction: r2-3 applied)
+  - rule_id: GenerateFourSquareFromTwo # Rule 1
+    source_feature: TwoMarker
+    input_location: (r, c)
+    output_pattern: 4x4 hollow square of '4's
+    output_location: (r, c) # Top-left of output square
+  - rule_id: ShiftSixBlock # Rule 2
+    source_feature: SixBlock
+    input_location: (r, c) # Top-left of 2x2 block
+    output_pattern: 2x2 block of '6's
+    output_location: (r-1, c-1) # Top-left of output block
+  - rule_id: ShiftOneSquare # Rule 3
+    source_feature: OneSquare # Specific to value '1' found by _is_hollow_square
+    input_location: (r, c) # Top-left of 4x4 hollow '1' square
+    output_pattern: 4x4 hollow square of '1's
+    output_location: (r, c+1) # Top-left of output square
+    notes: Did not trigger in Ex2 as input pattern failed _is_hollow_square check.
+  - rule_id: TriggerOneSquareFromThree # Rule 5
+    source_feature: ThreeMarker
+    condition: Complex condition based on '3' positions NOT used in FiveThreeRectangle.
+      1. Identify all '3's *not* tracked as part of any FiveThreeRectangle (`EligibleThrees`).
+      2. If `EligibleThrees` is empty, do nothing.
+      3. Identify all vertical pairs ((r_a, c), (r_b, c) with r_a < r_b) within `EligibleThrees`.
+      4. If vertical pairs exist: Find the pair with the minimum `r_b`. The trigger location is (r_b, c) for this pair. Ties in `r_b` are broken implicitly by iteration order or require explicit tie-breaking (e.g., minimum `c`, then minimum `r_a`), though current implementation uses the first found pair with min `r_b`.
+      5. If no vertical pairs exist: Find the '3' in `EligibleThrees` with the minimum row index (r_min), breaking ties with the minimum column index (c_min). The trigger location is (r_min, c_min).
+      6. Apply rule only if a trigger location is determined. Only ONE trigger location is used per grid.
+    input_location: Determined trigger location (r_trigger, c_trigger) as per above logic.
+    output_pattern: 4x4 hollow square of '1's
+    output_location: (r_trigger, c_trigger) # Top-left of output square
+    notes: This interpretation matches Ex2 and derived Ex1. Differs from prompt's expected Ex1 output which shows multiple squares.
+
+drawing_behavior:
+  overlap: Non-zero digits overwrite zeros. Behavior for overlapping non-zero digits depends on the execution order of rules in the Python code (Rule 5 potentially drawn over by earlier rules if locations coincide).
+  boundaries: Drawing respects grid boundaries (handled by helper functions).

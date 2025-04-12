@@ -1,0 +1,49 @@
+task_elements:
+  - object: grid
+    properties:
+      - type: matrix
+      - content: single-digit integers (3, 7, 8)
+      - size: variable, consistent between input and output
+  - object: cell
+    properties:
+      - value: 3, 7, or 8
+      - role:
+        - 8: boundary/wall (static, blocks connectivity)
+        - 3: seed/source (initiates change, remains 3)
+        - 7: fillable/changeable state
+relationships:
+  - type: connectivity
+    description: Cells are connected to their 4 adjacent neighbours (up, down, left, right). Connectivity is blocked by cells with value 8.
+  - type: region
+    id: R
+    description: The set of all non-8 cells reachable from any initial '3' cell via paths of adjacent non-8 cells. Determined using BFS or similar graph traversal.
+actions:
+  - action: identify_region_R
+    description: Perform a search (e.g., BFS) starting from all input cells with value '3' to find the connected component R, constrained by '8' cells and grid boundaries.
+  - action: initialize_output
+    description: Create an output grid as a deep copy of the input grid.
+  - action: transform_cells_in_R
+    description: Iterate through each cell (r, c) in the grid. If the cell is in region R and its input value is 7, apply a transformation rule.
+    condition: `(r, c) in R and input_grid[r][c] == 7`
+    sub_actions:
+      - action: tentative_fill
+        description: Set the value of the cell in the output grid to 3. `output_grid[r][c] = 3`.
+      - action: check_2x2_completion
+        description: Check if setting `output_grid[r][c]` to 3 completed a specific 2x2 block pattern.
+        condition: |
+          Requires r > 0 AND c > 0 AND
+          output_grid[r-1][c-1] == 3 AND output_grid[r-1][c] == 3 AND
+          output_grid[r][c-1] == 3 AND output_grid[r][c] == 3 AND
+          input_grid[r-1][c-1] != 8 AND input_grid[r-1][c] != 8 AND
+          input_grid[r][c-1] != 8 AND input_grid[r][c] != 8 AND
+          (r-1, c-1) in R AND (r-1, c) in R AND
+          (r, c-1) in R AND (r, c) in R
+      - action: revert_fill (hole_preservation)
+        description: If the check_2x2_completion condition is true, revert the cell's value in the output grid back to 7. `output_grid[r][c] = 7`.
+  - action: preserve_value
+    description: Cells retain their input value if they are not transformed.
+    target:
+      - All cells with input value '8'.
+      - All cells with input value '3'.
+      - All cells with input value '7' that are *not* in region R.
+      - Cells identified by the revert_fill action.

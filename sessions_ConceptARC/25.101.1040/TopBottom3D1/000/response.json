@@ -1,0 +1,35 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "## Perception\n\n1.  **Input/Output Structure:** Each example consists of an 8x8 input grid and a corresponding 8x8 output grid. The grids contain pixels colored white (0) and two other distinct non-white colors.\n2.  **Object Identification:** In each example, there are typically two main non-white objects. One object appears to act as a frame, boundary, or central line (Red plus, Yellow rectangle, Magenta line), while the second object is located inside or adjacent to the first (Blue rectangle, Green rectangle, Orange shape).\n3.  **Core Transformation:** The transformation involves modifying the 'inner' or 'adjacent' object (let's call it Object A) based on its relationship with the 'outer' or 'boundary' object (Object B). Specifically, Object A undergoes a horizontal expansion or filling.\n4.  **Expansion Logic:**\n    *   In `train_1` and `train_2`, Object B (Red plus, Yellow rectangle) forms clear vertical boundaries. Object A (Blue, Green) expands horizontally to fill the entire space between these vertical boundaries, but only on the rows where Object A was originally present. The color used for filling is the color of Object A. Pixels originally belonging to Object B within the fill area are overwritten.\n    *   In `train_3`, Object B (Magenta line) is *between* parts of Object A (Orange shape). Object A expands horizontally to connect its leftmost and rightmost points *within each row it occupies*, overwriting Object B where they intersect.\n5.  **Color Preservation:** The color of Object B generally remains unchanged outside the fill area. The color of Object A is used for the fill operation. Background (white) pixels within the fill area are colored. Pixels of Object B within the fill area are also recolored with Object A's color.\n\n## Facts\n\n"
+          },
+          {
+            "text": "```yaml\ntask_type: object_transformation\ngrid_properties:\n  size: 8x8\n  colors_used: 3 per example (white background + 2 object colors)\n\nobjects:\n  - id: A # The 'inner' object that expands/fills\n    properties:\n      - color: variable (Blue, Green, Orange in examples)\n      - shape: variable (rectangle, complex shape)\n      - role: fill_source\n  - id: B # The 'outer' object that defines boundaries or is overwritten\n    properties:\n      - color: variable (Red, Yellow, Magenta in examples)\n      - shape: variable (plus, rectangle, line)\n      - role: boundary_or_intersected\n\nrelationships:\n  - type: spatial\n    description: Object A is spatially related to Object B (inside, adjacent, surrounding).\n  - type: boundary_definition\n    description: Object B either defines vertical boundaries for Object A's horizontal expansion, or Object A's own horizontal extent per row defines the expansion.\n\nactions:\n  - name: horizontal_fill\n    parameters:\n      - fill_color: color of Object A\n      - target_rows: rows where Object A is present\n      - target_columns:\n          conditional:\n            - if: Object B provides left/right boundaries enclosing A\n              then: columns between and including B's boundaries\n            - else: columns between and including A's min/max extent per row\n    output: Modifies a copy of the input grid by applying the fill.\n```"
+          },
+          {
+            "text": "\n\n## Natural Language Program\n\n1.  Initialize the output grid as a copy of the input grid.\n2.  Identify the two distinct non-background colored objects present in the input grid. Designate them as Object A (the one that will expand/fill) and Object B (the reference/boundary object). Determine the color of Object A.\n3.  Determine the set of rows (`rows_A`) where Object A exists.\n4.  Analyze the spatial relationship: Check if Object B forms consistent vertical boundaries (left and right) that enclose Object A across `rows_A`.\n5.  **If** Object B forms enclosing vertical boundaries:\n    a.  Find the column index of the leftmost boundary (`col_left`) and the rightmost boundary (`col_right`) defined by Object B relevant to Object A.\n    b.  For each row `r` in `rows_A`:\n        i.  Iterate through the columns from `col_left` to `col_right` (inclusive).\n        ii. Set the color of the pixel at `(r, col)` in the output grid to the color of Object A.\n6.  **Else** (Object B does not form enclosing boundaries, e.g., it's between parts of A):\n    a.  For each row `r` in `rows_A`:\n        i.  Find the minimum column index (`min_col_A`) and the maximum column index (`max_col_A`) occupied by Object A *in this specific row r*.\n        ii. Iterate through the columns from `min_col_A` to `max_col_A` (inclusive).\n        iii. Set the color of the pixel at `(r, col)` in the output grid to the color of Object A.\n7.  Return the final output grid."
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 2022,
+    "candidates_token_count": 5832,
+    "total_token_count": 7854,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-preview-03-25",
+  "response_time": 47.015588,
+  "retries": 1
+}

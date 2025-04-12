@@ -1,0 +1,128 @@
+# Input representation
+input_grid:
+  type: grid
+  rows: 6
+  columns: 6
+  cell_type: digit
+  dominant_value: 7
+  variable_values: [1, 3, 6]
+
+# Output representation
+output_grid:
+  type: grid
+  rows: 16
+  columns: 16
+  cell_type: digit
+  background_value: 0 # Base grid constructed from patterns below
+  foreground_values: [7, 9]
+
+# Key Input Subregions
+central_input_subgrid:
+  name: Ic
+  source: input_grid
+  rows: [1, 2, 3] # indices 1 through 3 inclusive (0-based)
+  columns: [1, 2, 3] # indices 1 through 3 inclusive (0-based)
+  size: 3x3
+  role: Determines the modification pattern (M).
+outer_input_region:
+  name: Io
+  source: input_grid
+  definition: All cells *not* in Ic.
+  role: Determines the base pattern (P_base).
+
+# Base Patterns (4x4 blocks used for tiling)
+base_pattern_P0: # Used when Io contains only 7s (or implicitly if input is all 7s)
+  name: P_base_0
+  grid:
+    - [0, 0, 0, 0]
+    - [0, 7, 7, 0]
+    - [0, 7, 7, 0]
+    - [0, 0, 0, 0]
+base_pattern_P1: # Used when most frequent non-7 digit in Io is 1
+  name: P_base_1
+  grid:
+    - [0, 0, 0, 0]
+    - [7, 0, 0, 7]
+    - [7, 0, 0, 7]
+    - [0, 0, 0, 0]
+base_pattern_P6: # Used when most frequent non-7 digit in Io is 6
+  name: P_base_6
+  grid:
+    - [0, 7, 7, 0]
+    - [7, 0, 0, 7]
+    - [7, 0, 0, 7]
+    - [0, 7, 7, 0]
+
+# Base Grid Construction
+base_grid_16x16:
+  name: B
+  construction: Tile the selected P_base (P_base_0, P_base_1, or P_base_6) 4 times horizontally and 4 times vertically.
+  rows: 16
+  columns: 16
+
+# Modification Patterns (6x7 blocks replacing central region)
+modification_pattern_M1: # Used when most frequent non-7 digit in Ic is 1
+  name: M1
+  size: 6x7
+  grid:
+    - [7, 0, 0, 7, 0, 0, 7]
+    - [7, 0, 9, 7, 9, 9, 7]
+    - [0, 0, 9, 9, 9, 9, 9]
+    - [7, 0, 9, 7, 9, 9, 7]
+    - [7, 0, 9, 7, 9, 9, 7]
+    - [0, 0, 9, 9, 9, 9, 9]
+modification_pattern_M3: # Used when most frequent non-7 digit in Ic is 3
+  name: M3
+  size: 6x7
+  grid:
+    - [0, 7, 7, 0, 7, 7, 0]
+    - [0, 7, 7, 9, 7, 7, 9]
+    - [0, 0, 0, 9, 9, 9, 9]
+    - [0, 7, 7, 9, 7, 7, 9]
+    - [0, 7, 7, 9, 7, 7, 9]
+    - [0, 0, 0, 9, 9, 9, 9]
+modification_pattern_M6: # Used when most frequent non-7 digit in Ic is 6
+  name: M6
+  size: 6x7
+  grid:
+    - [7, 0, 0, 7, 0, 0, 7]
+    - [7, 0, 9, 7, 9, 9, 7]
+    - [0, 7, 7, 9, 7, 7, 9]
+    - [7, 0, 9, 7, 9, 9, 7]
+    - [7, 0, 9, 7, 9, 9, 7]
+    - [0, 7, 7, 9, 7, 7, 9]
+
+# Output Modification Region
+central_output_modification_region:
+  name: Oc_region
+  target: base_grid_16x16 (B)
+  rows: [4, 5, 6, 7, 8, 9] # indices 4 through 9 inclusive (0-based)
+  columns: [4, 5, 6, 7, 8, 9, 10] # indices 4 through 10 inclusive (0-based)
+  size: 6x7
+  role: Area where the base grid is replaced by M.
+
+# Transformation Actions
+actions:
+  - determine_base_pattern:
+      input: outer_input_region (Io)
+      output: P_base (one of P_base_0, P_base_1, P_base_6)
+      method: Find most frequent non-7 digit in Io. Select P_base_1 if 1, P_base_6 if 6, otherwise P_base_0.
+  - generate_base_grid:
+      input: P_base
+      output: 16x16 base grid B
+      method: Tiling P_base 4x4 times.
+  - determine_modification_pattern:
+      input: central_input_subgrid (Ic)
+      output: M (one of M1, M3, M6, or None)
+      method: Find most frequent non-7 digit in Ic. Select M1 if 1, M3 if 3, M6 if 6. If only 7s, M is None.
+  - apply_modification:
+      input: [base grid B, modification pattern M]
+      output: final output_grid
+      method: If M is not None, replace region Oc_region in B with M. Otherwise, B is the final output.
+
+# Relationships
+relationships:
+  - Io determines P_base
+  - P_base determines B
+  - Ic determines M
+  - M (if it exists) modifies B in Oc_region to produce the final output_grid.

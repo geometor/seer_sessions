@@ -1,0 +1,44 @@
+task_type: grid_transformation
+background_color_detection: most_frequent_digit # Hypothesis
+input_grid:
+  type: grid
+  properties:
+    - variable_size # Example 1: 22x22, Example 2: 22x22
+    - contains_background_color
+    - contains_pattern_regions:
+        definition: Contiguous areas of non-background digits
+        count: variable (1 or more)
+output_grid:
+  type: grid
+  properties:
+    - variable_size # Example 1: 11x11, Example 2: 13x7
+    - derived_from_input_regions
+transformation:
+  steps:
+    - identify_background_color
+    - locate_pattern_regions
+    - select_relevant_regions # Selection criteria unclear (e.g., all?, largest?, specific features?)
+    - process_each_selected_region:
+        - determine_bounding_box: rows and columns of the region
+        - determine_output_slice_width: based on region/patterns (matches output grid width for that section)
+        - extract_row_slices: iterate through rows within the region's row bounds, taking columns defined by output_slice_width
+        - apply_row_transformations:
+            - copy: verbatim transfer
+            - duplicate: repeat the resulting output row
+            - modify: change specific digits based on pattern or position (e.g., simplify pattern, alter borders)
+            - skip: some input rows might not contribute to the output
+        - collect_transformed_rows: list of rows for this region's output section
+    - assemble_output: vertically concatenate the collected rows from all processed regions in their original relative order
+examples:
+  train_1:
+    background_color: 8
+    processed_regions: 1 (rows 9-17, cols ~10-21)
+    output_slice_width: 11
+    transformations_observed: copy, duplicate, modify (pattern simplification, border change), skip
+    output_size: [11, 11]
+  train_2:
+    background_color: 1
+    processed_regions: 2 (Region1: rows 0-5, cols ~1-7; Region2: rows 6-11, cols ~1-8)
+    output_slice_width: 7
+    transformations_observed: copy, duplicate, modify (digit change, border change)
+    output_size: [13, 7] # 7 rows from Region1 + 6 rows from Region2

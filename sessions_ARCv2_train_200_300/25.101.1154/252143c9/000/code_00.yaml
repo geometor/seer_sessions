@@ -1,0 +1,51 @@
+task_context:
+  - description: Transform an input grid based on identifying a central feature and drawing a diagonal line.
+  - grid_properties:
+      - Input and output grids have the same dimensions.
+      - Orange (7) acts as the background color in the output and is often the most frequent color in the input.
+
+identified_objects:
+  - object: Central Pixel
+    description: The non-background pixel closest to the geometric center of the input grid.
+    properties:
+      - location: (r_c, c_c)
+      - color: C (input[r_c][c_c])
+      - constraints: Must not be the background color (orange=7). Ties in distance resolved by top-most, then left-most.
+  - object: Background
+    description: The default color used to fill the output grid initially.
+    properties:
+      - color: Orange (7)
+  - object: Output Line Segment
+    description: A segment of an anti-diagonal line drawn on the output grid.
+    properties:
+      - color: C (derived from the Central Pixel)
+      - geometry: Anti-diagonal (r + c = r_c + c_c)
+      - location: A subset of the full anti-diagonal, determined by the Central Pixel's location and color parity.
+
+transformations:
+  - action: Identify Background Color
+    input: input_grid
+    output: background_color (assumed Orange=7)
+  - action: Calculate Geometric Center
+    input: grid_dimensions (height, width)
+    output: center_coords (center_r, center_c)
+  - action: Find Central Pixel
+    input: input_grid, background_color, center_coords
+    output: central_pixel_location (r_c, c_c), central_pixel_color (C)
+    details: Finds the non-background pixel closest to center_coords (Manhattan distance, tie-break with min row, then min col).
+  - action: Initialize Output Grid
+    input: grid_dimensions, background_color
+    output: output_grid (filled with background_color)
+  - action: Determine Line Segment Parameters
+    input: central_pixel_location (r_c, c_c), central_pixel_color (C)
+    output: anti_diagonal_sum (S = r_c + c_c), direction_rule (based on C parity)
+  - action: Draw Line Segment
+    input: output_grid, anti_diagonal_sum (S), central_pixel_location (r_c, c_c), central_pixel_color (C), direction_rule
+    output: modified output_grid
+    details: Iterates through grid cells (r, c). If r + c == S and the cell satisfies the direction rule (relative to (r_c, c_c) based on C's parity), set output[r][c] = C.
+
+relationships:
+  - The color of the Output Line Segment is determined by the color of the Central Pixel found in the input.
+  - The location of the Output Line Segment is determined by the location of the Central Pixel (it lies on the anti-diagonal passing through it).
+  - The extent and direction of the Output Line Segment along the anti-diagonal depend on the parity of the Central Pixel's color.
+  - All pixels in the output grid not belonging to the Output Line Segment are set to the Background color.

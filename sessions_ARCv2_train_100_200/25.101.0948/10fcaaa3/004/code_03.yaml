@@ -1,0 +1,48 @@
+task_type: transformation
+grid_properties:
+  - input_size: H x W (variable)
+  - output_size: 2H x 2W
+  - output_composition: 2x2 tiling of a generated base_tile
+base_tile_generation:
+  source: input_grid (I)
+  target: base_tile (T), size H x W
+  pixel_mapping:
+    - condition: input pixel I[r][c] is non-white (1-9)
+      action: copy input pixel value to base_tile T[r][c]
+    - condition: input pixel I[r][c] is white (0)
+      action: # Revised Hypothesis (Adjacency-Based Checkerboard)
+        - dependency: location of all non-white pixels in input I.
+        - check_adjacency: determine if the white pixel at (r, c) is orthogonally or diagonally adjacent to *any* non-white pixel in I.
+        - if adjacent:
+            - check parity: (r + c) % 2
+            - if parity is 0 (even): set base_tile pixel T[r][c] to azure (8)
+            - if parity is 1 (odd): set base_tile pixel T[r][c] to white (0)
+        - if not adjacent:
+            - set base_tile pixel T[r][c] to white (0)
+  hypothesis_validation:
+    - status: Partially Correct
+    - matches: train_3, train_4
+    - mismatches:
+        - train_1: 1 pixel difference in base tile (Expected[3][2]=8, Generated[3][2]=0); 4 pixels in output.
+        - train_2: 4 pixel differences in base tile (Expected[1][0]=8, Gen[1][0]=0; Expected[1][2]=8, Gen[1][2]=0; Expected[2][0]=0, Gen[2][0]=8; Expected[2][3]=8, Gen[2][3]=0); 16 pixels in output.
+    - conclusion: This rule captures the transformation for simpler cases but fails for more complex inputs (train_1, train_2), indicating missing elements or alternative rules for those cases.
+output_grid_construction:
+  source: base_tile (T), size H x W
+  target: output_grid (O), size 2H x 2W
+  rule: O[r][c] = T[r % H][c % W] # Tiling
+objects:
+  - type: background_pixels
+    color: white (0) in input
+    properties: position (r, c), adjacency to non-white pixels.
+    transformed_to: pattern of white (0) and azure (8) in the base tile, determined by adjacency to non-white pixels and coordinate parity, then tiled. Non-adjacent background pixels become white (0).
+  - type: foreground_pixels
+    color: non-white (1-9) in input
+    properties: position (r, c), color value.
+    transformed_to: preserved color, tiled 2x2 in the output. Influences the transformation of adjacent background pixels.
+relationships:
+  - type: tiling
+    description: Output grid is a 2x2 repeat of the generated base tile.
+  - type: adjacency_influence
+    description: The color (0 or 8) assigned to a background pixel in the base tile depends on whether it is adjacent (including diagonals) to any non-white pixel in the input grid.
+  - type: checkerboard_pattern
+    description: For background pixels adjacent to non-white pixels, the choice between white (0) and azure (8) follows a checkerboard pattern based on coordinate parity (r+c).

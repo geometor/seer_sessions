@@ -1,0 +1,46 @@
+task_type: pattern_based_replacement # Modifying pixels based on local patterns with ambiguity handling
+color_invariance:
+  non_azure_pixels: unchanged # Pixels that are not 8 retain their color
+target_object_pixels:
+  color: 8 # azure
+  transformation: conditional_replacement
+  output_colors: [0, S] # Becomes either white (0) or the source color S
+source_object_pixels:
+  color: S # The single color in the input grid != 0 and != 8 (e.g., 3, 4, 6)
+  role: influences_transformation # Part of patterns, its specific value matters for the ambiguous case
+background_color: 0 # white, also used for padding outside grid boundaries
+transformation_rule:
+  scope: only_azure_pixels # Only pixels with value 8 are potentially changed
+  condition_type: generalized_neighborhood_match_with_exception
+  input_dependency: 3x3_neighborhood_of_azure_pixel_in_input # Padded with 0
+  pattern_generalization:
+    method: replace_source_color_with_placeholder # Treat S generically (e.g., as -1) for consistency checks
+    target_color: 8 # Remains 8
+    background_color: 0 # Remains 0
+  consistent_success_patterns: # Set of 8 generic patterns that always result in S
+    count: 8
+    # List derived from code execution analysis (using -1 as placeholder S)
+    list:
+      - ((0, -1, -1), (0, 8, 8), (0, 8, 8))
+      - ((-1, 8, 8), (-1, 8, 8), (-1, 8, 8))
+      - ((-1, -1, 0), (8, 8, 8), (8, 8, 8))
+      - ((-1, -1, -1), (8, 8, 8), (8, 8, 8)) # Note: Represents two distinct raw patterns that both consistently lead to S
+      - ((8, 8, 0), (8, 8, 0), (-1, -1, 0))
+      - ((8, 8, 0), (8, 8, -1), (0, 0, -1))
+      - ((8, 8, 8), (8, 8, 8), (0, -1, -1))
+  ambiguous_pattern:
+    pattern: ((8, 8, 8), (8, 8, 8), (8, 8, 8)) # The all-azure raw pattern
+    condition: result_depends_on_source_color
+    rule: If input neighborhood matches this pattern, output is S if source_color == 3, otherwise output is 0.
+  output_determination:
+    - For an azure (8) pixel at (r, c):
+    - Get its 3x3 input neighborhood (N).
+    - **Step 1 (Check Ambiguous):** If N matches the ambiguous_pattern `((8, 8, 8), (8, 8, 8), (8, 8, 8))`:
+        - If the grid's source_color is 3, the output pixel becomes 3.
+        - Else, the output pixel becomes 0.
+    - **Step 2 (Check Consistent Success):** If Step 1 did not apply:
+        - Create a generalized version of N (N_gen) by replacing the source_color S with a placeholder.
+        - If N_gen is found within the set of `consistent_success_patterns`:
+            - The output pixel becomes the source_color S.
+    - **Step 3 (Default Failure):** If neither Step 1 nor Step 2 applied:
+        - The output pixel becomes 0.

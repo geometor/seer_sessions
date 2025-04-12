@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nimport copy\n\n\"\"\"\nTransformation Rule Hypothesis:\n\n1.  Find the bounding box (min_row, min_col, max_row, max_col) encompassing all non-white (0) pixels in the input grid.\n2.  Create a working copy of the input grid.\n3.  Initialize an empty set `columns_to_remove`.\n4.  Iterate through each pixel (r, c) of the input grid:\n    a.  If the pixel `input_grid[r][c]` is gray (5):\n        i.   Find its 8 neighbors (orthogonal and diagonal).\n        ii.  Identify the unique non-white (0), non-gray (5) color `C` among the neighbors. (Based on analysis of training data, there is always exactly one such color).\n        iii. Apply color change: Set `working_grid[r, c] = C`. If no such neighbor color exists (e.g., isolated gray), it becomes white (0).\n        iv.  Check Bounding Box condition for removal: If the gray pixel's position (r, c) is strictly inside the bounding box (min_row < r < max_row AND min_col < c < max_col), add the column index `c` to the `columns_to_remove` set.\n5.  Construct the final output grid by taking the columns from the `working_grid` whose indices are *not* in the `columns_to_remove` set, preserving the order of the remaining columns.\n\nNote: This hypothesis worked perfectly for Example 4, partially for Example 1, but failed for Example 2 during analysis. It represents the best simple geometric rule identified so far. Example 3 seems to follow a different pattern and is not fully explained by this rule.\n\"\"\"\n\ndef get_neighbors(grid: np.ndarray, r: int, c: int) -> list[tuple[int, int, int]]:\n    \"\"\"Gets the 8 neighbours (value, row, col) of a pixel at (r, c), handling grid boundaries.\"\"\"\n    neighbours = []\n    rows, cols = grid.shape\n    for dr in [-1, 0, 1]:\n        for dc in [-1, 0, 1]:\n            # Skip the center pixel itself\n            if dr == 0 and dc == 0:\n                continue\n            nr, nc = r + dr, c + dc\n            # Check grid boundaries\n            if 0 <= nr < rows and 0 <= nc < cols:\n                neighbours.append((grid[nr, nc], nr, nc))\n    return neighbours\n\ndef transform(input_grid: list[list[int]]) -> list[list[int]]:\n    \"\"\"\n    Transforms the input grid based on gray pixel interactions and bounding box context.\n    \"\"\"\n    input_array = np.array(input_grid, dtype=int)\n    \n    # Handle empty input grid case\n    if input_array.size == 0:\n        return []\n        \n    working_grid = np.copy(input_array)\n    rows, cols = input_array.shape\n    columns_to_remove = set()\n\n    # Step 1: Find bounding box of non-white pixels\n    non_white_coords = np.argwhere(input_array != 0)\n    has_bb = False\n    min_r, min_c, max_r, max_c = -1, -1, -1, -1 # Default values\n    if non_white_coords.size > 0:\n        min_r = non_white_coords[:, 0].min()\n        min_c = non_white_coords[:, 1].min()\n        max_r = non_white_coords[:, 0].max()\n        max_c = non_white_coords[:, 1].max()\n        has_bb = True\n\n    # Step 4: Iterate through pixels to find gray ones\n    gray_pixels = []\n    for r in range(rows):\n        for c in range(cols):\n            if input_array[r, c] == 5:\n                gray_pixels.append(((r, c)))\n\n    # Process each gray pixel\n    for r, c in gray_pixels:\n        # Step 4.a.i: Find neighbors\n        neighbours = get_neighbors(input_array, r, c)\n        \n        # Step 4.a.ii: Identify unique neighbor color C\n        # Filter for neighbours that are not white (0) and not gray (5)\n        colored_neighbours = [n for n in neighbours if n[0] != 0 and n[0] != 5]\n        distinct_colors = set(n[0] for n in colored_neighbours)\n        \n        the_color = 0 # Default to white if no valid neighbor found\n        if len(distinct_colors) == 1:\n            # If exactly one distinct non-white/non-gray neighbor color exists\n            the_color = list(distinct_colors)[0]\n        # Note: Based on training examples, len(distinct_colors) is always 1 for gray pixels\n        # If it could be 0 or >1, the behavior is assumed to default to becoming white (0)\n        \n        # Step 4.a.iii: Apply color change to the working grid\n        working_grid[r, c] = the_color\n        \n        # Step 4.a.iv: Check bounding box condition for column removal\n        if has_bb: # Only check if a bounding box exists\n             # Condition: gray pixel is strictly inside the bounding box\n             if min_r < r < max_r and min_c < c < max_c:\n                columns_to_remove.add(c)\n\n    # Step 5: Construct output grid by removing marked columns\n    # Create a list of column indices to keep\n    output_cols_indices = [c for c in range(cols) if c not in columns_to_remove]\n    \n    if not output_cols_indices:\n         # If all columns are removed (or no columns existed), return empty grid of correct height\n        output_grid_array = np.empty((rows, 0), dtype=int)\n    else:\n        # Select only the columns that are not marked for removal\n        output_grid_array = working_grid[:, output_cols_indices]\n\n    # Convert final numpy array back to list of lists\n    return output_grid_array.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 11088,
+    "candidates_token_count": 14938,
+    "total_token_count": 26026,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-preview-03-25",
+  "response_time": 119.265356,
+  "retries": 1
+}

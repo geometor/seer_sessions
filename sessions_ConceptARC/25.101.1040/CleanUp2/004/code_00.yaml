@@ -1,0 +1,55 @@
+task_description: Simplify the grid based on corner pixel uniformity and comparison between corner color and overall dominant color.
+
+elements:
+  - element: grid
+    description: A 2D array of pixels representing colors (0-9).
+  - element: pixel
+    description: A single cell in the grid with a color value.
+  - element: color
+    description: An integer value 0-9 associated with each pixel.
+  - element: corner_pixels
+    description: The four pixels at the grid's corners (top-left, top-right, bottom-left, bottom-right).
+  - element: perimeter_pixels
+    description: Pixels located on the first or last row, or the first or last column.
+  - element: interior_pixels
+    description: Pixels not located on the perimeter. Relevant only for grids larger than 2x2.
+  - element: background_color
+    description: The color identified if all four corner pixels are the same. Undefined otherwise.
+  - element: overall_dominant_color
+    description: The color that appears most frequently across the entire grid. Ties broken by lowest color index.
+  - element: interior_non_background_pixels
+    description: The set of interior pixels whose color does not match the background_color. Relevant only when corners match and background is not overall dominant.
+  - element: dominant_interior_non_background_color
+    description: The most frequent color among interior_non_background_pixels. Ties broken by lowest color index. Relevant only when corners match and background is not overall dominant.
+
+relationships:
+  - type: spatial
+    description: Pixels have positions (row, column). Corners, perimeter, and interior define regions.
+  - type: frequency
+    description: Colors have frequencies (counts) within a set of pixels (whole grid, interior non-background).
+  - type: identity
+    description: Comparing if corner pixels match. Comparing background_color to overall_dominant_color.
+
+actions:
+  - action: check_corners
+    description: Determine if all four corner pixels have the same color.
+  - action: find_overall_dominant
+    description: Count colors across the entire grid and identify the most frequent (lowest index for ties).
+  - action: find_dominant_interior_non_background
+    description: Identify interior pixels, filter out background color, count remaining colors, find most frequent (lowest index for ties). Relevant only under specific conditions.
+  - action: create_output_grid
+    description: Generate the output grid based on corner check and color comparisons.
+    conditions:
+      - if: corners do not match
+        effect: Fill output grid entirely with the overall_dominant_color.
+      - if: corners match
+        variables:
+          - B = background_color (corner color)
+          - D = overall_dominant_color
+        sub_conditions:
+          - if: B == D
+            effect: Fill output grid entirely with B.
+          - if: B != D
+            variables:
+              - DI = dominant_interior_non_background_color
+            effect: Create output grid. Fill perimeter pixels with B. Fill interior pixels: if input pixel was B, output is B; otherwise, output is DI. (Handle grids < 3x3 where there's no interior: fill all with B).

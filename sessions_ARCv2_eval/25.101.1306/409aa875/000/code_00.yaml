@@ -1,0 +1,59 @@
+task_context:
+  grid_size: [16, 16]
+  background_color: 7 # orange
+  num_examples: 3
+
+objects:
+  - type: V-shape
+    definition: 3 pixels (r, c), (r+1, c-1), (r+1, c+1) of the same non-orange color C.
+    center: (r, c)
+    observed_colors: [9, 0] # maroon, white
+    examples: [train_1, train_2]
+  - type: L-shape
+    definition: 3 pixels (r, c), (r, c+1), (r+1, c) of the same non-orange color C.
+    corner: (r, c)
+    observed_colors: [2] # red
+    examples: [train_3]
+
+transformations:
+  - rule: V-shape Projection
+    input_trigger: V-shape of color C at center (r, c)
+    conditions:
+      - Applies if C is white(0).
+      - Applies if C is maroon(9) AND the V-shape is closest to the grid's vertical center.
+    actions:
+      - Calculate offset k: k = 6 if r < 13 else k = 5.
+      - Determine target coordinate: (r-k, c).
+      - Determine output color C': C'=maroon(9) if C=white(0); C'=blue(1) if C=maroon(9).
+      - Modify output grid at target coordinate with color C'.
+    examples: [train_1, train_2]
+  - rule: L-shape Global Pattern
+    input_trigger: Presence of any red(2) L-shapes.
+    actions:
+      - Modify output grid at [(1,0), (1,3), (1,6), (1,9)] to maroon(9).
+      - Modify output grid at [(9,0), (9,3), (9,6), (9,9)] to maroon(9).
+    examples: [train_3]
+  - rule: L-shape Gap Filling
+    input_trigger: Pair of red(2) L-shapes L1, L2 in the same rows r, r+1 with corners (r, c1) and (r, c2) where c2 = c1 + 4.
+    conditions:
+      - The row r must be the minimum row containing any red(2) L-shape.
+    actions:
+      - Modify output grid at (r, c1+3) to maroon(9).
+      - Modify output grid at (r+1, c1+3) to maroon(9).
+    examples: [train_3]
+
+relationships:
+  - type: Relative Position
+    description: Transformations depend on the row (r) of the input shape (determines projection offset k) or being the topmost shape (triggers gap filling). Centrality matters for maroon V-shapes. Adjacency matters for L-shape gap filling (c2 = c1 + 4).
+  - type: Color Mapping
+    input_color: 9 # maroon
+    output_color: 1 # blue
+    condition: V-shape, central
+  - type: Color Mapping
+    input_color: 0 # white
+    output_color: 9 # maroon
+    condition: V-shape
+  - type: Color Mapping
+    input_color: 2 # red
+    output_color: 9 # maroon
+    condition: L-shape triggers (both gap fill and global pattern)

@@ -1,0 +1,77 @@
+elements:
+  - object: grid
+    properties:
+      - representation: 2D array of integers
+      - colors: [1, 4, 7] (and potentially others, 7 is special)
+      - dimensions: height (rows), width (columns)
+  - object: color_7
+    properties:
+      - role: signal, instruction, marker
+      - characteristic: transient (present in input, absent in output)
+      - location_properties:
+          - coordinates: (row, column)
+          - is_in_first_row: boolean
+          - is_in_last_row: boolean
+          - forms_all_7_row: boolean (whether a row contains exclusively 7s)
+          - first_col_any_7: min column index of any 7
+          - first_col_row_0: min column index of 7 in row 0
+          - first_col_row_H-1: min column index of 7 in last row
+
+actions:
+  - action: identify_signal_properties
+    actor: transformation process
+    input: input grid
+    output: properties of color_7 locations (see object: color_7)
+  - action: determine_transformation_mode
+    actor: transformation process
+    input: signal properties
+    output: mode ('A', 'B', 'C')
+    logic:
+      - If any row consists entirely of 7s -> Mode A
+      - Else if any 7 exists in row 0 or row H-1 -> Mode B
+      - Else (7s exist, but not satisfying A or B criteria) -> Mode C
+      - Else (no 7s exist) -> Identity (return input) # Assumption
+  - action: execute_mode_A
+    actor: transformation process
+    input: input grid
+    output: output grid
+    logic:
+      - Identify rows `R_all_7` consisting entirely of 7s.
+      - Identify rows `R_sandwiched_1` consisting entirely of 1s and located between rows in `R_all_7`.
+      - Remove rows in `R_all_7` and `R_sandwiched_1`.
+  - action: execute_mode_B
+    actor: transformation process
+    input: input grid, signal properties
+    output: output grid
+    logic:
+      - Calculate `min_c`, `min_c_first_row`, `min_c_last_row`.
+      - Determine output width `W_out`:
+          - If `min_c == min_c_last_row`: `W_out = min_c + 5`
+          - Else: `W_out = min_c_first_row - 1`
+      - Generate content: (Requires complex modification)
+          - Tentative/Incomplete approach: Take `input_grid[:, :W_out]`, replace 7s with 4s. (Known to be insufficient). Actual logic likely involves context-specific replacement within the first `W_out` columns.
+  - action: execute_mode_C
+    actor: transformation process
+    input: input grid
+    output: output grid
+    logic:
+      - Identify rows `R_any_7` containing any 7.
+      - Create intermediate grid by removing rows in `R_any_7`.
+      - (Requires complex modification/extension): Modify content and extend width of the intermediate grid based on currently unknown rules, possibly related to the removed rows/columns or locations of 7s.
+
+relationships:
+  - relationship: determines
+    subject: location and configuration of color_7
+    object: transformation_mode selection
+  - relationship: controls
+    subject: transformation_mode
+    object: sequence and type of grid manipulation actions (row removal, column slicing, modification, extension)
+  - relationship: defines (for Mode B)
+    subject: signal properties (min_c_first_row, min_c_last_row)
+    object: output grid width
+  - relationship: defines (for Mode A)
+    subject: signal properties (all_7_rows)
+    object: rows_to_remove
+  - relationship: defines (for Mode C)
+    subject: signal properties (rows containing any 7)
+    object: rows_to_remove (initial step)

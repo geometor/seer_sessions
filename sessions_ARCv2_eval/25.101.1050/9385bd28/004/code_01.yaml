@@ -1,0 +1,83 @@
+task_description: Fill background pixels based on adjacent source colors using iterative propagation with priority, where the fill color is determined by a mapping derived from the input-output example.
+
+elements:
+  - type: grid
+    properties: Contains pixels with color values 0-9.
+  - type: background_pixel
+    properties:
+      - color: The most frequent color in the input grid (BG).
+      - role: Target pixels to be replaced during the transformation.
+  - type: source_pixel
+    properties:
+      - color: A non-background color (S) in the input grid that is orthogonally adjacent to at least one background_pixel.
+      - role: Influences the color of adjacent background pixels in the output, potentially mapping to a different fill color.
+      - location: Coordinates (r, c) where the source pixel exists.
+  - type: fill_pixel
+    properties:
+      - color: A color (F) that replaces a background_pixel in the output grid. It is determined by the source_pixel(s) adjacent to the original background_pixel via a derived mapping.
+      - priority: Determined by the fill color's index (lower index = higher priority).
+  - type: source_fill_map
+    properties:
+      - type: dictionary mapping S -> F.
+      - derivation: Inferred by examining, for each source color S, the output colors F that replace the background pixels originally adjacent to S. The most frequent F (with tie-breaking using the lowest F index) becomes the mapped value for S.
+      - scope: Applies to the specific task instance.
+
+relationships:
+  - type: adjacency
+    between: [pixel, pixel]
+    properties: Orthogonal neighbors (up, down, left, right).
+  - type: determines_fill_via_map
+    from: source_pixel_color (S)
+    to: fill_pixel_color (F)
+    using: source_fill_map
+    properties: A source pixel S influences adjacent background pixels to become color F = source_fill_map[S].
+  - type: overwrites
+    from: lower_index_fill_pixel or lower_index_source_pixel
+    to: higher_index_fill_pixel, higher_index_source_pixel, or background_pixel
+    properties: Occurs when multiple colors compete for the same pixel location during propagation; the color with the lowest index prevails.
+
+actions:
+  - name: identify_background_color
+    target: input_grid
+    output: background_color_value (BG)
+  - name: identify_source_pixels_and_colors
+    target: input_grid, background_color_value
+    output: set of source_colors (S), dictionary of source_pixel_coordinates per color.
+  - name: derive_source_fill_map
+    target: input_grid, output_grid, background_color, source_colors, source_coordinates
+    output: dictionary source_fill_map (S -> F)
+    steps:
+      - Initialize empty map M.
+      - For each source color s in S:
+        - Collect list L of output colors at (r, c) for all input pixels (r, c) that were BG and adjacent to any pixel of color s.
+        - Filter L to remove BG color.
+        - If L is not empty:
+          - Find the most frequent color(s) f in L.
+          - If tied, select the f with the minimum color index.
+          - Add mapping M[s] = f.
+  - name: iterative_mapped_priority_flood_fill
+    target: input_grid
+    using:
+        - background_color (BG)
+        - source_fill_map (M)
+        - priority_rule (lower color index wins)
+    output: output_grid
+    steps:
+      - Initialize working_grid = input_grid.
+      - Get the set of actual fill colors F used (values in M).
+      - Repeat until no changes occur in an iteration:
+        - Create next_grid = copy of working_grid.
+        - For each pixel (r, c):
+          - Get current color `curr = working_grid[r, c]`.
+          - Find potential fill influences:
+            - For each orthogonal neighbor `(nr, nc)` with color `C_neighbor` in working_grid:
+              - If `C_neighbor` is a source color `s` present in the input mapping `M`, the influence is `M[s]`.
+              - If `C_neighbor` is already a fill color `f` (a value in `M`), the influence is `f`.
+          - If influences exist:
+            - Find highest priority (lowest index) influence color `f_win`.
+            - If `curr == BG`:
+              - Set `next_grid[r, c] = f_win`. Mark change occurred.
+            - Else (`curr != BG`):
+              - If `f_win < curr`: # Check priority
+                - Set `next_grid[r, c] = f_win`. Mark change occurred.
+        - Update `working_grid = next_grid`.

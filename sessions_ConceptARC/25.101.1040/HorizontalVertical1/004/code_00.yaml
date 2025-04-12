@@ -1,0 +1,69 @@
+elements:
+  - type: grid
+    description: A 2D array of pixels with colors 0-9.
+  - type: background
+    properties:
+      - color: white (0)
+  - type: shape
+    description: A contiguous block of non-white pixels (using 8-way adjacency).
+    properties:
+      - color: [red (2), yellow (4), orange (7), ...]
+  - type: white_region
+    description: A contiguous region of white (0) pixels (using 8-way adjacency).
+    properties:
+      - pixels: Set of (row, col) coordinates.
+      - adjacent_non_white_colors: Set of colors of non-white pixels adjacent (8-way) to any pixel in the region.
+      - touches_border: Boolean, true if any pixel is on row 0, col 0, row max, or col max.
+      - touches_external_white: Boolean, true if any pixel in the region is adjacent (8-way) to a white pixel *not* belonging to this same region.
+
+grid_properties:
+  - name: distinct_shape_colors
+    description: The set of unique non-white colors present in the shapes of the input grid.
+  - name: num_distinct_shape_colors
+    description: The count of unique non-white colors (e.g., 2 in Example 1, 3 in Example 2).
+
+transformation:
+  - action: identify_shapes_and_colors
+    description: Determine the set of unique non-white colors present (`distinct_shape_colors`) and their count (`num_distinct_shape_colors`).
+  - action: identify_white_regions_and_properties
+    description: >
+      Locate all contiguous white (0) regions using 8-way adjacency.
+      For each region, determine its `pixels`, `adjacent_non_white_colors`,
+      `touches_border`, and `touches_external_white` properties.
+      (`touches_external_white` requires checking neighbors of region pixels
+      to see if any are white but not part of the current region).
+  - action: select_fill_rule
+    description: Choose a specific color mapping rule based on `num_distinct_shape_colors`.
+    rules:
+      - condition: num_distinct_shape_colors <= 2
+        description: Rule Set A
+        mapping:
+          - enclosing_color: red (2)
+            fill_color: green (3)
+          - enclosing_color: yellow (4)
+            fill_color: orange (7)
+      - condition: num_distinct_shape_colors >= 3
+        description: Rule Set B
+        mapping:
+          - enclosing_color: red (2)
+            fill_color: orange (7)
+          - enclosing_color: yellow (4)
+            fill_color: green (3)
+          - enclosing_color: orange (7)
+            fill_color: green (3) # Reinstated based on expected output analysis
+  - action: apply_fill_conditionally
+    description: >
+      Create a copy of the input grid. Iterate through each identified `white_region`.
+      A region is filled if and only if ALL of the following conditions are true:
+      1. `touches_border` is False.
+      2. `adjacent_non_white_colors` contains exactly one color (let this be `enclosing_color`).
+      3. `touches_external_white` is True.
+      If all conditions are met, find the `fill_color` corresponding to the `enclosing_color`
+      in the selected rule set (A or B). Change the color of all `pixels` within that
+      region to the `fill_color` in the copied grid. If the enclosing color has no mapping,
+      or if any condition is false, the region remains white.
+
+output_constraints:
+  - Grid dimensions are preserved.
+  - Original non-white shapes remain unchanged.
+  - Only white regions meeting all three criteria (no border, single enclosing color, touches external white) are modified.

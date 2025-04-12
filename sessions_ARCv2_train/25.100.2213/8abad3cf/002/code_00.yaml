@@ -1,0 +1,59 @@
+task_description: "Transform an input grid into an output grid by identifying two source blocks in the input based on output dimensions and the least frequent color's location, transforming them, and concatenating the results."
+
+definitions:
+  grid: "A 2D array of integer digits (colors)."
+  input_grid: "The source grid provided in the task."
+  output_grid: "The target grid to be generated."
+  H_out: "Height of the output_grid."
+  W_out: "Width of the output_grid."
+  least_frequent_color (lfc): "The digit value that appears fewest times in the input_grid. Ties are broken by choosing the smallest digit value."
+  min_row_least_frequent (r_min): "The smallest row index (0-based) in input_grid containing the lfc."
+  OutputLeft: "The left part of the output_grid."
+  OutputRight: "The right part of the output_grid."
+  B1: "The source block in input_grid used to generate OutputRight."
+  B2: "The source block in input_grid used to generate OutputLeft."
+  W1: "Width of OutputRight and B1. Equal to H_out."
+  W2: "Width of OutputLeft and B2. Equal to W_out - W1."
+  r_start: "Starting row index (0-based) for extracting B2. Equal to r_min - 1."
+  c_start: "Starting column index (0-based) for extracting B2. Fixed at 1."
+  Transformation T: "The operation applied to B2 to produce OutputLeft. This operation varies depending on the specific task instance."
+
+processing_steps:
+  - step: determine_output_dimensions
+    inputs: output_grid # Observed from examples
+    outputs: [H_out, W_out]
+  - step: determine_block_widths
+    inputs: H_out, W_out
+    outputs: [W1, W2] # W1 = H_out, W2 = W_out - H_out
+  - step: identify_input_block_B1
+    inputs: input_grid, H_out, W1
+    process: "Extract subgrid from input_grid starting at (0, 0) with dimensions H_out x W1."
+    outputs: B1 # input_grid[0:H_out, 0:W1]
+  - step: generate_output_right_block
+    inputs: B1, H_out, W1
+    process: "Take the first row of B1. Create an H_out x W1 block (OutputRight) by repeating this row H_out times."
+    outputs: OutputRight
+  - step: identify_least_frequent_color_info
+    inputs: input_grid
+    process: "Find the least_frequent_color (lfc) and its min_row_least_frequent (r_min)."
+    outputs: [lfc, r_min]
+  - step: calculate_B2_location
+    inputs: r_min
+    process: "Calculate starting row r_start = r_min - 1. Set starting column c_start = 1."
+    outputs: [r_start, c_start]
+  - step: extract_input_block_B2
+    inputs: input_grid, r_start, c_start, H_out, W2
+    process: "Extract subgrid from input_grid starting at (r_start, c_start) with dimensions H_out x W2."
+    outputs: B2 # input_grid[r_start : r_start+H_out, c_start : c_start+W2] (Handle boundary conditions)
+  - step: transform_block_B2 (Transformation T)
+    inputs: B2
+    process: >
+      Apply a specific transformation T to B2 to produce OutputLeft.
+      The nature of T is context-dependent:
+      - For train_2: T involves swapping column 1 and column 2 of B2.
+      - For train_1: T is a more complex transformation, currently undefined.
+    outputs: OutputLeft
+  - step: concatenate_blocks
+    inputs: [OutputLeft, OutputRight]
+    process: "Horizontally join OutputLeft and OutputRight."
+    outputs: final_output_grid

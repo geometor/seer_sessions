@@ -1,0 +1,44 @@
+task_type: grid_transformation
+transformation_type: conditional_fill
+component_identification:
+  method: input_output_comparison # Reliable identification requires observing input->output changes
+  derived_properties:
+    - background_color: The single color in the input that gets replaced by the fill_color in the output. Identified by finding the color with the highest count among input pixels at locations where the color changes.
+    - fill_color: The single color that replaces the background_color. Identified by finding the color with the highest count among output pixels at locations where the color changes. Appears sparsely (as seeds) in the input.
+    - seed_pixels: The coordinates of pixels in the input grid that have the 'fill_color'. These initiate the fill process.
+    - boundary_colors: The set of colors present in the input grid that are neither the background_color nor the fill_color. These colors remain unchanged and block the fill's propagation.
+    - fill_mechanism_type: The rule governing how the fill propagates. Determined by observing the pattern of change or properties of identified components.
+      - If background_color is 0 (white), the mechanism is 'left_fill'.
+      - Otherwise, the mechanism is 'flood_fill_4_way'.
+components:
+  - role: background_region
+    property: color
+    value: [Identified background_color: 1 (blue), 0 (white), or 7 (orange)]
+    description: Pixels with this color are candidates for being filled.
+  - role: fill_agent # The color acts like an agent spreading
+    property: color
+    value: [Identified fill_color: 9 (maroon), 4 (yellow), or 3 (green)]
+    description: This color replaces the background color during the fill.
+  - role: seed_points
+    property: coordinates
+    value: [Identified seed_pixels list]
+    description: The starting locations of the fill_agent in the input.
+  - role: boundary_objects
+    property: color
+    value: [Set of identified boundary_colors]
+    description: Pixels with these colors act as barriers, stopping the fill. They remain unchanged.
+transformation_rule:
+  - action: select_fill_mechanism
+    based_on: background_color
+    logic: If background_color is 0, use 'left_fill'; else use 'flood_fill_4_way'.
+  - action: execute_fill
+    mechanism: [Selected fill_mechanism_type]
+    parameters:
+      - grid: A copy of the input grid.
+      - start_points: seed_pixels (used by flood_fill).
+      - target_color: background_color (pixels to be changed).
+      - replacement_color: fill_color.
+    propagation:
+      - flood_fill_4_way: From current fill_color pixels, change adjacent background_color pixels to fill_color. Repeat until no more changes.
+      - left_fill: Iteratively scan the grid. If a pixel is background_color and the pixel to its right is fill_color, change the current pixel to fill_color. Repeat until no more changes in a pass.
+    termination: Stop when propagation ceases or hits boundaries (grid edges or boundary_colors).

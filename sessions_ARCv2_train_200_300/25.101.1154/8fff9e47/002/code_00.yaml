@@ -1,0 +1,29 @@
+task_type: scaling_and_neighbor_sampling
+input_object:
+  type: grid
+  description: A grid of pixels with varying dimensions (H_in x W_in).
+output_object:
+  type: grid
+  description: A grid of pixels with fixed dimensions (12x12).
+transformation:
+  operation: scale_and_sample
+  scaling_factors:
+    height: 12 / H_in (integer division)
+    width: 12 / W_in (integer division)
+  block_shape: [scale_h, scale_w]
+  sampling:
+    source: 3x3 neighborhood of the corresponding input pixel.
+    method: Each output pixel Output[r, c] samples the color from one neighbor (including center) of the source input pixel Input[i, j], where i = r // scale_h and j = c // scale_w.
+    neighbor_selection:
+      dependency: Determined by the relative position (rel_r = r % scale_h, rel_c = c % scale_w) within the block and the block shape (scale_h, scale_w).
+      mapping: A fixed mapping `OffsetMap[scale_h, scale_w](rel_r, rel_c) -> (dr, dc)` exists, specifying the neighbor offset relative to (i, j). The specific mapping function is currently UNDETERMINED and is not the simple formula `floor(...) - 1` previously attempted.
+    boundary_handling:
+      method: When the selected neighbor coordinate (i+dr, j+dc) is outside the input grid bounds.
+      default_color: The color assigned in case of out-of-bounds access is UNDETERMINED (previous assumption of 0/black seems incorrect, based on observed output colors like 6/magenta).
+relationships:
+  - Each input pixel Input[i, j] corresponds to an output block starting at Output[i * scale_h, j * scale_w] of size scale_h x scale_w.
+  - Each output pixel Output[r, c] derives its color from a specific neighbor of Input[r // scale_h, c // scale_w]. The choice of neighbor depends only on (r % scale_h, c % scale_w) and the calculated (scale_h, scale_w).
+observations:
+  - The scaling factors (and thus block shape) differ between examples (2x3 vs 3x2).
+  - The neighbor selection rule (OffsetMap) likely differs for different block shapes.
+  - The appearance of colors in the output (e.g., 6/magenta) that are not present in the immediate 3x3 neighborhood of the corresponding input pixel (when using 0/black default) indicates either a different boundary handling rule or a flaw in the neighbor sampling hypothesis itself.

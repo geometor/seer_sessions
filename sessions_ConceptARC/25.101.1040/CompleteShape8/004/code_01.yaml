@@ -1,0 +1,58 @@
+task_type: grid_transformation
+components:
+  - type: grid
+    attributes:
+      background_color: white (0)
+      objects: # Defined by color, not necessarily connectivity
+        - type: color_group
+          properties:
+            color: [yellow(4), gray(5), magenta(6), orange(7)] # Observed colors
+            pixel_coordinates: set of (row, col) tuples for a given color
+            bounding_box: # Calculated based on all pixels of the color
+              type: rectangle
+              properties: [min_row, min_col, max_row, max_col, height, width]
+            pattern_type: # Derived property based on pixels and bbox
+              values: [is_3x3_bbox, is_2x2_diagonal, other]
+actions:
+  - action: initialize_output
+    target: grid
+    effect: create grid of same dimensions as input, filled with white(0)
+  - action: identify_unique_colors
+    target: all non-background pixels in the input grid
+  - action: process_by_color
+    target: each unique color found
+    rules:
+      - condition: color is gray (5)
+        effect: ignore_color (pixels remain background in output)
+      - condition: color is not gray
+        steps:
+          - step: gather_all_pixels_of_color
+            output: pixel_coordinates (C), color
+          - step: calculate_bounding_box
+            input: C
+            output: bbox (B), bbox_size (H, W)
+          - step: check_conditions_and_transform
+            input: C, B, H, W, color
+            sub_rules:
+              - condition: H is 3 AND W is 3
+                effect: fill_bounding_box_in_output
+                arguments:
+                  color: color
+                  area: B
+              - condition: H is 2 AND W is 2 AND C contains only B's top-left and bottom-right corners
+                effect: draw_specific_6_pixel_pattern
+                arguments:
+                  color: color
+                  top_left: B's top-left (min_r, min_c)
+              - condition: otherwise # Fallback for any other case
+                effect: copy_original_pixels_to_output
+                arguments:
+                  color: color
+                  pixels: C
+relationships:
+  - type: spatial
+    elements: [color_group, bounding_box]
+    relation: bounding_box encloses all pixels of the color_group
+  - type: conditional_transformation
+    condition: color value AND bounding_box size AND specific pixel pattern within bbox
+    effect: determines transformation rule (ignore, fill_bbox, draw_pattern, copy_original)

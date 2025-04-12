@@ -1,0 +1,57 @@
+task_type: object_filtering_conditional_resizing_assembly
+
+input_features:
+  - grid: 2D array of pixels (0-9)
+  - background_color: white (0)
+  - objects:
+      - type: contiguous blocks of non-white pixels
+      - properties:
+          - color: (1-9)
+          - pixels: list of (row, col) tuples
+          - bounding_box: {min_row, max_row, min_col, max_col, height, width}
+
+derived_input_properties:
+  - max_square_dim_M: The largest dimension M such that an object with an MxM bounding box exists. Defaults to 0 if none exist.
+  - filter_threshold: M - 1
+
+output_features:
+  - grid: 2D array of pixels (0-9)
+  - objects:
+      - type: square grids of size S x S
+      - properties:
+          - S: The minimum dimension (min(height, width)) across all selected key input objects.
+          - content: Either the exact pixel pattern from the input object (if its BB was S x S) or a solid color fill (if its BB was larger than S x S in either dimension).
+          - color: derived from selected input objects
+          - arrangement: horizontal sequence, no spacing
+
+transformation_steps:
+  - identify_objects: Find all contiguous non-white pixel groups in the input grid.
+  - calculate_properties: Determine bounding box (height H, width W, min_col) and color for each object.
+  - find_max_square_dim_M: Determine M as defined above.
+  - filter_key_objects: Select objects where H >= (M - 1) and W >= (M - 1).
+  - check_key_objects_exist: If no key objects are selected, output an empty grid.
+  - determine_output_size_S: Find S = min(min(obj['height'], obj['width']) for obj in key_objects). Handle potential errors if S<=0.
+  - sort_key_objects: Order the key objects based on their minimum column index (`min_col`) ascending.
+  - generate_output_segments: For each sorted key object:
+      - Define segment_grid: an S x S numpy array, initialized to background color (0).
+      - Get object properties: color, H, W, min_row, min_col.
+      - Conditional transformation:
+          - If H == S and W == S:
+              - Extract the S x S subgrid from the input_grid corresponding to the object's bounding box.
+              - Copy this subgrid into segment_grid.
+          - Else (H > S or W > S):
+              - Fill the segment_grid completely with the object's color.
+      - Store the resulting segment_grid.
+  - assemble_output: Horizontally stack (concatenate) the generated segment_grids in order.
+  - convert_to_list: Convert the final numpy grid to a list of lists.
+
+relationships:
+  - max(H for obj if H==W) -> M (filtering parameter)
+  - filter(objects where H>=M-1 and W>=M-1) -> key_objects
+  - min(min(H,W) for key_obj) -> S (output segment size)
+  - key_object H, W compared to S -> determines segment content (pattern vs solid)
+  - key_object color -> segment color
+  - key_object min_col -> horizontal_order(output_segments)
+
+uncertainties_addressed:
+  - The previous uncertainty about why Ex1 preserved structure and Ex2 used solid squares is resolved by the conditional transformation rule based on comparing object BB dimensions (H, W) to the target size S.

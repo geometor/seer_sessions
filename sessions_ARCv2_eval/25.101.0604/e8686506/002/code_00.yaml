@@ -1,0 +1,37 @@
+task_description: Extract a subgrid defined by the bounding box of the non-background object(s) with the largest bounding box area. Populate the subgrid, copying original non-background pixels and filling original background pixels based on proximity to other non-background objects.
+
+definitions:
+  background_color: The most frequently occurring pixel value in the input grid.
+  object: A connected component of pixels having the same non-background color. Connectivity is 8-way (includes diagonals).
+  bounding_box: The smallest rectangle (min_row, min_col, max_row_exclusive, max_col_exclusive) enclosing all pixels of an object.
+  area: The area of a bounding box: (max_row_exclusive - min_row) * (max_col_exclusive - min_col).
+  max_area_objects: The set of objects whose bounding boxes have the largest area among all objects in the input grid.
+  frame_bounding_box: The combined bounding box minimally enclosing all max_area_objects. This defines the size and origin of the output grid. Let its origin be (frame_r0, frame_c0) and size (height, width).
+  frame_objects: Synonym for max_area_objects.
+  non_frame_objects: All non-background objects that are NOT frame_objects.
+  object_centroid: The average row and column index of all pixels belonging to an object.
+
+transformation_steps:
+  - step: Identify the background_color.
+  - step: Find all non-background objects using 8-way connectivity.
+  - step: Calculate the bounding_box and its area for each object.
+  - step: Determine the maximum bounding_box area found (`max_area`).
+  - step: Identify all frame_objects (those with area == `max_area`).
+  - step: Calculate the frame_bounding_box (origin `(frame_r0, frame_c0)`, size `height` x `width`) enclosing all frame_objects.
+  - step: Create an output grid of size `height` x `width`.
+  - step: Identify all non_frame_objects and calculate the centroid for each.
+  - step: For each cell `(out_r, out_c)` in the output grid (from 0..height-1, 0..width-1):
+      - Corresponding input coordinates: `(in_r, in_c) = (frame_r0 + out_r, frame_c0 + out_c)`.
+      - Get the value from the input grid: `input_val = input[in_r][in_c]`.
+      - If `input_val` is NOT the `background_color`:
+          - Set `output[out_r][out_c] = input_val`.
+      - Else (`input_val` IS the `background_color`):
+          - Determine the fill color:
+              - Find the `non_frame_object` whose centroid is closest (Euclidean distance) to the input coordinates `(in_r, in_c)`.
+              - Apply tie-breaking if multiple centroids are equidistant: prefer the object with the smallest color value, then the object with the smallest centroid row, then the object with the smallest centroid column.
+              - Set `output[out_r][out_c]` to the color of the selected `non_frame_object`.
+  - step: Return the populated output grid.
+
+notes:
+  - The output size for train_2 (8x5) does not match the calculated frame_bounding_box (8x4) based on the max area objects. The transformation steps assume the calculated 8x4 frame is correct.
+  - The fill rule (closest non-frame object centroid) is the current best hypothesis but failed some test cases during analysis. Further refinement of the distance metric or tie-breaking might be needed.

@@ -1,0 +1,29 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport numpy as np\nfrom collections import Counter\n\n\"\"\"\nThe transformation identifies two target columns in the output grid based on the overall distribution of non-background pixels in the input grid. \nSpecifically, it finds the rightmost column index ('max_col') containing any non-background pixel and the second rightmost column index ('col_R2') containing any non-background pixel.\nIt then iterates through each row of the input grid. For each row, it finds the non-background pixels. \nThe color of the rightmost non-background pixel in the input row is placed in the corresponding row of the output grid at column 'max_col'.\nIf there is a second rightmost non-background pixel in the input row, its color is placed in the corresponding row of the output grid at column 'col_R2'.\nThe rest of the output grid is filled with the background color, which is the most frequent color in the input grid.\n\"\"\"\n\ndef find_background_color(grid: np.ndarray) -> int:\n    \"\"\"Finds the most frequent color in the grid, assumed to be the background.\"\"\"\n    counts = Counter(grid.flatten())\n    if not counts:\n        return 0 # Default background if grid is empty\n    # Common case: most frequent is background\n    # Handle cases where the background might not be the absolute most frequent\n    # But typically in ARC, the background (often 0) dominates.\n    background_color = counts.most_common(1)[0][0]\n    return background_color\n\ndef find_target_columns(grid: np.ndarray, background_color: int) -> tuple[int | None, int | None]:\n    \"\"\"\n    Finds the indices of the rightmost and second rightmost columns\n    containing non-background pixels.\n    Returns (max_col, col_R2). Returns None for an index if not found.\n    \"\"\"\n    rows, cols = grid.shape\n    non_bg_cols = set()\n    for c in range(cols):\n        if np.any(grid[:, c] != background_color):\n            non_bg_cols.add(c)\n\n    sorted_cols = sorted(list(non_bg_cols))\n\n    max_col = sorted_cols[-1] if sorted_cols else None\n    col_R2 = sorted_cols[-2] if len(sorted_cols) > 1 else None\n\n    return max_col, col_R2\n\n\ndef transform(input_grid: list[list[int]]) -> list[list[int]]:\n    \"\"\"\n    Transforms the input grid by projecting the two rightmost non-background\n    pixels of each row onto two specific columns determined by the overall grid content.\n    \"\"\"\n    input_np = np.array(input_grid, dtype=int)\n    height, width = input_np.shape\n\n    # 1. Determine the background color\n    background_color = find_background_color(input_np)\n\n    # 2. & 3. Identify target columns max_col and col_R2\n    max_col, col_R2 = find_target_columns(input_np, background_color)\n\n    # Handle cases where target columns might not be found (e.g., grid is all background)\n    if max_col is None:\n        # If no non-background pixels, return the input grid (or an all-background grid)\n        return input_np.tolist() # Or create a new background grid\n\n    # 4. Create the output grid filled with background color\n    output_np = np.full_like(input_np, background_color)\n\n    # 5. Process each row\n    for r in range(height):\n        row = input_np[r, :]\n        # 5a. Find non-background pixels and their column indices\n        non_bg_indices = np.where(row != background_color)[0]\n\n        # 5b. If non-background pixels exist in the row\n        if non_bg_indices.size > 0:\n            # Sort indices descending to easily get rightmost and second rightmost\n            sorted_non_bg_indices = np.sort(non_bg_indices)[::-1]\n\n            # i. Get the rightmost pixel's color and place it in the output at max_col\n            rightmost_col_idx = sorted_non_bg_indices[0]\n            rightmost_color = input_np[r, rightmost_col_idx]\n            output_np[r, max_col] = rightmost_color\n\n            # iii. If a second rightmost pixel exists and col_R2 is defined\n            if len(sorted_non_bg_indices) > 1 and col_R2 is not None:\n                second_rightmost_col_idx = sorted_non_bg_indices[1]\n                second_rightmost_color = input_np[r, second_rightmost_col_idx]\n                output_np[r, col_R2] = second_rightmost_color\n\n    # 6. Return the result as a list of lists\n    return output_np.tolist()\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": 1,
+      "index": 0,
+      "safety_ratings": [],
+      "token_count": 0,
+      "grounding_attributions": [],
+      "avg_logprobs": 0.0
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 5002,
+    "candidates_token_count": 1864,
+    "total_token_count": 6866,
+    "cached_content_token_count": 0
+  },
+  "model_version": "gemini-2.5-pro-preview-03-25",
+  "response_time": 14.513028,
+  "retries": 1
+}

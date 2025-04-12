@@ -1,0 +1,72 @@
+task_description: Fill background pixels based on adjacent non-background colors using iterative propagation with priority, although the precise rule for selecting active fill colors is complex and varies.
+
+elements:
+  - type: grid
+    properties: Contains pixels with color values 0-9.
+  - type: background_pixel
+    properties:
+      - color: The most frequent color in the input grid (BG).
+      - role: Target pixels to be replaced during the transformation.
+  - type: non_background_pixel
+    properties:
+      - color: Any color other than BG present in the input grid.
+      - role: Act as barriers to filling and potentially as sources for fill colors.
+  - type: source_pixel
+    subtype_of: non_background_pixel
+    properties:
+      # In these examples, all non_background_pixels are adjacent to the background.
+      - location: Adjacent (orthogonally) to at least one background_pixel in the input grid.
+      - color: The specific non-background color (S).
+      - role: Initiates or influences the fill process.
+  - type: fill_pixel
+    properties:
+      - color: A color that replaces a background_pixel in the output grid (F).
+      - relationship: Empirically, F is always one of the non_background_pixel colors present in the input.
+      - priority: Determined by the fill color's index (lower index = higher priority). A lower index fill color overwrites a higher index fill color or a background color.
+
+relationships:
+  - type: adjacency
+    between: [pixel, pixel]
+    properties: Orthogonal neighbors (up, down, left, right).
+  - type: determines_fill (Hypothesized - Failed)
+    from: source_pixel_color (S)
+    to: fill_pixel_color (F)
+    properties: Various hypotheses tested (PFD distance, S->S mapping, etc.) did not consistently match observed F across all examples. The specific selection mechanism for F remains unclear but seems to be a subset of S.
+  - type: overwrites
+    from: lower_index_fill_pixel
+    to: higher_index_fill_pixel or background_pixel
+    properties: Occurs when multiple fills compete for the same pixel location during propagation; the lowest color index prevails.
+
+actions:
+  - name: identify_background_color
+    target: input_grid
+    output: background_color_value (BG)
+  - name: identify_potential_source_colors
+    target: input_grid, background_color_value
+    output: set of non_background_colors (S)
+  - name: identify_observed_fill_colors
+    target: input_grid, output_grid, background_color_value
+    output: set of colors (F) replacing BG in the output.
+  - name: iterative_priority_flood_fill
+    target: input_grid
+    using:
+        - background_color (BG)
+        - non_background_colors (S) acting as initial seeds/influences.
+        - priority_rule (lower color index wins).
+    output: output_grid
+    steps:
+      - Initialize working_grid = input_grid.
+      - Repeat until no changes occur in an iteration:
+        - Create next_grid = copy of working_grid.
+        - For each pixel (r, c):
+          - Get current color `curr = working_grid[r, c]`.
+          - Find colors `N` of non-BG orthogonal neighbors in working_grid.
+          - If `N` is not empty:
+            - Find highest priority (lowest index) color `f_p` in `N`.
+            - If `curr == BG`:
+              - Set `next_grid[r, c] = f_p`. Mark change occurred.
+            - Else (`curr != BG`):
+              - If `f_p < curr`: # Check priority
+                - Set `next_grid[r, c] = f_p`. Mark change occurred.
+        - Update `working_grid = next_grid`.
+    notes: This standard flood fill does not replicate the observed outputs accurately, suggesting the initial propagation or color selection rule is more complex than simply using all non-BG neighbors with index priority. The observed fill colors (F) are a specific subset of the source colors (S), but the selection rule for F is not determined.

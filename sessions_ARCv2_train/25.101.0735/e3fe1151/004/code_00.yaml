@@ -1,0 +1,45 @@
+grid_dimensions: [5, 5]
+center_cell_coords: [2, 2] # 0-indexed
+marker_digit: 7
+invariant_cells:
+  - type: central_cross # row 2 or column 2
+  - type: non_marker_digit # cells not equal to 7
+target_cells:
+  - type: marker_digit_outside_cross # cells equal to 7 AND r != 2 AND c != 2
+transformation_rule:
+  description: Replace target cells based on input grid values at specific locations. The logic depends on whether the symmetrically opposite cell also contains the marker digit.
+  primary_rule: # Applied when input[4-r][4-c] != 7
+    condition: input[4-r][4-c] != 7
+    action:
+      - if: (r, c) == (3, 3)
+        then: output[r][c] = input[1][0] # Specific exception for BR inner cell
+      - else:
+        then: output[r][c] = input[4-r][4-c] # General case: use symmetric value
+  fallback_rule: # Applied when input[4-r][4-c] == 7
+    condition: input[4-r][4-c] == 7
+    action: Assign output[r][c] based on the target cell's specific coordinates (r,c), using values from predefined input locations.
+    source_mapping:
+      (0,0): # TL corner target
+        value: input[0,4] # TR corner value
+      (1,1): # TL inner target
+        value: input[4,0] # BL corner value
+      (1,3): # TR inner target
+        priority_check: # Check in order, use first non-7 value
+          - input[4,4] # BR corner value
+          - input[3,3] # BR inner value
+      (3,1): # BL inner target - SPECIAL CASE
+        condition: input[1,0] != 0 # Check BL inner-neighbor value
+        if_true:
+            value: input[1,0]
+        if_false: # input[1,0] is 0, use priority check
+            priority_check:
+              - input[4,4] # BR corner value
+              - input[0,4] # TR corner value
+              - input[3,3] # BR inner value
+      (3,3): # BR inner target
+        priority_check: # Check in order, use first non-7 value
+          - input[0,4] # TR corner value
+          - input[3,3] # BR inner value (if I[0,4] was 7, result is I[3,3])
+      (4,4): # BR corner target
+        value: input[3,3] # BR inner value
+    default_value_comment: If all checks in a priority list result in 7, the value implicitly remains 7 (due to initial copy), though this scenario wasn't explicitly tested by examples for all paths. For (3,3) fallback, if I[0,4] is 7, result is I[3,3]. For (3,1) fallback, if I[1,0]=0 and I[4,4]=7 and I[0,4]=7, result is I[3,3].

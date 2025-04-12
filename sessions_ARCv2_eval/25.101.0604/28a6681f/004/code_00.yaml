@@ -1,0 +1,45 @@
+task_type: grid_transformation
+grid_properties:
+  dimensionality: 2
+  cell_values: integers (0-9)
+  size: 10x10 (consistent)
+objects:
+  - name: cell
+    properties:
+      - value: integer (color)
+      - position: (row, column)
+  - name: grid
+    properties:
+      - cells: collection of cell objects
+relationships:
+  - type: adjacency
+    between: cell, cell
+    properties:
+      - direction: orthogonal (North, South, East, West) for flanking
+      - direction: 8-directional (Ortho + Diagonal) for support check
+  - type: flanking
+    definition: A cell C at (r, c) is flanked horizontally if input[r][c-1] == input[r][c+1] == X, where X != 0. It is flanked vertically if input[r-1][c] == input[r+1][c] == Y, where Y != 0.
+  - type: support
+    definition: An input cell C at (r, c) with value 1 is considered 'supported' if any of its 8 neighbors in the input grid has the value 3.
+actions:
+  - name: transform_grid
+    inputs: input_grid (grid object)
+    outputs: output_grid (grid object)
+    rule:
+      - description: Two-phase transformation based on input grid structure, primarily derived from Examples 1 and 3.
+      - phase_1_identify_bridges:
+          - target: Cells C where input_grid[C.position] == 0.
+          - condition: Cell C is flanked horizontally OR vertically in the input_grid.
+          - action: Mark C.position as a 'bridge_location'.
+      - phase_2_construct_output:
+          - initialize: output_grid conceptually empty or copy of input.
+          - iterate: through each cell position (r, c).
+          - rule_1: IF (r, c) is marked as 'bridge_location', THEN output_grid[r][c] = 1.
+          - rule_2: ELIF input_grid[r][c] == 1:
+              - check_condition: Is the cell at (r, c) 'supported' (has a neighbor with value 3 in the input grid)?
+              - if_supported: THEN output_grid[r][c] = 1.
+              - if_not_supported: THEN output_grid[r][c] = 0.
+          - rule_3: ELSE output_grid[r][c] = input_grid[r][c]. # Handles non-zero/non-one values and non-flanked zeros.
+observations:
+  - note: This rule accurately describes the transformations in Examples 1 and 3.
+  - anomaly: Example 2 exhibits a different pattern. The 0->1 transformation appears more like a region fill, and the 1->0/1->1 transformation might depend on adjacency to 3s and 5s or inclusion in the filled region. The current rule derived from Ex1/Ex3 does not explain Ex2.

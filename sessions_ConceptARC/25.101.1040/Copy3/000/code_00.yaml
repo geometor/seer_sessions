@@ -1,0 +1,71 @@
+task_description: Copy patterns within the grid based on grid properties or specific markers.
+
+example_1:
+  input_grid_properties:
+    height: 11
+    width: 16
+    colors_present: [white, yellow, blue, green]
+    contains_magenta: false
+  objects:
+    - id: left_half
+      description: Columns 0 through 7 of the grid.
+      contains_patterns: [yellow_L_top, blue_dotted_line, green_bar, misc_yellow]
+    - id: right_half
+      description: Columns 8 through 15 of the grid.
+      contains_patterns: [yellow_L_top, empty_space]
+  action:
+    type: copy
+    source: left_half
+    destination: right_half
+    overwrite: true
+  output_grid_properties:
+    identical_dimensions: true
+    content: Left half is unchanged, right half is identical to the left half.
+
+example_2:
+  input_grid_properties:
+    height: 15
+    width: 13
+    colors_present: [white, magenta, green, orange, yellow]
+    contains_magenta: true
+  objects:
+    - id: pattern_A
+      description: Complex pattern composed of green, yellow, orange pixels.
+      location: Bounding box (rows 2-7, cols 0-2)
+    - id: marker_1
+      description: Magenta 1x2 rectangle
+      location: (0, 0)
+    - id: marker_2
+      description: Magenta 1x2 rectangle
+      location: (3, 6) # Seems relevant for destination
+    - id: marker_3
+      description: Magenta 1x2 rectangle
+      location: (8, 2)
+    - id: marker_4
+      description: Magenta 1x2 rectangle
+      location: (11, 8)
+    - id: other_pixels
+      description: Scattered orange pixels on the right side.
+  action:
+    type: copy
+    source: pattern_A (content of its bounding box)
+    destination_anchor: marker_2 at (3, 6)
+    destination_top_left: Calculated as (marker_2.row + 2, marker_2.col) = (5, 6)
+    overwrite: true
+  output_grid_properties:
+    identical_dimensions: true
+    content: pattern_A is copied starting at (5, 6), overwriting original content. Other markers and pixels remain unchanged.
+
+general_rule_hypothesis:
+  condition: Check if magenta (color 6) is present in the input grid.
+  case_no_magenta:
+    condition: Grid width W is even. (Assumption based on example 1)
+    action: Copy columns 0 to W/2 - 1 to columns W/2 to W - 1.
+  case_magenta_present:
+    condition: Grid width W is odd. (Assumption based on example 2)
+    action:
+      1. Identify the largest connected component group containing colors other than white and magenta ('source pattern'). Get its bounding box.
+      2. Identify potential 'marker' objects (magenta rectangles/pixels).
+      3. Select the relevant marker (e.g., based on proximity below/after the source pattern). Let its top-left be (r_mark, c_mark).
+      4. Calculate the destination top-left as (r_mark + 2, c_mark).
+      5. Copy the source pattern (content of its bounding box) to the calculated destination.

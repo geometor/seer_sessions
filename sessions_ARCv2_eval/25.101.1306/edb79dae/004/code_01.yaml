@@ -1,0 +1,92 @@
+elements:
+  - object: Frame
+    properties:
+      - color: gray (5)
+      - shape: hollow rectangle
+      - role: defines the region of interest (ROI) for cropping and output
+
+  - object: KeyArea
+    properties:
+      - location: outside the Frame's bounding box
+      - contains: KeyPairs, BackgroundPixels
+
+  - object: KeyPair
+    properties:
+      - structure: consists of two adjacent blocks - a SolidBlock and a TemplateBlock
+      - role: defines a transformation rule (SolidBlock Color -> TemplateBlock Target Color) and the output shape (TemplateBlock shape)
+      - location: within KeyArea
+
+  - object: SolidBlock
+    properties:
+      - structure: contiguous block of a single color ('SourceColor')
+      - role: represents the input color/object identifier in a KeyPair
+      - location: within KeyArea, adjacent to a TemplateBlock
+
+  - object: TemplateBlock
+    properties:
+      - structure: contiguous component composed ONLY of a 'TargetColor' and the 'BackgroundColor'
+      - shape: specific pattern defining the output object's shape and internal structure
+      - role: represents the output shape and target color identifier in a KeyPair
+      - location: within KeyArea, adjacent to a SolidBlock
+
+  - object: SourceBlockInstance
+    properties:
+      - structure: contiguous block of a single 'SourceColor' (matching a color from a SolidBlock in KeyArea)
+      - location: inside the Frame
+      - role: input object instance to be transformed
+
+  - object: BackgroundColor
+    properties:
+      - color: varies by task (most frequent color in KeyArea excluding frame, SourceColors, and TargetColors)
+      - role: invariant color, used within TemplateBlocks and fills empty space in the output
+
+actions:
+  - name: locate_frame
+    input: input_grid
+    output: bounding_box_of_gray_frame
+
+  - name: analyze_key_area
+    input: input_grid, frame_bounding_box
+    process:
+      - Identify potential BackgroundColor (most frequent outside, non-frame).
+      - Find all SolidBlocks outside frame.
+      - Find all TemplateBlocks outside frame (TargetColor + BackgroundColor).
+      - Identify adjacent (SolidBlock, TemplateBlock) pairs.
+      - For each pair (Solid S, Template T): record mapping S_color -> T_target_color, store T_shape as template[S_color].
+      - Refine/Confirm BackgroundColor (most frequent outside non-frame, non-S_color, non-T_target_color). Re-validate templates if background changes.
+    output: dictionary_of_mappings {S_color: T_target_color, ...}, BackgroundColor, dictionary_of_templates {S_color: template_array, ...}
+
+  - name: initialize_output
+    input: frame_bounding_box, BackgroundColor
+    output: output_grid (filled with BackgroundColor, sized by frame)
+
+  - name: copy_frame_to_output
+    input: input_grid, frame_bounding_box, output_grid
+    process: copy gray (5) pixels from input frame location to output grid.
+    output: updated_output_grid
+
+  - name: locate_source_block_instances
+    input: input_grid, frame_bounding_box, source_colors (keys from mappings)
+    output: list_of_source_instances [{color, r_min, c_min, coords}, ...] (coordinates relative to input_grid)
+
+  - name: apply_transformations
+    input: output_grid, list_of_source_instances, dictionary_of_templates, dictionary_of_mappings, BackgroundColor, frame_bbox(r_min, c_min)
+    process:
+      - For each SourceBlockInstance (color S at r_min_abs, c_min_abs):
+          - Get the TemplateBlock array 'T_shape' for color S.
+          - Get the TargetColor 'T_color' for color S from mappings.
+          - Calculate the top-left placement coordinate in output_grid: r_rel = r_min_abs - r_min_frame, c_rel = c_min_abs - c_min_frame.
+          - Iterate through T_shape (height h, width w):
+              - For pixel at (r_t, c_t) in T_shape:
+                  - Determine output pixel color: if T_shape[r_t, c_t] == T_color (the target color *in* the template), use T_color; if T_shape[r_t, c_t] == BackgroundColor, use BackgroundColor.
+                  - Calculate output coordinate: out_r = r_rel + r_t, out_c = c_rel + c_t.
+                  - If (out_r, out_c) is within output_grid bounds and not part of the frame: place the determined color.
+    output: final_output_grid
+
+relationships:
+  - The Frame defines the output dimensions and boundary.
+  - KeyPairs in the KeyArea define the transformation rules.
+  - A SolidBlock's color maps to its adjacent TemplateBlock's target color.
+  - A SolidBlock's color determines which TemplateBlock shape to use for transformation.
+  - BackgroundColor is invariant and part of TemplateBlocks.
+  - SourceBlockInstances inside the frame trigger the application of the transformation rule defined by their color.

@@ -1,0 +1,60 @@
+task_description: Extract framed content patterns from specific container objects, stack them vertically preserving order, apply a row duplication rule, and pad to uniform width.
+
+elements:
+  - type: background
+    color_description: Most frequent color in the input grid.
+    example_1: azure (8)
+    example_2: blue (1)
+  - type: container
+    color_description: A specific non-background color forming objects that enclose 'true_content'.
+    example_1: blue (1)
+    example_2: red (2)
+    properties:
+      - connected_object
+      - non_background_color
+      - encloses_true_content
+  - type: true_content
+    color_description: Pixels that are neither the background color nor the container color, found inside a container object.
+    example_1_groups: # Grouped by visual container in input
+      - colors: [orange (7), green (3), yellow (4)]
+      - colors: [magenta (6)]
+      - colors: [maroon (9)]
+    example_2_groups:
+      - colors: [yellow (4), green (3), azure (8)]
+    properties:
+      - enclosed_by_container
+      - differs_from_background
+      - differs_from_container_color
+  - type: pattern
+    description: A rectangular subgrid extracted from the input, representing a 'true_content' blob and its immediate 'container' frame.
+    derivation: Bounding box of (true_content + adjacent container pixels).
+  - type: output_row
+    description: A single row within the final assembled output grid. Derived from a row in an extracted 'pattern'. May be duplicated based on a rule.
+  - type: final_grid
+    description: The assembled, potentially duplicated, and padded rows.
+
+actions:
+  - identify_background_color: Find the most frequent pixel value.
+  - identify_container_color: Find the non-background color C whose objects enclose pixels of other non-background colors. (Requires refinement - how to uniquely identify C?). Assume it's the color of objects performing the enclosing action.
+  - find_container_objects: Locate all connected objects of the identified container color C.
+  - filter_valid_containers: Select only those container objects that directly enclose 'true_content' pixels.
+  - extract_patterns: For each valid container object:
+      1. Identify its enclosed 'true_content' pixels (TC).
+      2. Identify the container pixels (C) adjacent (8-way) to TC.
+      3. Determine the bounding box (BB) of the combined set (TC U C).
+      4. Extract the subgrid from the input using BB. This is the pattern.
+      5. Record the minimum row index of TC for sorting.
+  - sort_patterns: Order the extracted patterns based on the minimum row index of their original true_content.
+  - assemble_rows: Create a flat list of rows by taking all rows from the sorted patterns sequentially.
+  - apply_duplication: Create a new list of rows. For each row in the assembled list:
+      1. Add the row to the new list.
+      2. Check the 'true_content' pixels within that row (pixels != background and != container_color).
+      3. If the true_content forms a single contiguous block of exactly three identical pixels (X X X), add the row to the new list *again*. (Hypothesis - may need revision).
+  - pad_rows: Calculate the maximum width among the rows in the final list. Pad each row symmetrically with the background color to match this width.
+  - construct_output: Stack the padded rows to create the final grid.
+
+relationships:
+  - true_content is enclosed by container.
+  - pattern is derived from true_content and adjacent container pixels.
+  - output_rows are derived from pattern rows.
+  - final_grid is composed of padded output_rows.

@@ -1,0 +1,80 @@
+task_description: The overall task involves extracting or transforming specific regions of the input grid based on boundary markers or positional information, and applying color-filling rules determined either by row index or by patterns in other grid regions.
+
+train_1:
+  name: Segment Extraction and Row-Indexed Filling
+  input_dimensions: [15, 15]
+  output_dimensions: [15, 7]
+  observations:
+    - Each output row corresponds to an input row.
+    - Processing focuses on a horizontal segment in the input row.
+  objects:
+    - name: boundary_marker
+      value: 9
+      role: Defines the start and end of the relevant segment in each input row.
+    - name: segment
+      properties:
+        width: 7
+      location: Between the first and last boundary_marker (inclusive) in an input row.
+      role: Forms the basis of the output row.
+    - name: interior_cells
+      location: Cells within the segment, excluding the boundary_markers.
+      initial_value: Typically 4 in the input examples.
+      role: Target cells for color filling.
+    - name: paint_color
+      role: The color used to fill the interior_cells.
+      determination: Based on the row index `r`.
+        - r in {0, 1}: 8
+        - r in {2, 3, 4, 5, 7, 8}: 3
+        - r == 6: 3 (with exception)
+        - r in {9, 10}: 1
+        - r == 11: 5
+        - r in {12, 13, 14}: 7
+        - r == 15: 5
+  actions:
+    - find: First (c1) and last (c2) column index of boundary_marker in input row `r`.
+    - validate: Check if `c2 - c1 + 1 == 7`.
+    - extract: Segment `Input[r, c1:c2+1]`.
+    - determine: paint_color `P` based on `r`.
+    - fill: Replace values in the extracted segment at relative indices 1 through 5 with `P`.
+    - modify (special case): If `r == 6`, set the value at relative index 4 within the segment to 0.
+  output_generation: Concatenate the processed segments row by row.
+
+train_2:
+  name: Bottom Region Projection with Column-Pattern Coloring
+  input_dimensions: [20, 20]
+  output_dimensions: [9, 20]
+  observations:
+    - The output grid corresponds spatially to the bottom 9 rows of the input grid.
+    - Two distinct regions with background colors exist in the input.
+  regions:
+    - name: top_region
+      rows: 0-10
+      background_color: 8
+    - name: bottom_region
+      rows: 11-19
+      background_color: 2
+  objects:
+    - name: target_cell
+      value: 8
+      location: Cells in the bottom_region that do not match the bottom_region background_color.
+      role: Cells to be replaced in the output.
+    - name: preserved_cell
+      value: 2
+      location: Cells in the bottom_region matching the background_color.
+      role: Cells copied directly to the output.
+    - name: column_pattern
+      location: `Input[0:11, c]` for a given column `c`.
+      role: Determines the replacement color for target_cells in that column.
+    - name: paint_color
+      role: The color used to replace target_cells.
+      determination: A fixed mapping (lookup or complex rule) from the column_pattern in the top_region to the paint_color. Examples suggest specific patterns map to specific colors (e.g., all 8s -> 4, column with 6s -> 5, column with 0 -> 7).
+  actions:
+    - select: Input rows 11 through 19 as the base for the output grid.
+    - iterate: Through each cell `(R, c)` where `R` is from 11 to 19 (output row `r = R - 11`).
+    - check: Value `Input[R, c]`.
+    - copy: If `Input[R, c] == 2`, set `Output[r, c] = 2`.
+    - determine_and_replace: If `Input[R, c] == 8`:
+        - Get the column_pattern `Input[0:11, c]`.
+        - Determine the paint_color `P` associated with this pattern.
+        - Set `Output[r, c] = P`.
+  output_generation: The resulting 9x20 grid after processing all cells.

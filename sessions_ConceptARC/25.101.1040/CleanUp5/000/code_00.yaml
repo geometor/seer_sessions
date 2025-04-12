@@ -1,0 +1,60 @@
+task_type: color_removal_conditional
+grid_properties:
+  preserves_size: true
+  background_color: 0 # white
+
+input_features:
+  - name: pixel_colors
+    description: The grid contains pixels of various colors (0-9).
+    values:
+      - example_1: [0, 2, 3] # white, red, green
+      - example_2: [0, 4] # white, yellow
+  - name: color_count
+    description: Number of distinct non-white colors in the input grid.
+    values:
+      - example_1: 2
+      - example_2: 1
+  - name: max_color_value
+    description: The maximum numerical value among non-white colors present.
+    values:
+      - example_1: 3 # green
+      - example_2: 4 # yellow
+  - name: connected_components
+    description: Non-white pixels of the same color form connected components (using 8-way adjacency).
+    properties: [size, shape, pixels]
+    relevant_when: color_count == 1
+    observations:
+      - example_2:
+          components:
+            - size: 1 # e.g., (0,0), (0,23), (1,6)
+            - size: 2
+              shape: horizontal_line # e.g., {(0,18), (0,19)}, {(1,13), (1,14)}
+            - size: 24
+              shape: complex
+
+actions:
+  - name: remove_pixel
+    description: Change a pixel's color to the background color (0).
+    conditions:
+      - if: color_count > 1
+        target: pixels where color == max_color_value
+      - if: color_count == 1
+        target: pixels belonging to components satisfying specific criteria (size 1, or start of small simple line)
+
+transformation_logic:
+  - condition: color_count > 1
+    action: Remove all pixels whose color matches the maximum non-white color value in the input.
+  - condition: color_count == 1
+    action:
+      - Find all connected components (8-way adjacency) of the single non-white color.
+      - Remove pixels in components of size 1.
+      - For components forming horizontal line segments of size > 1, remove the leftmost pixel.
+      - (Hypothesized) For components forming vertical line segments of size > 1, remove the topmost pixel.
+      - Keep all other pixels.
+
+output_features:
+  - name: pixel_colors
+    description: The output grid contains a subset of the input's non-white pixels, or potentially none if all were removed.
+    values:
+      - example_1: [0, 2]
+      - example_2: [0, 4]
