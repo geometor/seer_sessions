@@ -2,5 +2,5 @@ seer_sessions
 =============
 
 
-generated test results from SEER
+A collection of generated test results and artifacts from SEER.
 
