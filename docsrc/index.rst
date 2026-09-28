@@ -1,35 +1,20 @@
 seer_sessions
 =============
 
-.. include:: intro.rst
-
-recent logs
------------
-
-.. postlist:: 5
-   :excerpts:
-
-
+Comprehensive empirical corpus, benchmark archives, and longitudinal analysis for GEOMETOR SEER.
 
 .. toctree::
-   :hidden:
    :maxdepth: 2
+   :caption: Archive & Research
 
-   mission/index.rst
-   usage/index.rst
-   modules/index.rst
-   logs.rst
-   demos/index.rst
-   refs/index.rst
-   todos.rst
-   changelog.rst
-   connect.rst
-   about.rst
+   retrospective
+   benchmarks
+   puzzles
+   logs
+   about
 
+.. toctree::
+   :maxdepth: 1
+   :caption: Navigation
 
-indices
--------
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+   changelog
