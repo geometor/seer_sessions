@@ -1421,7 +1421,7 @@ kbd {
 """
     (static_dir / "navigator.css").write_text(css_content, encoding="utf-8")
 
-    js_content = """/* GEOMETOR SEER Navigator - Client Interactive Engine */
+    js_content = r"""/* GEOMETOR SEER Navigator - Client Interactive Engine */
 (function () {
   "use strict";
 
@@ -1443,8 +1443,8 @@ kbd {
 
   function parseGridString(str) {
     if (!str || typeof str !== "string") return [];
-    const lines = str.trim().split(/\\r?\\n/).filter(Boolean);
-    return lines.map(line => line.trim().split(/\\s+/).map(Number));
+    const lines = str.trim().split(/\r?\n/).filter(Boolean);
+    return lines.map(line => line.trim().split(/\s+/).map(Number));
   }
 
   function renderGridHTML(matrixOrStr, label, mode, expectedMatrixOrStr) {
@@ -1484,8 +1484,8 @@ kbd {
     return (
       '<div class="grid-box">' +
         '<div class="grid-meta">' + metaTitle + '</div>' +
-        '<table class="arc-grid mode-' + gmode + '" data-grid-raw=\'' + JSON.stringify(matrix) + '\'' +
-        (expected ? ' data-grid-exp=\'' + JSON.stringify(expected) + '\'' : '') + '>' +
+        '<table class="arc-grid mode-' + gmode + '" data-grid-raw="' + JSON.stringify(matrix) + '"' +
+        (expected ? ' data-grid-exp="' + JSON.stringify(expected) + '"' : '') + '>' +
           rowsHtml +
         '</table>' +
       '</div>'
@@ -1773,18 +1773,51 @@ kbd {
       const viewerEl = document.getElementById("trial-split-viewer");
 
       if (!trialObj) {
-        // If this step is a dreamer step with no trials, show primary markdown/yaml file on left and message on right
+        // Dreamer step with no trials: show primary YAML/markdown on left and puzzle grids + response on right
         const fkeys = Object.keys(stepObj.files || {});
-        const mainFile = fkeys.find(k => k.endsWith(".yaml") || k.endsWith(".yml") || k.endsWith(".md")) || fkeys[0];
-        if (codeHeaderEl) codeHeaderEl.textContent = "Step " + stepObj.step + " (" + stepObj.title + ") — " + (mainFile || "No trial code");
-        if (codeEl) codeEl.textContent = mainFile ? stepObj.files[mainFile] : "# No Python trials executed in this step (e.g. Dreamer observation step).\\n# Switch to 'Step Files Inspector' or select a Coder step.";
+        const mainFile = fkeys.find(k => k.endsWith(".yaml") || k.endsWith(".yml")) || fkeys.find(k => k === "response.md") || fkeys[0];
+        if (codeHeaderEl) codeHeaderEl.textContent = "Step " + stepObj.step + " (" + stepObj.title + ") — " + (mainFile || "Observation");
+        if (codeEl) codeEl.textContent = mainFile ? stepObj.files[mainFile] : "# No files in this step.";
         if (viewerEl) {
-          viewerEl.innerHTML = (
-            '<div style="padding: 20px; color: var(--text-1);">' +
-              'No code trials in <b>Step ' + stepObj.step + ' (' + stepObj.title + ')</b>.<br><br>' +
-              'Select a Coder step in the table above or click <b>Step Files Inspector</b> to read the full response & YAML observations.' +
-            '</div>'
-          );
+          let dHtml = '<div class="trial-set-heading">Dreamer Observation • Ground-Truth Puzzle Grids</div>';
+          const trPairs = puzzle.train || [];
+          const tePairs = puzzle.test || [];
+          if (trPairs.length || tePairs.length) {
+            dHtml += '<div class="pairs-scroll" style="margin-bottom:12px;">';
+            trPairs.forEach((pair, idx) => {
+              dHtml += (
+                '<div class="pair-card">' +
+                  '<div class="pair-card-title"><span>Train[' + idx + ']</span></div>' +
+                  '<div class="pair-grids-row">' +
+                    renderGridHTML(pair.input, "Input", currentGridMode) +
+                    '<span class="pair-arrow">→</span>' +
+                    renderGridHTML(pair.output, "Output", currentGridMode) +
+                  '</div>' +
+                '</div>'
+              );
+            });
+            tePairs.forEach((pair, idx) => {
+              dHtml += (
+                '<div class="pair-card" style="border-color: var(--accent);">' +
+                  '<div class="pair-card-title"><span>Test[' + idx + ']</span></div>' +
+                  '<div class="pair-grids-row">' +
+                    renderGridHTML(pair.input, "Input", currentGridMode) +
+                    '<span class="pair-arrow">→</span>' +
+                    (pair.output ? renderGridHTML(pair.output, "Expected", currentGridMode) : '<span class="status-dim">Hidden</span>') +
+                  '</div>' +
+                '</div>'
+              );
+            });
+            dHtml += '</div>';
+          }
+          const respText = (stepObj.files && stepObj.files["response.md"]) || "";
+          if (respText && mainFile !== "response.md") {
+            dHtml += '<div class="trial-set-heading">Step ' + stepObj.step + ' Response (response.md)</div>';
+            dHtml += '<pre class="code-block" id="dreamer-resp-pre"></pre>';
+          }
+          viewerEl.innerHTML = dHtml;
+          const preEl = document.getElementById("dreamer-resp-pre");
+          if (preEl) preEl.textContent = respText;
         }
         return;
       }
@@ -1951,12 +1984,6 @@ kbd {
     stepRows.forEach((row, idx) => {
       row.addEventListener("click", () => {
         selectStep(idx, 0);
-        // If step has no trials, automatically show step files tab; otherwise trial split
-        if (!steps[idx].trials || !steps[idx].trials.length) {
-          setInspectorTab("step-files");
-        } else {
-          setInspectorTab("trial-split");
-        }
       });
     });
 
