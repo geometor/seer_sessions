@@ -63,14 +63,10 @@ Module Contents
       :value: None
 
 
-      File paths to load CSS from.
-
 
    .. py:attribute:: BINDINGS
       :value: [('q', 'quit', 'Quit')]
 
-
-      The default key bindings.
 
 
    .. py:attribute:: patterns

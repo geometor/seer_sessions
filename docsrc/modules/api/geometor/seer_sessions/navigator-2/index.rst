@@ -66,11 +66,6 @@ Module Contents
 
    .. py:method:: render() -> str
 
-      Get a rich renderable for the widget's content.
-
-      :returns: A rich renderable.
-
-
 
 .. py:class:: ARCVisualizerApp(*args, **kwargs)
 
@@ -84,14 +79,10 @@ Module Contents
       :value: 'arc_visualizer.css'
 
 
-      File paths to load CSS from.
-
 
    .. py:attribute:: BINDINGS
       :value: [('d', 'toggle_dark', 'Toggle Dark Mode'), ('q', 'quit', 'Quit')]
 
-
-      The default key bindings.
 
 
    .. py:attribute:: renderer
@@ -121,9 +112,6 @@ Module Contents
 
 
    .. py:method:: action_quit() -> None
-
-      An [action](/guide/actions) to quit the app as soon as possible.
-
 
 
    .. py:method:: on_shutdown_request() -> None

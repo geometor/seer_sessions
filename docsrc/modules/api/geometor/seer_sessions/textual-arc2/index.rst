@@ -101,11 +101,6 @@ Module Contents
 
    .. py:method:: render()
 
-      Get a rich renderable for the widget's content.
-
-      :returns: A rich renderable.
-
-
 
 .. py:class:: SplitBlockGrid(grid, **kwargs)
 
@@ -123,11 +118,6 @@ Module Contents
 
    .. py:method:: render()
 
-      Get a rich renderable for the widget's content.
-
-      :returns: A rich renderable.
-
-
 
 .. py:class:: BoxDrawingGrid(grid, **kwargs)
 
@@ -139,11 +129,6 @@ Module Contents
 
 
    .. py:method:: render()
-
-      Get a rich renderable for the widget's content.
-
-      :returns: A rich renderable.
-
 
 
 .. py:class:: SquareCharGrid(grid, **kwargs)
@@ -164,11 +149,6 @@ Module Contents
 
    .. py:method:: render()
 
-      Get a rich renderable for the widget's content.
-
-      :returns: A rich renderable.
-
-
 
 .. py:class:: HalfBlockGrid(grid, **kwargs)
 
@@ -181,18 +161,10 @@ Module Contents
 
    .. py:method:: render()
 
-      Get a rich renderable for the widget's content.
 
-      :returns: A rich renderable.
-
-
-
-.. py:class:: ARCGridApp(driver_class: Type[textual.driver.Driver] | None = None, css_path: textual._path.CSSPathType | None = None, watch_css: bool = False, ansi_color: bool = False)
+.. py:class:: ARCGridApp
 
    Bases: :py:obj:`textual.app.App`
-
-
-   The base class for Textual Applications.
 
 
    .. py:attribute:: CSS
@@ -216,16 +188,8 @@ Module Contents
 
 
 
-      Inline CSS, useful for quick scripts. This is loaded after CSS_PATH,
-      and therefore takes priority in the event of a specificity clash.
-
 
    .. py:method:: compose() -> textual.app.ComposeResult
-
-      Yield child widgets for a container.
-
-      This method should be implemented in a subclass.
-
 
 
    .. py:method:: on_button_pressed(event: textual.widgets.Button.Pressed) -> None
