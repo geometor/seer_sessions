@@ -13,10 +13,10 @@ Mission
 Capabilities & Interactive Docs
 -------------------------------
 
-- **`SEER Sessions Web Navigator <https://geometor.github.io/seer_sessions/>`_** — Longitudinal archive and static browser for 8,514 ARC-AGI reasoning trials.
-- **`Empirical Retrospective <https://geometor.github.io/seer_sessions/retrospective.html>`_** — In-depth analysis of SEER 1.0 program synthesis, failure topologies, and SEER 2.0 architecture.
-- **`Benchmark Suites <https://geometor.github.io/seer_sessions/benchmarks.html>`_** — Evaluation matrices and pass rates across ARCv1, ARCv2, ConceptARC, and Mini-ARC suites.
-- **`Puzzle Index <https://geometor.github.io/seer_sessions/puzzles.html>`_** — Comprehensive atlas of 2,939 unique visual reasoning puzzles and candidate solutions.
+- `SEER Sessions Web Navigator <https://geometor.github.io/seer_sessions/>`_ — Longitudinal archive and static browser for 8,514 ARC-AGI reasoning trials.
+- `Empirical Retrospective <https://geometor.github.io/seer_sessions/retrospective.html>`_ — In-depth analysis of SEER 1.0 program synthesis, failure topologies, and SEER 2.0 architecture.
+- `Benchmark Suites <https://geometor.github.io/seer_sessions/benchmarks.html>`_ — Evaluation matrices and pass rates across ARCv1, ARCv2, ConceptARC, and Mini-ARC suites.
+- `Puzzle Index <https://geometor.github.io/seer_sessions/puzzles.html>`_ — Comprehensive atlas of 2,939 unique visual reasoning puzzles and candidate solutions.
 
 Repository Contents
 -------------------
