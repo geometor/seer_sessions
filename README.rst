@@ -1,13 +1,13 @@
+.. image:: docsrc/_static/logo.png
+   :alt: GEOMETOR • seer_sessions Medallion
+   :target: https://geometor.github.io/seer_sessions/
+   :width: 150px
+   :align: right
+
 GEOMETOR • seer_sessions
 ========================
 
 **Visit the Online Archive:** https://geometor.github.io/seer_sessions/
-
-.. image:: docsrc/_static/logo.png
-   :alt: GEOMETOR • seer_sessions Medallion
-   :target: https://geometor.github.io/seer_sessions/
-   :width: 180px
-   :align: center
 
 .. image:: docsrc/_static/social/banner.png
    :alt: GEOMETOR • seer_sessions featured graphic
